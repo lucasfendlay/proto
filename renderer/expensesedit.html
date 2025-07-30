@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Client Expenses</title>
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="incomeedit.css">
+        <link rel="stylesheet" href="householdedit.css">
+    <link rel="stylesheet" href="notes.css">
+</head>
+
+<style>
+
+.narrow-body {
+        margin-left: 385px; /* Space for the left sidebar */
+        margin-right: 10px; /* Optional: Space on the right */
+        max-width: calc(100% - 395px); /* Ensure the body doesn't exceed the available space */
+        margin: 0 auto; /* Center the content horizontally */
+        margin-top: 60px; /* Adjust this value to match the height of the navigation container */
+
+    }
+    body {
+        margin-left: 400px; /* Add space to the left to avoid overlap with the left sidebar */
+        margin-right: 20px; /* Add some space on the right for better readability */
+        padding: 10px; /* Optional: Add padding for better spacing */
+        box-sizing: border-box; /* Ensure padding and margin are included in the total width */
+        max-width: calc(100% - 800px); /* Ensure the body content fits within the available space */
+        margin-top: 60px; /* Adjust this value to match the height of the navigation container */
+
+
+    }
+</style>
+<body class="narrow-body">
+
+    <h1>Expenses</h1>
+
+    
+
+    <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
+        <div id="household-members-container" class="left-sidebar"></div>
+        <div id="snap-household-container" class="left-sidebar"></div>
+    </div>
+
+    <!-- Notes Section -->
+    <div id="notes-list"></div>
+    <textarea id="note-input" placeholder="Write your note here..."></textarea>
+    <button id="save-note">Save</button>
+
+    <!-- Household Members Section -->
+    <div id="household-member-container"></div>
+
+    <!-- Modal for Adding/Editing Expense -->
+    <div id="shelter-modal" class="modal hidden">
+        <div class="modal-content">
+            <!-- Close Button -->
+            <button id="close-modal" class="close">&times;</button>
+
+            <!-- Modal Title -->
+            <h2 id="modal-title"></h2>
+
+            <!-- Expense Form -->
+            <form id="shelter-form">
+                <!-- Type of Expense -->
+                <label for="expense-kind">Kind of Expense:</label>
+                <select id="expense-kind" required>
+                    <option value="" disabled selected>Select Kind of Expense</option>
+                    <option value="Shelter">Shelter</option>
+                    <option value="Medical">Medical</option>
+                    <option value="Utilities">Utilities</option>
+                    <option value="Transportation">Transportation</option>
+                    <option value="Food">Food</option>
+                    <option value="Other">Other</option>
+                </select>
+
+                <!-- Frequency -->
+                <label for="expense-frequency">Frequency:</label>
+                <select id="expense-frequency" required>
+                    <option value="" disabled selected>Select Frequency</option>
+                    <option value="One-Time">One-Time</option>
+                    <option value="Weekly">Weekly</option>
+                    <option value="Bi-Weekly">Bi-Weekly</option>
+                    <option value="Monthly">Monthly</option>
+                    <option value="Annually">Annually</option>
+                </select>
+
+                <!-- Start Date -->
+                <label for="expense-start-date">Start Date:</label>
+                <input type="date" id="expense-start-date" class="large-input" required>
+
+                <!-- End Date -->
+                <label for="expense-end-date">End Date:</label>
+                <input type="date" id="expense-end-date" class="large-input" required>
+
+                <!-- Amount -->
+                <label for="expense-amount">Amount:</label>
+                <input type="text" id="expense-amount" class="text-input" required>
+
+                <!-- Submit Button -->
+                <button type="button" id="add-expense-button" class="submit-button">Add Expense</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Utility Modal -->
+<div id="utility-modal" class="modal hidden">
+    <div class="modal-content">
+        <!-- Modal Header -->
+        <div class="modal-header">
+            <h2 id="utility-modal-title">Add Utility Expense</h2>
+            <button id="close-utility-modal" class="close-button">&times;</button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="modal-body">
+            <p>Which utility expenses is this individual responsible for?</p>
+            <div id="utility-expense-list" class="selection-box-container">
+                <div class="selection-box" data-utility-type="Heating and/or Cooling">Heating and/or Cooling</div>
+                <div class="selection-box" data-utility-type="Gas">Gas</div>
+                <div class="selection-box" data-utility-type="Oil">Oil</div>
+                <div class="selection-box" data-utility-type="Propane">Propane</div>
+                <div class="selection-box" data-utility-type="Wood">Wood</div>
+                <div class="selection-box" data-utility-type="Coal">Coal</div>
+                <div class="selection-box" data-utility-type="Electric">Electric</div>
+                <div class="selection-box" data-utility-type="Water">Water</div>
+                <div class="selection-box" data-utility-type="Sewage">Sewage</div>
+                <div class="selection-box" data-utility-type="Phone">Phone</div>
+                <div class="selection-box" data-utility-type="Trash">Trash</div>
+            </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="modal-footer">
+            <button id="save-utility-expenses" class="save-button">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Styles for the modal -->
+<style>
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+
+    .modal.hidden {
+        display: none;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 8px;
+        width: 400px;
+        padding: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        position: relative;
+    }
+
+    .close-button {
+        background: none;
+        border: none;
+        font-size: 24px;
+        font-weight: bold;
+        color: #333;
+        cursor: pointer;
+        position: absolute;
+        top: 10px;
+        right: 10px;
+    }
+
+    .close-button:hover {
+        color: #ff0000;
+    }
+
+    .selection-box-container {
+        display: flex;
+        flex-direction: column; /* Stack items vertically */
+        gap: 10px;
+    }
+
+    .selection-box {
+        padding: 10px 15px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .selection-box.selected {
+        background-color: #007bff;
+        color: white;
+        border-color: #007bff;
+    }
+
+    .save-button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .save-button:hover {
+        background-color: #0056b3;
+    }
+</style>
+
+<!-- JavaScript for selection functionality -->
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const utilityExpenseList = document.getElementById('utility-expense-list');
+        const closeUtilityModal = document.getElementById('close-utility-modal');
+        const utilityModal = document.getElementById('utility-modal');
+
+        // Toggle selection on click
+        utilityExpenseList.addEventListener('click', (event) => {
+            if (event.target.classList.contains('selection-box')) {
+                event.target.classList.toggle('selected');
+            }
+        });
+
+        // Close modal on clicking the close button
+        closeUtilityModal.addEventListener('click', () => {
+            utilityModal.classList.add('hidden');
+        });
+    });
+</script>
+
+    <div class="button-container">
+        <button id="save-exit" onclick="goToExpenseView()">Save and Release Profile</button>
+        <button id="save-continue" onclick="GoToAssetsEdit()">Save and Continue</button> <br>
+    </div>
+
+    <script>
+
+function getQueryParameter(name) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name);
+}
+
+function GoToAssetsEdit() {
+    const clientId = getQueryParameter('id');
+    if (clientId) {
+        window.location.href = `assetsedit.html?id=${clientId}`;
+    } else {
+        console.error('Client ID not found in query parameters.');
+    }
+}
+
+async function goToExpenseView() {
+        const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
+        if (!clientId) {
+            console.error('Client ID not found in query parameters.');
+            return;
+        }
+
+        const confirmAction = confirm("Are you sure you want to save and release this profile?");
+        if (!confirmAction) {
+            return;
+        }
+
+        const noteContent = "Profile released.";
+        const timestamp = new Date().toLocaleString();
+        const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
+
+        if (!activeUser) {
+            console.error("No active user found in sessionStorage.");
+            return;
+        }
+
+        try {
+            // Save expenses data (if applicable)
+            await saveExpensesData();
+
+            // Add a note about the action
+            const note = {
+                text: noteContent,
+                timestamp: timestamp,
+                username: activeUser
+            };
+
+            await fetch('/add-note-to-client', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ clientId, note }),
+});
+            // Update screening status in the database
+            await fetch('/update-client', {
+    method: 'PUT',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+        clientId,
+        clientData: { screeningInProgress: false },
+    }),
+});
+
+            // Redirect to expenses view
+            window.location.href = `expensesview.html?id=${clientId}`;
+        } catch (error) {
+            console.error("Error during goToExpenseView:", error);
+        }
+    }
+
+    async function saveExpensesData() {
+        // Implement logic to save expenses data if needed
+        console.log("Saving expenses data...");
+    }
+
+
+    // Define the getQueryParam function
+function getQueryParam(name) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name);
+}
+
+    async function toggleSidebarVisibility() {
+    const clientId = getQueryParam('id');
+    try {
+        const client = await fetch(`/get-client/${clientId}`, {
+    method: 'GET',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+})
+    .then((response) => {
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client data: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .catch((error) => {
+        console.error('Error fetching client data:', error);
+        return null;
+    });
+            console.log('Client data:', client); // Debugging
+        console.log('screeningInProgress:', client?.screeningInProgress); // Debugging
+
+        if (client && client.screeningInProgress) {
+            document.getElementById('leftSidebarContainer').style.display = 'block';
+            console.log('Sidebar is now visible'); // Debugging
+        } else {
+            document.getElementById('leftSidebarContainer').style.display = 'none';
+            console.log('Sidebar is now hidden'); // Debugging
+        }
+    } catch (error) {
+        console.error('Error toggling sidebar visibility:', error);
+    }
+}
+
+    // Call the function after the page loads
+    window.onload = function () {
+        toggleSidebarVisibility();
+    };
+
+    </script>
+
+    <!-- Scripts -->
+
+    <script src="estimations.js"></script>
+    <script src="notes.js"></script>
+    <script src="expenses.js"></script>
+    <script src="editnavigation.js"></script>
+
+</body>
+</html>

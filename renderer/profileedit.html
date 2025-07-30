@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Client Profile</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="householdedit.css">
+    <link rel="stylesheet" href="notes.css">
+
+    <style>
+        #interactionList {
+            list-style-type: none; /* Remove default bullet points */
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column; /* Stack items vertically */
+            align-items: center; /* Center items horizontally */
+            gap: 15px; /* Add space between each interaction */
+            width: 90%; /* Make the interaction tracker stretch across the full width */
+        }
+    
+        #interactionList li {
+            display: flex;
+            justify-content: space-between; /* Stretch content across the width */
+            align-items: center; /* Align items at the top */
+            padding: 15px; /* Add padding inside each interaction */
+            border: 1px solid #ccc; /* Add a border around each interaction */
+            border-radius: 8px; /* Round the corners */
+            background-color: #f9f9f9; /* Light background color */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+            width: 90%; /* Ensure each interaction stretches across the full width */
+        }
+    
+        #interactionList li div {
+            flex: 1; /* Allow each section to stretch equally */
+            margin-right: 10px; /* Add space between sections */
+        }
+    
+        #interactionList li div:last-child {
+            margin-right: 0; /* Remove margin after the last section */
+        }
+    
+        #interactionList li strong {
+            font-weight: bold;
+            display: block; /* Ensure labels are on their own line */
+            margin-bottom: 5px; /* Add space below labels */
+        }
+    </style>
+
+    <style>
+
+        .button-container {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .button-container button {
+            flex: 1;
+            padding: 10px 15px;
+        }
+
+        .selection-box div.selected {
+            background-color: #007bff;
+            color: white;
+            border: 1px solid #0056b3;
+            border-radius: 5px;
+            padding: 5px;
+        }
+
+        .button-container1 {
+                display: flex;
+                gap: 10px; /* Adds spacing between buttons */
+                flex-wrap: wrap; /* Ensures buttons wrap to the next line if needed */
+            }
+        
+            .button-container1 button {
+                flex: 1; /* Ensures buttons are evenly spaced */
+                padding: 10px 15px;
+            }
+
+        .form-field {
+            margin-bottom: 10px;
+        }
+    </style>
+
+<link rel="stylesheet" href="notes.css">
+<style>
+        
+body {
+max-width: 1200px; /* Adjust the max-width as needed */
+margin: 0 auto;
+padding: 20px;
+margin-top: 60px; /* Adjust this value to match the height of the navigation container */
+
+}
+    
+</style>
+
+<style>
+    .selection-box {
+        display: flex;
+        gap: 8px; /* Add subtle spacing between options */
+        justify-content: center; /* Center the options */
+        margin-top: 8px; /* Add a little spacing above the selection box */
+    }
+
+    .selection-box div {
+        padding: 8px 16px; /* Moderate padding for a clean look */
+        border: 1px solid #ccc; /* Simple border */
+        border-radius: 4px; /* Slightly rounded corners */
+        background-color: #f5f5f5; /* Light gray background */
+        cursor: pointer; /* Pointer cursor for interactivity */
+        text-align: center; /* Center the text */
+        font-weight: 500; /* Medium font weight for readability */
+        transition: background-color 0.2s ease, border-color 0.2s ease; /* Smooth hover effect */
+        width: 100px; /* Fixed width for consistency */
+        box-sizing: border-box; /* Include padding and border in width */
+    }
+
+    .selection-box div:hover {
+        background-color: #eaeaea; /* Slightly darker gray on hover */
+        border-color: #999; /* Subtle border highlight on hover */
+    }
+
+    .selection-box div.selected {
+        background-color: #007bff; /* Blue background for selected option */
+        color: white; /* White text for contrast */
+        border-color: #0056b3; /* Darker blue border for selected option */
+    }
+</style>
+<script src="editnavigation.js"></script>
+</head>
+<body>
+    <div id="notes-list"></div>
+    <textarea id="note-input" placeholder="Write your note here..."></textarea>
+    <button id="save-note">Save</button>
+    <h2 id="profileId">Profile: Loading...</h2> <!-- New header for Profile ID -->
+    <p id="terminationStatus" style="color: red; display: none;"><strong>PROFILE TERMINATED</strong></p> <!-- Termination status -->
+
+
+
+    <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
+        <div id="household-members-container" class="left-sidebar"></div>
+    <div id="snap-household-container" class="left-sidebar"></div>
+</div>
+
+    <form id="clientForm">
+        <div class="form-field">
+            <label for="firstName">First Name:</label>
+            <input type="text" id="firstName" name="firstName">
+        </div>
+        <div class="form-field">
+            <label for="lastName">Last Name:</label>
+            <input type="text" id="lastName" name="lastName">
+        </div>
+        <div class="form-field">
+            <label for="phoneNumber">Phone Number:</label>
+            <input type="text" id="phoneNumber" name="phoneNumber">
+        </div>
+        <div class="form-field">
+            <label for="streetAddress">Street Address:</label>
+            <input type="text" id="streetAddress" name="streetAddress">
+        </div>
+        <div class="form-field">
+            <label for="city">City:</label>
+            <input type="text" id="city" name="city">
+        </div>
+        <div class="form-field">
+            <label for="state">State:</label>
+            <select id="state" name="state">
+                <option value="PA" selected>PA</option>
+                <option value="AL">AL</option>
+                <option value="AK">AK</option>
+                <option value="AZ">AZ</option>
+                <option value="AR">AR</option>
+                <option value="CA">CA</option>
+                <option value="CO">CO</option>
+                <option value="CT">CT</option>
+                <option value="DE">DE</option>
+                <option value="FL">FL</option>
+                <option value="GA">GA</option>
+                <option value="HI">HI</option>
+                <option value="ID">ID</option>
+                <option value="IL">IL</option>
+                <option value="IN">IN</option>
+                <option value="IA">IA</option>
+                <option value="KS">KS</option>
+                <option value="KY">KY</option>
+                <option value="LA">LA</option>
+                <option value="ME">ME</option>
+                <option value="MD">MD</option>
+                <option value="MA">MA</option>
+                <option value="MI">MI</option>
+                <option value="MN">MN</option>
+                <option value="MS">MS</option>
+                <option value="MO">MO</option>
+                <option value="MT">MT</option>
+                <option value="NE">NE</option>
+                <option value="NV">NV</option>
+                <option value="NH">NH</option>
+                <option value="NJ">NJ</option>
+                <option value="NM">NM</option>
+                <option value="NY">NY</option>
+                <option value="NC">NC</option>
+                <option value="ND">ND</option>
+                <option value="OH">OH</option>
+                <option value="OK">OK</option>
+                <option value="OR">OR</option>
+                <option value="RI">RI</option>
+                <option value="SC">SC</option>
+                <option value="SD">SD</option>
+                <option value="TN">TN</option>
+                <option value="TX">TX</option>
+                <option value="UT">UT</option>
+                <option value="VT">VT</option>
+                <option value="VA">VA</option>
+                <option value="WA">WA</option>
+                <option value="WV">WV</option>
+                <option value="WI">WI</option>
+                <option value="WY">WY</option>
+                <option value="DC">DC</option>
+                <option value="PR">Puerto Rico</option>
+                <option value="GU">Guam</option>
+                <!-- Add other states as needed -->
+            </select>
+        </div>
+        <div class="form-field">
+            <label for="zipCode">Zip Code:</label>
+            <input type="text" id="zipCode" name="zipCode">
+        </div>
+        <div class="form-field">
+            <label for="county">County:</label>
+            <select id="county" name="county">
+                <option value="" disabled selected>Select County</option>
+                <option value="Adams">Adams</option>
+                <option value="Allegheny">Allegheny</option>
+                <option value="Armstrong">Armstrong</option>
+                <option value="Beaver">Beaver</option>
+                <option value="Bedford">Bedford</option>
+                <option value="Berks">Berks</option>
+                <option value="Blair">Blair</option>
+                <option value="Bradford">Bradford</option>
+                <option value="Bucks">Bucks</option>
+                <option value="Butler">Butler</option>
+                <option value="Cambria">Cambria</option>
+                <option value="Cameron">Cameron</option>
+                <option value="Carbon">Carbon</option>
+                <option value="Centre">Centre</option>
+                <option value="Chester">Chester</option>
+                <option value="Clarion">Clarion</option>
+                <option value="Clearfield">Clearfield</option>
+                <option value="Clinton">Clinton</option>
+                <option value="Columbia">Columbia</option>
+                <option value="Crawford">Crawford</option>
+                <option value="Cumberland">Cumberland</option>
+                <option value="Dauphin">Dauphin</option>
+                <option value="Delaware">Delaware</option>
+                <option value="Elk">Elk</option>
+                <option value="Erie">Erie</option>
+                <option value="Fayette">Fayette</option>
+                <option value="Forest">Forest</option>
+                <option value="Franklin">Franklin</option>
+                <option value="Fulton">Fulton</option>
+                <option value="Greene">Greene</option>
+                <option value="Huntingdon">Huntingdon</option>
+                <option value="Indiana">Indiana</option>
+                <option value="Jefferson">Jefferson</option>
+                <option value="Juniata">Juniata</option>
+                <option value="Lackawanna">Lackawanna</option>
+                <option value="Lancaster">Lancaster</option>
+                <option value="Lawrence">Lawrence</option>
+                <option value="Lebanon">Lebanon</option>
+                <option value="Lehigh">Lehigh</option>
+                <option value="Luzerne">Luzerne</option>
+                <option value="Lycoming">Lycoming</option>
+                <option value="McKean">McKean</option>
+                <option value="Monroe">Monroe</option>
+                <option value="Montgomery">Montgomery</option>
+                <option value="Montour">Montour</option>
+                <option value="Northampton">Northampton</option>
+                <option value="Northumberland">Northumberland</option>
+                <option value="Perry">Perry</option>
+                <option value="Philadelphia">Philadelphia</option>
+                <option value="Pike">Pike</option>
+                <option value="Potter">Potter</option>
+                <option value="Schuylkill">Schuylkill</option>
+                <option value="Snyder">Snyder</option>
+                <option value="Somerset">Somerset</option>
+                <option value="Sullivan">Sullivan</option>
+                <option value="Susquehanna">Susquehanna</option>
+                <option value="Tioga">Tioga</option>
+                <option value="Union">Union</option>
+                <option value="Venango">Venango</option>
+                <option value="Warren">Warren</option>
+                <option value="Washington">Washington</option>
+                <option value="Wayne">Wayne</option>
+                <option value="Westmoreland">Westmoreland</option>
+                <option value="Wyoming">Wyoming</option>
+                <option value="York">York</option>
+                <!-- Add other counties as needed -->
+            </select>
+        </div>
+        <div class="form-field">
+            <label for="speakingLanguage">Preferred Speaking Language:</label>
+            <select id="speakingLanguage" name="speakingLanguage">
+                <option value="" disabled selected>Select Language</option>
+                <option value="English">English</option>
+                <option value="Arabic">Arabic</option>
+<option value="Bengali">Bengali</option>
+<option value="Bulgarian">Bulgarian</option>
+<option value="Croatian">Croatian</option>
+<option value="Czech">Czech</option>
+<option value="Danish">Danish</option>
+<option value="Dutch">Dutch</option>
+<option value="Estonian">Estonian</option>
+<option value="Finnish">Finnish</option>
+<option value="French">French</option>
+<option value="German">German</option>
+<option value="Greek">Greek</option>
+<option value="Hebrew">Hebrew</option>
+<option value="Hindi">Hindi</option>
+<option value="Hungarian">Hungarian</option>
+<option value="Icelandic">Icelandic</option>
+<option value="Irish">Irish</option>
+<option value="Italian">Italian</option>
+<option value="Japanese">Japanese</option>
+<option value="Korean">Korean</option>
+<option value="Latvian">Latvian</option>
+<option value="Lithuanian">Lithuanian</option>
+<option value="Maltese">Maltese</option>
+<option value="Mandarin">Mandarin</option>
+<option value="Norwegian">Norwegian</option>
+<option value="Persian">Persian</option>
+<option value="Portuguese">Portuguese</option>
+<option value="Punjabi">Punjabi</option>
+<option value="Romanian">Romanian</option>
+<option value="Russian">Russian</option>
+<option value="Serbian">Serbian</option>
+<option value="Slovak">Slovak</option>
+<option value="Slovenian">Slovenian</option>
+<option value="Spanish">Spanish</option>
+<option value="Swahili">Swahili</option>
+<option value="Swedish">Swedish</option>
+<option value="Tagalog">Tagalog</option>
+<option value="Thai">Thai</option>
+<option value="Turkish">Turkish</option>
+<option value="Urdu">Urdu</option>
+<option value="Vietnamese">Vietnamese</option>
+<option value="Welsh">Welsh</option>
+                <!-- Add other languages as needed -->
+            </select>
+        </div>
+        <div class="form-field">
+            <label>Interpreter Used:</label>
+            <div class="selection-box">
+                <div data-value="yes" onclick="updateInterpreter('yes')">Yes</div>
+                <div data-value="no" onclick="updateInterpreter('no')">No</div>
+            </div>
+        </div>
+    </form>
+
+    <button id="call-logging-button" class="interactive" onclick="confirmAndRedirect()">Start Screening</button>
+    <button id="save-button" class="interactive" onclick="confirmSaveAndRelease(); window.saveAndReleaseProfile();">Save and Release Profile</button>
+    <h2>Interaction Tracker</h2>
+    <ul id="interactionList">
+        <li>Loading...</li>
+    </ul>
+
+    <style>
+        #terminate-button {
+            background-color: #ff4d4d; /* Red background */
+            color: white; /* White text */
+            border: none; /* Remove border */
+            padding: 10px 15px; /* Add padding */
+            border-radius: 5px; /* Rounded corners */
+            cursor: pointer; /* Pointer cursor */
+            font-weight: bold; /* Bold text */
+            transition: background-color 0.3s ease; /* Smooth hover effect */
+        }
+    
+        #terminate-button:hover {
+            background-color: #cc0000; /* Darker red on hover */
+        }
+    
+        #terminate-button:disabled {
+            background-color: #f5f5f5; /* Gray background when disabled */
+            color: #ccc; /* Light gray text */
+            cursor: not-allowed; /* Show not-allowed cursor */
+        }
+    </style>
+    
+    <button id="terminate-button" class="interactive" onclick="confirmAndTerminate()">Terminate Profile</button>
+
+    <script>
+        // Function to get query parameter by name
+        function getQueryParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        async function confirmSaveAndRelease() {
+        if (confirm("Are you sure you want to save and release this profile?")) {
+            const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
+            const noteContent = "Profile released.";
+            const timestamp = new Date().toLocaleString();
+            const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
+
+            if (!activeUser) {
+                console.error("No active user found in sessionStorage.");
+                return;
+            }
+
+            try {
+                // Save client data
+                await saveClient();
+
+                // Add a note about the action
+                const note = {
+                    text: noteContent,
+                    timestamp: timestamp,
+                    username: activeUser
+                };
+
+                try {
+    const response = await fetch('/add-note-to-client', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ clientId, note }),
+    });
+
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+        console.error('Failed to add note to client:', result.message);
+        alert('Failed to add note to client.');
+    } else {
+        console.log('Note successfully added to client.');
+    }
+} catch (error) {
+    console.error('Error adding note to client:', error);
+    alert('An error occurred while adding the note.');
+}
+                // Call the releaseProfile function to update screeningInProgress to false
+                await releaseProfile();
+
+                // Redirect to profile view
+                GoToProfileView();
+            } catch (error) {
+                console.error("Error during confirmSaveAndRelease:", error);
+            }
+        }
+    }
+
+        // Function to load client data and populate the form
+        async function loadClientData() {
+    const clientId = getQueryParam('id');
+    const callerFirstName = getQueryParam('callerFirstName');
+    const callerLastName = getQueryParam('callerLastName');
+    const callerPhoneNumber = getQueryParam('callerPhoneNumber');
+
+    console.log(`Loading client data for ID: ${clientId}`);
+    try {
+        const response = await fetch(`/get-client/${clientId}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client: ${response.statusText}`);
+        }
+
+        const client = await response.json();
+        if (client) {
+            console.log('Client data loaded:', client);
+
+            // Hide the "Start Screening" button if a screening is in progress
+            const startScreeningButton = document.getElementById('call-logging-button');
+            if (client.screeningInProgress) {
+                startScreeningButton.style.display = 'none';
+            } else {
+                startScreeningButton.style.display = 'block';
+            }
+
+            // Populate the Profile ID in the header
+            document.getElementById('profileId').textContent = `Profile: ${client.id || 'N/A'}`;
+
+            // Display "Terminated" status if applicable
+            if (client.terminated) {
+                const terminationStatus = document.getElementById('terminationStatus');
+                terminationStatus.style.display = 'block'; // Show the termination status
+
+                // Hide the "Terminate Profile" button
+                const terminateButton = document.getElementById('terminate-button');
+                terminateButton.style.display = 'none';
+            }
+
+            // Populate form fields with client data
+            document.getElementById('firstName').value = callerFirstName || client.firstName || '';
+            document.getElementById('lastName').value = callerLastName || client.lastName || '';
+            document.getElementById('phoneNumber').value = callerPhoneNumber || client.phoneNumber || '';
+            document.getElementById('streetAddress').value = client.streetAddress || '';
+            document.getElementById('city').value = client.city || '';
+            document.getElementById('state').value = client.state || 'PA'; // Default to "PA" if no state is provided
+            document.getElementById('zipCode').value = client.zipCode || '';
+            document.getElementById('county').value = client.county || '';
+            document.getElementById('speakingLanguage').value = client.speakingLanguage || '';
+
+            // Highlight the selected interpreter button
+            if (client.interpreter) {
+                const selectedInterpreter = document.querySelector(`.selection-box div[data-value="${client.interpreter}"]`);
+                if (selectedInterpreter) {
+                    selectedInterpreter.classList.add('selected');
+                }
+            }
+
+            // Populate interaction tracker
+            const interactionList = document.getElementById('interactionList');
+            interactionList.innerHTML = ''; // Clear existing entries
+
+            if (client.callLogs && client.callLogs.length > 0) {
+                // Sort call logs by timestamp in descending order
+                client.callLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+                client.callLogs.forEach(log => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <div><strong>Agent:</strong> ${log.agent || 'Unknown Agent'}</div>
+                        <div><strong>Timestamp:</strong> ${log.timestamp || 'Unknown Time'}</div>
+                        <div><strong>Caller:</strong> ${log.callerFirstName || ''} ${log.callerLastName || ''}</div>
+                        <div><strong>Phone:</strong> ${log.callerPhoneNumber || ''}</div>
+                        <div><strong>Direction:</strong> ${log.callDirection || ''}</div>
+                        <div><strong>Reason:</strong> ${log.reasonForCall || ''}</div>
+                        <div><strong>Referral:</strong> ${log.referralSource || 'N/A'}</div>
+                        ${log.specificReferral ? `<div><strong>Specifically:</strong> ${log.specificReferral}</div>` : ''}
+                    `;
+                    interactionList.appendChild(li);
+                });
+            } else {
+                const noLogsMessage = document.createElement('li');
+                noLogsMessage.textContent = 'No call logs available.';
+                interactionList.appendChild(noLogsMessage);
+            }
+        } else {
+            alert('Client not found.');
+        }
+    } catch (error) {
+        console.error('Error loading client data:', error);
+    }
+}
+
+async function saveClient() {
+    const clientId = getQueryParam('id');
+    const clientData = {
+        firstName: document.getElementById('firstName').value,
+        lastName: document.getElementById('lastName').value,
+        phoneNumber: document.getElementById('phoneNumber').value,
+        streetAddress: document.getElementById('streetAddress').value,
+        city: document.getElementById('city').value,
+        state: document.getElementById('state').value,
+        zipCode: document.getElementById('zipCode').value,
+        county: document.getElementById('county').value,
+        speakingLanguage: document.getElementById('speakingLanguage').value,
+        interpreter: document.querySelector('.selection-box div.selected')?.dataset.value || 'N/A', // Default to "N/A"
+    };
+
+    try {
+        const response = await fetch('/update-client', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ clientId, clientData }),
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            console.error('Failed to save client data:', result.message);
+        } else {
+            console.log('Client data successfully saved.');
+        }
+    } catch (error) {
+        console.error('Error saving client data:', error);
+        alert('An error occurred while saving client data.');
+    }
+}
+
+        // Function to update interpreter selection
+        function updateInterpreter(value) {
+    document.querySelectorAll('.selection-box div').forEach(div => div.classList.remove('selected'));
+    const selectedButton = document.querySelector(`.selection-box div[data-value="${value}"]`);
+    if (selectedButton) {
+        selectedButton.classList.add('selected');
+    }
+}
+
+        
+
+        function GoToProfileView() {
+    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
+    window.location.href = `profileview.html?id=${clientId}`; // Redirect to profileview.html with the client ID
+}
+
+        // Load client data on page load
+        window.onload = loadClientData;
+
+        async function confirmAndRedirect() {
+    if (confirm("Are you sure you want to start screening?")) {
+        const clientId = getQueryParam('id');
+        const noteContent = "New screening initiated.";
+        const timestamp = new Date().toLocaleString();
+        const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
+
+        if (!activeUser) {
+            console.error("No active user found in sessionStorage.");
+            return;
+        }
+
+        try {
+            // Save client data
+            await saveClient();
+
+            // Add a note about the screening
+            const note = {
+                text: noteContent,
+                timestamp: timestamp,
+                username: activeUser
+            };
+
+            const response = await fetch('/add-note-to-client', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ clientId, note }),
+            });
+
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                console.error('Failed to add note to client:', result.message);
+                alert('Failed to add note to client.');
+                return;
+            }
+
+            console.log('Note successfully added to client.');
+
+            // Update screening status in the database
+            const updateResponse = await fetch('/update-client', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ clientId, clientData: { screeningInProgress: true } }),
+            });
+
+            const updateResult = await updateResponse.json();
+            if (!updateResponse.ok || !updateResult.success) {
+                console.error('Failed to update screening status:', updateResult.message);
+                return;
+            }
+
+            console.log('Screening status successfully updated.');
+
+            // Redirect to householdedit.html
+            window.location.href = `householdedit.html?id=${clientId}`;
+        } catch (error) {
+            console.error("Error during confirmAndRedirect:", error);
+        }
+    }
+}
+
+async function releaseProfile() {
+    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
+
+    try {
+        // Update screening status in the database
+        const response = await fetch('/update-client', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ clientId, clientData: { screeningInProgress: false } }),
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            console.error('Failed to release profile:', result.message);
+            return;
+        }
+
+        console.log('Profile successfully released.');
+
+        // Optionally, show the "Start Screening" button if it exists on the page
+        const startScreeningButton = document.getElementById('call-logging-button');
+        if (startScreeningButton) {
+            startScreeningButton.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error releasing profile:', error);
+        alert('An error occurred while releasing the profile.');
+    }
+}
+
+async function confirmAndTerminate() {
+    if (confirm("Are you sure you want to terminate this profile? This action cannot be undone.")) {
+        const clientId = getQueryParam('id');
+        const timestamp = new Date().toLocaleString();
+        const activeUser = sessionStorage.getItem('loggedInUser');
+
+        if (!activeUser) {
+            console.error("No active user found in sessionStorage.");
+            alert("Error: No active user found.");
+            return;
+        }
+
+        try {
+            await saveClient();
+
+            const response = await fetch('/update-client', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ clientId, clientData: { terminated: true } }),
+            });
+
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                console.error('Failed to terminate profile:', result.message);
+                alert('Failed to terminate profile.');
+                return;
+            }
+
+            const note = {
+                text: "Profile terminated.",
+                timestamp: timestamp,
+                username: activeUser,
+            };
+
+            const noteResponse = await fetch('/add-note-to-client', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ clientId, note }),
+            });
+
+            const noteResult = await noteResponse.json();
+            if (!noteResponse.ok || !noteResult.success) {
+                console.error('Failed to add termination note:', noteResult.message);
+                alert('Failed to add termination note.');
+                return;
+            }
+
+            alert("The profile has been successfully terminated.");
+            document.getElementById('terminationStatus').style.display = 'block';
+            document.getElementById('terminate-button').style.display = 'none';
+        } catch (error) {
+            console.error("Error terminating the profile:", error);
+            alert("An error occurred while terminating the profile. Please try again.");
+        }
+    }
+}
+
+async function toggleSidebarVisibility() {
+    const clientId = getQueryParam('id');
+    try {
+        const response = await fetch(`/get-client/${clientId}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client: ${response.statusText}`);
+        }
+
+        const client = await response.json();
+        if (client && client.screeningInProgress) {
+            document.getElementById('leftSidebarContainer').style.display = 'block';
+        } else {
+            document.getElementById('leftSidebarContainer').style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error toggling sidebar visibility:', error);
+    }
+}
+
+// Call the function after the page loads
+window.onload = function () {
+    loadClientData();
+    toggleSidebarVisibility();
+};
+    </script>
+        <script src="estimations.js"></script>
+<script src="notes.js"></script>
+</body>
+</html>

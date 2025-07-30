@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add/Edit Referrals</title>
+    <link rel="stylesheet" href="styles.css"> <!-- Assuming shared styles -->
+    <style>
+        .form-container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+
+        .form-container h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .form-actions button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .save-btn {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .cancel-btn {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .form-actions button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        background-color: #007BFF; /* Blue color */
+        color: white;
+        font-size: 14px;
+    }
+
+    .form-actions button:hover {
+        background-color: #0056b3; /* Darker blue on hover */
+    }
+        
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h2>Add/Edit Referral</h2>
+        <form id="referralForm">
+            <div class="form-group">
+                <label for="name">Name</label>
+                <input type="text" id="name" name="name" placeholder="Enter referral name" required>
+            </div>
+            <div class="form-group">
+                <label for="phone">Phone</label>
+                <input type="text" id="phone" name="phone" placeholder="Enter phone number" required>
+            </div>
+            <div class="form-group">
+                <label for="website">Website</label>
+                <input type="url" id="website" name="website" placeholder="Enter website URL">
+            </div>
+            <div class="form-group">
+                <label for="address">Address</label>
+                <input type="text" id="address" name="address" placeholder="Enter address">
+            </div>
+            <div class="form-group">
+                <label for="county">County</label>
+                <select id="county" name="county" multiple required>
+                    <option value="Adams">Adams</option>
+                    <option value="Allegheny">Allegheny</option>
+                    <option value="Armstrong">Armstrong</option>
+                    <option value="Beaver">Beaver</option>
+                    <option value="Bedford">Bedford</option>
+                    <option value="Berks">Berks</option>
+                    <option value="Blair">Blair</option>
+                    <option value="Bradford">Bradford</option>
+                    <option value="Bucks">Bucks</option>
+                    <option value="Butler">Butler</option>
+                    <option value="Cambria">Cambria</option>
+                    <option value="Cameron">Cameron</option>
+                    <option value="Carbon">Carbon</option>
+                    <option value="Centre">Centre</option>
+                    <option value="Chester">Chester</option>
+                    <option value="Clarion">Clarion</option>
+                    <option value="Clearfield">Clearfield</option>
+                    <option value="Clinton">Clinton</option>
+                    <option value="Columbia">Columbia</option>
+                    <option value="Crawford">Crawford</option>
+                    <option value="Cumberland">Cumberland</option>
+                    <option value="Dauphin">Dauphin</option>
+                    <option value="Delaware">Delaware</option>
+                    <option value="Elk">Elk</option>
+                    <option value="Erie">Erie</option>
+                    <option value="Fayette">Fayette</option>
+                    <option value="Forest">Forest</option>
+                    <option value="Franklin">Franklin</option>
+                    <option value="Fulton">Fulton</option>
+                    <option value="Greene">Greene</option>
+                    <option value="Huntingdon">Huntingdon</option>
+                    <option value="Indiana">Indiana</option>
+                    <option value="Jefferson">Jefferson</option>
+                    <option value="Juniata">Juniata</option>
+                    <option value="Lackawanna">Lackawanna</option>
+                    <option value="Lancaster">Lancaster</option>
+                    <option value="Lawrence">Lawrence</option>
+                    <option value="Lebanon">Lebanon</option>
+                    <option value="Lehigh">Lehigh</option>
+                    <option value="Luzerne">Luzerne</option>
+                    <option value="Lycoming">Lycoming</option>
+                    <option value="McKean">McKean</option>
+                    <option value="Monroe">Monroe</option>
+                    <option value="Montgomery">Montgomery</option>
+                    <option value="Montour">Montour</option>
+                    <option value="Northampton">Northampton</option>
+                    <option value="Northumberland">Northumberland</option>
+                    <option value="Perry">Perry</option>
+                    <option value="Philadelphia">Philadelphia</option>
+                    <option value="Pike">Pike</option>
+                    <option value="Potter">Potter</option>
+                    <option value="Schuylkill">Schuylkill</option>
+                    <option value="Snyder">Snyder</option>
+                    <option value="Somerset">Somerset</option>
+                    <option value="Sullivan">Sullivan</option>
+                    <option value="Susquehanna">Susquehanna</option>
+                    <option value="Tioga">Tioga</option>
+                    <option value="Union">Union</option>
+                    <option value="Venango">Venango</option>
+                    <option value="Warren">Warren</option>
+                    <option value="Washington">Washington</option>
+                    <option value="Wayne">Wayne</option>
+                    <option value="Westmoreland">Westmoreland</option>
+                    <option value="Wyoming">Wyoming</option>
+                    <option value="York">York</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="needs">Needs</label>
+                <input type="text" id="needs" name="needs" placeholder="Enter needs (e.g., General, Housing)">
+            </div>
+            <div class="form-group">
+                <label for="benefits">Benefits</label>
+                <select id="benefits" name="benefits" multiple required>
+                    <option value="SNAP">SNAP</option>
+                    <option value="PACE">PACE</option>
+                    <option value="MSP">MSP</option>
+                    <option value="LIS">LIS</option>
+                    <option value="PTRR">PTRR</option>
+                    <option value="LIHEAP">LIHEAP</option>
+                    <option value="WIC">WIC</option>
+                    <option value="TANF">TANF</option>
+                    <option value="Child Care">Child Care</option>
+                    <option value="Unemployment">Unemployment</option>
+                    <option value="Veterans Benefits">Veterans Benefits</option>
+                    <option value="Disability Benefits">Disability Benefits</option>
+                    <option value="Housing Assistance">Housing Assistance</option>
+                    <option value="Medical Assistance">Health Assistance</option>
+                    <option value="Food Assistance">Food Assistance</option>
+                    <option value="Transportation Assistance">Transportation Assistance</option>
+                    <option value="Employment Services">Employment Services</option>
+                    <option value="Legal Aid">Legal Aid</option>
+                    <option value="Mental Health Services">Mental Health Services</option>
+                    <option value="Substance Abuse Services">Substance Abuse Services</option>
+                    <option value="Education Services">Education Services</option>
+                    <option value="Financial Assistance">Financial Assistance</option>
+                    <option value="Community Services">Community Services</option>
+                    <option value="Crisis Intervention">Crisis Intervention</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="details">Details</label>
+                <textarea id="details" name="details" rows="4" placeholder="Enter additional details"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="delete-btn" onclick="deleteReferral()" style="background-color: #f44336; color: white; display: none;">Delete</button>
+                <button type="button" class="cancel-btn" onclick="cancel()">Cancel</button>
+    <button type="button" class="save-btn" onclick="saveReferral()">Save</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+
+function getQueryParam(param) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const value = urlParams.get(param);
+    console.log(`Query parameter "${param}":`, value); // Debugging log
+    return value;
+}
+
+function saveReferral() {
+    const referralId = getQueryParam('referralId');
+
+    const referralData = {
+        name: document.getElementById('name').value,
+        phone: document.getElementById('phone').value,
+        website: document.getElementById('website').value,
+        address: document.getElementById('address').value,
+        needs: document.getElementById('needs').value,
+        details: document.getElementById('details').value,
+        county: Array.from(document.getElementById('county').selectedOptions).map(option => option.value),
+        benefits: Array.from(document.getElementById('benefits').selectedOptions).map(option => option.value),
+    };
+
+    if (referralId) {
+        fetch('/update-referral', {
+    method: 'PUT',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ referralId, updatedReferral: referralData }),
+})
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Referral updated successfully!');
+            window.location.href = 'referralsdatabase.html';
+        } else {
+            alert(`Failed to update referral: ${data.message}`);
+        }
+    })
+    .catch(error => {
+        console.error('Error updating referral:', error);
+        alert('An error occurred while updating the referral.');
+    });
+    } else {
+        fetch('/add-referral', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(referralData),
+})
+    .then(response => response.json())
+    .then(data => {
+        console.log('Response from server:', data); // Log the server response
+        if (data.success) {
+            alert('Referral saved successfully!');
+            window.location.href = 'referralsdatabase.html';
+        } else {
+            alert(`Failed to save referral: ${data.message}`);
+        }
+    })
+    .catch(error => {
+        console.error('Error saving referral:', error);
+        alert('An error occurred while saving the referral.');
+    });
+    }
+}
+
+function cancel() {
+    window.location.href = 'referralsdatabase.html';
+}
+
+function deleteReferral() {
+    const referralId = getQueryParam('referralId');
+
+    if (referralId && confirm('Are you sure you want to delete this referral?')) {
+        fetch('/delete-referral', {
+    method: 'DELETE',
+    headers: {
+        'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ referralId }),
+})
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Referral deleted successfully!');
+            window.location.href = 'referralsdatabase.html';
+        } else {
+            alert(`Failed to delete referral: ${data.message}`);
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting referral:', error);
+        alert('An error occurred while deleting the referral.');
+    });
+    } else {
+        alert('Referral ID is missing. Cannot delete referral.');
+    }
+}
+
+function autofillForm() {
+    const referralId = getQueryParam('referralId');
+
+    if (referralId) {
+    fetch(`/get-referral/${referralId}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    })
+        .then(response => response.json())
+        .then(referral => {
+            if (referral) {
+                document.getElementById('name').value = referral.name || '';
+                document.getElementById('phone').value = referral.phone || '';
+                document.getElementById('website').value = referral.website || '';
+                document.getElementById('address').value = referral.address || '';
+                document.getElementById('needs').value = referral.needs || '';
+                document.getElementById('details').value = referral.details || '';
+
+                const countySelect = document.getElementById('county');
+                Array.from(countySelect.options).forEach(option => {
+                    option.selected = referral.county && referral.county.includes(option.value);
+                });
+
+                const benefitsSelect = document.getElementById('benefits');
+                Array.from(benefitsSelect.options).forEach(option => {
+                    option.selected = referral.benefits && referral.benefits.includes(option.value);
+                });
+
+                document.querySelector('.delete-btn').style.display = 'inline-block';
+            } else {
+                alert('Referral not found.');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching referral:', error);
+            alert('Failed to load referral details.');
+        });
+}
+}
+
+    // Call autofillForm when the page loads
+    document.addEventListener('DOMContentLoaded', autofillForm);
+    </script>
+
+    
+</body>
+</html>

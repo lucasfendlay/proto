@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Client Household</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="householdedit.css">
+    <link rel="stylesheet" href="notes.css">
+    <style>
+
+.error {
+    border: 2px solid red;
+}
+
+.household-member-info p {
+    text-align: left; /* Ensure text is left-aligned */
+    word-wrap: break-word; /* Allow long words to break and wrap */
+    white-space: normal; /* Ensure normal wrapping behavior */
+}
+body {
+    max-width: 1200px; /* Adjust the max-width as needed */
+    margin: 0 auto;
+    padding: 20px;
+    margin-top: 60px; /* Adjust this value to match the height of the navigation container */
+
+}
+
+#notes-list {
+    width: 100%;
+    max-width: 300px; /* Adjust the max-width as needed */
+    margin: 0 auto;
+}
+
+#note-input {
+    width: 100%;
+    max-width: 320px; /* Adjust the max-width as needed */
+    margin: 0 auto;
+}
+        
+    </style>
+    <style>
+        .button-container {
+                display: flex;
+                gap: 10px; /* Adds spacing between buttons */
+                flex-wrap: wrap; /* Ensures buttons wrap to the next line if needed */
+            }
+        
+            .button-container button {
+                flex: 1; /* Ensures buttons are evenly spaced */
+                padding: 10px 15px;
+            }
+
+            /* Modal content styling */
+.modal-content {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 500px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    position: relative;
+    text-align: center;
+}
+
+/* Style for the h2 inside the modal */
+.modal-content h2 {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #333;
+    text-align: center;
+    border-bottom: 2px solid #4CAF50; /* Add a green underline */
+    padding-bottom: 10px;
+}
+.narrow-body {
+        margin-left: 385px; /* Space for the left sidebar */
+        margin-right: 10px; /* Optional: Space on the right */
+        max-width: calc(100% - 395px); /* Ensure the body doesn't exceed the available space */
+        margin: 0 auto; /* Center the content horizontally */
+        margin-top: 60px; /* Adjust this value to match the height of the navigation container */
+    }
+        
+            </style>
+</head>
+<body class="narrow-body">
+
+    <h1>Household</h1>
+
+    <style>
+        #household-size {
+            text-align: center; /* Center the text */
+            text-align-last: center; /* Center the selected option in modern browsers */
+        }
+    </style>
+
+<div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
+    <div id="household-members-container" class="left-sidebar"></div>
+    <div id="snap-household-container" class="left-sidebar"></div>
+</div>
+
+    <div id="notes-list"></div>
+    <textarea id="note-input" placeholder="Write your note here..."></textarea>
+    <button id="save-note">Save</button>
+    
+    <div class="selection-box">
+        <label for="household-size">How many people reside in the household?</label>
+        <select id="household-size">
+            <option value="" disabled selected>Select household size</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+            <option value="11">11</option>
+            <option value="12">12</option>
+            <option value="13">13</option>
+            <option value="14">14</option>
+            <option value="15">15</option>
+        </select>
+    </div>
+
+    <div class="selection-box">
+        <label id="disability-label">Is anyone in the household currently receiving disability benefits?</label>
+        <div id="disability-yes" data-value="yes">Yes</div>
+        <div id="disability-no" data-value="no">No</div>
+    </div>
+    
+    <div class="selection-box">
+        <label id="medicare-label">Is anyone in the household currently enrolled in Medicare (or will be within the next three months)?</label>
+        <div id="medicare-yes" data-value="yes">Yes</div>
+        <div id="medicare-no" data-value="no">No</div>
+    </div>
+
+    <div class="selection-box">
+        <label id="medicaid-label">Is anyone in the household currently enrolled in Medicaid?</label>
+        <div id="medicaid-yes" data-value="yes">Yes</div>
+        <div id="medicaid-no" data-value="no">No</div>
+    </div>
+
+    <div class="selection-box">
+        <label id="citizen-label">Is everyone in the household a U.S. citizen?</label>
+        <div id="citizen-yes" data-value="yes">Yes</div>
+        <div id="citizen-no" data-value="no">No</div>
+    </div>
+
+    <div class="selection-box">
+        <label id="student-label">Is anyone in the household currently a student?</label>
+        <div id="student-yes" data-value="yes">Yes</div>
+        <div id="student-no" data-value="no">No</div>
+    </div>
+
+    <div class="selection-box">
+        <label id="snap-label">Is everyone in the household currently enrolled in SNAP?</label>
+        <div id="snap-yes" data-value="yes">Yes</div>
+        <div id="snap-no" data-value="no">No</div>
+        <div id="snap-notinterested" data-value="notinterested">Not Interested</div>
+    </div>
+
+    <div class="selection-box">
+        <label id="residenceStatus-label">What was your residence status during the previous year?</label>
+        <div id="residenceStatus-owned" data-value="owned">Owned Home</div>
+        <div id="residenceStatus-rented" data-value="rented">Rented with Formal Lease</div>
+        <div id="residenceStatus-rentedowned" data-value="rentedowned">Owned/Rented</div>
+        <div id="residenceStatus-other" data-value="other">Other/No Formal Agreement</div>
+    </div>
+
+    <div class="button-container">
+        <button id="add-household-member">Add Household Member</button>
+        <button id="save-exit" onclick="redirectToHouseholdView()">Save and Release Profile</button>
+        <button id="save-continue" onclick="goToRelationshipsEdit()">Save and Continue</button> <br>
+    </div>
+
+    <div id="householdMemberContainer" class="household-member-container"></div>
+
+<!-- Add this to your HTML -->
+<div id="loading-indicator" style="display: none;">Loading...</div>
+
+<div id="householdMemberModal" class="modal">
+    <div class="modal-content">
+        <span class="close" id="closeHouseholdMemberModal">&times;</span>
+        <h2 id="householdMemberModalTitle">Add Household Member</h2>
+        <form id="householdMemberForm">
+            <input type="hidden" id="householdMemberId">
+            <label for="firstName">First Name:</label>
+            <input type="text" id="firstName" name="firstName"><br><br>
+            <label for="middleInitial">Middle Initial:</label>
+            <input type="text" id="middleInitial" name="middleInitial"><br><br>
+            <label for="lastName">Last Name:</label>
+            <input type="text" id="lastName" name="lastName"><br><br>
+            <div class="selection-box">
+                <label for="dob">Date of Birth:</label>
+                <input type="date" id="dob" name="dob" class="selection-box-input"><br><br>
+            </div>
+            <div class="selection-box">
+                <label for="maritalStatus">Current Marital Status:</label>
+                <select id="maritalStatus" name="maritalStatus" class="selection-box-input">
+                    <option value="" disabled selected>Select Marital Status</option>
+                    <option value="Single">Single</option>
+                    <option value="Married (Living Together)">Married (Living Together)</option>
+                    <option value="Married (Living Separately)">Married (Living Separately)</option>
+                    <option value="Divorced">Divorced</option>
+                    <option value="Widowed">Widowed</option>
+                </select><br><br>
+            </div>
+            <div class="selection-box">
+                <label for="previousMaritalStatus">Previous Year Marital Status:</label>
+                <select id="previousMaritalStatus" name="previousMaritalStatus" class="selection-box-input">
+                    <option value="" disabled selected>Select Previous Year Marital Status</option>
+                    <option value="Single">Single</option>
+                    <option value="Married (Living Together)">Married (Living Together)</option>
+                    <option value="Married (Living Separately)">Married (Living Separately)</option>
+                    <option value="Divorced">Divorced</option>
+                    <option value="Widowed">Widowed</option>
+                </select><br><br>
+            </div>
+            <div id="disabilityQuestion" class="selection-box">
+                <label>Is this person receiving disability benefits?</label>
+                <div id="modal-disability-yes" data-value="yes">Yes</div>
+                <div id="modal-disability-no" data-value="no">No</div>
+            </div>
+            <div id="medicareQuestion" class="selection-box">
+                <label>Is this person enrolled in Medicare (or will they be within the next three months)?</label>
+                <div id="modal-medicare-yes" data-value="yes">Yes</div>
+                <div id="modal-medicare-no" data-value="no">No</div>
+            </div>
+            <div id="medicaidQuestion" class="selection-box">
+                <label>Is this person enrolled in Medicaid?</label>
+                <div id="modal-medicaid-yes" data-value="yes">Yes</div>
+                <div id="modal-medicaid-no" data-value="no">No</div>
+            </div>
+            <div id="citizenQuestion" class="selection-box">
+                <label>Is this person a U.S. citizen?</label>
+                <div id="modal-citizen-yes" data-value="yes">Yes</div>
+                <div id="modal-citizen-no" data-value="no">No</div>
+            </div>
+            <div id="nonCitizenStatusContainer" style="display: none; margin-top: 10px;">
+                <label for="nonCitizenStatus">Select Non-Citizenship Status:</label>
+                <select id="nonCitizenStatus">
+                    <option value="" disabled selected>Select status</option>
+                    <option value="Lawful Permanent Resident (5+ Years)">Lawful Permanent Resident (5+ Years)</option>
+                    <option value="Refugee">Refugee</option>
+                    <option value="Asylee">Asylee</option>
+                    <option value="Person Whose Deportation is Withheld">Person Whose Deportation is Withheld</option>
+                    <option value="Conditional Entrant (5+ Years)">Conditional Entrant (5+ Years)</option>
+                    <option value="Victim of Severe Trafficking">Victim of Severe Trafficking</option>
+                    <option value="Cuban or Haitian Entrant">Cuban or Haitian Entrant</option>
+                    <option value="Iraqi or Afghan Special Immigrant">Iraqi or Afghan Special Immigrant</option>
+                    <option value="Child Under 18 in Qualified Non-Citizen Category">Child Under 18 in Qualified Non-Citizen Category</option>
+                    <option value="Hmong or Highland Laotian Tribal Members">Hmong or Highland Laotian Tribal Members</option>
+                    <option value="Citizen of Micronesia, Marshall Islands, or Palau">Citizen of Micronesia, Marshall Islands, or Palau</option>
+                    <option value="Amerasian">Amerasian</option>
+                    <option value="Person Paroled in the U.S. (1+ Years)">Person Paroled in the U.S. (1+ Years)</option>
+                    <option value="Non-Citizen Who is Blind or Disabled and Receiving Disability Benefits">Non-Citizen Who is Blind or Disabled and Receiving Disability Benefits</option>
+                    <option value="Non-Citizen Who Was 65+ and Lawfully Residing in the U.S. on August 22, 1996">Non-Citizen Who Was 65+ and Lawfully Residing in the U.S. on August 22, 1996</option>
+                    <option value="Ineligible Non-Citizen">Ineligible Non-Citizen</option>
+                </select>
+            </div>
+            <div id="studentQuestion" class="selection-box">
+                <label>Is this person a student?</label>
+                <div id="modal-student-yes" data-value="yes">Yes</div>
+                <div id="modal-student-no" data-value="no">No</div>
+            </div>
+            <div id="studentStatusContainer" style="display: none; margin-top: 10px;">
+                <label for="studentStatus">Select Student Status:</label>
+                <select id="studentStatus">
+                    <option value="" disabled selected>Select status</option>
+                    <option value="Enrolled Less than Half-Time">Enrolled Less than Half-Time</option>
+                    <option value="Under Age 18">Under Age 18</option>
+                    <option value="High School Student">High School Student</option>
+                    <option value="Age 50 or Older">Age 50 or Older</option>
+                    <option value="Physically or Mentally Unfit for Employment">Physically or Mentally Unfit for Employment</option>
+                    <option value="Employed at Least 20 Hours Per Week">Employed at Least 20 Hours Per Week</option>
+                    <option value="Participating in a Work Study Program">Participating in a Work Study
+                    <option value="Participating in a Job Training Program">Participating in a Job Training Program</option>
+                    <option value="Assigned to or Placed in College through a SNAP Employment or Training Program">Assigned to or Placed in College through a SNAP Employment or Training Program</option>
+                    <option value="Responsible for the Care of a Child Under 6">Responsible for the Care of a Child Under 6</option>
+                    <option value="Responsible for the Care of a Child Aged 6-12 and No Adequate Child Care Available">Responsible for the Care of a Child Aged 6-12 and No Adequate Child Care Available</option>
+                    <option value="Single Parent Enrolled Full-Time and Responsible for a Child Under 12">Single Parent Enrolled Full-Time and Responsible for a Child Under 12</option>
+                    <option value="TANF Recipient">TANF Recipient</option>
+                    <option value="Ineligible Student">Ineligible Student</option>
+                </select>
+            </div>
+            <div id="mealsQuestion" class="selection-box">
+                <label>Is this person included in the SNAP household?</label>
+                <div id="modal-meals-yes" data-value="yes">Yes</div>
+                <div id="modal-meals-no" data-value="no">No</div>
+            </div>
+        </form>
+        <!-- Add a modal footer for buttons -->
+        <div class="modal-footer">
+            <button type="button" id="add-member">Add Member</button>
+        </div>
+    </div>
+</div>
+
+    <script>
+// Function to get query parameter by name
+function getQueryParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        function goToRelationshipsEdit() {
+    const clientId = getQueryParameter('id');
+    if (clientId) {
+        window.location.href = `relationshipsedit.html?id=${clientId}`;
+    } else {
+        console.error('Client ID not found in query parameters.');
+    }
+}
+
+function redirectToHouseholdView() {
+    const clientId = getQueryParam('id');
+    if (clientId) {
+        const userConfirmed = confirm("Are you sure you want to save and release the profile?");
+        if (userConfirmed) {
+            const requestBody = {
+                clientId,
+                clientData: { screeningInProgress: false },
+            };
+
+            console.log('Request body:', requestBody); // Log the request body for debugging
+
+            // Update screeningInProgress to false in the database via REST API
+            fetch(`/update-client`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody),
+            })
+                .then((response) => {
+                    if (response.ok) {
+                        console.log('screeningInProgress set to false for client:', clientId);
+                        // Redirect to the household view page
+                        window.location.href = `householdview.html?id=${clientId}`;
+                    } else {
+                        return response.json().then((error) => {
+                            console.error('Error details:', error);
+
+                            // Check if the error message indicates no changes were made
+                            if (error.message === 'No changes were made to the client data.') {
+                                console.log('No changes were made, but proceeding with redirect.');
+                                // Redirect to the household view page
+                                window.location.href = `householdview.html?id=${clientId}`;
+                            } else {
+                                throw new Error(`Failed to update client data: ${error.message}`);
+                            }
+                        });
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error updating client data:', error);
+                });
+        } else {
+            console.log("User canceled the action.");
+        }
+    } else {
+        console.error('Client ID not found in query parameters.');
+    }
+}
+
+async function toggleSidebarVisibility() {
+    const clientId = getQueryParam('id');
+    try {
+        // Fetch client data via REST API
+        const response = await fetch(`/get-client/${clientId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client data: ${response.statusText}`);
+        }
+        const client = await response.json();
+        console.log('Client data:', client); // Debugging
+        console.log('screeningInProgress:', client?.screeningInProgress); // Debugging
+
+        if (client && client.screeningInProgress) {
+            document.getElementById('leftSidebarContainer').style.display = 'block';
+            console.log('Sidebar is now visible'); // Debugging
+        } else {
+            document.getElementById('leftSidebarContainer').style.display = 'none';
+            console.log('Sidebar is now hidden'); // Debugging
+        }
+    } catch (error) {
+        console.error('Error toggling sidebar visibility:', error);
+    }
+}
+
+// Call the function after the page loads
+window.onload = function () {
+    toggleSidebarVisibility();
+};
+    </script>
+
+<script src="estimations.js"></script>
+    <script src="householdedit.js"></script>
+    <script src="editnavigation.js"></script>
+    <script src="notes.js"></script>
+
+</body>
+</html>

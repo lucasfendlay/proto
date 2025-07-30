@@ -1,0 +1,198 @@
+/* Modal styling */
+.modal {
+    display: flex; /* Use flexbox for centering */
+    position: fixed;
+    inset: 0; /* Shorthand for top, right, bottom, left: 0 */
+    background-color: rgba(0, 0, 0, 0.6); /* Slightly darker semi-transparent background */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000; /* Ensure it appears above everything else */
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background-color: #ffffff;
+    padding: 0px; /* Adjust padding for a cleaner look */
+    border-radius: 0px;
+    width: 100%;
+    max-width: 450px;
+    box-shadow: 0 rgba(0, 0, 0, 0.3);
+    position: static;
+    text-align: center;
+}
+
+/* Completely hide the h2 and any extra space it might create */
+.modal-content h2 {
+    display: none;
+    margin: 0;
+    padding: 0;
+}
+
+/* Close button styling */
+.close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background-color: transparent; /* Transparent background for a cleaner look */
+    color: #333; /* Neutral color for the close icon */
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.close:hover {
+    color: #ff4d4d; /* Red hover effect */
+}
+
+/* Input field styling */
+label {
+    display: block;
+    margin: 15px 0 5px;
+    font-weight: bold;
+    font-size: 14px;
+    color: #333;
+}
+
+select, input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 16px;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease;
+}
+
+select:focus, input:focus {
+    border-color: #4CAF50; /* Green border on focus */
+    outline: none;
+}
+
+/* Larger input fields for dates */
+.large-input {
+    font-size: 16px;
+    padding: 12px;
+}
+
+/* Text input for income amount */
+.text-input {
+    font-size: 16px;
+    padding: 12px;
+}
+
+/* Submit button styling */
+.submit-button {
+    background-color: #4CAF50; /* Green background */
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    width: 100%;
+    transition: background-color 0.3s ease;
+}
+
+.submit-button:hover {
+    background-color: #45a049;
+}
+
+
+
+/* Add smooth fade-in animation for the modal */
+.modal-content {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Container for household members */
+.household-member1-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+    align-items: center; /* Center the content horizontally */
+}
+
+/* Container for household members */
+.household-member1-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 60%; /* Reduce the width for a narrower layout */
+    margin: 0 auto; /* Center the container horizontally */
+    align-items: center; /* Center the content horizontally */
+    text-align: center; /* Center the text within the container */
+    padding: 20px; /* Add some padding for better spacing */
+}
+
+/* Individual household member box */
+.household-member1-box {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+    width: 90%; /* Adjust to fit within the container */
+    align-items: center; /* Center the content horizontally */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Optional: Add a subtle shadow for better appearance */
+}
+
+.household-member1-box p {
+    margin: 5px 0;
+    width: 85%; /* Make it narrower than the member container */
+    font-size: 14px;
+    color: #555;
+    text-align: center; /* Center the text */
+}
+
+/* Income list container */
+.household-member1-box .income-list {
+    width: 85%; /* Make it narrower than the member container */
+    margin: 0 auto; /* Center it within the member box */
+    padding: 10px 15px; /* Add some padding for better spacing */
+    background-color: #f1f1f1; /* Optional: Light background for contrast */
+    border-radius: 5px; /* Rounded corners for a cleaner look */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+}
+
+/* Income list heading */
+.household-member1-box .income-list h4 {
+    font-size: 18px; /* Slightly larger font for better readability */
+    margin-bottom: 10px; /* Add more space below the heading */
+    color: #333;
+    text-align: center; /* Center the income heading */
+}
+
+/* Income list items */
+.household-member1-box .income-list ul {
+    list-style-type: none; /* Remove bullet points */
+    padding: 0;
+    margin: 10px 0; /* Add spacing above and below the list */
+    text-align: left; /* Align the list items to the left for better readability */
+}
+
+.household-member1-box .income-list ul li {
+    font-size: 15px; /* Slightly larger font for better readability */
+    color: #555;
+    margin-bottom: 8px; /* Add more space between list items */
+    line-height: 1.5; /* Increase line height for better spacing */
+}
+

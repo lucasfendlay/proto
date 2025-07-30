@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Clients</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>Search Clients</h1>
+    <button onclick="window.location.href='home.html'">Home</button>
+    <br>
+    <button onclick="saveClientAndLogCall()">Add New Client</button>
+    <br><br>
+    <input type="text" id="searchFirstName" oninput="searchClients()" placeholder="Search by first name...">
+    <input type="text" id="searchLastName" oninput="searchClients()" placeholder="Search by last name...">
+    <input type="text" id="searchPhoneNumber" oninput="searchClients()" placeholder="Search by phone number...">
+    <input type="text" id="searchStreetAddress" oninput="searchClients()" placeholder="Search by street address...">
+    <input type="text" id="searchCity" oninput="searchClients()" placeholder="Search by city...">
+    <input type="text" id="searchCounty" oninput="searchClients()" placeholder="Search by county...">
+    <ul id="clientList"></ul>
+    <script>
+        async function fetchClients() {
+    try {
+        const response = await fetch('/get-all-clients');
+        console.log('Response:', response); // Log the raw response
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log('Fetched Data:', data); // Log the parsed data
+        return data.clients || []; // Return the clients array
+    } catch (error) {
+        console.error('Error fetching clients:', error);
+        return [];
+    }
+}
+
+async function searchClients() {
+    console.log('searchClients function triggered'); // Debugging
+
+    const firstNameInput = document.getElementById('searchFirstName').value.toLowerCase();
+    const lastNameInput = document.getElementById('searchLastName').value.toLowerCase();
+    const phoneNumberInput = document.getElementById('searchPhoneNumber').value.toLowerCase();
+    const streetAddressInput = document.getElementById('searchStreetAddress').value.toLowerCase();
+    const cityInput = document.getElementById('searchCity').value.toLowerCase();
+    const countyInput = document.getElementById('searchCounty').value.toLowerCase();
+
+    console.log('Search Inputs:', {
+        firstNameInput,
+        lastNameInput,
+        phoneNumberInput,
+        streetAddressInput,
+        cityInput,
+        countyInput
+    });
+
+    const clients = await fetchClients();
+    console.log('Fetched Clients:', clients);
+
+    const filteredClients = clients.filter(client => {
+        return (
+            (!firstNameInput || client.firstName?.toLowerCase().includes(firstNameInput)) &&
+            (!lastNameInput || client.lastName?.toLowerCase().includes(lastNameInput)) &&
+            (!phoneNumberInput || client.phoneNumber?.toLowerCase().includes(phoneNumberInput)) &&
+            (!streetAddressInput || client.streetAddress?.toLowerCase().includes(streetAddressInput)) &&
+            (!cityInput || client.city?.toLowerCase().includes(cityInput)) &&
+            (!countyInput || client.county?.toLowerCase().includes(countyInput))
+        );
+    });
+
+    console.log('Filtered Clients:', filteredClients);
+
+    const clientList = document.getElementById('clientList');
+    clientList.innerHTML = ''; // Clear existing entries
+
+    if (filteredClients.length === 0) {
+        const noResultsMessage = document.createElement('li');
+        noResultsMessage.textContent = 'No clients found.';
+        clientList.appendChild(noResultsMessage);
+    } else {
+        filteredClients.forEach((client) => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <a href="profileview.html?id=${client.id}">
+                    ${client.firstName} ${client.lastName} | 
+                    Phone: ${client.phoneNumber} | 
+                    Address: ${client.streetAddress}, ${client.city}, ${client.state}, ${client.zipCode}, ${client.county}
+                </a>`;
+            clientList.appendChild(li);
+        });
+    }
+}
+
+async function loadClients() {
+    const clients = await fetchClients();
+    console.log('Clients to display:', clients); // Log the clients
+    const clientList = document.getElementById('clientList');
+    clientList.innerHTML = '';
+
+    if (clients.length === 0) {
+        console.log('No clients found.');
+        const noResultsMessage = document.createElement('li');
+        noResultsMessage.textContent = 'No clients found.';
+        clientList.appendChild(noResultsMessage);
+    } else {
+        clients.forEach((client) => {
+            console.log('Adding client to list:', client);
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <a href="profileview.html?id=${client.id}">
+                    ${client.firstName} ${client.lastName} | 
+                    Phone: ${client.phoneNumber} | 
+                    Address: ${client.streetAddress}, ${client.city}, ${client.state}, ${client.zipCode}, ${client.county}
+                </a>`;
+            clientList.appendChild(li);
+        });
+    }
+}
+
+        async function saveClientAndLogCall() {
+        const client = {
+            id: generateUniqueId(),
+            createdAt: new Date(),
+        };
+
+        try {
+            const response = await fetch('/add-client', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(client),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.success) {
+                console.log('Client added to the database:', client);
+                window.location.href = `call-logging.html?id=${client.id}`;
+            } else {
+                console.error('Failed to add client:', data.message);
+            }
+        } catch (error) {
+            console.error('Error adding client:', error);
+        }
+    }
+
+        function generateUniqueId() {
+        const randomSixDigits = Math.floor(100000 + Math.random() * 900000); // Generate a random 6-digit number
+        return `ID${randomSixDigits}`;
+    }
+
+        // Load all clients on page load
+        window.onload = loadClients;
+    </script>
+</body>
+</html>

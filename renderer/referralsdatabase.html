@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Referrals</title>
+    <link rel="stylesheet" href="styles.css"> <!-- Assuming a shared stylesheet -->
+    <link rel="stylesheet" href="notes.css"> <!-- Assuming a shared stylesheet for notes -->
+    <style>
+        .styled-table {
+            width: 100%;
+            min-width: 960px; /* Minimum width */
+            max-width: 960px; /* Maximum width */
+            border-collapse: collapse;
+        }
+    
+        .styled-table th, .styled-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+    
+        .styled-table th {
+            background-color: #f4f4f4;
+        }
+    
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+        }
+    
+        .search-bar {
+            margin-bottom: 20px;
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+        }
+    </style>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="notes.css">
+    <link rel="stylesheet" href="householdedit.css">
+    <link rel="stylesheet" href="incomeedit.css">
+    <script src="notes.js"></script>
+</head>
+<body>
+    <div class="container">
+
+        <button onclick="window.location.href='home.html'">Home</button>
+        <button onclick="window.location.href='directory.html'">Directory</button>
+
+        <h1>Referrals</h1>
+
+        <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
+            <div id="household-members-container" class="left-sidebar"></div>
+            <div id="snap-household-container" class="left-sidebar"></div>
+        </div>
+
+        <div id="notes-list"></div>
+        <textarea id="note-input" placeholder="Write your note here..."></textarea>
+        <button id="save-note">Save</button>
+
+        <button id="addReferralBtn" onclick="redirectToAddEditPage()">Add Referrals</button>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+        // Retrieve and clean the active user from sessionStorage
+        let activeUser = sessionStorage.getItem('loggedInUser') || ''; // Use the same key as in notes.js
+        activeUser = activeUser.trim().toLowerCase(); // Clean the username (trim whitespace and convert to lowercase)
+
+        // Debugging: Log the active user to verify
+        console.log('Active User:', activeUser);
+
+        // Target the "Add Referrals" button
+        const addReferralBtn = document.getElementById('addReferralBtn');
+
+        // Show the button only if the cleaned active user is "admin"
+        if (activeUser === 'admin') {
+            addReferralBtn.style.display = 'inline-block'; // Ensure the button is visible
+        } else {
+            addReferralBtn.style.display = 'none'; // Hide the button for non-admin users
+        }
+    });
+        </script>
+
+        <input type="text" id="searchInput" placeholder="Search by name, phone, or needs..." class="search-bar">
+<table id="referralTable" class="styled-table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Needs</th>
+            <th>Benefits</th>
+            <th>Refer</th>
+        </tr>
+    </thead>
+    <tbody>
+        
+        <tr>
+            <td>
+                <a href="#" class="expand-details" onclick="toggleDetails(this)"></a>
+            </td>
+            <td></td>
+            <td><a href="" target="_blank"></a></td>
+            <td></td>
+            <td></td>
+            <td><button class="refer-btn" onclick="refer('PA Department of Human Services')">Refer</button></td>
+        </tr>
+        <tr class="details-row" style="display: none;">
+            <td colspan="6">
+                <p><strong>Details:</strong></p>
+            </td>
+        </tr>
+
+    </tbody>
+</table>
+
+<script>
+
+    function getQueryParameter(name) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(name);
+        const clientId = getQueryParameter('clientId');
+        
+    }
+
+    document.getElementById('searchInput').addEventListener('input', function () {
+        const filter = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#referralTable tbody tr');
+
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            const rowText = Array.from(cells).map(cell => cell.textContent.toLowerCase()).join(' ');
+
+            // Hide rows that don't match the filter
+            row.style.display = rowText.includes(filter) ? '' : 'none';
+
+            // Collapse all details rows
+            if (row.classList.contains('details-row')) {
+                row.style.display = 'none';
+            }
+        });
+    });
+
+    function toggleDetails(link) {
+        const detailsRow = link.closest('tr').nextElementSibling;
+
+        // Check if the clicked details row is already visible
+        const isVisible = detailsRow.style.display === 'table-row';
+
+        // Collapse all other details rows
+        document.querySelectorAll('.details-row').forEach(row => {
+            row.style.display = 'none';
+        });
+
+        // Toggle the visibility of the clicked details row
+        detailsRow.style.display = isVisible ? 'none' : 'table-row';
+    }
+
+</script>
+
+<script>
+
+let client = {}; // Initialize an empty client object
+
+// Function to fetch client data
+// Function to fetch client data
+function fetchClientData() {
+    // Get the clientId from the URL query parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const clientId = urlParams.get('id'); // Assuming the clientId is passed as 'id'
+
+    if (!clientId) {
+        console.error('Client ID is missing in the URL.');
+        return Promise.reject('Client ID is missing.');
+    }
+
+    return fetch(`/get-client/${clientId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Failed to fetch client data: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(clientData => {
+            console.log('Fetched client data:', clientData); // Debugging log
+            if (clientData && clientData.county) {
+                client = clientData; // Assign the fetched client data
+            } else {
+                throw new Error('Client data is null, undefined, or missing the county property.');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching client data:', error);
+            alert('Failed to load client data. Please contact support.');
+        });
+}
+
+function populateReferralsTable() {
+    fetch('/get-all-referrals')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Failed to fetch referrals: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(referrals => {
+            const tableBody = document.querySelector('#referralTable tbody');
+            tableBody.innerHTML = ''; // Clear existing rows
+
+            referrals
+                .filter(referral => {
+                    if (!client || !client.county) {
+                        // If no client or county is available, show all referrals
+                        return true;
+                    }
+                    if (!referral.county) return false; // Skip referrals without a county
+                    if (Array.isArray(referral.county)) {
+                        // Check if any county in the array matches the client county
+                        return referral.county.includes(client.county);
+                    }
+                    // For single county strings, check for an exact match
+                    return referral.county === client.county;
+                })
+                .forEach(referral => {
+                    // Create a row for the referral
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>
+                            <a href="#" class="expand-details" onclick="toggleDetails(this)">${referral.name}</a>
+                        </td>
+                        <td>${referral.phone}</td>
+                        <td>${Array.isArray(referral.needs) ? referral.needs.join(', ') : referral.needs}</td>
+                        <td>${Array.isArray(referral.benefits) ? referral.benefits.join(', ') : referral.benefits}</td>
+                        <td>
+                            <button class="edit-btn" onclick="redirectToEditPage('${referral.referralId}')" style="display: none;">Edit</button>
+                        </td>
+                    `;
+                    
+                    // Create a hidden details row
+                    const detailsRow = document.createElement('tr');
+                    detailsRow.classList.add('details-row');
+                    detailsRow.style.display = 'none';
+                    detailsRow.innerHTML = `
+                        <td colspan="5">
+                            <p><strong>Details:</strong></p>
+                            ${referral.details 
+                                ? referral.details.split('\n').map(line => `<p>${line}</p>`).join('') 
+                                : '<p>No additional details provided.</p>'}
+                            <p><strong>Counties:</strong> ${Array.isArray(referral.county) ? referral.county.join(', ') : referral.county || 'N/A'}</p>
+                            <p><strong>Address:</strong> ${referral.address || 'N/A'}</p>
+                            <p><strong>Website:</strong> <a href="${referral.website}" target="_blank">${referral.website || 'N/A'}</a></p>
+                        </td>
+                    `;
+
+                    // Append the rows to the table
+                    tableBody.appendChild(row);
+                    tableBody.appendChild(detailsRow);
+                });
+
+            // After dynamically adding rows, show or hide the "Edit" buttons
+            const activeUser = sessionStorage.getItem('loggedInUser') || ''; // Use the same key as in notes.js
+            const cleanedActiveUser = activeUser.trim().toLowerCase(); // Clean the username
+
+            const editButtons = document.querySelectorAll('.edit-btn');
+            if (cleanedActiveUser === 'admin') {
+                editButtons.forEach(button => {
+                    button.style.display = 'inline-block'; // Show the buttons for admin
+                });
+            } else {
+                editButtons.forEach(button => {
+                    button.style.display = 'none'; // Hide the buttons for non-admin users
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching referrals:', error);
+            alert('Failed to load referrals.');
+        });
+}
+
+// Call the function to fetch client data and populate the table when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    fetchClientData().then(() => {
+        populateReferralsTable();
+    }).catch(() => {
+        // If fetching client data fails, still populate the table with all referrals
+        populateReferralsTable();
+    });
+});
+
+function redirectToAddEditPage() {
+    window.location.href = 'addeditreferrals.html';
+}
+
+function redirectToEditPage(referralId) {
+    window.location.href = `addeditreferrals.html?referralId=${referralId}`;
+}
+
+function toggleDetails(link) {
+    const detailsRow = link.closest('tr').nextElementSibling;
+
+    // Check if the clicked details row is already visible
+    const isVisible = detailsRow.style.display === 'table-row';
+
+    // Collapse all other details rows
+    document.querySelectorAll('.details-row').forEach(row => {
+        row.style.display = 'none';
+    });
+
+    // Toggle the visibility of the clicked details row
+    detailsRow.style.display = isVisible ? 'none' : 'table-row';
+}
+
+function refer(name) {
+    // Ask for confirmation
+    const isConfirmed = confirm(`Are you sure you want to refer to ${name}?`);
+    if (!isConfirmed) {
+        return; // Exit if the user cancels
+    }
+
+    // Get the active user from sessionStorage
+    const activeUser = sessionStorage.getItem('loggedInUser') || 'Unknown Agent';
+    const cleanedActiveUser = activeUser.trim();
+
+    // Get the current timestamp
+    const timestamp = new Date().toLocaleString();
+
+    // Prepare the note data
+    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
+    const note = {
+        id: crypto.randomUUID(), // Generate a unique ID for the note
+        text: `Referral provided. \n ${name}.`, // Note content
+        timestamp: timestamp, // Timestamp of the note
+        username: cleanedActiveUser // Associate the note with the logged-in user
+    };
+
+    // Save the note using the backend
+    fetch('/add-note-to-client', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ clientId, note })
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Failed to save referral note: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(result => {
+            console.log('Referral note saved successfully:', result); // Debugging
+            alert(`Referral for ${name} has been successfully logged.`);
+
+            renderNotes(clientId);
+        })
+        .catch(error => {
+            console.error('Error saving referral note:', error);
+            alert('Failed to log the referral. Please try again.');
+        });
+}
+
+function getQueryParam(name) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name);
+}
+
+async function toggleSidebarVisibility() {
+    const clientId = getQueryParam('id');
+    if (!clientId) {
+        console.error('Client ID is missing in the URL.');
+        return;
+    }
+
+    try {
+        // Fetch client data from the backend
+        const response = await fetch(`/get-client/${clientId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client data: ${response.statusText}`);
+        }
+
+        const client = await response.json();
+        if (client && client.screeningInProgress) {
+            document.getElementById('leftSidebarContainer').style.display = 'block';
+        } else {
+            document.getElementById('leftSidebarContainer').style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error toggling sidebar visibility:', error);
+    }
+}
+
+async function renderNotes(clientId) {
+    const notesList = document.getElementById('notes-list');
+    notesList.innerHTML = ''; // Clear the existing notes
+    const notes = await fetchClientNotes(clientId); // Fetch notes from the backend
+    console.log('Rendering notes:', notes); // Debugging line
+
+    // Retrieve and clean the active user from sessionStorage
+    const activeUser = sessionStorage.getItem('loggedInUser') || 'Unknown Agent';
+    const cleanedActiveUser = activeUser.trim();
+
+    notes.slice().reverse().forEach((note, index) => {
+        const noteDiv = document.createElement('div');
+        noteDiv.className = 'note';
+
+        // Use activeUser for comparison
+        const cleanedUsername = note.username || 'Automated Import';
+
+        // Dynamically render the note content and buttons
+        noteDiv.innerHTML = `
+            <p>${note.text}</p>
+            <small>${note.timestamp} by ${cleanedUsername}</small>
+            ${
+                note.text !== 'New screening initiated.' &&
+                note.text !== 'Inbound call logged.' &&
+                note.text !== 'Outbound call logged.' &&
+                note.text !== 'Profile checked out.' &&
+                note.text !== 'Profile released.' &&
+                note.text !== 'Profile terminated.' &&
+                cleanedUsername === cleanedActiveUser
+                    ? `<br>
+                <button class="interactive" onclick="editNote('${clientId}', ${notes.length - 1 - index})">Edit</button>
+                <button class="interactive" onclick="deleteNote('${clientId}', ${notes.length - 1 - index})">Delete</button>
+            `
+                    : ''
+            }
+        `;
+        notesList.appendChild(noteDiv);
+    });
+}
+
+// Attach editNote and deleteNote functions to the window object
+window.editNote = async function (clientId, index) {
+    console.log('Edit button clicked for note index:', index);
+    // Add your edit logic here
+};
+
+window.deleteNote = async function (clientId, index) {
+    console.log('Delete button clicked for note index:', index);
+    // Add your delete logic here
+};
+
+// Attach renderNotes to the window object
+window.renderNotes = renderNotes;
+
+window.onload = function () {
+    toggleSidebarVisibility();
+};
+</script>
+<script src="estimations.js"></script>
+
+</body>
+</html>

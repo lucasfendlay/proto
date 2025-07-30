@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Call Logging</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>Log New Call</h1>
+    <form id="callLogForm">
+        <label for="callerFirstName">Caller First Name:</label>
+        <input type="text" id="callerFirstName" name="callerFirstName" required><br><br>
+
+        <label for="callerLastName">Caller Last Name:</label>
+        <input type="text" id="callerLastName" name="callerLastName" required><br><br>
+
+        <label for="callerPhoneNumber">Caller Phone Number:</label>
+        <input type="text" id="callerPhoneNumber" name="callerPhoneNumber" required><br><br>
+
+        <label for="callDirection">Call Direction:</label>
+        <select id="callDirection" name="callDirection" required>
+            <option value="Inbound">Inbound</option>
+            <option value="Outbound">Outbound</option>
+        </select><br><br>
+
+        <label for="reasonForCall">Reason for Call:</label>
+        <select id="reasonForCall" name="reasonForCall" required>
+            <option value="Apply Myself for Public Benefits">Apply Myself for Public Benefits</option>
+            <option value="To Recertify SNAP and/or Medical Assistance">To Recertify</option>
+        </select><br><br>
+
+        <label for="referralSource">Referral Source:</label>
+        <select id="referralSource" name="referralSource" required>
+            <option value="Outreach">Outreach</option>
+            <option value="Community Referral">Community Referral</option>
+        </select><br><br>
+
+        <button type="button" onclick="goBackToProfile()">Back to Profile</button>
+        <button type="button" onclick="logNewCall()">Log New Call</button>
+    </form>
+    <script>
+        // Function to get query parameter by name
+        function getQueryParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        function goBackToProfile() {
+            const clientId = getQueryParam('id');
+            window.location.href = `profileview.html?id=${clientId}`;
+        }
+
+        function logNewCall() {
+            const clientId = getQueryParam('id');
+            const callLog = {
+                callerFirstName: document.getElementById('callerFirstName').value,
+                callerLastName: document.getElementById('callerLastName').value,
+                callerPhoneNumber: document.getElementById('callerPhoneNumber').value,
+                callDirection: document.getElementById('callDirection').value,
+                reasonForCall: document.getElementById('reasonForCall').value,
+                referralSource: document.getElementById('referralSource').value,
+                timestamp: new Date().toLocaleString()
+            };
+
+            let clients = JSON.parse(localStorage.getItem('clients')) || [];
+            const clientIndex = clients.findIndex(c => c.id === clientId);
+
+            if (clientIndex !== -1) {
+                if (!clients[clientIndex].callLogs) {
+                    clients[clientIndex].callLogs = [];
+                }
+                clients[clientIndex].callLogs.push(callLog);
+                localStorage.setItem('clients', JSON.stringify(clients));
+                window.location.href = `profileedit.html?id=${clientId}`;
+            } else {
+                alert('Client not found');
+            }
+        }
+    </script>
+</body>
+</html>

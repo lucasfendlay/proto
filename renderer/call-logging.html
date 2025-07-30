@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Call Logging</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>Add New Contact</h1>
+    <form id="callLogForm">
+        <label for="Agent">Contact Center Specialist:</label>
+        <input type="text" id="Agent" name="Agent" readonly><br><br>
+
+        <label for="callerFirstName">Contact First Name:</label>
+        <input type="text" id="callerFirstName" name="callerFirstName" required><br><br>
+        <label for="callerLastName">Contact Last Name:</label>
+        <input type="text" id="callerLastName" name="callerLastName" required><br><br>
+        <label for="callerPhoneNumber">Contact Phone Number:</label>
+        <input type="text" id="callerPhoneNumber" name="callerPhoneNumber" required><br><br>
+        <label for="callDirection">Call Direction:</label>
+        <select id="callDirection" name="callDirection" required>
+            <option value disabled selected>Select Call Direction</option>
+            <option value="Inbound">Inbound</option>
+            <option value="Outbound">Outbound</option>
+        </select><br><br>
+
+        <label for="reasonForCall">Reason for Call:</label>
+<select id="reasonForCall" name="reasonForCall" onchange="handleReasonForCallChange()">
+    <option value="" disabled selected>Select Reason for Call</option>
+    <option value="To Apply Myself for Public Benefits">To Apply Myself for Public Benefits</option>
+    <option value="To Recertify SNAP and/or Medical Assistance">To Recertify SNAP</option>
+    <option value="CAP Outreach">CAP Outreach Initiative</option>
+    <option value="Questions about an Existing Case">Questions about an Existing Case</option>
+    <option value="Post-Submission Questions">Post-Submission Questions</option>
+    <option value="Other">Another Reason</option>
+</select><br><br>
+
+        <div id="referralSourceContainer">
+            <label for="referralSource">Referral Source:</label>
+            <select id="referralSource" name="referralSource" onchange="handleReferralSourceChange()">
+                <option value disabled selected>Select Referral Source</option>
+                <option value="Outreach">Outreach</option>
+                <option value="Referral from a Government Agency">Referral from a Government Agency</option>
+                <option value="Referral from a CBO">Referral from a Community-Based Organization</option>
+                <option value="Community Referral">Community Referral</option>
+                <option value="Internet Search">Internet Search</option>
+            </select><br><br>
+        </div>
+
+        <div id="specificReferralContainer" style="display: none;">
+            <label for="specificReferral">Specifically, which?</label>
+            <input type="text" id="specificReferral" name="specificReferral" placeholder="Enter details">
+        </div>
+
+        <button type="button" onclick="window.location.href='home.html'"> Home</button>
+        <button type="button" onclick="logNewCall()">Log New Call</button>
+    </form>
+    <script>
+        // Function to get query parameter by name
+        function getQueryParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        async function logNewCall() {
+    const requiredFields = ['callerFirstName', 'callerLastName', 'callerPhoneNumber', 'callDirection', 'reasonForCall'];
+    for (const field of requiredFields) {
+        if (!document.getElementById(field).value) {
+            alert('Please fill out all required fields.');
+            return;
+        }
+    }
+
+    const referralSourceContainer = document.getElementById('referralSourceContainer');
+    if (referralSourceContainer.style.display !== 'none' && !document.getElementById('referralSource').value) {
+        alert('Please fill out all required fields.');
+        return;
+    }
+
+    const specificReferralContainer = document.getElementById('specificReferralContainer');
+    const specificReferral = specificReferralContainer.style.display !== 'none'
+        ? document.getElementById('specificReferral').value
+        : null;
+
+    const clientId = getQueryParam('id');
+    const callLog = {
+        agent: document.getElementById('Agent').value,
+        callerFirstName: document.getElementById('callerFirstName').value,
+        callerLastName: document.getElementById('callerLastName').value,
+        callerPhoneNumber: document.getElementById('callerPhoneNumber').value,
+        callDirection: document.getElementById('callDirection').value,
+        reasonForCall: document.getElementById('reasonForCall').value,
+        referralSource: document.getElementById('referralSource').value,
+        specificReferral: specificReferral, // Save the "Specifically, which?" field
+        timestamp: new Date().toLocaleString(),
+    };
+
+    try {
+        // Log the call
+        const logCallResponse = await fetch('/log-call', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ clientId, callLog }),
+        });
+
+        const logCallResult = await logCallResponse.json();
+        if (logCallResponse.ok && logCallResult.success) {
+            // Create a note for the call
+            const activeUser = sessionStorage.getItem('loggedInUser');
+            const note = {
+                text: `${callLog.callDirection} call logged.`,
+                timestamp: callLog.timestamp,
+                username: activeUser,
+            };
+
+            // Add the note to the database
+            const addNoteResponse = await fetch('/add-note-to-client', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ clientId, note }),
+            });
+
+            const addNoteResult = await addNoteResponse.json();
+            if (!addNoteResponse.ok || !addNoteResult.success) {
+                alert('Failed to add note to client.');
+                return;
+            }
+
+            // Add the note to the notes container in the UI
+            const notesContainer = document.getElementById('notesContainer');
+            if (notesContainer) {
+                const noteElement = document.createElement('div');
+                noteElement.classList.add('note');
+                noteElement.innerHTML = `
+                    <p><strong>${note.timestamp}</strong></p>
+                    <p>${note.text}</p>
+                    <p><em>Logged by: ${note.username}</em></p>
+                `;
+                notesContainer.appendChild(noteElement);
+            }
+
+            // Redirect based on the reason for the call
+            if (callLog.reasonForCall === "To Apply Myself for Public Benefits" || 
+                callLog.reasonForCall === "To Recertify SNAP and/or Medical Assistance" || 
+                callLog.reasonForCall === "CAP Outreach" || 
+                callLog.reasonForCall === "Questions about an Existing Case" || 
+                callLog.reasonForCall === "Post-Submission Questions" || 
+                callLog.reasonForCall === "Other") {
+                const url = `profileedit.html?id=${clientId}&callerFirstName=${encodeURIComponent(callLog.callerFirstName)}&callerLastName=${encodeURIComponent(callLog.callerLastName)}&callerPhoneNumber=${encodeURIComponent(callLog.callerPhoneNumber)}`;
+                window.location.href = url;
+            } else {
+                window.location.href = `profileedit.html?id=${clientId}`;
+            }
+        } else {
+            alert(logCallResult.message || 'Failed to log call.');
+        }
+    } catch (error) {
+        console.error('Error logging call:', error);
+    }
+}
+
+        function populateActiveUser() {
+            const activeUser = sessionStorage.getItem('loggedInUser');
+            if (activeUser) {
+                document.getElementById('Agent').value = activeUser;
+            }
+        }
+
+        function toggleReferralSource() {
+            const callDirection = document.getElementById('callDirection').value;
+            const referralSourceContainer = document.getElementById('referralSourceContainer');
+            if (callDirection === 'Outbound') {
+                referralSourceContainer.style.display = 'none';
+                document.getElementById('referralSource').removeAttribute('required');
+            } else {
+                referralSourceContainer.style.display = 'block';
+                document.getElementById('referralSource').setAttribute('required', 'required');
+            }
+        }
+
+        function handleReferralSourceChange() {
+    const referralSource = document.getElementById('referralSource').value;
+    const specificReferralContainer = document.getElementById('specificReferralContainer');
+
+    if (
+        referralSource === 'Referral from a Government Agency' ||
+        referralSource === 'Referral from a CBO' ||
+        referralSource === 'Community Referral'
+    ) {
+        specificReferralContainer.style.display = 'block';
+        document.getElementById('specificReferral').setAttribute('required', 'required');
+    } else {
+        specificReferralContainer.style.display = 'none';
+        document.getElementById('specificReferral').removeAttribute('required');
+    }
+}
+
+        window.onload = function() {
+            populateActiveUser();
+            document.getElementById('callDirection').addEventListener('change', toggleReferralSource);
+        };
+    </script>
+</body>
+</html>

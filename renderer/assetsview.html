@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Client Assets</title>
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="incomeedit.css">
+    <link rel="stylesheet" href="assetsedit.css">
+    <link rel="stylesheet" href="notes.css">
+</head>
+<body class="narrow-body">
+
+    <!-- Page Title -->
+    <h1>Assets</h1>
+
+    <style>
+
+.narrow-body {
+        margin-left: 385px; /* Space for the left sidebar */
+        margin-right: 10px; /* Optional: Space on the right */
+        max-width: calc(100% - 395px); /* Ensure the body doesn't exceed the available space */
+        margin: 0 auto; /* Center the content horizontally */
+        margin-top: 60px; /* Adjust this value to match the height of the navigation container */
+    }
+    </style>
+
+<div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
+    <div id="household-members-container" class="left-sidebar"></div>
+    <div id="snap-household-container" class="left-sidebar"></div>
+</div>
+
+    <!-- Notes Section -->
+    <div id="notes-list"></div>
+    <textarea id="note-input" placeholder="Write your note here..."></textarea>
+    <button id="save-note">Save</button>
+
+    <!-- Household Members Section -->
+    <div id="household-member-container"></div>
+
+    <!-- Modal for Adding/Editing Assets -->
+    <div id="asset-modal" class="modal hidden">
+        <div class="modal-content">
+            <!-- Close Button -->
+            <button id="close-modal" class="close">&times;</button>
+
+            <!-- Modal Title -->
+            <h2 id="modal-title"></h2>
+
+            <!-- Asset Form -->
+            <form id="asset-form">
+                <!-- Type of Asset -->
+                <label for="asset-type">Type of Asset:</label>
+                <select id="asset-type" required>
+                    <option value="" disabled selected>Select Type of Asset</option>
+                    <option value="Real Estate">Real Estate</option>
+                    <option value="Vehicle">Vehicle</option>
+                    <option value="Bank Account">Bank Account</option>
+                    <option value="Investment">Investment</option>
+                    <option value="Retirement Account">Retirement Account</option>
+                    <option value="Personal Property">Personal Property</option>
+                    <option value="Other">Other</option>
+                </select>
+
+                <!-- Description -->
+                <label for="asset-description">Description:</label>
+                <input type="text" id="asset-description" class="text-input" placeholder="Enter asset description" required>
+
+                <!-- Value -->
+                <label for="asset-value">Value:</label>
+                <input type="text" id="asset-value" class="text-input" placeholder="Enter asset value" required>
+
+                <!-- Submit Button -->
+                <button type="button" id="add-asset-button" class="submit-button">Add Asset</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="button-container">
+        <button id="save-exit" onclick="goToAssetView()">Save and Release Profile</button>
+        <button id="save-continue" onclick="GoToNextPage()">Save and Continue</button> <br>
+    </div>
+
+    <script>
+        function getQueryParameter(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        function GoToNextPage() {
+            const clientId = getQueryParameter('id');
+            if (clientId) {
+                window.location.href = `estimationsstep.html?id=${clientId}`;
+            } else {
+                console.error('Client ID not found in query parameters.');
+            }
+        }
+
+        async function goToAssetView() {
+    const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
+
+    const confirmAction = confirm("Are you sure you want to save and release this profile?");
+    if (!confirmAction) {
+        return;
+    }
+
+    const noteContent = "Profile released.";
+    const timestamp = new Date().toLocaleString();
+    const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
+
+    if (!activeUser) {
+        console.error("No active user found in sessionStorage.");
+        return;
+    }
+
+    try {
+        // Save assets data (if applicable)
+        await saveAssetsData();
+
+        // Add a note about the action
+        const note = {
+            text: noteContent,
+            timestamp: timestamp,
+            username: activeUser
+        };
+
+        const addNoteResponse = await fetch(`/add-note-to-client`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ clientId, note })
+        });
+
+        if (!addNoteResponse.ok) {
+            throw new Error('Failed to add note to client');
+        }
+
+        // Update screening status in the database
+        const updateClientResponse = await fetch(`/update-client`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                clientId,
+                clientData: { screeningInProgress: false }
+            })
+        });
+
+        if (!updateClientResponse.ok) {
+            throw new Error('Failed to update client');
+        }
+
+        // Redirect to assets view
+        window.location.href = `assetsview.html?id=${clientId}`;
+    } catch (error) {
+        console.error("Error during goToAssetView:", error);
+    }
+}
+
+    async function saveAssetsData() {
+        // Implement logic to save assets data if needed
+        console.log("Saving assets data...");
+    }
+
+    // Define the getQueryParam function
+function getQueryParam(name) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name);
+}
+
+async function toggleSidebarVisibility() {
+    const clientId = getQueryParam('id');
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
+
+    try {
+        // Fetch client data from the backend
+        const response = await fetch(`/get-client/${clientId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client data: ${response.statusText}`);
+        }
+
+        const client = await response.json();
+        console.log('Client data:', client); // Debugging
+        console.log('screeningInProgress:', client?.screeningInProgress); // Debugging
+
+        if (client && client.screeningInProgress) {
+            document.getElementById('leftSidebarContainer').style.display = 'block';
+            console.log('Sidebar is now visible'); // Debugging
+        } else {
+            document.getElementById('leftSidebarContainer').style.display = 'none';
+            console.log('Sidebar is now hidden'); // Debugging
+        }
+    } catch (error) {
+        console.error('Error toggling sidebar visibility:', error);
+    }
+}
+
+    // Call the function after the page loads
+    window.onload = function () {
+        toggleSidebarVisibility();
+    };
+    </script>
+
+    
+
+    <!-- Scripts -->
+    <script src="estimations.js"></script>
+    <script src="notes.js"></script>
+    <script src="assetsview.js"></script>
+    <script src="viewnavigation.js"></script>
+
+</body>
+</html>

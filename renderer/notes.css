@@ -1,0 +1,57 @@
+#notes-list {
+    position: absolute;
+    right: 0;
+    top: 150px; /* Adjusted to make space for the input box and save button */
+    width: 300px;
+    overflow-y: scroll; /* Ensure the container is scrollable */
+    z-index: 1000; /* Ensure it appears above other content */
+    background-color: #f9f9f9;
+    border-left: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
+    padding: 10px;
+    box-shadow: -2px 0 5px rgba(0,0,0,0.1), 0 2px 5px rgba(0,0,0,0.1); /* Added bottom shadow */
+    pointer-events: auto; /* Ensure the container captures scroll events */
+}
+
+#notes-list > * {
+    direction: ltr; /* Keep the content direction normal */
+    z-index: 1001; /* Ensure individual notes are above the container */
+}
+
+.note {
+    border: 1px solid #ccc;
+    padding: 10px;
+    z-index: 1001; /* Ensure individual notes are above the container */
+    margin-bottom: 10px;
+    background-color: #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    overflow-y: auto; /* Make individual notes scrollable */
+}
+
+#note-input {
+    position: absolute;
+    right: 0;
+    top: 0;
+    z-index: 1000; /* Ensure it appears above the notes list */
+    width: 320px;
+    height: 100px;
+    padding: 10px;
+    box-sizing: border-box;
+    resize: none; /* Prevent resizing */
+}
+
+#save-note {
+    position: absolute;
+    right: 0;
+    top: 100px;
+    z-index: 1000; /* Ensure it appears above the notes list */
+    width: 310px;
+    padding: 5px; /* Reduced padding to make the button smaller */
+    box-sizing: border-box;
+}
+
+.save-button, .edit-button {
+    padding: 5px 10px; /* Reduced padding to make the buttons smaller */
+    font-size: 14px; /* Adjusted font size */
+    z-index: 1000; /* Ensure buttons are above other content */
+}

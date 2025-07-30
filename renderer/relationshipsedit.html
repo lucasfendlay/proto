@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Client Relationships</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="householdedit.css">
+    <link rel="stylesheet" href="notes.css">
+
+    <style>
+/* ...existing code... */
+
+
+.narrow-body {
+        margin-left: 385px; /* Space for the left sidebar */
+        margin-right: 10px; /* Optional: Space on the right */
+        max-width: calc(100% - 395px); /* Ensure the body doesn't exceed the available space */
+        margin: 0 auto; /* Center the content horizontally */
+        margin-top: 60px; /* Adjust this value to match the height of the navigation container */
+
+    }
+
+#notes-list {
+    width: 100%;
+    max-width: 300px; /* Adjust the max-width as needed */
+    margin: 0 auto;
+}
+
+#note-input {
+    width: 100%;
+    max-width: 320px; /* Adjust the max-width as needed */
+    margin: 0 auto;
+}
+
+.household-member-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+    align-items: center; /* Center the content horizontally */
+}
+
+.household-member {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+    width: 80%; /* Adjust the width as needed */
+    align-items: center; /* Center the content horizontally */
+}
+
+.selection-box {
+    margin-top: 10px;
+    text-align: center; /* Center the text inside the selection box */
+}
+
+.selection-option {
+    display: inline-block;
+    padding: 5px 10px;
+    margin-right: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.selection-option.selected {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+/* ...existing code... */
+        
+    </style>
+    <script src="editnavigation.js"></script>
+</head>
+<body class="narrow-body">
+
+    <h1>Relationships</h1>
+
+    <style>
+        .left-sidebar-container {
+    display: flex;
+    flex-direction: column; /* Stack the containers vertically */
+    align-items: flex-start; /* Align containers to the left */
+    position: absolute; /* Position the container absolutely */
+    z-index: 1000; /* Ensure it appears above other content */
+    left: 0; /* Align it to the left side of the screen */
+    top: 0; /* Start at the top of the screen */
+    width: 300px; /* Fixed width for the sidebar */
+    height: auto; /* Stretch the container to the full height of the screen */
+    padding: 10px;
+    pointer-events: auto; /* Ensure the container captures scroll events */
+    text-align: center; /* Center all text */
+}
+
+.left-sidebar {
+    display: flex; /* Enable Flexbox */
+    flex-direction: column; /* Stack items vertically */
+    align-items: center; /* Center items horizontally */
+    width: 100%; /* Ensure the containers take up the full width of the parent */
+    height: auto; /* Allow the height to adjust based on content */
+    overflow-y: auto;
+    z-index: 1000; /* Ensure it appears above other content */
+    background-color: #f9f9f9;
+    border-right: 1px solid #ddd;
+    padding: 15px;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px; /* Add spacing between containers */
+    text-align: center; /* Center all text */
+}
+    </style>
+
+<div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
+    <div id="household-members-container" class="left-sidebar"></div>
+    <div id="snap-household-container" class="left-sidebar"></div>
+</div>
+
+    <div id="notes-list"></div>
+    <textarea id="note-input" placeholder="Write your note here..."></textarea>
+    <button id="save-note">Save</button>
+
+    </body>
+    <script src="estimations.js"></script>
+    <script src="notes.js"></script>
+    <script src="relationships.js"></script>
+
+    <script>
+
+        // Define the getQueryParam function
+function getQueryParam(name) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name);
+}
+
+async function toggleSidebarVisibility() {
+    const clientId = getQueryParam('id');
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
+
+    try {
+        // Fetch client data from the backend
+        const response = await fetch(`/get-client/${clientId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client data: ${response.statusText}`);
+        }
+
+        const client = await response.json();
+        console.log('Client data:', client); // Debugging
+        console.log('screeningInProgress:', client?.screeningInProgress); // Debugging
+
+        if (client && client.screeningInProgress) {
+            document.getElementById('leftSidebarContainer').style.display = 'block';
+            console.log('Sidebar is now visible'); // Debugging
+        } else {
+            document.getElementById('leftSidebarContainer').style.display = 'none';
+            console.log('Sidebar is now hidden'); // Debugging
+        }
+    } catch (error) {
+        console.error('Error toggling sidebar visibility:', error);
+    }
+}
+
+    // Call the function after the page loads
+    window.onload = function () {
+        toggleSidebarVisibility();
+    };
+
+    </script>

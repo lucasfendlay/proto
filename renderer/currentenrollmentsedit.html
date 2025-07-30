@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Client Current Enrollments</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="householdedit.css">
+    <link rel="stylesheet" href="notes.css">
+
+    <style>
+/* ...existing code... */
+
+.narrow-body {
+        margin-left: 385px; /* Space for the left sidebar */
+        margin-right: 10px; /* Optional: Space on the right */
+        max-width: calc(100% - 395px); /* Ensure the body doesn't exceed the available space */
+        margin: 0 auto; /* Center the content horizontally */
+        margin-top: 60px; /* Adjust this value to match the height of the navigation container */
+
+    }
+
+.household-member.no-questions {
+    opacity: 0.5;
+}
+
+body {
+    max-width: 1200px; /* Adjust the max-width as needed */
+    margin: 0 auto;
+    padding: 20px;
+}
+
+#notes-list {
+    width: 100%;
+    max-width: 300px; /* Adjust the max-width as needed */
+    margin: 0 auto;
+}
+
+#note-input {
+    width: 100%;
+    max-width: 320px; /* Adjust the max-width as needed */
+    margin: 0 auto;
+}
+
+.household-member-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+    align-items: center; /* Center the content horizontally */
+}
+
+.household-member {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+    width: 80%; /* Adjust the width as needed */
+    align-items: center; /* Center the content horizontally */
+}
+
+.selection-box {
+    margin-top: 10px;
+    text-align: center; /* Center the text inside the selection box */
+}
+
+.selection-option {
+    display: inline-block;
+    padding: 5px 10px;
+    margin-right: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.selection-option.selected {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.grayed-out {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+
+
+/* ...existing code... */
+        
+    </style>
+</head>
+<body class="narrow-body">
+
+    <h1>Current Enrollments</h1>
+
+    <style>
+        .left-sidebar-container {
+    display: flex;
+    flex-direction: column; /* Stack the containers vertically */
+    align-items: flex-start; /* Align containers to the left */
+    position: absolute; /* Position the container absolutely */
+    z-index: 1000; /* Ensure it appears above other content */
+    left: 0; /* Align it to the left side of the screen */
+    top: 0; /* Start at the top of the screen */
+    width: 300px; /* Fixed width for the sidebar */
+    height: auto; /* Stretch the container to the full height of the screen */
+    padding: 10px;
+    pointer-events: auto; /* Ensure the container captures scroll events */
+    text-align: center; /* Center all text */
+}
+
+.left-sidebar {
+    display: flex; /* Enable Flexbox */
+    flex-direction: column; /* Stack items vertically */
+    align-items: center; /* Center items horizontally */
+    width: 100%; /* Ensure the containers take up the full width of the parent */
+    height: auto; /* Allow the height to adjust based on content */
+    overflow-y: auto;
+    z-index: 1000; /* Ensure it appears above other content */
+    background-color: #f9f9f9;
+    border-right: 1px solid #ddd;
+    padding: 15px;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px; /* Add spacing between containers */
+    text-align: center; /* Center all text */
+}
+    </style>
+
+<div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
+    <div id="household-members-container" class="left-sidebar"></div>
+    <div id="snap-household-container" class="left-sidebar"></div>
+</div>
+
+    <div id="notes-list"></div>
+    <textarea id="note-input" placeholder="Write your note here..."></textarea>
+    <button id="save-note">Save</button>
+    
+    <div id="householdMemberContainer" class="household-member-container"></div>
+
+
+    <div class="button-container">
+        <button id="save-exit" onclick="redirecttoCurrentEnrollments()">Save and Release Profile</button>
+        <button id="save-continue" onclick="gotoIncome()">Save and Continue</button> <br>
+    </div>
+
+    <script src="estimations.js"></script>
+
+    <script src="currentenrollments.js"></script>
+    <script>
+        // Function to get query parameter by name
+        function getQueryParameter(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        // Add event listeners to form elements
+        document.querySelectorAll('#householdMemberForm input, #householdMemberForm select').forEach(element => {
+            element.addEventListener('change', saveData);
+        });
+        
+        async function redirecttoCurrentEnrollments() {
+    const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
+
+    const confirmAction = confirm("Are you sure you want to save and release this profile?");
+    if (!confirmAction) {
+        return;
+    }
+
+    const noteContent = "Profile released.";
+    const timestamp = new Date().toLocaleString();
+    const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
+
+    if (!activeUser) {
+        console.error("No active user found in sessionStorage.");
+        return;
+    }
+
+    try {
+        // Save current enrollments data (if applicable)
+        await saveCurrentEnrollmentsData();
+
+        // Add a note about the action
+        const note = {
+            text: noteContent,
+            timestamp: timestamp,
+            username: activeUser
+        };
+
+        const noteResponse = await fetch('/add-note-to-client', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ clientId, note })
+        });
+
+        if (!noteResponse.ok) {
+            console.warn(`Failed to add note: ${noteResponse.statusText}`);
+        }
+
+        // Update screening status in the database
+        console.log('Payload for /update-client:', {
+            clientId,
+            clientData: { screeningInProgress: false }
+        });
+
+        const updateResponse = await fetch('/update-client', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                clientId,
+                clientData: { screeningInProgress: false }
+            })
+        });
+
+        if (!updateResponse.ok) {
+            console.warn(`Failed to update client: ${updateResponse.statusText}`);
+        }
+
+        // Redirect to current enrollments view regardless of the update result
+        window.location.href = `currentenrollmentsview.html?id=${clientId}`;
+    } catch (error) {
+        console.error("Error during redirecttoCurrentEnrollments:", error);
+
+        // Redirect to current enrollments view even if an error occurs
+        window.location.href = `currentenrollmentsview.html?id=${clientId}`;
+    }
+}
+
+    async function checkScreeningStatus() {
+    const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
+
+    try {
+        // Fetch client data from the server using an HTTP API call
+        const response = await fetch(`/get-client/${clientId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client data: ${response.statusText}`);
+        }
+
+        const clientData = await response.json();
+
+        // Check if screeningInProgress is true
+        if (clientData && clientData.screeningInProgress) {
+            document.getElementById('leftSidebarContainer').style.display = 'flex';
+        } else {
+            document.getElementById('leftSidebarContainer').style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error fetching client data:', error);
+    }
+}
+
+// Call the function on page load
+window.addEventListener('load', checkScreeningStatus);
+
+    async function saveCurrentEnrollmentsData() {
+        // Implement logic to save current enrollments data if needed
+        console.log("Saving current enrollments data...");
+    }
+
+        const householdMemberContainer = document.getElementById('householdMemberContainer');
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList' && mutation.removedNodes.length > 0) {
+                    console.log('Household member container was cleared:', mutation);
+                }
+            });
+        });
+
+        observer.observe(householdMemberContainer, { childList: true });
+
+        
+
+        function getQueryParameter(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        function gotoIncome() {
+    const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
+
+    try {
+        // Redirect to the income page with the client ID as a query parameter
+        window.location.href = `incomeedit.html?id=${clientId}`;
+    } catch (error) {
+        console.error('Error during navigation to income page:', error);
+    }
+}
+    </script>
+    <script src="notes.js"></script>
+    <script src="editnavigation.js"></script>
+</body>
+</html>

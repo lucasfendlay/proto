@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estimations Edit</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="notes.css">
+    <style>
+        /* General styles */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f9f9f9;
+    color: #333;
+    margin-top: 60px; /* Adjust this value to match the height of the navigation container */
+
+}
+
+#app {
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 20px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Header styles */
+h1 {
+    text-align: center;
+    color: #444;
+}
+
+/* Household member container */
+.household-member-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+}
+
+/* Individual household member card */
+.household-member-box {
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    width: 100%;
+    max-width: 300px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.household-member-box:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Member details */
+.household-member-box h3 {
+    margin: 0 0 10px;
+    font-size: 1.2em;
+    color: #333;
+}
+
+.household-member-box p {
+    margin: 5px 0;
+    font-size: 0.9em;
+    color: #555;
+}
+
+/* Spouse details */
+.household-member-box p span {
+    font-weight: bold;
+    color: #444;
+}
+
+.snap-household-box {
+    border: 1px solid #ccc;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+.snap-household-box h3 {
+    margin-top: 0;
+    color: #333;
+}
+    </style>
+</head>
+<body>
+    <h1>Estimated Eligibilities</h1>
+    <div id="notes-list"></div>
+    <textarea id="note-input" placeholder="Write your note here..."></textarea>
+    <button id="save-note">Save</button>
+    <div id="household-members-container" class="household-member-container"></div>
+    <div id="snap-household-container"></div>
+
+        <!-- Add Save and Release Profile button -->
+        <div class="button-container">
+            <button id="save-release" onclick="redirectToEstimationsView()">Save and Release Profile</button>
+        </div>
+    
+</body>
+    <script src="estimationsstep.js" defer></script>
+    <script src="notes.js"></script>
+    <script src="editnavigation.js"></script>
+    </script>
+</html>

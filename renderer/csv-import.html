@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Clients</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>Search Clients</h1>
+    <input type="text" id="searchFirstName" onkeyup="searchClients()" placeholder="Search by first name..">
+    <input type="text" id="searchLastName" onkeyup="searchClients()" placeholder="Search by last name..">
+    <ul id="clientList"></ul>
+    <button onclick="window.location.href='home.html'">Home</button>
+    <br>
+    <button onclick="saveClientAndLogCall()">Add New Client</button>
+    <br><br>
+
+    <!-- Add CSV Upload Section -->
+    <h2>Import Clients from CSV</h2>
+    <input type="file" id="csvFileInput" accept=".csv">
+    <button onclick="importClientsFromCSV()">Upload CSV</button>
+    
+    <script src="csv-import.js"></script>
+    <script>
+        function searchClients() {
+            const firstNameInput = document.getElementById('searchFirstName').value.toLowerCase();
+            const lastNameInput = document.getElementById('searchLastName').value.toLowerCase();
+            const clients = JSON.parse(localStorage.getItem('clients')) || [];
+            const filteredClients = clients.filter(client => 
+                client.firstName.toLowerCase().includes(firstNameInput) && 
+                client.lastName.toLowerCase().includes(lastNameInput)
+            );
+            const clientList = document.getElementById('clientList');
+            clientList.innerHTML = '';
+            filteredClients.forEach((client) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <a href="profileview.html?id=${client.id}">
+                        ${client.firstName} ${client.lastName} | 
+                        Phone: ${client.phoneNumber} | 
+                        Address: ${client.streetAddress}, ${client.city}, ${client.state}, ${client.zipCode}, ${client.county}
+                    </a>`;
+                clientList.appendChild(li);
+            });
+        }
+
+        function cleanUpClients() {
+            let clients = JSON.parse(localStorage.getItem('clients')) || [];
+            clients = clients.filter(client => client.id !== undefined);
+            localStorage.setItem('clients', JSON.stringify(clients));
+        }
+
+        // Load all clients on page load
+        window.onload = function() {
+            cleanUpClients();
+            const clients = JSON.parse(localStorage.getItem('clients')) || [];
+            const clientList = document.getElementById('clientList');
+            clientList.innerHTML = '';
+            clients.forEach((client) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <a href="profileview.html?id=${client.id}">
+                        ${client.firstName} ${client.lastName} | 
+                        Phone: ${client.phoneNumber} | 
+                        Address: ${client.streetAddress}, ${client.city}, ${client.state}, ${client.zipCode}, ${client.county}
+                    </a>`;
+                clientList.appendChild(li);
+            });
+        }
+
+        function saveClientAndLogCall() {
+            // Save client data to local storage
+            const client = {
+                id: generateUniqueId(),
+            };
+            let clients = JSON.parse(localStorage.getItem('clients')) || [];
+            clients.push(client);
+            localStorage.setItem('clients', JSON.stringify(clients));
+            window.location.href = `call-logging.html?id=${client.id}`;
+        }
+
+        function generateUniqueId() {
+            return '_' + Math.random().toString(36).substr(2, 9);
+        }
+        function importClientsFromCSV() {
+    const fileInput = document.getElementById('csvFileInput');
+    const file = fileInput.files[0];
+
+    if (!file) {
+        alert('Please select a CSV file to upload.');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        const csvData = event.target.result;
+        const rows = csvData.split('\n').map(row => row.split(','));
+
+        // Assuming the CSV has headers: id, firstName, lastName, phoneNumber, streetAddress, city, state, zipCode, county
+        const clients = rows.slice(1).map(row => ({
+            id: row[0]?.trim(),
+            firstName: row[1]?.trim(),
+            lastName: row[2]?.trim(),
+            phoneNumber: row[3]?.trim(),
+            streetAddress: row[4]?.trim(),
+            city: row[5]?.trim(),
+            state: row[6]?.trim(),
+            zipCode: row[7]?.trim(),
+            county: row[8]?.trim()
+        }));
+
+        let existingClients = JSON.parse(localStorage.getItem('clients')) || [];
+        const updatedClients = existingClients.map(existingClient => {
+            const importedClient = clients.find(client => client.id === existingClient.id);
+            if (importedClient) {
+                // Clear all properties except those explicitly included in the CSV
+                return {
+                    id: importedClient.id,
+                    firstName: importedClient.firstName,
+                    lastName: importedClient.lastName,
+                    phoneNumber: importedClient.phoneNumber,
+                    streetAddress: importedClient.streetAddress,
+                    city: importedClient.city,
+                    state: importedClient.state,
+                    zipCode: importedClient.zipCode,
+                    county: importedClient.county
+                };
+            }
+            return existingClient; // Keep existing client if not in the CSV
+        });
+
+        // Add new clients from the CSV that don't already exist
+        clients.forEach(client => {
+            if (!updatedClients.some(existingClient => existingClient.id === client.id)) {
+                updatedClients.push(client);
+            }
+        });
+
+        localStorage.setItem('clients', JSON.stringify(updatedClients));
+        alert('Clients imported successfully!');
+        window.location.reload();
+    };
+
+    reader.readAsText(file);
+}
+</script>
+    <script src="notes.js"></script>
+</body>
+</html>

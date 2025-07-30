@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>Prototype Build</h1>
+    <button onclick="window.location.href='directory.html'">Directory</button>
+    <br>
+    <button onclick="saveClientAndLogCall()">Add New Client</button>
+    <button id="clearClientsButton">Clear Clients</button>
+    <button onclick="window.location.href='referralsdatabase.html'">Referrals Database</button>
+    <br><br>
+    <script>
+        document.getElementById('clearClientsButton').addEventListener('click', async function() {
+    try {
+        const response = await fetch('/clear-clients', {
+            method: 'DELETE', // Use DELETE method for clearing clients
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        const result = await response.json();
+        console.log('Response from server:', result);
+
+        if (result.success) {
+            console.log('All clients cleared from the database');
+            alert('All clients have been successfully cleared.');
+        } else {
+            console.error('Failed to clear clients:', result.message);
+            alert('Failed to clear clients. Please try again.');
+        }
+    } catch (error) {
+        console.error('Error clearing clients:', error);
+        alert('An error occurred while clearing clients. Please try again.');
+    }
+});
+
+        async function saveClientAndLogCall() {
+        const client = {
+            id: generateUniqueId(),
+            createdAt: new Date(),
+        };
+
+        try {
+            const response = await fetch('/add-client', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(client),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.success) {
+                console.log('Client added to the database:', client);
+                window.location.href = `call-logging.html?id=${client.id}`;
+            } else {
+                console.error('Failed to add client:', data.message);
+            }
+        } catch (error) {
+            console.error('Error adding client:', error);
+        }
+    }
+
+        function generateUniqueId() {
+        const randomSixDigits = Math.floor(100000 + Math.random() * 900000); // Generate a random 6-digit number
+        return `ID${randomSixDigits}`;
+    }
+    </script>
+</body>
+</html>

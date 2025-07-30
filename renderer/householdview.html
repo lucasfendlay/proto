@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Client Household</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="householdedit.css">
+    <link rel="stylesheet" href="notes.css">
+    <style>
+
+.read-only {
+    pointer-events: none;
+    opacity: 0.6;
+}
+body {
+    max-width: 1200px; /* Adjust the max-width as needed */
+    margin: 0 auto;
+    padding: 20px;
+    margin-top: 60px; /* Adjust this value to match the height of the navigation container */
+
+}
+
+#notes-list {
+    width: 100%;
+    max-width: 300px; /* Adjust the max-width as needed */
+    margin: 0 auto;
+}
+
+#note-input {
+    width: 100%;
+    max-width: 320px; /* Adjust the max-width as needed */
+    margin: 0 auto;
+}
+        
+    </style>
+    <style>
+        .button-container {
+                display: flex;
+                gap: 10px; /* Adds spacing between buttons */
+                flex-wrap: wrap; /* Ensures buttons wrap to the next line if needed */
+            }
+        
+            .button-container button {
+                flex: 1; /* Ensures buttons are evenly spaced */
+                padding: 10px 15px;
+            }
+
+            /* Modal content styling */
+.modal-content {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 500px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    position: relative;
+    text-align: center;
+}
+
+/* Style for the h2 inside the modal */
+.modal-content h2 {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #333;
+    text-align: center;
+    border-bottom: 2px solid #4CAF50; /* Add a green underline */
+    padding-bottom: 10px;
+}
+.narrow-body {
+        margin-left: 385px; /* Space for the left sidebar */
+        margin-right: 10px; /* Optional: Space on the right */
+        max-width: calc(100% - 395px); /* Ensure the body doesn't exceed the available space */
+        margin: 0 auto; /* Center the content horizontally */
+        margin-top: 60px; /* Adjust this value to match the height of the navigation container */
+    }
+        
+            </style>
+</head>
+<body class="narrow-body">
+
+    <h1>Household</h1>
+
+    
+    <style>
+        #household-size {
+            text-align: center; /* Center the text */
+            text-align-last: center; /* Center the selected option in modern browsers */
+        }
+    </style>
+
+    <div id="notes-list"></div>
+    <textarea id="note-input" placeholder="Write your note here..."></textarea>
+    <button id="save-note">Save</button>
+    
+    <div class="selection-box">
+        <label for="household-size">How many people reside in the household?</label>
+        <select id="household-size" class="read-only">
+            <option value="" disabled selected>Select household size</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8">8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+            <option value="11">11</option>
+            <option value="12">12</option>
+            <option value="13">13</option>
+            <option value="14">14</option>
+            <option value="15">15</option>
+        </select>
+    </div>
+
+    <div class="selection-box">
+        <label id="disability-label">Is anyone in the household currently receiving disability benefits?</label>
+        <div id="disability-yes" data-value="yes" class="read-only">Yes</div>
+        <div id="disability-no" data-value="no" class="read-only">No</div>
+    </div>
+    
+    <div class="selection-box">
+        <label id="medicare-label">Is anyone in the household currently enrolled in Medicare?</label>
+        <div id="medicare-yes" data-value="yes" class="read-only">Yes</div>
+        <div id="medicare-no" data-value="no" class="read-only">No</div>
+    </div>
+
+    <div class="selection-box">
+        <label id="medicaid-label">Is anyone in the household currently enrolled in Medicaid?</label>
+        <div id="medicaid-yes" data-value="yes" class="read-only">Yes</div>
+        <div id="medicaid-no" data-value="no" class="read-only">No</div>
+    </div>
+
+    <div class="selection-box">
+        <label id="student-label">Is anyone in the household currently a student?</label>
+        <div id="student-yes" data-value="yes" class="read-only">Yes</div>
+        <div id="student-no" data-value="no" class="read-only">No</div>
+    </div>
+
+    <div class="selection-box">
+        <label id="residenceStatus-label">What was your residence status during the previous year?</label>
+        <div id="residenceStatus-owned" data-value="owned" class="read-only">Owned Home</div>
+        <div id="residenceStatus-rented" data-value="rented" class="read-only">Rented with Formal Lease</div>
+        <div id="residenceStatus-rentedowned" data-value="rentedowned" class="read-only">Owned/Rented</div>
+        <div id="residenceStatus-other" data-value="other" class="read-only">Other/No Formal Agreement</div>
+    </div>
+
+    <div class="selection-box">
+        <label id="snap-label">Is everyone in the household currently enrolled in SNAP?</label>
+        <div id="snap-yes" data-value="yes" class="read-only">Yes</div>
+        <div id="snap-no" data-value="no" class="read-only">No</div>
+        <div id="snap-notinterested" data-value="notinterested">Not Interested</div>
+    </div>
+
+    <div id="householdMemberContainer" class="household-member-container"></div>
+
+<!-- Add this to your HTML -->
+<div id="loading-indicator" style="display: none;">Loading...</div>
+
+    <div id="householdMemberModal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="closeHouseholdMemberModal">&times;</span>
+            <h2 id="householdMemberModalTitle">Add Household Member</h2>
+            <form id="householdMemberForm">
+                <input type="hidden" id="householdMemberId">
+                <label for="firstName">First Name:</label>
+                <input type="text" id="firstName" name="firstName"><br><br>
+                <label for="middleInitial">Middle Initial:</label>
+                <input type="text" id="middleInitial" name="middleInitial"><br><br>
+                <label for="lastName">Last Name:</label>
+                <input type="text" id="lastName" name="lastName"><br><br>
+                <div class="selection-box">
+                    <label for="dob">Date of Birth:</label>
+                    <input type="date" id="dob" name="dob" class="selection-box-input"><br><br>
+                </div>
+                <div class="selection-box">
+                    <label for="maritalStatus">Marital Status:</label>
+                    <select id="maritalStatus" name="maritalStatus" class="selection-box-input">
+                        <option value="Single">Single</option>
+                        <option value="Married (Living Together)">Married (Living Together)</option>
+                        <option value="Married (Living Separately)">Married (Living Separately)</option>
+                        <option value="Divorced">Divorced</option>
+                        <option value="Widowed">Widowed</option>
+                    </select><br><br>
+                </div>
+                <div id="disabilityQuestion" class="selection-box">
+                    <label>Is this individual on disability?</label>
+                    <div data-value="yes">Yes</div>
+                    <div data-value="no">No</div>
+                </div>
+                <div id="medicareQuestion" class="selection-box">
+                    <label>Is this individual on Medicare (or will they be within the next three months)?</label>
+                    <div data-value="yes">Yes</div>
+                    <div data-value="no">No</div>
+                </div>
+                <div id="medicaidQuestion" class="selection-box">
+                    <label>Is this individual on Medicaid?</label>
+                    <div data-value="yes">Yes</div>
+                    <div data-value="no">No</div>
+                </div>
+                <div id="studentQuestion" class="selection-box">
+                    <label>Is this individual a student?</label>
+                    <div data-value="yes">Yes</div>
+                    <div data-value="no">No or Less than Full-Time</div>
+                </div>
+                <div id="mealsQuestion" class="selection-box">
+                    <label>Is this individual included in the SNAP household?</label>
+                    <div data-value="yes">Yes</div>
+                    <div data-value="no">No</div>
+                </div>
+                <input type="hidden" id="clientId" name="clientId" value="">
+                <input type="hidden" id="householdMemberId" name="householdMemberId" value="">
+                <button type="submit" id="add-member">Add Member</button>
+                <button type="submit" id="save-update" style="display: none;" onclick="runEligibilityChecks()">Save and Update</button>
+                <button type="button" id="delete-member" style="display: none;">Delete Household Member</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+// Function to get query parameter by name
+function getQueryParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+// Function to redirect to the household view
+function goToRelationshipsEdit() {
+            const clientId = getQueryParam('id');
+            if (clientId) {
+                window.location.href = `relationshipsedit.html?id=${clientId}`;
+            } else {
+                console.error('Client ID not found in query parameters.');
+            }
+        }
+
+        async function redirectToHouseholdView() {
+    const clientId = getQueryParam('id'); // Reuse the getQueryParam function
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
+
+    const confirmAction = confirm("Are you sure you want to save and release this household?");
+    if (!confirmAction) {
+        return;
+    }
+
+    const noteContent = "Profile released.";
+    const timestamp = new Date().toLocaleString();
+    const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
+
+    if (!activeUser) {
+        console.error("No active user found in sessionStorage.");
+        return;
+    }
+
+    try {
+        // Save household data (if applicable)
+        await saveHouseholdData();
+
+        // Add a note about the action
+        const note = {
+            text: noteContent,
+            timestamp: timestamp,
+            username: activeUser
+        };
+
+        const noteResponse = await fetch(`/add-note-to-client`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ clientId, note }),
+        });
+
+        if (!noteResponse.ok) {
+            throw new Error(`Failed to add note: ${noteResponse.statusText}`);
+        }
+
+        // Update screening status in the database
+        const updateResponse = await fetch(`/update-client`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                clientId,
+                clientData: { screeningInProgress: false },
+            }),
+        });
+
+        if (!updateResponse.ok) {
+            throw new Error(`Failed to update client: ${updateResponse.statusText}`);
+        }
+
+        // Redirect to household view
+        window.location.href = `householdview.html?id=${clientId}`;
+    } catch (error) {
+        console.error("Error during redirectToHouseholdView:", error);
+    }
+}
+
+    async function saveHouseholdData() {
+        // Implement logic to save household data if needed
+        console.log("Saving household data...");
+    }
+
+
+    </script>
+
+<script>
+
+    // Call the function on page load
+    window.onload = async function () {
+        await loadClientData(); // Load client data
+    };
+    
+</script>
+
+    <script src="householdview.js"></script>
+    <script src="viewnavigation.js"></script>
+    <script src="notes.js"></script>
+
+</body>
+</html>
