@@ -1,3 +1,5 @@
+require('dotenv').config(); // Load environment variables from a .env file
+
 const express = require('express');
 const { MongoClient } = require('mongodb');
 const bcrypt = require('bcrypt');
@@ -21,7 +23,6 @@ connectToMongoDB();
 
 // Serve static files from the "src/renderer" directory
 app.use(express.static(path.join(__dirname, 'renderer')));
-
 // Redirect to splash.html
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'renderer', 'splash.html'));
