@@ -28,6 +28,23 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'renderer', 'splash.html'));
 });
 
+app.use((req, res, next) => {
+    const originalSend = res.send;
+
+    res.send = function (body) {
+        if (typeof body === 'string' && body.includes('<head>')) {
+            // Inject the meta tag into the <head> section
+            body = body.replace(
+                '<head>',
+                `<head><meta name="viewport" content="width=device-width, initial-scale=1.0">`
+            );
+        }
+        originalSend.call(this, body);
+    };
+
+    next();
+});
+
 // Start the server
 const PORT = process.env.PORT || 3000; // Use the PORT environment variable or default to 3000
 app.listen(PORT, () => {
