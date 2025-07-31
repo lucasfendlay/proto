@@ -33,6 +33,17 @@ async function loadHouseholdMembers() {
     }
 }
 
+// Close the income modal when clicking outside of it
+document.addEventListener('click', (event) => {
+    if (!modal.contains(event.target) && !event.target.closest('#income-modal') && !event.target.closest('.add-income-button')) {
+        modal.classList.add('hidden');
+        incomeForm.reset(); // Reset the form
+        isEditing = false; // Reset editing mode
+        editingIncomeId = null; // Reset editing ID
+        addIncomeButton.textContent = 'Add Income'; // Reset button text
+    }
+});
+
     // Save income to the database
 async function saveIncome(memberId, income) {
     try {

@@ -28,6 +28,18 @@ document.addEventListener('DOMContentLoaded', async function () {
             return [];
         }
     }
+
+// Close the asset modal when clicking outside of it
+document.addEventListener('click', (event) => {
+    if (!modal.contains(event.target) && !event.target.closest('#asset-modal') && !event.target.closest('.add-asset-button')) {
+        modal.classList.add('hidden');
+        assetForm.reset(); // Reset the form
+        isEditing = false; // Reset editing mode
+        editingAssetId = null; // Reset editing ID
+        addAssetButton.textContent = 'Add Asset'; // Reset button text
+    }
+});
+
     // Save asset to the database
 async function saveAsset(memberId, asset) {
     try {

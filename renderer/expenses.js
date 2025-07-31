@@ -209,6 +209,23 @@ const memberState = {
         await window.eligibilityChecks.displaySNAPHouseholds();
     }
 
+// Close the shelter modal when clicking outside of it
+document.addEventListener('click', (event) => {
+    if (!modal.contains(event.target) && !event.target.closest('#shelter-modal') && !event.target.closest('.add-expense-button')) {
+        modal.classList.add('hidden');
+        isEditing = false;
+        currentExpenseId = null;
+        addExpenseButton.textContent = 'Add Expense'; // Reset button text
+    }
+});
+
+// Close the utility modal when clicking outside of it
+document.addEventListener('click', (event) => {
+    if (!utilityModal.contains(event.target) && !event.target.closest('#utility-modal') && !event.target.closest('.add-expense-button')) {
+        utilityModal.classList.add('hidden');
+    }
+});
+
     function populateExpenses(expenses) {
         // Group expenses by type
         const shelterExpenses = expenses.filter(expense => expense.type === 'Shelter');

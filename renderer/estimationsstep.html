@@ -104,6 +104,31 @@ h1 {
         </div>
     
 </body>
+
+
+<script>
+
+function getQueryParameter(name) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name);
+}
+
+function redirectToEstimationsView() {
+    // Retrieve the client ID from the query parameters
+    const clientId = getQueryParameter('id');
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
+
+    // Perform any necessary save operations here
+    console.log("Saving profile and redirecting...");
+
+    // Redirect to the estimations view page with the client ID as a query parameter
+    window.location.href = `estimationsview.html?id=${clientId}`;
+}
+</script>
+</html>
     <script src="estimationsstep.js" defer></script>
     <script src="notes.js"></script>
     <script src="editnavigation.js"></script>

@@ -5,68 +5,35 @@ document.addEventListener('DOMContentLoaded', async function () {
     const closeModal = document.getElementById('close-modal'); // Close button
     let currentMemberId = null;
 
-    // Helper function to get query parameters
-function getQueryParameter(name) {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get(name);
-}
-
-// Define the redirectToEstimationsView function and attach it to the global window object
-window.redirectToEstimationsView = async function () {
-    const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
+    function getQueryParameter(name) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(name);
     }
-
-    const confirmAction = confirm("Are you sure you want to save and release this profile?");
-    if (!confirmAction) {
-        return;
-    }
-
-    const noteContent = "Profile released.";
-    const timestamp = new Date().toLocaleString();
-    const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
-
-    if (!activeUser) {
-        console.error("No active user found in sessionStorage.");
-        return;
-    }
-
-    try {
-        // Add a note about the action
-        const note = {
-            text: noteContent,
-            timestamp: timestamp,
-            username: activeUser
-        };
-
-        await window.electron.ipcRenderer.invoke('add-note-to-client', { clientId, note });
-
-        // Update screening status in the database
-        await window.electron.ipcRenderer.invoke('update-client', {
-            clientId,
-            clientData: { screeningInProgress: false }
-        });
-
-        // Redirect to estimations view
-        window.location.href = `estimationsview.html?id=${clientId}`;
-    } catch (error) {
-        console.error("Error during redirectToEstimationsView:", error);
-    }
-};
     
     // Load household members
     async function loadHouseholdMembers() {
+        const clientId = getQueryParameter('id'); // Retrieve the client ID from the URL
+        if (!clientId) {
+            console.error('Client ID not found in query parameters.');
+            return [];
+        }
+    
         try {
-            const client = await window.electron.ipcRenderer.invoke('get-client', clientId);
-            if (!client || !client.householdMembers) {
+            // Fetch the client data from the backend
+            const response = await fetch(`/get-client/${clientId}`);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch client data: ${response.statusText}`);
+            }
+    
+            const clientData = await response.json();
+    
+            if (!clientData || !clientData.householdMembers) {
                 console.error('No household members found for this client.');
                 return [];
             }
-
-            console.log('Household members:', client.householdMembers);
-            return client.householdMembers;
+    
+            console.log('Household members:', clientData.householdMembers);
+            return clientData.householdMembers;
         } catch (error) {
             console.error('Error loading household members:', error);
             return [];
@@ -265,13 +232,28 @@ window.redirectToEstimationsView = async function () {
 // After PACEEligibilityCheck, reload and display updated household members
 async function updateAndDisplayHouseholdMembers() {
     const clientId = getQueryParameter('id'); // Get the client ID from the query parameter
-    const updatedMembers = await window.electron.ipcRenderer.invoke('get-client', clientId);
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
 
-    if (updatedMembers && updatedMembers.householdMembers) {
-        console.log('Updated household members:', updatedMembers.householdMembers);
-        displayHouseholdMembers(); // Refresh the UI with updated data
-    } else {
-        console.error('Failed to retrieve updated household members.');
+    try {
+        // Fetch the updated client data from the backend
+        const response = await fetch(`/get-client/${clientId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch updated client data: ${response.statusText}`);
+        }
+
+        const updatedMembers = await response.json();
+
+        if (updatedMembers && updatedMembers.householdMembers) {
+            console.log('Updated household members:', updatedMembers.householdMembers);
+            displayHouseholdMembers(); // Refresh the UI with updated data
+        } else {
+            console.error('Failed to retrieve updated household members.');
+        }
+    } catch (error) {
+        console.error('Error updating and displaying household members:', error);
     }
 }
 
@@ -501,10 +483,25 @@ console.log(`PACE object for ${member.firstName} ${member.lastName}:`, member.PA
             }
         }
     
-        // Save the updated members array using IPC
-        const clientId = getQueryParameter('id'); // Get the client ID from the query parameter
-        await window.electron.ipcRenderer.invoke('save-household-members', { clientId, householdMembers: members });
+        // Save the updated members array using a REST API call
+const clientId = getQueryParameter('id'); // Get the client ID from the query parameter
+try {
+    const response = await fetch(`/save-household-members`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ clientId, householdMembers: members }),
+    });
+
+    if (response.ok) {
+        console.log('Household members saved successfully.');
+    } else {
+        console.error('Failed to save household members:', response.statusText);
     }
+} catch (error) {
+    console.error('Error saving household members:', error);
+}}
 
     async function PTRREligibilityCheck(members) {
         for (const member of members) {
@@ -593,7 +590,7 @@ console.log(`PACE object for ${member.firstName} ${member.lastName}:`, member.PA
                 const today = new Date();
                 let age = today.getFullYear() - dob.getFullYear();
                 const isDisabled = member.disability?.toLowerCase() === "yes";
-                const isWidowed = member.previousmaritalStatus?.toLowerCase() === "widowed";
+                const isWidowed = member.previousMaritalStatus?.toLowerCase() === "widowed";
     
                 if (
                     today.getMonth() < dob.getMonth() ||
@@ -643,10 +640,25 @@ console.log(`PACE object for ${member.firstName} ${member.lastName}:`, member.PA
             }
         }
     
-        // Save the updated members array using IPC
-        const clientId = getQueryParameter('id');
-        await window.electron.ipcRenderer.invoke('save-household-members', { clientId, householdMembers: members });
+        // Save the updated members array using a REST API call
+const clientId = getQueryParameter('id'); // Get the client ID from the query parameter
+try {
+    const response = await fetch(`/save-household-members`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ clientId, householdMembers: members }),
+    });
+
+    if (response.ok) {
+        console.log('Household members saved successfully.');
+    } else {
+        console.error('Failed to save household members:', response.statusText);
     }
+} catch (error) {
+    console.error('Error saving household members:', error);
+}}
 
     async function LISEligibilityCheck(members) {
         for (const member of members) {
@@ -834,10 +846,25 @@ if (spouse) {
             }
         }
     
-        // Save the updated members array using IPC
-        const clientId = getQueryParameter('id');
-        await window.electron.ipcRenderer.invoke('save-household-members', { clientId, householdMembers: members });
+        // Save the updated members array using a REST API call
+const clientId = getQueryParameter('id'); // Get the client ID from the query parameter
+try {
+    const response = await fetch(`/save-household-members`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ clientId, householdMembers: members }),
+    });
+
+    if (response.ok) {
+        console.log('Household members saved successfully.');
+    } else {
+        console.error('Failed to save household members:', response.statusText);
     }
+} catch (error) {
+    console.error('Error saving household members:', error);
+}}
 
     async function MSPEligibilityCheck(members) {
         for (const member of members) {
@@ -1018,10 +1045,25 @@ if (spouse) {
             }
         }
     
-        // Save the updated members array using IPC
-        const clientId = getQueryParameter('id');
-        await window.electron.ipcRenderer.invoke('save-household-members', { clientId, householdMembers: members });
+        // Save the updated members array using a REST API call
+const clientId = getQueryParameter('id'); // Get the client ID from the query parameter
+try {
+    const response = await fetch(`/save-household-members`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ clientId, householdMembers: members }),
+    });
+
+    if (response.ok) {
+        console.log('Household members saved successfully.');
+    } else {
+        console.error('Failed to save household members:', response.statusText);
     }
+} catch (error) {
+    console.error('Error saving household members:', error);
+}}
 
     // Add the calculateSNAPBenefit function
 function calculateSNAPBenefit(finalNetIncome, householdSize, eligibilityStatus) {
@@ -1393,17 +1435,42 @@ console.log(`Is Elderly: ${isElderly}`);
     }
 }
 
-    // Save the updated members array using IPC
-    const clientId = getQueryParameter('id');
-    await window.electron.ipcRenderer.invoke('save-household-members', { clientId, householdMembers: members });
-}
+    // Save the updated members array using a REST API call
+const clientId = getQueryParameter('id'); // Get the client ID from the query parameter
+try {
+    const response = await fetch(`/save-household-members`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ clientId, householdMembers: members }),
+    });
+
+    if (response.ok) {
+        console.log('Household members saved successfully.');
+    } else {
+        console.error('Failed to save household members:', response.statusText);
+    }
+} catch (error) {
+    console.error('Error saving household members:', error);
+}}
 
 // Initialize the display of household members
 displayHouseholdMembers();
 
 
-// Fetch the client object
-const client = await window.electron.ipcRenderer.invoke('get-client', clientId);
+// With this API call:
+const client = await fetch(`/get-client/${clientId}`)
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client data: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .catch(error => {
+        console.error('Error fetching client data:', error);
+        return null;
+    });
 
 if (!client) {
     console.error("Client data could not be retrieved.");
