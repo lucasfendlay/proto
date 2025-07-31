@@ -60,8 +60,7 @@
             // Capture username and password from input fields
             const username = document.querySelector('input[name="username"]').value.trim();
             const password = document.querySelector('input[name="password"]').value;
-            const BACKEND_URL = '<%= process.env.BACKEND_URL || "http://localhost:3000" %>';
-
+            const BACKEND_URL = window.location.origin || "http://localhost:3000";
 
 
             console.log('Sending login request:', { username, password });
