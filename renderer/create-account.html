@@ -54,6 +54,9 @@
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirmPassword').value;
+        const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
+
+
 
         if (password !== confirmPassword) {
             alert('Passwords do not match!');
@@ -64,7 +67,7 @@
 
         try {
             // Send account creation request to the Express server
-            const response = await fetch('http://localhost:3000/create-account', {
+            const response = await fetch(`${BACKEND_URL}/create-account`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

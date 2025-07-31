@@ -60,12 +60,15 @@
             // Capture username and password from input fields
             const username = document.querySelector('input[name="username"]').value.trim();
             const password = document.querySelector('input[name="password"]').value;
-    
+            const BACKEND_URL = '<%= process.env.BACKEND_URL || "http://localhost:3000" %>';
+
+
+
             console.log('Sending login request:', { username, password });
     
             try {
                 // Send login request to the server
-                const response = await fetch('http://localhost:3000/login', {
+                const response = await fetch(`${BACKEND_URL}/login`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

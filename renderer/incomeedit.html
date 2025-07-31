@@ -208,6 +208,9 @@ async function goToIncomeView() {
     const noteContent = "Profile released.";
     const timestamp = new Date().toLocaleString();
     const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
+    const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
+
+
 
     if (!activeUser) {
         console.error("No active user found in sessionStorage.");
@@ -225,7 +228,7 @@ async function goToIncomeView() {
             username: activeUser
         };
 
-        const addNoteResponse = await fetch(`http://localhost:3000/add-note-to-client`, {
+        const addNoteResponse = await fetch(`${BACKEND_URL}/add-note-to-client`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ clientId, note })
@@ -236,7 +239,7 @@ async function goToIncomeView() {
         }
 
         // Update screening status in the database
-        const updateClientResponse = await fetch(`http://localhost:3000/update-client`, {
+        const updateClientResponse = await fetch(`${BACKEND_URL}/update-client`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -273,6 +276,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function highlightSavedSelection() {
     const clientId = getQueryParameter('id'); // Ensure clientId is retrieved from query parameters
+    const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
+
     if (!clientId) {
         console.error('Client ID not found in query parameters.');
         return;
@@ -280,7 +285,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
         // Fetch client data from the backend API
-        const response = await fetch(`http://localhost:3000/get-client/${clientId}`);
+        const response = await fetch(`${BACKEND_URL}/get-client/${clientId}`);
         if (!response.ok) {
             throw new Error('Failed to fetch client data.');
         }
@@ -307,9 +312,11 @@ async function saveFarmworkerStatus(isFarmworker) {
         return;
     }
 
+    const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
+
     try {
         // Make a PUT request to the backend API to update the client
-        const response = await fetch(`http://localhost:3000/update-client`, {
+        const response = await fetch(`${BACKEND_URL}/update-client`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -366,6 +373,8 @@ function getQueryParam(name) {
 
 async function toggleSidebarVisibility() {
     const clientId = getQueryParam('id'); // Ensure clientId is retrieved from query parameters
+    const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
+
     if (!clientId) {
         console.error('Client ID not found in query parameters.');
         return;
@@ -373,7 +382,7 @@ async function toggleSidebarVisibility() {
 
     try {
         // Fetch client data from the backend API
-        const response = await fetch(`http://localhost:3000/get-client/${clientId}`);
+        const response = await fetch(`${BACKEND_URL}/get-client/${clientId}`);
         if (!response.ok) {
             throw new Error('Failed to fetch client data.');
         }

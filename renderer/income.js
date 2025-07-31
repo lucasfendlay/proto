@@ -7,12 +7,14 @@ document.addEventListener('DOMContentLoaded', async function () {
     const incomeForm = document.getElementById('income-form');
     let currentMemberId = null;
     let currentIncomeType = null;
+    const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
+
 
     // Load household members
 async function loadHouseholdMembers() {
     try {
         // Fetch client data from the backend API
-        const response = await fetch(`http://localhost:3000/get-client/${clientId}`);
+        const response = await fetch(`${BACKEND_URL}/get-client/${clientId}`);
         if (!response.ok) {
             throw new Error('Failed to fetch client data.');
         }
@@ -34,7 +36,7 @@ async function loadHouseholdMembers() {
     // Save income to the database
 async function saveIncome(memberId, income) {
     try {
-        const response = await fetch(`http://localhost:3000/update-member-income`, {
+        const response = await fetch(`${BACKEND_URL}/update-member-income`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -56,7 +58,8 @@ async function saveIncome(memberId, income) {
 
     async function displayHouseholdMembers() {
         const householdMemberContainer = document.getElementById('household-member-container');
-    
+
+
         // Clear the container to prevent duplicates
         householdMemberContainer.innerHTML = ''; // Clear all existing content
     
@@ -142,10 +145,12 @@ document.querySelectorAll('.edit-income-button').forEach(button => {
     button.addEventListener('click', async function () {
         const incomeId = this.dataset.incomeId;
         const memberId = this.dataset.memberId;
+        const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
+
 
         try {
             // Fetch income details from the backend API
-            const response = await fetch(`http://localhost:3000/get-income/${memberId}/${incomeId}`);
+            const response = await fetch(`${BACKEND_URL}/get-income/${memberId}/${incomeId}`);
             if (!response.ok) {
                 throw new Error('Failed to fetch income details.');
             }
@@ -228,7 +233,7 @@ addIncomeButton.addEventListener('click', async () => {
         if (isEditing) {
             try {
                 // Update existing income in the database
-                const response = await fetch(`http://localhost:3000/update-income`, {
+                const response = await fetch(`${BACKEND_URL}/update-income`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -331,7 +336,7 @@ function attachIncomeEventListeners(incomeItem) {
 
         try {
             // Fetch income details from the backend API
-            const response = await fetch(`http://localhost:3000/get-income/${currentMemberId}/${incomeId}`);
+            const response = await fetch(`${BACKEND_URL}/get-income/${currentMemberId}/${incomeId}`);
             if (!response.ok) {
                 throw new Error('Failed to fetch income details.');
             }
@@ -383,7 +388,7 @@ document.addEventListener('click', async function (event) {
 
         try {
             // Delete income from the backend API
-            const response = await fetch(`http://localhost:3000/delete-income`, {
+            const response = await fetch(`${BACKEND_URL}/delete-income`, {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ clientId, memberId, incomeId })

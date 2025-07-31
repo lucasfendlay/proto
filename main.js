@@ -1,5 +1,3 @@
-require('dotenv').config(); // Load environment variables from a .env file
-
 const express = require('express');
 const { MongoClient } = require('mongodb');
 const bcrypt = require('bcrypt');
@@ -8,8 +6,10 @@ const path = require('path');
 const app = express();
 app.use(express.json()); // Parse JSON request bodies
 
-const uri = 'mongodb+srv://lucascampbellsounddesign:AppleID12345@pacap.y2athp5.mongodb.net/?retryWrites=true&w=majority&appName=PACAP';
-const dbName = 'PACAP';
+require('dotenv').config(); // Load environment variables from a .env file
+
+const uri = process.env.MONGODB_URI; // Use environment variable for MongoDB URI
+const dbName = process.env.DB_NAME; // Use environment variable for database name
 let db;
 
 // Connect to MongoDB
