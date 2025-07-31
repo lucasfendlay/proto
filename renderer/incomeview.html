@@ -232,8 +232,9 @@ async function goToIncomeView() {
             timestamp: timestamp,
             username: activeUser
         };
+        const BACKEND_URL = window.location.origin || "http://localhost:3000";
 
-        const addNoteResponse = await fetch(`http://localhost:3000/add-note-to-client`, {
+        const addNoteResponse = await fetch(`${BACKEND_URL}/add-note-to-client`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ clientId, note })
@@ -244,7 +245,7 @@ async function goToIncomeView() {
         }
 
         // Update screening status in the database
-        const updateClientResponse = await fetch(`http://localhost:3000/update-client`, {
+        const updateClientResponse = await fetch(`${BACKEND_URL}/update-client`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -278,6 +279,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Get client ID from query parameters
     const clientId = getQueryParameter('id');
+    
 
     async function highlightSavedSelection() {
     const clientId = getQueryParameter('id'); // Ensure clientId is retrieved from query parameters
@@ -286,9 +288,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
+    const BACKEND_URL = window.location.origin || "http://localhost:3000";
+
+
     try {
         // Fetch client data from the backend API
-        const response = await fetch(`http://localhost:3000/get-client/${clientId}`);
+        const response = await fetch(`${BACKEND_URL}/get-client/${clientId}`);
         if (!response.ok) {
             throw new Error('Failed to fetch client data.');
         }
@@ -314,6 +319,7 @@ async function saveFarmworkerStatus(isFarmworker) {
         console.error('Client ID not found in query parameters.');
         return;
     }
+    const BACKEND_URL = window.location.origin || "http://localhost:3000";
 
     try {
         // Make a PUT request to the backend API to update the client
@@ -378,6 +384,7 @@ async function toggleSidebarVisibility() {
         console.error('Client ID not found in query parameters.');
         return;
     }
+    const BACKEND_URL = window.location.origin || "http://localhost:3000";
 
     try {
         // Fetch client data from the backend API

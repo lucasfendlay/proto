@@ -72,6 +72,26 @@
         }
     }
 
+    function populateActiveUser() {
+        const activeUser = sessionStorage.getItem('loggedInUser');
+        if (activeUser) {
+            console.log('Active User:', activeUser); // Debugging
+
+            // Check if the active user is 'admin'
+            if (activeUser === 'admin') {
+                const csvButton = document.createElement('button');
+                csvButton.textContent = 'Import CSV';
+                csvButton.onclick = () => window.location.href = 'csv-import.html';
+                document.body.appendChild(csvButton);
+            }
+        } else {
+            console.error('No active user found in sessionStorage');
+        }
+    }
+
+    // Call the function to populate the active user and conditionally add the button
+    populateActiveUser();
+
         function generateUniqueId() {
         const randomSixDigits = Math.floor(100000 + Math.random() * 900000); // Generate a random 6-digit number
         return `ID${randomSixDigits}`;

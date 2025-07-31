@@ -208,9 +208,7 @@ async function goToIncomeView() {
     const noteContent = "Profile released.";
     const timestamp = new Date().toLocaleString();
     const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
-    const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
-
-
+    const BACKEND_URL = window.location.origin || "http://localhost:3000";
 
     if (!activeUser) {
         console.error("No active user found in sessionStorage.");
@@ -235,7 +233,7 @@ async function goToIncomeView() {
         });
 
         if (!addNoteResponse.ok) {
-            throw new Error('Failed to add note to client.');
+            console.warn('Failed to add note to client.');
         }
 
         // Update screening status in the database
@@ -249,13 +247,13 @@ async function goToIncomeView() {
         });
 
         if (!updateClientResponse.ok) {
-            throw new Error('Failed to update client screening status.');
+            console.warn('Failed to update client screening status.');
         }
-
-        // Redirect to income view
-        window.location.href = `incomeview.html?id=${clientId}`;
     } catch (error) {
         console.error("Error during goToIncomeView:", error);
+    } finally {
+        // Redirect to income view regardless of success or failure
+        window.location.href = `incomeview.html?id=${clientId}`;
     }
 }
 
@@ -276,7 +274,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     async function highlightSavedSelection() {
     const clientId = getQueryParameter('id'); // Ensure clientId is retrieved from query parameters
-    const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
+    const BACKEND_URL = window.location.origin || "http://localhost:3000";
 
     if (!clientId) {
         console.error('Client ID not found in query parameters.');
@@ -312,7 +310,7 @@ async function saveFarmworkerStatus(isFarmworker) {
         return;
     }
 
-    const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
+    const BACKEND_URL = window.location.origin || "http://localhost:3000";
 
     try {
         // Make a PUT request to the backend API to update the client
@@ -373,7 +371,7 @@ function getQueryParam(name) {
 
 async function toggleSidebarVisibility() {
     const clientId = getQueryParam('id'); // Ensure clientId is retrieved from query parameters
-    const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
+    const BACKEND_URL = window.location.origin || "http://localhost:3000";
 
     if (!clientId) {
         console.error('Client ID not found in query parameters.');

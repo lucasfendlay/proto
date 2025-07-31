@@ -23,128 +23,142 @@
     
     <script src="csv-import.js"></script>
     <script>
-        function searchClients() {
+        async function searchClients() {
             const firstNameInput = document.getElementById('searchFirstName').value.toLowerCase();
             const lastNameInput = document.getElementById('searchLastName').value.toLowerCase();
-            const clients = JSON.parse(localStorage.getItem('clients')) || [];
-            const filteredClients = clients.filter(client => 
-                client.firstName.toLowerCase().includes(firstNameInput) && 
-                client.lastName.toLowerCase().includes(lastNameInput)
-            );
-            const clientList = document.getElementById('clientList');
-            clientList.innerHTML = '';
-            filteredClients.forEach((client) => {
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    <a href="profileview.html?id=${client.id}">
-                        ${client.firstName} ${client.lastName} | 
-                        Phone: ${client.phoneNumber} | 
-                        Address: ${client.streetAddress}, ${client.city}, ${client.state}, ${client.zipCode}, ${client.county}
-                    </a>`;
-                clientList.appendChild(li);
-            });
+
+            try {
+                const response = await fetch(`/get-all-clients`);
+                const data = await response.json();
+                const clients = data.clients || [];
+                const filteredClients = clients.filter(client => 
+                    client.firstName.toLowerCase().includes(firstNameInput) && 
+                    client.lastName.toLowerCase().includes(lastNameInput)
+                );
+
+                const clientList = document.getElementById('clientList');
+                clientList.innerHTML = '';
+                filteredClients.forEach((client) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <a href="profileview.html?id=${client.id}">
+                            ${client.firstName} ${client.lastName} | 
+                            Phone: ${client.phoneNumber} | 
+                            Address: ${client.streetAddress}, ${client.city}, ${client.state}, ${client.zipCode}, ${client.county}
+                        </a>`;
+                    clientList.appendChild(li);
+                });
+            } catch (error) {
+                console.error('Error fetching clients:', error);
+            }
         }
 
-        function cleanUpClients() {
-            let clients = JSON.parse(localStorage.getItem('clients')) || [];
-            clients = clients.filter(client => client.id !== undefined);
-            localStorage.setItem('clients', JSON.stringify(clients));
-        }
-
-        // Load all clients on page load
-        window.onload = function() {
-            cleanUpClients();
-            const clients = JSON.parse(localStorage.getItem('clients')) || [];
-            const clientList = document.getElementById('clientList');
-            clientList.innerHTML = '';
-            clients.forEach((client) => {
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    <a href="profileview.html?id=${client.id}">
-                        ${client.firstName} ${client.lastName} | 
-                        Phone: ${client.phoneNumber} | 
-                        Address: ${client.streetAddress}, ${client.city}, ${client.state}, ${client.zipCode}, ${client.county}
-                    </a>`;
-                clientList.appendChild(li);
-            });
-        }
-
-        function saveClientAndLogCall() {
-            // Save client data to local storage
+        async function saveClientAndLogCall() {
             const client = {
                 id: generateUniqueId(),
+                firstName: 'New',
+                lastName: 'Client',
+                phoneNumber: '',
+                streetAddress: '',
+                city: '',
+                state: '',
+                zipCode: '',
+                county: ''
             };
-            let clients = JSON.parse(localStorage.getItem('clients')) || [];
-            clients.push(client);
-            localStorage.setItem('clients', JSON.stringify(clients));
-            window.location.href = `call-logging.html?id=${client.id}`;
+
+            try {
+                const response = await fetch('/add-client', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(client)
+                });
+
+                if (response.ok) {
+                    window.location.href = `call-logging.html?id=${client.id}`;
+                } else {
+                    alert('Failed to save client.');
+                }
+            } catch (error) {
+                console.error('Error saving client:', error);
+            }
         }
 
         function generateUniqueId() {
-            return '_' + Math.random().toString(36).substr(2, 9);
-        }
-        function importClientsFromCSV() {
-    const fileInput = document.getElementById('csvFileInput');
-    const file = fileInput.files[0];
-
-    if (!file) {
-        alert('Please select a CSV file to upload.');
-        return;
+        const randomSixDigits = Math.floor(100000 + Math.random() * 900000); // Generate a random 6-digit number
+        return `ID${randomSixDigits}`;
     }
 
-    const reader = new FileReader();
-    reader.onload = function(event) {
-        const csvData = event.target.result;
-        const rows = csvData.split('\n').map(row => row.split(','));
+        async function importClientsFromCSV() {
+            const fileInput = document.getElementById('csvFileInput');
+            const file = fileInput.files[0];
 
-        // Assuming the CSV has headers: id, firstName, lastName, phoneNumber, streetAddress, city, state, zipCode, county
-        const clients = rows.slice(1).map(row => ({
-            id: row[0]?.trim(),
-            firstName: row[1]?.trim(),
-            lastName: row[2]?.trim(),
-            phoneNumber: row[3]?.trim(),
-            streetAddress: row[4]?.trim(),
-            city: row[5]?.trim(),
-            state: row[6]?.trim(),
-            zipCode: row[7]?.trim(),
-            county: row[8]?.trim()
-        }));
-
-        let existingClients = JSON.parse(localStorage.getItem('clients')) || [];
-        const updatedClients = existingClients.map(existingClient => {
-            const importedClient = clients.find(client => client.id === existingClient.id);
-            if (importedClient) {
-                // Clear all properties except those explicitly included in the CSV
-                return {
-                    id: importedClient.id,
-                    firstName: importedClient.firstName,
-                    lastName: importedClient.lastName,
-                    phoneNumber: importedClient.phoneNumber,
-                    streetAddress: importedClient.streetAddress,
-                    city: importedClient.city,
-                    state: importedClient.state,
-                    zipCode: importedClient.zipCode,
-                    county: importedClient.county
-                };
+            if (!file) {
+                alert('Please select a CSV file to upload.');
+                return;
             }
-            return existingClient; // Keep existing client if not in the CSV
-        });
 
-        // Add new clients from the CSV that don't already exist
-        clients.forEach(client => {
-            if (!updatedClients.some(existingClient => existingClient.id === client.id)) {
-                updatedClients.push(client);
+            const reader = new FileReader();
+            reader.onload = async function(event) {
+                const csvData = event.target.result;
+                const rows = csvData.split('\n').map(row => row.split(','));
+
+                // Assuming the CSV has headers: id, firstName, lastName, phoneNumber, streetAddress, city, state, zipCode, county
+                const clients = rows.slice(1).map(row => ({
+                    id: row[0]?.trim(),
+                    firstName: row[1]?.trim(),
+                    lastName: row[2]?.trim(),
+                    phoneNumber: row[3]?.trim(),
+                    streetAddress: row[4]?.trim(),
+                    city: row[5]?.trim(),
+                    state: row[6]?.trim(),
+                    zipCode: row[7]?.trim(),
+                    county: row[8]?.trim()
+                }));
+
+                try {
+                    const response = await fetch('/add-client-batch', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ clients })
+                    });
+
+                    if (response.ok) {
+                        alert('Clients imported successfully!');
+                        window.location.reload();
+                    } else {
+                        alert('Failed to import clients.');
+                    }
+                } catch (error) {
+                    console.error('Error importing clients:', error);
+                }
+            };
+
+            reader.readAsText(file);
+        }
+
+        // Load all clients on page load
+        window.onload = async function() {
+            try {
+                const response = await fetch(`/get-all-clients`);
+                const data = await response.json();
+                const clients = data.clients || [];
+                const clientList = document.getElementById('clientList');
+                clientList.innerHTML = '';
+                clients.forEach((client) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <a href="profileview.html?id=${client.id}">
+                            ${client.firstName} ${client.lastName} | 
+                            Phone: ${client.phoneNumber} | 
+                            Address: ${client.streetAddress}, ${client.city}, ${client.state}, ${client.zipCode}, ${client.county}
+                        </a>`;
+                    clientList.appendChild(li);
+                });
+            } catch (error) {
+                console.error('Error loading clients:', error);
             }
-        });
-
-        localStorage.setItem('clients', JSON.stringify(updatedClients));
-        alert('Clients imported successfully!');
-        window.location.reload();
-    };
-
-    reader.readAsText(file);
-}
-</script>
+        }
+    </script>
     <script src="notes.js"></script>
 </body>
 </html>

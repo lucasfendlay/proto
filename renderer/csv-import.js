@@ -12,13 +12,19 @@ function handleFileUpload(event) {
     }
 }
 
-function parseCSVAndSaveProfiles(csvData) {
+async function parseCSVAndSaveProfiles(csvData) {
     const rows = csvData.split('\n').filter(row => row.trim() !== '');
     const clients = rows.map(row => {
-        const [firstName, lastName, phoneNumber, streetAddress, city, state, zipCode, county, languageNumber] = row.split(',');
-        
+        const [firstName, lastName, phoneNumber, streetAddress, city, state, zipCode, county, languageNumber, notesColumn] = row.split(',');
+
         // Determine the language based on the languageNumber column
         const language = languageNumber.trim() === '1' ? 'English' : languageNumber.trim() === '2' ? 'Spanish' : 'Unknown';
+
+        // Parse notes dynamically from the CSV column
+        const additionalNotes = notesColumn ? notesColumn.trim().split(';').map(note => ({
+            text: note.trim(),
+            timestamp: new Date().toISOString()
+        })) : [];
 
         return {
             id: generateUniqueId(),
@@ -31,24 +37,31 @@ function parseCSVAndSaveProfiles(csvData) {
             zipCode: zipCode.trim(),
             county: county.trim(),
             notes: [
-                {
-                    text: 'CAP Closure Letter Recipient, Cohort 1',
-                    timestamp: new Date().toISOString()
-                },
-                {
-                    text: `Speaking Language: ${language}`,
-                    timestamp: new Date().toISOString()
-                }
+                
+                ...additionalNotes // Add dynamically parsed notes
             ]
         };
     });
 
-    let existingClients = JSON.parse(localStorage.getItem('clients')) || [];
-    existingClients = existingClients.concat(clients);
-    localStorage.setItem('clients', JSON.stringify(existingClients));
-    alert('CSV data imported successfully!');
+    try {
+        const response = await fetch('/add-client-batch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clients })
+        });
+
+        if (response.ok) {
+            alert('CSV data imported successfully!');
+        } else {
+            alert('Failed to import CSV data.');
+        }
+    } catch (error) {
+        console.error('Error importing CSV data:', error);
+        alert('An error occurred while importing CSV data.');
+    }
 }
 
 function generateUniqueId() {
-    return '_' + Math.random().toString(36).substr(2, 9);
+    const randomSixDigits = Math.floor(100000 + Math.random() * 900000); // Generate a random 6-digit number
+    return `ID${randomSixDigits}`;
 }

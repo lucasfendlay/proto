@@ -103,6 +103,24 @@ app.post('/add-client', async (req, res) => {
     }
 });
 
+app.post('/add-client-batch', async (req, res) => {
+    const { clients } = req.body;
+
+    if (!Array.isArray(clients) || clients.length === 0) {
+        return res.status(400).json({ success: false, message: 'Invalid or empty client data.' });
+    }
+
+    try {
+        const collection = db.collection('clients');
+        const result = await collection.insertMany(clients);
+
+        res.json({ success: true, insertedCount: result.insertedCount });
+    } catch (error) {
+        console.error('Error adding client batch:', error);
+        res.status(500).json({ success: false, message: 'Failed to add client batch.' });
+    }
+});
+
 // Clear all clients
 app.delete('/clear-clients', async (req, res) => {
     try {

@@ -138,7 +138,7 @@
         });
 
         if (!addNoteResponse.ok) {
-            throw new Error('Failed to add note to client');
+            console.warn('Failed to add note to client.');
         }
 
         // Update screening status in the database
@@ -154,13 +154,13 @@
         });
 
         if (!updateClientResponse.ok) {
-            throw new Error('Failed to update client');
+            console.warn('Failed to update client.');
         }
-
-        // Redirect to assets view
-        window.location.href = `assetsview.html?id=${clientId}`;
     } catch (error) {
         console.error("Error during goToAssetView:", error);
+    } finally {
+        // Redirect to assets view regardless of success or failure
+        window.location.href = `assetsview.html?id=${clientId}`;
     }
 }
 

@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     const incomeForm = document.getElementById('income-form');
     let currentMemberId = null;
     let currentIncomeType = null;
-    const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
+    const BACKEND_URL = window.location.origin || "http://localhost:3000";
 
 
     // Load household members
@@ -145,7 +145,7 @@ document.querySelectorAll('.edit-income-button').forEach(button => {
     button.addEventListener('click', async function () {
         const incomeId = this.dataset.incomeId;
         const memberId = this.dataset.memberId;
-        const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
+        const BACKEND_URL = window.location.origin || "http://localhost:3000";
 
 
         try {
@@ -228,6 +228,9 @@ addIncomeButton.addEventListener('click', async () => {
         endDate: document.getElementById('income-end-date').value,
         amount: parseFloat(document.getElementById('income-amount').value)
     };
+
+    const BACKEND_URL = window.location.origin || "http://localhost:3000";
+
 
     if (currentMemberId && income.kind && income.type && income.frequency && income.startDate && income.endDate && income.amount) {
         if (isEditing) {
@@ -333,6 +336,8 @@ incomeForm.reset(); // Reset the form
 function attachIncomeEventListeners(incomeItem) {
     incomeItem.querySelector('.edit-income-button').addEventListener('click', async function () {
         const incomeId = this.dataset.incomeId;
+        const BACKEND_URL = window.location.origin || "http://localhost:3000";
+
 
         try {
             // Fetch income details from the backend API
@@ -378,6 +383,8 @@ document.addEventListener('click', async function (event) {
     if (event.target.classList.contains('delete-income-button')) {
         const incomeId = event.target.dataset.incomeId;
         const memberId = event.target.dataset.memberId;
+        const BACKEND_URL = window.location.origin || "http://localhost:3000";
+
 
         // Retrieve the clientId from the query parameter
         const clientId = getQueryParameter('id'); // Get the client ID from the query parameter

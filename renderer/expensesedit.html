@@ -265,62 +265,71 @@ function GoToAssetsEdit() {
 }
 
 async function goToExpenseView() {
-        const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
-        if (!clientId) {
-            console.error('Client ID not found in query parameters.');
-            return;
-        }
-
-        const confirmAction = confirm("Are you sure you want to save and release this profile?");
-        if (!confirmAction) {
-            return;
-        }
-
-        const noteContent = "Profile released.";
-        const timestamp = new Date().toLocaleString();
-        const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
-
-        if (!activeUser) {
-            console.error("No active user found in sessionStorage.");
-            return;
-        }
-
-        try {
-            // Save expenses data (if applicable)
-            await saveExpensesData();
-
-            // Add a note about the action
-            const note = {
-                text: noteContent,
-                timestamp: timestamp,
-                username: activeUser
-            };
-
-            await fetch('/add-note-to-client', {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ clientId, note }),
-});
-            // Update screening status in the database
-            await fetch('/update-client', {
-    method: 'PUT',
-    headers: {
-        'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-        clientId,
-        clientData: { screeningInProgress: false },
-    }),
-});
-
-            // Redirect to expenses view
-            window.location.href = `expensesview.html?id=${clientId}`;
-        } catch (error) {
-            console.error("Error during goToExpenseView:", error);
-        }
+    const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
     }
+
+    const confirmAction = confirm("Are you sure you want to save and release this profile?");
+    if (!confirmAction) {
+        return;
+    }
+
+    const noteContent = "Profile released.";
+    const timestamp = new Date().toLocaleString();
+    const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
+
+    if (!activeUser) {
+        console.error("No active user found in sessionStorage.");
+        return;
+    }
+
+    try {
+        // Save expenses data (if applicable)
+        await saveExpensesData();
+
+        // Add a note about the action
+        const note = {
+            text: noteContent,
+            timestamp: timestamp,
+            username: activeUser
+        };
+
+        const addNoteResponse = await fetch('/add-note-to-client', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ clientId, note }),
+        });
+
+        if (!addNoteResponse.ok) {
+            console.warn('Failed to add note to client.');
+        }
+
+        // Update screening status in the database
+        const updateClientResponse = await fetch('/update-client', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                clientId,
+                clientData: { screeningInProgress: false },
+            }),
+        });
+
+        if (!updateClientResponse.ok) {
+            console.warn('Failed to update client.');
+        }
+    } catch (error) {
+        console.error("Error during goToExpenseView:", error);
+    } finally {
+        // Redirect to expenses view regardless of success or failure
+        window.location.href = `expensesview.html?id=${clientId}`;
+    }
+}
 
     async function saveExpensesData() {
         // Implement logic to save expenses data if needed

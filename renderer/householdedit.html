@@ -338,8 +338,6 @@ function redirectToHouseholdView() {
                 .then((response) => {
                     if (response.ok) {
                         console.log('screeningInProgress set to false for client:', clientId);
-                        // Redirect to the household view page
-                        window.location.href = `householdview.html?id=${clientId}`;
                     } else {
                         return response.json().then((error) => {
                             console.error('Error details:', error);
@@ -347,8 +345,6 @@ function redirectToHouseholdView() {
                             // Check if the error message indicates no changes were made
                             if (error.message === 'No changes were made to the client data.') {
                                 console.log('No changes were made, but proceeding with redirect.');
-                                // Redirect to the household view page
-                                window.location.href = `householdview.html?id=${clientId}`;
                             } else {
                                 throw new Error(`Failed to update client data: ${error.message}`);
                             }
@@ -357,6 +353,10 @@ function redirectToHouseholdView() {
                 })
                 .catch((error) => {
                     console.error('Error updating client data:', error);
+                })
+                .finally(() => {
+                    // Redirect to the household view page regardless of success or failure
+                    window.location.href = `householdview.html?id=${clientId}`;
                 });
         } else {
             console.log("User canceled the action.");
