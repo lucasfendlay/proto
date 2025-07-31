@@ -113,7 +113,7 @@ function getQueryParameter(name) {
     return urlParams.get(name);
 }
 
-function redirectToEstimationsView() {
+async function redirectToEstimationsView() {
     // Retrieve the client ID from the query parameters
     const clientId = getQueryParameter('id');
     if (!clientId) {
@@ -121,16 +121,67 @@ function redirectToEstimationsView() {
         return;
     }
 
-    // Perform any necessary save operations here
-    console.log("Saving profile and redirecting...");
+    const confirmAction = confirm("Are you sure you want to save and release this profile?");
+    if (!confirmAction) {
+        return;
+    }
 
-    // Redirect to the estimations view page with the client ID as a query parameter
-    window.location.href = `estimationsview.html?id=${clientId}`;
+    const noteContent = "Profile released.";
+    const timestamp = new Date().toLocaleString();
+    const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
+
+    if (!activeUser) {
+        console.error("No active user found in sessionStorage.");
+        return;
+    }
+
+    try {
+        // Perform any necessary save operations here
+        console.log("Saving profile and redirecting...");
+
+        // Add a note about the action
+        const note = {
+            text: noteContent,
+            timestamp: timestamp,
+            username: activeUser
+        };
+
+        const addNoteResponse = await fetch(`/add-note-to-client`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ clientId, note })
+        });
+
+        if (!addNoteResponse.ok) {
+            console.warn('Failed to add note to client.');
+        }
+
+        // Update screening status in the database
+        const updateClientResponse = await fetch(`/update-client`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                clientId,
+                clientData: { screeningInProgress: false }
+            })
+        });
+
+        if (!updateClientResponse.ok) {
+            console.warn('Failed to update client.');
+        }
+    } catch (error) {
+        console.error("Error during redirectToEstimationsView:", error);
+    } finally {
+        // Redirect to the estimations view page regardless of success or failure
+        window.location.href = `estimationsview.html?id=${clientId}`;
+    }
 }
 </script>
 </html>
     <script src="estimationsstep.js" defer></script>
     <script src="notes.js"></script>
     <script src="editnavigation.js"></script>
-    </script>
-</html>
