@@ -7,41 +7,33 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>Log New Call</h1>
+    <h1>Add New Contact</h1>
     <form id="callLogForm">
         <label for="Agent">Contact Center Specialist:</label>
         <input type="text" id="Agent" name="Agent" readonly><br><br>
 
-        <label for="callerSelection">Select Contact:</label>
-        <select id="callerSelection" name="callerSelection" required>
-            <option value="">Select Contact</option>
-            <!-- Options will be populated by JavaScript -->
-        </select><br><br>
-
-        <label for="callerFirstName" class="hidden">Contact First Name:</label>
-        <input type="text" id="callerFirstName" name="callerFirstName" class="hidden"><br><br>
-        <label for="callerLastName" class="hidden">Contact Last Name:</label>
-        <input type="text" id="callerLastName" name="callerLastName" class="hidden"><br><br>
-
-        <label for="callerPhoneNumber" class="hidden">Contact Phone Number:</label>
-<input type="text" id="callerPhoneNumber" name="callerPhoneNumber" class="hidden"><br><br>
+        <label for="callerFirstName">Contact First Name:</label>
+        <input type="text" id="callerFirstName" name="callerFirstName" required><br><br>
+        <label for="callerLastName">Contact Last Name:</label>
+        <input type="text" id="callerLastName" name="callerLastName" required><br><br>
+        <label for="callerPhoneNumber">Contact Phone Number:</label>
+        <input type="text" id="callerPhoneNumber" name="callerPhoneNumber" required><br><br>
         <label for="callDirection">Call Direction:</label>
         <select id="callDirection" name="callDirection" required>
-            <option value="" disabled selected>Select Call Direction</option>
+            <option value disabled selected>Select Call Direction</option>
             <option value="Inbound">Inbound</option>
             <option value="Outbound">Outbound</option>
         </select><br><br>
 
         <label for="reasonForCall">Reason for Call:</label>
-        <select id="reasonForCall" name="reasonForCall" required>
-            <option value="" disabled selected>Select Reason for Call</option>
-            <option value="To Apply Myself for Public Benefits">To Apply Myself for Public Benefits</option>
-            <option value="To Apply Someone Else for Public Benefits">To Apply Someone Else for Public Benefits</option>
-            <option value="To Recertify SNAP and/or Medical Assistance">To Recertify SNAP </option>
-            <option value="Questions about an Existing Case">Questions about an Existing Case</option>
-            <option value="Post-Submission Questions">Post-Submission Questions</option>
-            <option value="Other">Another Reason</option>
-        </select><br><br>
+<select id="reasonForCall" name="reasonForCall" onchange="handleReasonForCallChange()">
+    <option value="" disabled selected>Select Reason for Call</option>
+    <option value="To Apply Myself for Public Benefits">To Apply Myself for Public Benefits</option>
+    <option value="To Recertify SNAP and/or Medical Assistance">To Recertify SNAP</option>
+    <option value="Questions about an Existing Case">Questions about an Existing Case</option>
+    <option value="Post-Submission Questions">Post-Submission Questions</option>
+    <option value="Other">Another Reason</option>
+</select><br><br>
 
         <div id="referralSourceContainer">
             <label for="referralSource">Referral Source:</label>
@@ -60,191 +52,157 @@
             <input type="text" id="specificReferral" name="specificReferral" placeholder="Enter details">
         </div>
 
-        <button type="button" onclick="goBackToProfile()">Back to Profile</button>
+        <button type="button" onclick="window.location.href='home.html'"> Home</button>
         <button type="button" onclick="logNewCall()">Log New Call</button>
     </form>
     <script>
+        // Function to get query parameter by name
         function getQueryParam(name) {
             const urlParams = new URLSearchParams(window.location.search);
             return urlParams.get(name);
         }
 
-        function goBackToProfile() {
-            const clientId = getQueryParam('id');
-            window.location.href = `profileview.html?id=${clientId}`;
-        }
-
         async function logNewCall() {
-        const requiredFields = ['callerFirstName', 'callerLastName', 'callerPhoneNumber', 'callDirection', 'reasonForCall'];
-        for (const field of requiredFields) {
-            const fieldElement = document.getElementById(field);
-            if (fieldElement && fieldElement.classList.contains('hidden')) {
-                continue; // Skip hidden fields
-            }
-            if (!fieldElement.value) {
-                alert('Please fill out all required fields.');
-                return;
-            }
+    const requiredFields = ['callerFirstName', 'callerLastName', 'callerPhoneNumber', 'callDirection', 'reasonForCall'];
+    for (const field of requiredFields) {
+        if (!document.getElementById(field).value) {
+            alert('Please fill out all required fields.');
+            return;
         }
+    }
 
-        const selectedContact = document.getElementById('callerSelection').value;
-        let callerFirstName, callerLastName;
+    const referralSourceContainer = document.getElementById('referralSourceContainer');
+    if (referralSourceContainer.style.display !== 'none' && !document.getElementById('referralSource').value) {
+        alert('Please fill out all required fields.');
+        return;
+    }
 
-        if (selectedContact === 'new') {
-            callerFirstName = document.getElementById('callerFirstName').value.trim();
-            callerLastName = document.getElementById('callerLastName').value.trim();
-        } else {
-            const contactDetails = JSON.parse(selectedContact);
-            callerFirstName = contactDetails.callerFirstName;
-            callerLastName = contactDetails.callerLastName;
-        }
+    const specificReferralContainer = document.getElementById('specificReferralContainer');
+    const specificReferral = specificReferralContainer.style.display !== 'none'
+        ? document.getElementById('specificReferral').value
+        : null;
 
-        const callLog = {
-            callerFirstName: callerFirstName,
-            callerLastName: callerLastName,
-            callerPhoneNumber: document.getElementById('callerPhoneNumber').value.trim(),
-            callDirection: document.getElementById('callDirection').value,
-            reasonForCall: document.getElementById('reasonForCall').value,
-            referralSource: document.getElementById('referralSource').value || null, // Optional field
-            specificReferral: specificReferral, // Save the "Specifically, which?" field
-            timestamp: new Date().toLocaleString(),
-            agent: document.getElementById('Agent').value
-        };
+    const clientId = getQueryParam('id');
+    const callLog = {
+        agent: document.getElementById('Agent').value,
+        callerFirstName: document.getElementById('callerFirstName').value,
+        callerLastName: document.getElementById('callerLastName').value,
+        callerPhoneNumber: document.getElementById('callerPhoneNumber').value,
+        callDirection: document.getElementById('callDirection').value,
+        reasonForCall: document.getElementById('reasonForCall').value,
+        referralSource: document.getElementById('referralSource').value,
+        specificReferral: specificReferral, // Save the "Specifically, which?" field
+        timestamp: new Date().toLocaleString(),
+    };
 
-        const clientId = getQueryParam('id');
+    try {
+        // Log the call
+        const logCallResponse = await fetch('/log-call', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ clientId, callLog }),
+        });
 
-        try {
-            // Replace Electron IPC call with an HTTP POST request
-            const response = await fetch('/log-call', {
+        const logCallResult = await logCallResponse.json();
+        if (logCallResponse.ok && logCallResult.success) {
+            // Create a note for the call
+            const activeUser = sessionStorage.getItem('loggedInUser');
+            const note = {
+                text: `${callLog.callDirection} call logged.`,
+                timestamp: callLog.timestamp,
+                username: activeUser,
+            };
+
+            // Add the note to the database
+            const addNoteResponse = await fetch('/add-note-to-client', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clientId, callLog })
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ clientId, note }),
             });
 
-            const result = await response.json();
+            const addNoteResult = await addNoteResponse.json();
+            if (!addNoteResponse.ok || !addNoteResult.success) {
+                alert('Failed to add note to client.');
+                return;
+            }
 
-            if (result.success) {
-                // Create a note for the call
-                const activeUser = sessionStorage.getItem('loggedInUser');
-                const note = {
-                    text: `${callLog.callDirection} call logged.`,
-                    timestamp: callLog.timestamp,
-                    username: activeUser
-                };
+            // Add the note to the notes container in the UI
+            const notesContainer = document.getElementById('notesContainer');
+            if (notesContainer) {
+                const noteElement = document.createElement('div');
+                noteElement.classList.add('note');
+                noteElement.innerHTML = `
+                    <p><strong>${note.timestamp}</strong></p>
+                    <p>${note.text}</p>
+                    <p><em>Logged by: ${note.username}</em></p>
+                `;
+                notesContainer.appendChild(noteElement);
+            }
 
-                // Add the note to the database
-                await fetch('/add-note-to-client', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ clientId, note })
-                });
-
-                // Redirect to profileedit.html
+            // Redirect based on the reason for the call
+            if (callLog.reasonForCall === "To Apply Myself for Public Benefits" || 
+                callLog.reasonForCall === "To Recertify SNAP and/or Medical Assistance" || 
+                callLog.reasonForCall === "CAP Outreach" || 
+                callLog.reasonForCall === "Questions about an Existing Case" || 
+                callLog.reasonForCall === "Post-Submission Questions" || 
+                callLog.reasonForCall === "Other") {
+                const url = `profileedit.html?id=${clientId}&callerFirstName=${encodeURIComponent(callLog.callerFirstName)}&callerLastName=${encodeURIComponent(callLog.callerLastName)}&callerPhoneNumber=${encodeURIComponent(callLog.callerPhoneNumber)}`;
+                window.location.href = url;
+            } else {
                 window.location.href = `profileedit.html?id=${clientId}`;
-            } else {
-                alert(result.message || 'Failed to log call.');
             }
-        } catch (error) {
-            console.error('Error logging call:', error);
+        } else {
+            alert(logCallResult.message || 'Failed to log call.');
         }
+    } catch (error) {
+        console.error('Error logging call:', error);
     }
+}
 
-async function populateCallerSelection() {
-        const callerSelection = document.getElementById('callerSelection');
-        const clientId = getQueryParam('id');
-
-        // Clear existing options
-        callerSelection.innerHTML = '<option value="">Select Contact</option>';
-
-        try {
-            // Replace Electron IPC call with an HTTP GET request
-            const response = await fetch(`/get-client/${clientId}`);
-            const client = await response.json();
-
-            if (client && client.callLogs) {
-                const uniqueContacts = new Map();
-
-                client.callLogs.forEach(callLog => {
-                    const contactKey = `${callLog.callerFirstName} ${callLog.callerLastName} ${callLog.callerPhoneNumber}`.trim();
-                    if (callLog.callerFirstName && callLog.callerLastName && callLog.callerPhoneNumber && !uniqueContacts.has(contactKey)) {
-                        uniqueContacts.set(contactKey, callLog);
-                        const option = document.createElement('option');
-                        option.value = JSON.stringify({
-                            callerFirstName: callLog.callerFirstName,
-                            callerLastName: callLog.callerLastName,
-                            callerPhoneNumber: callLog.callerPhoneNumber
-                        });
-                        option.textContent = `${callLog.callerFirstName} ${callLog.callerLastName} (${callLog.callerPhoneNumber})`;
-                        callerSelection.appendChild(option);
-                    }
-                });
-            } else {
-                console.log('No call logs found for this client.');
+        function populateActiveUser() {
+            const activeUser = sessionStorage.getItem('loggedInUser');
+            if (activeUser) {
+                document.getElementById('Agent').value = activeUser;
             }
-
-            const addNewOption = document.createElement('option');
-            addNewOption.value = 'new';
-            addNewOption.textContent = 'Add New Contact';
-            callerSelection.appendChild(addNewOption);
-        } catch (error) {
-            console.error('Error fetching client data:', error);
         }
-    }
 
-        document.getElementById('callerSelection').addEventListener('change', function () {
-    const selectedValue = this.value;
+        function toggleReferralSource() {
+            const callDirection = document.getElementById('callDirection').value;
+            const referralSourceContainer = document.getElementById('referralSourceContainer');
+            if (callDirection === 'Outbound') {
+                referralSourceContainer.style.display = 'none';
+                document.getElementById('referralSource').removeAttribute('required');
+            } else {
+                referralSourceContainer.style.display = 'block';
+                document.getElementById('referralSource').setAttribute('required', 'required');
+            }
+        }
 
-    if (selectedValue === 'new') {
-        // Show first name, last name, and phone number fields
-        document.getElementById('callerFirstName').classList.remove('hidden');
-        document.getElementById('callerLastName').classList.remove('hidden');
-        document.getElementById('callerPhoneNumber').classList.remove('hidden');
-        document.querySelector('label[for="callerFirstName"]').classList.remove('hidden');
-        document.querySelector('label[for="callerLastName"]').classList.remove('hidden');
-        document.querySelector('label[for="callerPhoneNumber"]').classList.remove('hidden');
+        function handleReferralSourceChange() {
+    const referralSource = document.getElementById('referralSource').value;
+    const specificReferralContainer = document.getElementById('specificReferralContainer');
 
-        // Clear the fields
-        document.getElementById('callerFirstName').value = '';
-        document.getElementById('callerLastName').value = '';
-        document.getElementById('callerPhoneNumber').value = '';
+    if (
+        referralSource === 'Referral from a Government Agency' ||
+        referralSource === 'Referral from a CBO' ||
+        referralSource === 'Community Referral'
+    ) {
+        specificReferralContainer.style.display = 'block';
+        document.getElementById('specificReferral').setAttribute('required', 'required');
     } else {
-        // Hide first name, last name, and phone number fields
-        document.getElementById('callerFirstName').classList.add('hidden');
-        document.getElementById('callerLastName').classList.add('hidden');
-        document.getElementById('callerPhoneNumber').classList.add('hidden');
-        document.querySelector('label[for="callerFirstName"]').classList.add('hidden');
-        document.querySelector('label[for="callerLastName"]').classList.add('hidden');
-        document.querySelector('label[for="callerPhoneNumber"]').classList.add('hidden');
-
-        // Populate the fields with the selected contact's details
-        const contactDetails = JSON.parse(selectedValue);
-        document.getElementById('callerFirstName').value = contactDetails.callerFirstName;
-        document.getElementById('callerLastName').value = contactDetails.callerLastName;
-        document.getElementById('callerPhoneNumber').value = contactDetails.callerPhoneNumber;
+        specificReferralContainer.style.display = 'none';
+        document.getElementById('specificReferral').removeAttribute('required');
     }
-});
+}
 
-function populateActiveUser() {
-        const activeUser = sessionStorage.getItem('loggedInUser');
-        if (activeUser) {
-            let username = activeUser.replace(/['"]+/g, '');
-            username = username.replace('username:', '').trim();
-            const usernamePart = username.split('@')[0];
-            if (usernamePart !== '') {
-                document.getElementById('Agent').value = usernamePart;
-            }
-        }
-    }
-
-    window.onload = function() {
-        populateCallerSelection();
-        populateActiveUser();
-    };
+        window.onload = function() {
+            populateActiveUser();
+            document.getElementById('callDirection').addEventListener('change', toggleReferralSource);
+        };
     </script>
-    <style>
-        .hidden {
-            display: none;
-        }
-    </style>
 </body>
 </html>
