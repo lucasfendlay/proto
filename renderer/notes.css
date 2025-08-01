@@ -42,6 +42,7 @@
 }
 
 #notes-list {
+    width: 95%; /* Use full width of the parent container */
     flex: 1; /* Take up the remaining space in the container */
     overflow-y: auto; /* Enable vertical scrolling for overflow content */
     padding: 10px;
