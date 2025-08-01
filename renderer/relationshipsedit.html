@@ -21,18 +21,6 @@
 
     }
 
-#notes-list {
-    width: 100%;
-    max-width: 300px; /* Adjust the max-width as needed */
-    margin: 0 auto;
-}
-
-#note-input {
-    width: 100%;
-    max-width: 320px; /* Adjust the max-width as needed */
-    margin: 0 auto;
-}
-
 .household-member-container {
     display: flex;
     flex-direction: column;
@@ -81,47 +69,17 @@
 
     <h1>Relationships</h1>
 
-    <style>
-        .left-sidebar-container {
-    display: flex;
-    flex-direction: column; /* Stack the containers vertically */
-    align-items: flex-start; /* Align containers to the left */
-    position: absolute; /* Position the container absolutely */
-    z-index: 1000; /* Ensure it appears above other content */
-    left: 0; /* Align it to the left side of the screen */
-    top: 0; /* Start at the top of the screen */
-    width: 300px; /* Fixed width for the sidebar */
-    height: auto; /* Stretch the container to the full height of the screen */
-    padding: 10px;
-    pointer-events: auto; /* Ensure the container captures scroll events */
-    text-align: center; /* Center all text */
-}
-
-.left-sidebar {
-    display: flex; /* Enable Flexbox */
-    flex-direction: column; /* Stack items vertically */
-    align-items: center; /* Center items horizontally */
-    width: 100%; /* Ensure the containers take up the full width of the parent */
-    height: auto; /* Allow the height to adjust based on content */
-    overflow-y: auto;
-    z-index: 1000; /* Ensure it appears above other content */
-    background-color: #f9f9f9;
-    border-right: 1px solid #ddd;
-    padding: 15px;
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-    margin-bottom: 20px; /* Add spacing between containers */
-    text-align: center; /* Center all text */
-}
-    </style>
-
 <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
     <div id="household-members-container" class="left-sidebar"></div>
     <div id="snap-household-container" class="left-sidebar"></div>
 </div>
 
-    <div id="notes-list"></div>
+<div id="notes-container">
     <textarea id="note-input" placeholder="Write your note here..."></textarea>
-    <button id="save-note">Save</button>
+    <button id="save-note">Save Note</button>
+    <div id="notes-list">
+        </div>
+        </div>
 
     </body>
     <script src="estimations.js"></script>

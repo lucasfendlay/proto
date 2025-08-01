@@ -26,8 +26,7 @@
         <label for="callerPhoneNumber" class="hidden">Contact Phone Number:</label>
 <input type="text" id="callerPhoneNumber" name="callerPhoneNumber" class="hidden"><br><br>
         <label for="callDirection">Call Direction:</label>
-        <select id="callDirection" name="callDirection" required>
-            <option value="" disabled selected>Select Call Direction</option>
+        <select id="callDirection" name="callDirection" required onchange="toggleReferralSource()">            <option value="" disabled selected>Select Call Direction</option>
             <option value="Inbound">Inbound</option>
             <option value="Outbound">Outbound</option>
         </select><br><br>
@@ -43,15 +42,22 @@
             <option value="Other">Another Reason</option>
         </select><br><br>
 
-        <label for="referralSource" class="hidden">Referral Source:</label>
-        <select id="referralSource" name="referralSource" class="hidden">
-            <option value="" disabled selected>Select Referral Source</option>
-            <option value="Outreach">Outreach</option>
-            <option value="Referral from a Government Agency">Referral from a Government Agency</option>
-            <option value="Referral from a CBO">Referral from a Community-Based Organization</option>
-            <option value="Community Referral">Community Referral</option>
-            <option value="Internet Search">Internet Search</option>
-        </select><br><br>
+        <div id="referralSourceContainer">
+            <label for="referralSource">Referral Source:</label>
+            <select id="referralSource" name="referralSource" onchange="handleReferralSourceChange()">
+                <option value selected>Select Referral Source</option>
+                <option value="Outreach">Outreach</option>
+                <option value="Referral from a Government Agency">Referral from a Government Agency</option>
+                <option value="Referral from a CBO">Referral from a Community-Based Organization</option>
+                <option value="Community Referral">Community Referral</option>
+                <option value="Internet Search">Internet Search</option>
+            </select><br><br>
+        </div>
+
+        <div id="specificReferralContainer" style="display: none;">
+            <label for="specificReferral">Specifically, which?</label>
+            <input type="text" id="specificReferral" name="specificReferral" placeholder="Enter details">
+        </div><br><br>
 
         <button type="button" onclick="goBackToProfile()">Back to Profile</button>
         <button type="button" onclick="logNewCall()">Log New Call</button>
@@ -68,78 +74,111 @@
         }
 
         async function logNewCall() {
-        const requiredFields = ['callerFirstName', 'callerLastName', 'callerPhoneNumber', 'callDirection', 'reasonForCall'];
-        for (const field of requiredFields) {
-            const fieldElement = document.getElementById(field);
-            if (fieldElement && fieldElement.classList.contains('hidden')) {
-                continue; // Skip hidden fields
-            }
-            if (!fieldElement.value) {
-                alert('Please fill out all required fields.');
-                return;
-            }
+    const requiredFields = ['callerFirstName', 'callerLastName', 'callerPhoneNumber', 'callDirection', 'reasonForCall'];
+    for (const field of requiredFields) {
+        const fieldElement = document.getElementById(field);
+        if (fieldElement && fieldElement.classList.contains('hidden')) {
+            continue; // Skip hidden fields
         }
-
-        const selectedContact = document.getElementById('callerSelection').value;
-        let callerFirstName, callerLastName;
-
-        if (selectedContact === 'new') {
-            callerFirstName = document.getElementById('callerFirstName').value.trim();
-            callerLastName = document.getElementById('callerLastName').value.trim();
-        } else {
-            const contactDetails = JSON.parse(selectedContact);
-            callerFirstName = contactDetails.callerFirstName;
-            callerLastName = contactDetails.callerLastName;
-        }
-
-        const callLog = {
-            callerFirstName: callerFirstName,
-            callerLastName: callerLastName,
-            callerPhoneNumber: document.getElementById('callerPhoneNumber').value.trim(),
-            callDirection: document.getElementById('callDirection').value,
-            reasonForCall: document.getElementById('reasonForCall').value,
-            referralSource: document.getElementById('referralSource').value || null, // Optional field
-            timestamp: new Date().toLocaleString(),
-            agent: document.getElementById('Agent').value
-        };
-
-        const clientId = getQueryParam('id');
-
-        try {
-            // Replace Electron IPC call with an HTTP POST request
-            const response = await fetch('/log-call', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clientId, callLog })
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                // Create a note for the call
-                const activeUser = sessionStorage.getItem('loggedInUser');
-                const note = {
-                    text: `${callLog.callDirection} call logged.`,
-                    timestamp: callLog.timestamp,
-                    username: activeUser
-                };
-
-                // Add the note to the database
-                await fetch('/add-note-to-client', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ clientId, note })
-                });
-
-                // Redirect to profileedit.html
-                window.location.href = `profileedit.html?id=${clientId}`;
-            } else {
-                alert(result.message || 'Failed to log call.');
-            }
-        } catch (error) {
-            console.error('Error logging call:', error);
+        if (!fieldElement.value) {
+            alert('Please fill out all required fields.');
+            return;
         }
     }
+
+    const selectedContact = document.getElementById('callerSelection').value;
+    let callerFirstName, callerLastName;
+
+    if (selectedContact === 'new') {
+        callerFirstName = document.getElementById('callerFirstName').value.trim();
+        callerLastName = document.getElementById('callerLastName').value.trim();
+    } else {
+        const contactDetails = JSON.parse(selectedContact);
+        callerFirstName = contactDetails.callerFirstName;
+        callerLastName = contactDetails.callerLastName;
+    }
+
+    const referralSource = document.getElementById('referralSource').value || null; // Save null if not selected
+    const specificReferralContainer = document.getElementById('specificReferralContainer');
+    const specificReferral = specificReferralContainer.style.display !== 'none'
+        ? document.getElementById('specificReferral').value
+        : null;
+
+    const callLog = {
+        callerFirstName: callerFirstName,
+        callerLastName: callerLastName,
+        callerPhoneNumber: document.getElementById('callerPhoneNumber').value.trim(),
+        callDirection: document.getElementById('callDirection').value,
+        reasonForCall: document.getElementById('reasonForCall').value,
+        referralSource: referralSource, // Optional field
+        specificReferral: specificReferral, // Save the "Specifically, which?" field
+        timestamp: new Date().toLocaleString(),
+        agent: document.getElementById('Agent').value
+    };
+
+    const clientId = getQueryParam('id');
+
+    try {
+        const response = await fetch('/log-call', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, callLog })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            const activeUser = sessionStorage.getItem('loggedInUser');
+            const note = {
+                text: `${callLog.callDirection} call logged.`,
+                timestamp: callLog.timestamp,
+                username: activeUser
+            };
+
+            await fetch('/add-note-to-client', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, note })
+            });
+
+            window.location.href = `profileedit.html?id=${clientId}`;
+        } else {
+            alert(result.message || 'Failed to log call.');
+        }
+    } catch (error) {
+        console.error('Error logging call:', error);
+    }
+}
+
+function toggleReferralSource() {
+            const callDirection = document.getElementById('callDirection').value;
+            const referralSourceContainer = document.getElementById('referralSourceContainer');
+            if (callDirection === 'Outbound') {
+                referralSourceContainer.style.display = 'none';
+                document.getElementById('referralSource').removeAttribute('required');
+            } else {
+                referralSourceContainer.style.display = 'block';
+                document.getElementById('referralSource').setAttribute('required', 'required');
+            }
+        }
+
+function handleReferralSourceChange() {
+    const referralSource = document.getElementById('referralSource').value;
+    const specificReferralContainer = document.getElementById('specificReferralContainer');
+
+    if (
+        referralSource === 'Referral from a Government Agency' ||
+        referralSource === 'Referral from a CBO' ||
+        referralSource === 'Community Referral'
+    ) {
+        specificReferralContainer.style.display = 'block';
+        document.getElementById('specificReferral').setAttribute('required', 'required');
+    } else {
+        specificReferralContainer.style.display = 'none';
+        document.getElementById('specificReferral').removeAttribute('required');
+    }
+}
+
 
 async function populateCallerSelection() {
         const callerSelection = document.getElementById('callerSelection');

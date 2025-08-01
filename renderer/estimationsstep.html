@@ -81,6 +81,7 @@ h1 {
     border: 1px solid #ccc;
     padding: 15px;
     margin-bottom: 10px;
+    margin-top: 10px;
     border-radius: 5px;
     background-color: #f9f9f9;
 }
@@ -92,9 +93,13 @@ h1 {
 </head>
 <body>
     <h1>Estimated Eligibilities</h1>
-    <div id="notes-list"></div>
-    <textarea id="note-input" placeholder="Write your note here..."></textarea>
-    <button id="save-note">Save</button>
+    <div id="notes-container">
+        <textarea id="note-input" placeholder="Write your note here..."></textarea>
+        <button id="save-note">Save Note</button>
+        <div id="notes-list">
+            </div>
+            </div>
+            
     <div id="household-members-container" class="household-member-container"></div>
     <div id="snap-household-container"></div>
 

@@ -100,10 +100,11 @@ ul li a:hover {
     top: 0;
     left: 0;
     width: 100%;
+    height: 60px; /* Example height */
     background-color: white; /* Light background for visibility */
     padding: 10px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Optional shadow for better visibility */
-    z-index: 1000; /* Ensure it stays above other elements */
+    z-index: 3000; /* Ensure it stays above other elements */
     display: flex;
     justify-content: center; /* Center the buttons horizontally */
     gap: 10px; /* Add spacing between buttons */
@@ -122,5 +123,45 @@ ul li a:hover {
     background-color: #0056b3; /* Darker shade on hover */
 }
 
+.left-sidebar-container {
+    display: flex;
+    flex-direction: column; /* Stack the containers vertically */
+    align-items: flex-start; /* Align containers to the left */
+    position: fixed; /* Position the container absolutely */
+    z-index: 1000; /* Ensure it appears above other content */
+    left: 0; /* Align it to the left side of the screen */
+    top: 80px; /* Adjusted to make space for the input box and save button */
+    width: 300px; /* Fixed width for the sidebar */
+    min-width: 300px; /* Ensure the sidebar has a minimum width */
+    height: calc(100vh - 70px); /* Dynamically adjust height based on the viewport */
+    overflow-y: auto; /* Enable vertical scrolling for overflow content */
+    padding: 10px;
+    pointer-events: auto; /* Ensure the container captures scroll events */
+    text-align: center; /* Center all text */
+    background-color: #f9f9f9; /* Optional: Background color */
+    border-right: 1px solid #ddd; /* Optional: Border for separation */
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1); /* Optional: Subtle shadow */
+}
 
+.left-sidebar {
+    display: flex; /* Enable Flexbox */
+    flex-direction: column; /* Stack items vertically */
+    align-items: center; /* Center items horizontally */
+    width: 280; /* Set a fixed width */
+    height: calc(100vh); /* Dynamically adjust height based on the viewport */
+    overflow-y: auto; /* Enable vertical scrolling */
+    z-index: 1000; /* Ensure it appears above other content */
+    background-color: #f9f9f9;
+    border-right: 1px solid #ddd;
+    padding: 15px;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    margin: 0 auto; /* Center horizontally */
+    text-align: center; /* Center all text */
+}
         
+.navigation-button.active {
+    background-color: #0056b3; /* Darker shade for the active button */
+    color: white;
+    cursor: default; /* Disable pointer cursor for the active button */
+    pointer-events: none; /* Prevent clicking the active button */
+}

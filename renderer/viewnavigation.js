@@ -107,16 +107,20 @@ function createNavigationButtons() {
         { label: 'Estimations', action: GoToEstimationsView, page: 'estimationsview.html' },
     ];
 
-    // Create buttons, excluding the one for the current page
-    buttons.forEach(button => {
-        if (button.page !== currentPage) {
-            const btn = document.createElement('button');
-            btn.textContent = button.label;
-            btn.classList.add('navigation-button'); // Add a class for styling
-            btn.addEventListener('click', button.action);
-            navigationContainer.appendChild(btn);
-        }
-    });
+    // Create buttons, including the one for the current page
+buttons.forEach(button => {
+    const btn = document.createElement('button');
+    btn.textContent = button.label;
+    btn.classList.add('navigation-button'); // Add a class for styling
+
+    // Highlight the button for the current page
+    if (button.page === currentPage) {
+        btn.classList.add('active'); // Add an 'active' class for styling the current page
+    }
+
+    btn.addEventListener('click', button.action);
+    navigationContainer.appendChild(btn);
+});
 
     // Insert the navigation container at the very top of the body
     document.body.insertBefore(navigationContainer, document.body.firstChild);

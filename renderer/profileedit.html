@@ -133,9 +133,12 @@ margin-top: 60px; /* Adjust this value to match the height of the navigation con
 <script src="editnavigation.js"></script>
 </head>
 <body>
-    <div id="notes-list"></div>
-    <textarea id="note-input" placeholder="Write your note here..."></textarea>
-    <button id="save-note">Save</button>
+    <div id="notes-container">
+        <textarea id="note-input" placeholder="Write your note here..."></textarea>
+        <button id="save-note">Save Note</button>
+        <div id="notes-list">
+            </div>
+            </div>
     <h2 id="profileId">Profile: Loading...</h2> <!-- New header for Profile ID -->
     <p id="terminationStatus" style="color: red; display: none;"><strong>PROFILE TERMINATED</strong></p> <!-- Termination status -->
 
@@ -598,6 +601,58 @@ async function saveClient() {
     }
 }
 
+// Function to update client data
+async function updateClientData(field, value) {
+    const clientId = getQueryParam('id');
+    const clientData = { [field]: value }; // Dynamically create the data object with the updated field
+
+    try {
+        const response = await fetch('/update-client', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ clientId, clientData }),
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            console.error(`Failed to update client data for ${field}:`, result.message);
+        } else {
+            console.log(`Client data successfully updated for ${field}.`);
+        }
+    } catch (error) {
+        console.error(`Error updating client data for ${field}:`, error);
+        alert(`An error occurred while updating ${field}.`);
+    }
+}
+
+// Add event listeners to text inputs
+document.querySelectorAll('input[type="text"]').forEach(input => {
+    input.addEventListener('blur', (event) => {
+        const field = event.target.id; // Use the input's ID as the field name
+        const value = event.target.value;
+        updateClientData(field, value);
+    });
+});
+
+// Add event listeners to dropdowns
+document.querySelectorAll('select').forEach(select => {
+    select.addEventListener('change', (event) => {
+        const field = event.target.id; // Use the select's ID as the field name
+        const value = event.target.value;
+        updateClientData(field, value);
+    });
+});
+
+// Add event listeners to selection boxes
+document.querySelectorAll('.selection-box div').forEach(div => {
+    div.addEventListener('click', (event) => {
+        const field = 'interpreter'; // Assuming this is for the interpreter field
+        const value = event.target.dataset.value;
+        updateClientData(field, value);
+    });
+});
         
 
         function GoToProfileView() {

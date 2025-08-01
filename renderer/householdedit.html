@@ -25,18 +25,6 @@ body {
     margin-top: 60px; /* Adjust this value to match the height of the navigation container */
 
 }
-
-#notes-list {
-    width: 100%;
-    max-width: 300px; /* Adjust the max-width as needed */
-    margin: 0 auto;
-}
-
-#note-input {
-    width: 100%;
-    max-width: 320px; /* Adjust the max-width as needed */
-    margin: 0 auto;
-}
         
     </style>
     <style>
@@ -99,9 +87,12 @@ body {
     <div id="snap-household-container" class="left-sidebar"></div>
 </div>
 
-    <div id="notes-list"></div>
+<div id="notes-container">
     <textarea id="note-input" placeholder="Write your note here..."></textarea>
-    <button id="save-note">Save</button>
+    <button id="save-note">Save Note</button>
+    <div id="notes-list">
+        </div>
+        </div>
     
     <div class="selection-box">
         <label for="household-size">How many people reside in the household?</label>
