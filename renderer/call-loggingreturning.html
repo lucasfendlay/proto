@@ -38,21 +38,27 @@
             <option value="To Apply Myself for Public Benefits">To Apply Myself for Public Benefits</option>
             <option value="To Apply Someone Else for Public Benefits">To Apply Someone Else for Public Benefits</option>
             <option value="To Recertify SNAP and/or Medical Assistance">To Recertify SNAP </option>
-            <option value="CAP Outreach">CAP Outreach Initiative</option>
             <option value="Questions about an Existing Case">Questions about an Existing Case</option>
             <option value="Post-Submission Questions">Post-Submission Questions</option>
             <option value="Other">Another Reason</option>
         </select><br><br>
 
-        <label for="referralSource" class="hidden">Referral Source:</label>
-        <select id="referralSource" name="referralSource" class="hidden">
-            <option value="" disabled selected>Select Referral Source</option>
-            <option value="Outreach">Outreach</option>
-            <option value="Referral from a Government Agency">Referral from a Government Agency</option>
-            <option value="Referral from a CBO">Referral from a Community-Based Organization</option>
-            <option value="Community Referral">Community Referral</option>
-            <option value="Internet Search">Internet Search</option>
-        </select><br><br>
+        <div id="referralSourceContainer">
+            <label for="referralSource">Referral Source:</label>
+            <select id="referralSource" name="referralSource" onchange="handleReferralSourceChange()">
+                <option value disabled selected>Select Referral Source</option>
+                <option value="Outreach">Outreach</option>
+                <option value="Referral from a Government Agency">Referral from a Government Agency</option>
+                <option value="Referral from a CBO">Referral from a Community-Based Organization</option>
+                <option value="Community Referral">Community Referral</option>
+                <option value="Internet Search">Internet Search</option>
+            </select><br><br>
+        </div>
+
+        <div id="specificReferralContainer" style="display: none;">
+            <label for="specificReferral">Specifically, which?</label>
+            <input type="text" id="specificReferral" name="specificReferral" placeholder="Enter details">
+        </div>
 
         <button type="button" onclick="goBackToProfile()">Back to Profile</button>
         <button type="button" onclick="logNewCall()">Log New Call</button>
@@ -100,6 +106,7 @@
             callDirection: document.getElementById('callDirection').value,
             reasonForCall: document.getElementById('reasonForCall').value,
             referralSource: document.getElementById('referralSource').value || null, // Optional field
+            specificReferral: specificReferral, // Save the "Specifically, which?" field
             timestamp: new Date().toLocaleString(),
             agent: document.getElementById('Agent').value
         };
