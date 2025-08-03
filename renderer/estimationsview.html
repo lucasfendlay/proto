@@ -6,49 +6,54 @@
     <title>Estimations View</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="notes.css">
+    <link rel="stylesheet" href="householdedit.css">
     <style>
         /* General styles */
-body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: #f9f9f9;
-    color: #333;
-    margin-top: 60px; /* Adjust this value to match the height of the navigation container */
-
-}
-
-#app {
-    max-width: 800px;
-    margin: 20px auto;
-    padding: 20px;
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* Header styles */
-h1 {
-    text-align: center;
-    color: #444;
-}
-
-/* Household member container */
-.household-member-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    justify-content: center;
-}
-
-/* Individual household member card */
-.household-member-box {
-    background: #f0f0f0;
-    border: 1px solid #ddd;
-    border-radius: 8px;
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            margin-top: 60px; /* Adjust this value to match the height of the navigation container */
+        }
+        
+        #app {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Header styles */
+        h1 {
+            text-align: center;
+            color: #444;
+        }
+        
+        /* Household member container */
+        #household-members-container {
+            display: absolute;
+            flex-direction: column;
+            align-items: center; /* Center the content horizontally */
+            gap: 15px; /* Add gap between SNAP household boxes */
+            min-width: 500px; /* Ensure minimum width for better visibility */
+            max-width: 500px; /* Limit maximum width for layout consistency */
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        /* Individual household member card */
+        .household-member-box {
+    border: none;
+    align-self: center; /* Center the box horizontally */
     padding: 15px;
-    width: 100%;
-    max-width: 300px;
+    margin-bottom: 10px; /* Reduce the gap between cards */
+    border-radius: 5px;
+    background: #f4f4f4; /* Slightly darker gray than the page background */
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -56,39 +61,47 @@ h1 {
 .household-member-box:hover {
     transform: translateY(-5px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}       
+        /* Member details */
+        .household-member-box h3 {
+            margin: 0 0 10px;
+            font-size: 1.2em;
+            color: #333;
+        }
+        
+        .household-member-box p {
+            margin: 5px 0;
+            font-size: 0.9em;
+            color: #555;
+        }
+        
+        /* Spouse details */
+        .household-member-box p span {
+            font-weight: bold;
+            color: #444;
+        }
+        
+        /* SNAP household container */
+        #snap-household-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center the content horizontally */
+    min-width: 500px; /* Ensure minimum width for better visibility */
+    max-width: 500px; /* Limit maximum width for layout consistency */
+    padding: 20px;
+    background: #f9f9f9;
+    border-radius: 8px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    margin-top: 20px; /* Add consistent spacing above the SNAP container */
 }
-
-/* Member details */
-.household-member-box h3 {
-    margin: 0 0 10px;
-    font-size: 1.2em;
-    color: #333;
-}
-
-.household-member-box p {
-    margin: 5px 0;
-    font-size: 0.9em;
-    color: #555;
-}
-
-/* Spouse details */
-.household-member-box p span {
-    font-weight: bold;
-    color: #444;
-}
-
-.snap-household-box {
-    border: 1px solid #ccc;
-    padding: 15px;
-    margin-bottom: 10px;
-    border-radius: 5px;
-    background-color: #f9f9f9;
-}
-.snap-household-box h3 {
-    margin-top: 0;
-    color: #333;
-}
-    </style>
+        
+        /* SNAP household box */
+        
+        .snap-household-box h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        </style>
 </head>
 <body>
     <h1>Estimated Eligibilities</h1>
@@ -98,12 +111,89 @@ h1 {
         <div id="notes-list">
             </div>
             </div>
+
     <div id="household-members-container" class="household-member-container"></div>
     <div id="snap-household-container"></div>
     
 </body>
+
+
+<script>
+
+function getQueryParameter(name) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name);
+}
+
+async function redirectToEstimationsView() {
+    // Retrieve the client ID from the query parameters
+    const clientId = getQueryParameter('id');
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
+
+    const confirmAction = confirm("Are you sure you want to save and release this profile?");
+    if (!confirmAction) {
+        return;
+    }
+
+    const noteContent = "Profile released.";
+    const timestamp = new Date().toLocaleString();
+    const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
+
+    if (!activeUser) {
+        console.error("No active user found in sessionStorage.");
+        return;
+    }
+
+    try {
+        // Perform any necessary save operations here
+        console.log("Saving profile and redirecting...");
+
+        // Add a note about the action
+        const note = {
+            text: noteContent,
+            timestamp: timestamp,
+            username: activeUser
+        };
+
+        const addNoteResponse = await fetch(`/add-note-to-client`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ clientId, note })
+        });
+
+        if (!addNoteResponse.ok) {
+            console.warn('Failed to add note to client.');
+        }
+
+        // Update screening status in the database
+        const updateClientResponse = await fetch(`/update-client`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                clientId,
+                clientData: { screeningInProgress: false }
+            })
+        });
+
+        if (!updateClientResponse.ok) {
+            console.warn('Failed to update client.');
+        }
+    } catch (error) {
+        console.error("Error during redirectToEstimationsView:", error);
+    } finally {
+        // Redirect to the estimations view page regardless of success or failure
+        window.location.href = `estimationsview.html?id=${clientId}`;
+    }
+}
+</script>
+</html>
     <script src="estimationsstep.js" defer></script>
     <script src="notes.js"></script>
     <script src="viewnavigation.js"></script>
-    </script>
-</html>
