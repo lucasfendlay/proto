@@ -105,6 +105,7 @@ function createNavigationButtons() {
         { label: 'Expenses', action: GoToExpensesView, page: 'expensesview.html' },
         { label: 'Assets', action: GoToAssetsView, page: 'assetsview.html' },
         { label: 'Estimations', action: GoToEstimationsView, page: 'estimationsview.html' },
+        { label: 'Directory', action: () => window.location.href = 'directory.html', page: 'directory.html' },
     ];
 
     // Create buttons, including the one for the current page
