@@ -6,8 +6,8 @@
     <title>Edit Client Assets</title>
     <!-- Stylesheets -->
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="householdedit.css">
     <link rel="stylesheet" href="incomeedit.css">
-    <link rel="stylesheet" href="assetsedit.css">
     <link rel="stylesheet" href="notes.css">
 </head>
 <body class="narrow-body">
@@ -32,7 +32,7 @@
 </div>
 
 <div id="notes-container">
-    <textarea id="note-input" placeholder="Write your note here..."></textarea>
+    <textarea id="note-input" placeholder="Add Note..."></textarea>
     <button id="save-note">Save Note</button>
     <div id="notes-list">
         </div>
@@ -47,11 +47,12 @@
             <!-- Close Button -->
             <button id="close-modal" class="close">&times;</button>
 
-            <!-- Modal Title -->
-            <h2 id="modal-title"></h2>
-
+            
             <!-- Asset Form -->
             <form id="asset-form">
+
+                <h2 id="modal-title"></h2>
+
                 <!-- Type of Asset -->
                 <label for="asset-type">Type of Asset:</label>
                 <select id="asset-type" required>
@@ -83,6 +84,24 @@
         <button id="save-exit" onclick="goToAssetView()">Save and Release Profile</button>
         <button id="save-continue" onclick="GoToNextPage()">Save and Continue</button> <br>
     </div>
+
+    <style>
+        /* Add a border to the Save and Release Profile and Save and Continue buttons */
+        #save-exit, #save-continue {
+            border: 1px solid #000000;
+            border-radius: 5px; /* Rounded corners */
+            padding: 10px 20px; /* Add padding for better spacing */
+            background-color: #007bff; /* Light background color */
+            color: white; /* Blue text color */
+            transition: background-color 0.3s, color 0.3s; /* Smooth hover effect */
+        }
+    
+        /* Hover effect for the buttons */
+        #save-exit:hover, #save-continue:hover {
+            background-color: #0056b3; /* Blue background on hover */
+            color: white; /* White text on hover */
+        }
+    </style>
 
     <script>
         function getQueryParameter(name) {

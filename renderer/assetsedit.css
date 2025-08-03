@@ -154,11 +154,6 @@ select:focus, input:focus {
 
 
 
-/* Add smooth fade-in animation for the modal */
-.modal-content {
-    animation: fadeIn 0.3s ease-in-out;
-}
-
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -168,41 +163,6 @@ select:focus, input:focus {
         opacity: 1;
         transform: scale(1);
     }
-}
-
-/* Individual household member box */
-.household-member-box {
-    display: flex;
-    flex-direction: column;
-    padding: 20px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    background-color: #f9f9f9;
-    align-items: center; /* Center the content horizontally */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Optional: Add a subtle shadow for better appearance */
-}
-
-.household-member-box h3 {
-    font-size: 18px;
-    margin-bottom: 10px;
-    color: #333;
-    text-align: center; /* Center the heading */
-}
-
-.household-member-box p {
-    margin: 5px 0;
-    font-size: 14px;
-    color: #555;
-    text-align: center; /* Center the text */
-}
-
-
-
-/* Completely hide the h2 and any extra space it might create */
-.modal-content h2 {
-    display: none;
-    margin: 0;
-    padding: 0;
 }
 
 /* Close button styling */
@@ -275,25 +235,6 @@ select:focus, input:focus {
 .submit-button:hover {
     background-color: #45a049;
 }
-
-
-
-/* Add smooth fade-in animation for the modal */
-.modal-content {
-    animation: fadeIn 0.3s ease-in-out;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: scale(0.9);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
 
 
 

@@ -43,7 +43,7 @@ input[type="text"], select {
 button {
     background-color: #007bff;
     color: white;
-    border: none;
+    border: 1px solid #000000; /* Black border */
     padding: 10px 20px;
     border-radius: 4px;
     cursor: pointer;
@@ -113,7 +113,7 @@ ul li a:hover {
     padding: 8px 16px;
     font-size: 14px;
     cursor: pointer;
-    border: none;
+    border: 1px solid #000000;
     border-radius: 4px;
     background-color: #007bff; /* Button background color */
     color: white;
@@ -121,12 +121,16 @@ ul li a:hover {
 }
 .navigation-button:hover {
     background-color: #0056b3; /* Darker shade on hover */
+    border-bottom: #000000 1px solid; /* Optional: Add a bottom border on hover */
 }
 
 .left-sidebar-container {
     display: flex;
     flex-direction: column; /* Stack the containers vertically */
     align-items: flex-start; /* Align containers to the left */
+    border: #000000 1px solid; /* Optional: Border for separation */
+    box-shadow: 5px 0 5px rgba(0, 0, 0.1); /* Optional: Subtle shadow */
+    padding: 10px;
     position: fixed; /* Position the container absolutely */
     z-index: 1000; /* Ensure it appears above other content */
     left: 0; /* Align it to the left side of the screen */
@@ -139,20 +143,22 @@ ul li a:hover {
     pointer-events: auto; /* Ensure the container captures scroll events */
     text-align: center; /* Center all text */
     background-color: #f9f9f9; /* Optional: Background color */
-    border-right: 1px solid #ddd; /* Optional: Border for separation */
+    border-right: 1px solid #000000; /* Optional: Border for separation */
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1); /* Optional: Subtle shadow */
 }
 
 .left-sidebar {
     display: flex; /* Enable Flexbox */
     flex-direction: column; /* Stack items vertically */
+    border: #000000 1px solid; /* Optional: Border for separation */
+    box-shadow: 5px 0 5px rgba(0, 0, 0.1); /* Optional: Subtle shadow */
+    padding: 10px;
     align-items: center; /* Center items horizontally */
     width: 280; /* Set a fixed width */
-    height: calc(100vh); /* Dynamically adjust height based on the viewport */
-    overflow-y: auto; /* Enable vertical scrolling */
+    overflow-y: auto;
     z-index: 1000; /* Ensure it appears above other content */
     background-color: #f9f9f9;
-    border-right: 1px solid #ddd;
+    border-right: 1px solid #000000;
     padding: 15px;
     box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
     margin: 0 auto; /* Center horizontally */
@@ -164,4 +170,70 @@ ul li a:hover {
     color: white;
     cursor: default; /* Disable pointer cursor for the active button */
     pointer-events: none; /* Prevent clicking the active button */
+}
+
+/* Default styles (already defined above) */
+
+/* Responsive styles for tablets (screen width 768px and below) */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+
+    form {
+        width: 90%; /* Adjust form width for smaller screens */
+    }
+
+    .left-sidebar-container {
+        width: 200px; /* Reduce sidebar width */
+        min-width: 200px;
+    }
+
+    .navigation-buttons-container {
+        height: auto; /* Allow height to adjust dynamically */
+        flex-wrap: wrap; /* Wrap buttons to the next line if needed */
+        gap: 5px; /* Reduce spacing between buttons */
+    }
+}
+
+/* Responsive styles for mobile devices (screen width 480px and below) */
+@media (max-width: 480px) {
+    body {
+        flex-direction: column; /* Stack elements vertically */
+    }
+
+    h1 {
+        font-size: 1.5rem; /* Reduce heading size */
+    }
+
+    form {
+        width: 100%; /* Use full width for the form */
+        padding: 15px; /* Adjust padding */
+    }
+
+    .left-sidebar-container {
+        position: static; /* Remove fixed positioning */
+        width: 100%; /* Use full width */
+        height: auto; /* Adjust height dynamically */
+        box-shadow: none; /* Remove shadow for simplicity */
+    }
+
+    .navigation-buttons-container {
+        flex-direction: column; /* Stack buttons vertically */
+        align-items: center; /* Center buttons */
+    }
+
+    .navigation-button {
+        width: 100%; /* Make buttons full width */
+        text-align: center;
+    }
+
+    ul li {
+        flex-direction: column; /* Stack list items vertically */
+        align-items: flex-start; /* Align items to the left */
+    }
+
+    ul li span {
+        padding: 5px 0; /* Adjust padding */
+    }
 }

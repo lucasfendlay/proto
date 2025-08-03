@@ -73,10 +73,6 @@
     text-align: center; /* Center the text */
 }
 
-.selection-box div:hover {
-    background-color: #e0e0e0; /* Change background color on hover */
-}
-
 .selection-box div.selected {
     background-color: #007bff; /* Highlight selected option */
     color: #fff; /* Change text color for contrast */
@@ -90,7 +86,7 @@
 </div>
 
 <div id="notes-container">
-    <textarea id="note-input" placeholder="Write your note here..."></textarea>
+    <textarea id="note-input" placeholder="Add Note..."></textarea>
     <button id="save-note">Save Note</button>
     <div id="notes-list">
         </div>
@@ -108,14 +104,18 @@
     <!-- Modal for Adding/Editing Income -->
     <div id="income-modal" class="modal hidden">
         <div class="modal-content">
+           
             <!-- Close Button -->
             <button id="close-modal" class="close">&times;</button>
 
             <!-- Modal Title -->
-            <h2 id="modal-title"></h2>
 
             <!-- Income Form -->
             <form id="income-form">
+
+                <h2 id="modal-title"></h2>
+
+
                 <!-- Kind of Income -->
                 <label for="income-kind">Kind of Income:</label>
                 <select id="income-kind" required>
@@ -179,6 +179,24 @@
         <button id="save-continue" onclick="GoToExpensesEdit()">Save and Continue</button> <br>
     </div>
 
+    <style>
+        /* Add a border to the Save and Release Profile and Save and Continue buttons */
+        #save-exit, #save-continue {
+            border: 1px solid #000000;
+            border-radius: 5px; /* Rounded corners */
+            padding: 10px 20px; /* Add padding for better spacing */
+            background-color: #007bff; /* Light background color */
+            color: white; /* Blue text color */
+            transition: background-color 0.3s, color 0.3s; /* Smooth hover effect */
+        }
+    
+        /* Hover effect for the buttons */
+        #save-exit:hover, #save-continue:hover {
+            background-color: #0056b3; /* Blue background on hover */
+            color: white; /* White text on hover */
+        }
+    </style>
+
     <script>
 
 function getQueryParameter(name) {
@@ -194,6 +212,26 @@ function GoToExpensesEdit() {
         console.error('Client ID not found in query parameters.');
     }
 }
+
+// Open the modal
+document.getElementById('add-income-button').addEventListener('click', () => {
+    const incomeModal = document.getElementById('income-modal');
+    incomeModal.style.display = 'block'; // Show the modal
+});
+
+// Close the modal when clicking outside of it
+window.addEventListener('click', (event) => {
+    const incomeModal = document.getElementById('income-modal');
+    if (event.target === incomeModal) {
+        incomeModal.style.display = 'none'; // Hide the modal
+    }
+});
+
+// Close the modal when clicking the close button
+document.getElementById('close-modal').addEventListener('click', () => {
+    const incomeModal = document.getElementById('income-modal');
+    incomeModal.style.display = 'none'; // Hide the modal
+});
 
 async function goToIncomeView() {
     const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function

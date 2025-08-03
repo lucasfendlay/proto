@@ -44,7 +44,7 @@
     </div>
 
     <div id="notes-container">
-        <textarea id="note-input" placeholder="Write your note here..."></textarea>
+        <textarea id="note-input" placeholder="Add Note..."></textarea>
         <button id="save-note">Save Note</button>
         <div id="notes-list">
             </div>
@@ -60,10 +60,12 @@
             <button id="close-modal" class="close">&times;</button>
 
             <!-- Modal Title -->
-            <h2 id="modal-title"></h2>
 
             <!-- Expense Form -->
             <form id="shelter-form">
+
+                <h2 id="modal-title"></h2>
+
                 <!-- Type of Expense -->
                 <label for="expense-kind">Kind of Expense:</label>
                 <select id="expense-kind" required>
@@ -111,7 +113,6 @@
         <!-- Modal Header -->
         <div class="modal-header">
             <h2 id="utility-modal-title">Add Utility Expense</h2>
-            <button id="close-utility-modal" class="close-button">&times;</button>
         </div>
 
         <!-- Modal Body -->
@@ -134,20 +135,29 @@
 
         <!-- Modal Footer -->
         <div class="modal-footer">
-            <button id="save-utility-expenses" class="save-button">Save</button>
+            <button id="save-utility-expenses" class="save-button">Save and Update Utility Expenses</button>
         </div>
     </div>
 </div>
 
 <!-- Styles for the modal -->
 <style>
+
+#utility-modal .modal-content {
+        background: #f9f9f9; /* Light gray background */
+        border-radius: 12px; /* Rounded corners */
+        width: 60%; /* Wider modal */
+        max-width: 500px; /* Limit the maximum width */
+        padding: 30px; /* Add padding inside the modal */
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); /* Add a subtle shadow */
+        animation: fadeIn 0.3s ease-in-out; /* Add a fade-in animation */
+    }
     .modal {
         position: fixed;
         top: 0;
         left: 0;
         width: 100%;
         height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
         display: flex;
         justify-content: center;
         align-items: center;
@@ -162,7 +172,7 @@
         background: white;
         border-radius: 8px;
         width: 400px;
-        padding: 20px;
+        padding: 0px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
@@ -172,22 +182,6 @@
         align-items: center;
         margin-bottom: 20px;
         position: relative;
-    }
-
-    .close-button {
-        background: none;
-        border: none;
-        font-size: 24px;
-        font-weight: bold;
-        color: #333;
-        cursor: pointer;
-        position: absolute;
-        top: 10px;
-        right: 10px;
-    }
-
-    .close-button:hover {
-        color: #ff0000;
     }
 
     .selection-box-container {
@@ -222,6 +216,12 @@
     .save-button:hover {
         background-color: #0056b3;
     }
+
+    #utility-modal {
+    width: 80%; /* Adjust the width as needed */
+    padding: 20px; /* Add padding inside the modal */
+    box-sizing: border-box; /* Ensure padding doesn't affect the width */
+}
 </style>
 
 <!-- JavaScript for selection functionality -->
@@ -249,6 +249,24 @@
         <button id="save-exit" onclick="goToExpenseView()">Save and Release Profile</button>
         <button id="save-continue" onclick="GoToAssetsEdit()">Save and Continue</button> <br>
     </div>
+
+    <style>
+        /* Add a border to the Save and Release Profile and Save and Continue buttons */
+        #save-exit, #save-continue {
+            border: 1px solid #000000;
+            border-radius: 5px; /* Rounded corners */
+            padding: 10px 20px; /* Add padding for better spacing */
+            background-color: #007bff; /* Light background color */
+            color: white; /* Blue text color */
+            transition: background-color 0.3s, color 0.3s; /* Smooth hover effect */
+        }
+    
+        /* Hover effect for the buttons */
+        #save-exit:hover, #save-continue:hover {
+            background-color: #0056b3; /* Blue background on hover */
+            color: white; /* White text on hover */
+        }
+    </style>
 
     <script>
 

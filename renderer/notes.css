@@ -2,6 +2,9 @@
     display: flex;
     flex-direction: column; /* Stack the containers vertically */
     align-items: flex-start; /* Align containers to the left */
+    border: #000000 1px solid; /* Optional: Border for separation */
+    box-shadow: 5px 0 5px rgba(0, 0, 0, 0.1); /* Optional: Subtle shadow */
+    padding: 10px;
     position: fixed; /* Position the container absolutely */
     z-index: 1000; /* Ensure it appears above other content */
     right: 0; /* Align it to the left side of the screen */
@@ -25,8 +28,7 @@
     padding: 10px;
     box-sizing: border-box;
     resize: none; /* Prevent resizing */
-    border: 3px solid #ccc;
-    border-bottom: none; /* Remove bottom border to connect with the save button */
+    border: 1px solid #000000;
 }
 
 #save-note {
@@ -57,4 +59,121 @@
     background-color: #fff;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     overflow-y: auto; /* Make individual notes scrollable */
+}
+
+/* Responsive styles for 15-inch laptops (screen width 1440px and below) */
+@media (max-width: 1440px) {
+    #notes-container {
+        width: 250px; /* Reduce the width of the notes container */
+    }
+
+    #note-input {
+        height: 80px; /* Slightly reduce the height of the input box */
+    }
+
+    #notes-list {
+        padding: 8px; /* Adjust padding for better fit */
+    }
+}
+
+/* Responsive styles for 13-inch laptops (screen width 1280px and below) */
+@media (max-width: 1280px) {
+    #notes-container {
+        width: 220px; /* Further reduce the width of the notes container */
+    }
+
+    #note-input {
+        height: 70px; /* Reduce the height of the input box */
+    }
+
+    #notes-list {
+        padding: 6px; /* Adjust padding for smaller screens */
+    }
+
+    .note {
+        padding: 8px; /* Reduce padding for individual notes */
+    }
+}
+
+/* Responsive styles for 10-inch tablets (screen width 1024px and below) */
+@media (max-width: 1024px) {
+    #notes-container {
+        position: static; /* Remove fixed positioning */
+        width: 100%; /* Use full width of the screen */
+        height: auto; /* Adjust height dynamically */
+        box-shadow: none; /* Remove shadow for simplicity */
+        border: none; /* Remove border for a cleaner look */
+    }
+
+    #note-input {
+        height: 60px; /* Further reduce the height of the input box */
+    }
+
+    #notes-list {
+        padding: 5px; /* Adjust padding for smaller screens */
+    }
+
+    .note {
+        padding: 6px; /* Reduce padding for individual notes */
+        margin-bottom: 8px; /* Adjust spacing between notes */
+    }
+}
+
+/* Responsive styles for tablets (screen width 768px and below) */
+@media (max-width: 768px) {
+    #notes-container {
+        position: static; /* Remove fixed positioning */
+        width: 100%; /* Use full width of the screen */
+        height: auto; /* Adjust height dynamically */
+        box-shadow: none; /* Remove shadow for simplicity */
+        border: none; /* Remove border for a cleaner look */
+        padding: 5px; /* Reduce padding */
+    }
+
+    #note-input {
+        height: 50px; /* Reduce the height of the input box */
+        padding: 8px; /* Adjust padding */
+    }
+
+    #save-note {
+        width: 100%; /* Make the save button full width */
+        padding: 8px; /* Adjust padding */
+    }
+
+    #notes-list {
+        padding: 5px; /* Adjust padding for smaller screens */
+    }
+
+    .note {
+        padding: 5px; /* Reduce padding for individual notes */
+        margin-bottom: 6px; /* Adjust spacing between notes */
+    }
+}
+
+/* Responsive styles for phones (screen width 480px and below) */
+@media (max-width: 480px) {
+    #notes-container {
+        width: 100%; /* Use full width of the screen */
+        padding: 5px; /* Reduce padding */
+    }
+
+    #note-input {
+        height: 40px; /* Further reduce the height of the input box */
+        font-size: 0.9rem; /* Adjust font size for smaller screens */
+    }
+
+    #save-note {
+        font-size: 0.9rem; /* Adjust font size for the save button */
+        padding: 6px; /* Adjust padding */
+    }
+
+    #notes-list {
+        padding: 4px; /* Reduce padding for the notes list */
+    }
+
+    .note {
+        padding: 4px; /* Reduce padding for individual notes */
+        margin-bottom: 5px; /* Adjust spacing between notes */
+        font-size: 0.9rem; /* Adjust font size for notes */
+    }
 }

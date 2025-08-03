@@ -6,11 +6,11 @@
     <title>Edit Client Current Enrollments</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="householdedit.css">
+    <link rel="stylesheet" href="incomeedit.css">
     <link rel="stylesheet" href="notes.css">
+    </head>
 
     <style>
-/* ...existing code... */
-
 .narrow-body {
         margin-left: 385px; /* Space for the left sidebar */
         margin-right: 10px; /* Optional: Space on the right */
@@ -22,12 +22,6 @@
 
 .household-member.no-questions {
     opacity: 0.5;
-}
-
-body {
-    max-width: 1200px; /* Adjust the max-width as needed */
-    margin: 0 auto;
-    padding: 20px;
 }
 
 .household-member-container {
@@ -72,25 +66,62 @@ body {
 .grayed-out {
     opacity: 0.5;
     pointer-events: none;
+}      
+
+.left-sidebar-containerr {
+    display: flex;
+    flex-direction: column; /* Stack the containers vertically */
+    align-items: flex-start; /* Align containers to the left */
+    border: #000000 1px solid; /* Optional: Border for separation */
+    box-shadow: 5px 0 5px rgba(0, 0, 0.1); /* Optional: Subtle shadow */
+    padding: 10px;
+    position: fixed; /* Position the container absolutely */
+    z-index: 1000; /* Ensure it appears above other content */
+    left: 0; /* Align it to the left side of the screen */
+    top: 80px; /* Adjusted to make space for the input box and save button */
+    width: 300px; /* Fixed width for the sidebar */
+    min-width: 300px; /* Ensure the sidebar has a minimum width */
+    height: calc(100vh - 70px); /* Dynamically adjust height based on the viewport */
+    overflow-y: auto; /* Enable vertical scrolling for overflow content */
+    padding: 10px;
+    pointer-events: auto; /* Ensure the container captures scroll events */
+    text-align: center; /* Center all text */
+    background-color: #f9f9f9; /* Optional: Background color */
+    border-right: 1px solid #000000; /* Optional: Border for separation */
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1); /* Optional: Subtle shadow */
 }
 
+.left-sidebarr {
+    display: flex; /* Enable Flexbox */
+    min-width: 90%; /* Set width to 95% of the sidebar */
+    width: 90%; /* Set width to 95% of the sidebar */
+    flex-direction: column; /* Stack items vertically */
+    border: #000000 1px solid; /* Optional: Border for separation */
+    box-shadow: 5px 0 5px rgba(0, 0, 0.1); /* Optional: Subtle shadow */
+    padding: 10px;
+    align-items: center; /* Center items horizontally */
+    z-index: 1000; /* Ensure it appears above other content */
+    background-color: #f9f9f9;
+    border-right: 1px solid #000000;
+    padding: 15px;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    margin: 0 auto; /* Center horizontally */
+    text-align: center; /* Center all text */
+}
 
-
-/* ...existing code... */
-        
     </style>
 </head>
 <body class="narrow-body">
 
     <h1>Current Enrollments</h1>
 
-<div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
-    <div id="household-members-container" class="left-sidebar"></div>
-    <div id="snap-household-container" class="left-sidebar"></div>
+<div class="left-sidebar-containerr" id="leftSidebarContainer" style="display: none;">
+    <div id="household-members-container" class="left-sidebarr"></div>
+    <div id="snap-household-container" class="left-sidebarr"></div>
 </div>
 
 <div id="notes-container">
-    <textarea id="note-input" placeholder="Write your note here..."></textarea>
+    <textarea id="note-input" placeholder="Add Note..."></textarea>
     <button id="save-note">Save Note</button>
     <div id="notes-list">
         </div>
@@ -103,6 +134,24 @@ body {
         <button id="save-exit" onclick="redirecttoCurrentEnrollments()">Save and Release Profile</button>
         <button id="save-continue" onclick="gotoIncome()">Save and Continue</button> <br>
     </div>
+
+    <style>
+        /* Add a border to the Save and Release Profile and Save and Continue buttons */
+        #save-exit, #save-continue {
+            border: 1px solid #000000;
+            border-radius: 5px; /* Rounded corners */
+            padding: 10px 20px; /* Add padding for better spacing */
+            background-color: #007bff; /* Light background color */
+            color: white; /* Blue text color */
+            transition: background-color 0.3s, color 0.3s; /* Smooth hover effect */
+        }
+    
+        /* Hover effect for the buttons */
+        #save-exit:hover, #save-continue:hover {
+            background-color: #0056b3; /* Blue background on hover */
+            color: white; /* White text on hover */
+        }
+    </style>
 
     <script src="estimations.js"></script>
 

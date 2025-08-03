@@ -41,27 +41,41 @@
     color: white;
 }
 .modal {
-    display: none;
+    display: none; /* Hidden by default */
     position: fixed;
-    z-index: 1;
+    z-index: 1000;
+    margin:auto;
     left: 0;
+    right: 0;
     top: 0;
     width: 100%;
     height: 100%;
-    overflow: auto;
-    background-color: rgb(0,0,0);
-    background-color: rgba(0,0,0,0.4);
-    padding-top: 60px;
+    overflow-y: auto;
+    scrollbar-width: none; /* For Firefox */
+    -ms-overflow-style: none; /* For Internet Explorer and Edge */
+        transform: scale(0.9); /* Scale down to 75% */
+    transform-origin: center; /* Ensure scaling happens from the center */
 }
+
+::-webkit-scrollbar {
+    display: none; /* For Chrome, Safari, and Opera */
+}
+
+/* Ensure the modal-content is properly centered and styled */
 .modal-content {
-    background-color: #fefefe;
-    margin: 5% auto;
-    padding: 20px;
-    border: 1px solid #888;
-    width: 80%;
-    max-width: 500px;
+    position: fixed;
+    background-color: #f9f9f9;
+    margin: auto;
+    left: 0;
+    right: 0;
+    top: 100px;
+    width: 90%;
+    max-width: 90%;
+    animation: fadeIn 0.3s ease-in-out;
 }
+
 .close {
+    display: hidden;
     color: #aaa;
     float: right;
     font-size: 28px;
@@ -69,6 +83,7 @@
 }
 .close:hover,
 .close:focus {
+    display: hidden;
     color: black;
     text-decoration: none;
     cursor: pointer;
@@ -169,7 +184,7 @@ select:focus, input:focus {
 
 /* Submit button styling */
 .submit-button {
-    background-color: #4CAF50; /* Green background */
+    background-color: #007bff; /* blue background */
     color: white;
     border: none;
     padding: 12px 20px;
@@ -208,18 +223,11 @@ select:focus, input:focus {
     flex-direction: column;
     min-width: 90%; /* Ensure the box takes full width */
     padding: 20px;
-    border: 1px solid #ccc;
+    border: 1px solid #000000;
     border-radius: 0px;
     background-color: #f9f9f9;
     align-items: center; /* Center the content horizontally */
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Optional: Add a subtle shadow for better appearance */
-}
-
-.household-member-box h3 {
-    font-size: 18px;
-    margin-bottom: 10px;
-    color: #333;
-    text-align: center; /* Center the heading */
 }
 
 .household-member-box p {
@@ -227,32 +235,6 @@ select:focus, input:focus {
     font-size: 14px;
     color: #555;
     text-align: center; /* Center the text */
-}
-
-
-
-/* Completely hide the h2 and any extra space it might create */
-.modal-content h2 {
-    display: none;
-    margin: 0;
-    padding: 0;
-}
-
-/* Close button styling */
-.close {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    background-color: transparent; /* Transparent background for a cleaner look */
-    color: #333; /* Neutral color for the close icon */
-    border: none;
-    font-size: 20px;
-    cursor: pointer;
-    font-weight: bold;
-}
-
-.close:hover {
-    color: #ff4d4d; /* Red hover effect */
 }
 
 /* Input field styling */
@@ -276,7 +258,7 @@ select, input {
 }
 
 select:focus, input:focus {
-    border-color: #4CAF50; /* Green border on focus */
+    border-color: #0056b3; /* Green border on focus */
     outline: none;
 }
 
@@ -294,9 +276,9 @@ select:focus, input:focus {
 
 /* Submit button styling */
 .submit-button {
-    background-color: #4CAF50; /* Green background */
+    background-color: #007bff; /* Green background */
     color: white;
-    border: none;
+    border: solid 1px #000000;;
     padding: 12px 20px;
     border-radius: 6px;
     font-size: 16px;
@@ -306,26 +288,10 @@ select:focus, input:focus {
 }
 
 .submit-button:hover {
-    background-color: #45a049;
+    background-color: #0056b3;
 }
 
 
-
-/* Add smooth fade-in animation for the modal */
-.modal-content {
-    animation: fadeIn 0.3s ease-in-out;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: scale(0.9);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
 
 .button-container {
     display: flex;
@@ -336,14 +302,16 @@ select:focus, input:focus {
 .edit-member-button,
 .delete-member-button {
     display: inline-block;
+    align-self: center; /* Center the buttons */
     width: 100px; /* Set a fixed width */
     height: 40px; /* Set a fixed height */
     padding: 5px 10px;
     font-size: 14px; /* Ensure consistent font size */
     text-align: center;
     cursor: pointer;
-    border: none;
+    border: 1px solid #000000;
     border-radius: 5px; /* Optional: Add rounded corners */
+    transition: background-color 0.3s ease; /* Smooth transition for hover effect */
 }
 
 .edit-member-button {
@@ -351,7 +319,15 @@ select:focus, input:focus {
     color: white;
 }
 
+.edit-member-button:hover {
+    background-color: #0056b3; /* Darker blue on hover */
+}
+
 .delete-member-button {
     background-color: #dc3545; /* Red background for Delete */
     color: white;
+}
+
+.delete-member-button:hover {
+    background-color: #a71d2a; /* Darker red on hover */
 }

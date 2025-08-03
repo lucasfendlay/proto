@@ -29,19 +29,68 @@ async function checkAndAddSelfButton(clientData) {
         addSelfButton.id = 'add-self-button';
         addSelfButton.textContent = 'Add Primary Client as Household Member';
         addSelfButton.style.marginBottom = '10px';
+        addSelfButton.style.border = '1px solid black'; // Add a solid black border
+addSelfButton.style.transition = 'background-color 0.3s ease, color 0.3s ease'; // Smooth transition for hover effects
+
+// Add hover effect using JavaScript
+addSelfButton.addEventListener('mouseover', () => {
+    addSelfButton.style.backgroundColor = '#0056b3'; // Light gray background on hover
+    addSelfButton.style.color = 'white'; // Ensure text color is black
+});
+
+addSelfButton.addEventListener('mouseout', () => {
+    addSelfButton.style.backgroundColor = ''; // Reset background color
+    addSelfButton.style.color = ''; // Reset text color
+});
 
         // Add the button above the householdMemberContainer
         householdMemberContainer.parentNode.insertBefore(addSelfButton, householdMemberContainer);
 
         // Add click event listener to the button
         addSelfButton.addEventListener('click', async () => {
-            await prepareHouseholdMemberModal(); // Prepare the modal
-            // Set up the button for adding a new member
-            setupAddOrUpdateButton(false);
-
-            document.getElementById('firstName').value = clientData.firstName; // Autofill first name
-            document.getElementById('lastName').value = clientData.lastName; // Autofill last name
-            document.getElementById('householdMemberModal').style.display = 'block'; // Show the modal
+            const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
+            if (!clientId) {
+                console.error('Client ID not found in query parameters.');
+                return;
+            }
+        
+            try {
+                // Fetch the client data to check household size
+                const response = await fetch(`/get-client/${clientId}`);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch client data: ${response.statusText}`);
+                }
+                const clientData = await response.json();
+        
+                if (!clientData) {
+                    console.error('Client data not found.');
+                    return;
+                }
+        
+                // Check if the number of household members exceeds the household size
+                if (clientData.householdMembers.length >= clientData.householdSize) {
+                    alert('The number of household members cannot exceed the selected household size.');
+                    return;
+                }
+        
+                // Set the modal to "Add" mode
+                setModalHeader('add');
+        
+                // Prepare the modal
+                await prepareHouseholdMemberModal();
+        
+                // Autofill first and last name
+                document.getElementById('firstName').value = clientData.firstName;
+                document.getElementById('lastName').value = clientData.lastName;
+        
+                // Set up the button for adding a new member
+                setupAddOrUpdateButton(false);
+        
+                // Show the modal
+                document.getElementById('householdMemberModal').style.display = 'block';
+            } catch (error) {
+                console.error('Error fetching client data:', error);
+            }
         });
     }
 }
@@ -118,7 +167,9 @@ ${member.nonCitizenStatus && member.nonCitizenStatus.toLowerCase() !== 'citizen'
 ${member.studentStatus.toLowerCase() !== 'notstudent' ? `<p class="household-member-info"><strong>Student Status:</strong> ${capitalizeFirstLetter(member.studentStatus)}</p>` : ''}    <p class="household-member-info"><strong>Included in SNAP Household:</strong> ${capitalizeFirstLetter(member.meals)}</p>
     <div class="button-container">
         <button class="edit-member-button" data-member-id="${member.householdMemberId}">Edit</button>
-        <button class="delete-member-button" data-member-id="${member.householdMemberId}" style="color: white; background-color: red">Delete</button>
+        <button class="delete-member-button" data-member-id="${member.householdMemberId}" style="color: white; background-color: red" 
+    onmouseover="this.style.backgroundColor='darkred'" 
+    onmouseout="this.style.backgroundColor='red'">Delete</button>
     </div>
 `;
             
@@ -443,8 +494,54 @@ async function prepareHouseholdMemberModal() {
     }
 }
 
+document.getElementById('add-household-member').addEventListener('click', async () => {
+    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
+
+    try {
+        // Fetch the client data to check household size
+        const response = await fetch(`/get-client/${clientId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client data: ${response.statusText}`);
+        }
+        const clientData = await response.json();
+
+        if (!clientData) {
+            console.error('Client data not found.');
+            return;
+        }
+
+        // Check if the number of household members exceeds the household size
+        if (clientData.householdMembers.length >= clientData.householdSize) {
+            alert('The number of household members cannot exceed the selected household size.');
+            return;
+        }
+
+        // If validation passes, open the modal in "Add" mode
+        setModalHeader('add');
+        await prepareHouseholdMemberModal(); // Clear and prepare the modal
+        setupAddOrUpdateButton(false); // Set up the button for adding a new member
+        document.getElementById('householdMemberModal').style.display = 'block'; // Show the modal
+    } catch (error) {
+        console.error('Error fetching client data:', error);
+    }
+});
+
+function setModalHeader(mode) {
+    const modalHeader = document.getElementById('modal-header');
+    if (mode === 'edit') {
+        modalHeader.textContent = 'Edit Household Member';
+    } else {
+        modalHeader.textContent = 'Add Household Member';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const addHouseholdMemberButton = document.getElementById('add-household-member');
+    setModalHeader('add');
     const householdMemberModal = document.getElementById('householdMemberModal');
     const closeModalButton = document.getElementById('closeHouseholdMemberModal');
 
@@ -673,6 +770,7 @@ function setupAddOrUpdateButton(isEditing, member = null) {
 }
 
 async function openEditModal(member) {
+    setModalHeader('edit'); // Set the modal header to "Edit Household Member"
     const householdMemberModal = document.getElementById('householdMemberModal');
     const addMemberButton = document.getElementById('add-member');
     const nonCitizenStatusContainer = document.getElementById('nonCitizenStatusContainer');

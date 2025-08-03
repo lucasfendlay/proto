@@ -9,6 +9,18 @@
     <link rel="stylesheet" href="notes.css">
     <style>
 
+.button-container button {
+    border: 1px solid #000000; /* Add a blue border */
+    border-radius: 5px; /* Optional: Add rounded corners */
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; /* Smooth transition for hover effects */
+}
+
+.button-container button:hover {
+    background-color: #0056b3; /* Darker blue background on hover */
+    color: white; /* Ensure text is visible */
+    border-color: #003f7f; /* Darker border color on hover */
+}
+
 .error {
     border: 2px solid red;
 }
@@ -42,7 +54,6 @@ body {
             /* Modal content styling */
 .modal-content {
     background-color: #ffffff;
-    padding: 20px;
     border-radius: 10px;
     width: 100%;
     max-width: 500px;
@@ -51,16 +62,6 @@ body {
     text-align: center;
 }
 
-/* Style for the h2 inside the modal */
-.modal-content h2 {
-    font-size: 24px;
-    font-weight: bold;
-    margin-bottom: 20px;
-    color: #333;
-    text-align: center;
-    border-bottom: 2px solid #4CAF50; /* Add a green underline */
-    padding-bottom: 10px;
-}
 .narrow-body {
         margin-left: 385px; /* Space for the left sidebar */
         margin-right: 10px; /* Optional: Space on the right */
@@ -88,7 +89,7 @@ body {
 </div>
 
 <div id="notes-container">
-    <textarea id="note-input" placeholder="Write your note here..."></textarea>
+    <textarea id="note-input" placeholder="Add Note..."></textarea>
     <button id="save-note">Save Note</button>
     <div id="notes-list">
         </div>
@@ -174,9 +175,10 @@ body {
 
 <div id="householdMemberModal" class="modal">
     <div class="modal-content">
-        <span class="close" id="closeHouseholdMemberModal">&times;</span>
-        <h2 id="householdMemberModalTitle">Add Household Member</h2>
         <form id="householdMemberForm">
+
+            <h2 id="modal-header">Add Household Member</h2>
+
             <input type="hidden" id="householdMemberId">
             <label for="firstName">First Name:</label>
             <input type="text" id="firstName" name="firstName"><br><br>
@@ -282,13 +284,9 @@ body {
                 <div id="modal-meals-yes" data-value="yes">Yes</div>
                 <div id="modal-meals-no" data-value="no">No</div>
             </div>
+            <button type="button" id="add-member" class="submit-button">Add Member</button>
+
         </form>
-        <!-- Add a modal footer for buttons -->
-        <div class="modal-footer">
-            <button type="button" id="add-member">Add Member</button>
-        </div>
-    </div>
-</div>
 
     <script>
 // Function to get query parameter by name

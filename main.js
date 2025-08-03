@@ -622,18 +622,35 @@ app.get('/get-income/:memberId/:incomeId', async (req, res) => {
     }
 });
 
-// Delete income by ID
 app.delete('/delete-income', async (req, res) => {
-    const { clientId, memberId, incomeId } = req.body;
+    const { clientId, memberId, incomeId } = req.query;
+
+    console.log('Delete income request received:', { clientId, memberId, incomeId });
+
+    if (!clientId || !memberId || memberId === "null" || !incomeId) {
+        return res.status(400).json({ success: false, message: 'Missing or invalid parameters.' });
+    }
 
     try {
         const collection = db.collection('clients');
+        console.log('Executing MongoDB query with filter:', {
+            id: clientId,
+            'householdMembers.householdMemberId': memberId
+        });
+        console.log('Pulling income with ID:', incomeId);
+
         const result = await collection.updateOne(
             { id: clientId, 'householdMembers.householdMemberId': memberId },
             { $pull: { 'householdMembers.$.income': { id: incomeId } } }
         );
 
-        res.json({ success: result.modifiedCount > 0 });
+        console.log('MongoDB update result:', result);
+
+        if (result.modifiedCount > 0) {
+            res.json({ success: true });
+        } else {
+            res.status(404).json({ success: false, message: 'Income not found or no changes made.' });
+        }
     } catch (error) {
         console.error('Error deleting income:', error);
         res.status(500).json({ success: false, message: error.message });

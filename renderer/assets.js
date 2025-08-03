@@ -113,8 +113,7 @@ async function saveAsset(memberId, asset) {
                                             <p><strong>Description:</strong> ${asset.description}</p>
                                             <p><strong>Value:</strong> $${asset.value}</p>
                                             <button class="edit-asset-button" data-member-id="${member.householdMemberId}" data-asset-id="${asset.id}">Edit</button>
-                                            <button class="delete-asset-button" data-member-id="${member.householdMemberId}" data-asset-id="${asset.id}" style="color: red;">Delete</button>
-                                        </li>
+<button class="delete-asset-button danger-button" data-member-id="${member.householdMemberId}" data-asset-id="${asset.id}">Delete</button>                                        </li>
                                     `).join('')
                                     : ''
                             }
@@ -267,6 +266,17 @@ alert('Failed to fetch asset details.');
     closeModal.addEventListener('click', () => {
         modal.classList.add('hidden');
         assetForm.reset();
+    });
+
+    document.addEventListener('click', (event) => {
+        const modalContent = document.querySelector('#asset-modal .modal-content'); // Replace '.modal-content' with the actual class or ID of your modal content
+        if (!modalContent.contains(event.target) && !event.target.closest('.add-asset-button') && !modal.classList.contains('hidden')) {
+            modal.classList.add('hidden'); // Hide the modal
+            assetForm.reset(); // Reset the form
+            isEditing = false; // Reset editing mode
+            editingAssetId = null; // Reset editing ID
+            addAssetButton.textContent = 'Add Asset'; // Reset button text
+        }
     });
 
     addAssetButton.addEventListener('click', async () => {

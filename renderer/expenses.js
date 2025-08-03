@@ -209,22 +209,43 @@ const memberState = {
         await window.eligibilityChecks.displaySNAPHouseholds();
     }
 
-// Close the shelter modal when clicking outside of it
-document.addEventListener('click', (event) => {
-    if (!modal.contains(event.target) && !event.target.closest('#shelter-modal') && !event.target.closest('.add-expense-button')) {
-        modal.classList.add('hidden');
-        isEditing = false;
-        currentExpenseId = null;
-        addExpenseButton.textContent = 'Add Expense'; // Reset button text
-    }
+
+// Generic function to close a modal when clicking outside its content or on the modal itself
+function setupModalClose(modalId, formId = null, additionalReset = null) {
+    document.addEventListener('click', (event) => {
+        const modal = document.getElementById(modalId);
+        if (modal && (event.target === modal || (!modal.contains(event.target) && !event.target.closest('.add-expense-button')))) {
+            modal.classList.add('hidden');
+            if (formId) {
+                document.getElementById(formId).reset(); // Reset the form if provided
+            }
+            if (additionalReset) {
+                additionalReset(); // Perform additional reset actions if provided
+            }
+        }
+    });
+}
+
+// Close the shelter modal
+setupModalClose('shelter-modal', 'shelter-form', () => {
+    isEditing = false; // Reset editing mode
+    currentExpenseId = null; // Reset editing ID
+    addExpenseButton.textContent = 'Add Expense'; // Reset button text
 });
 
-// Close the utility modal when clicking outside of it
-document.addEventListener('click', (event) => {
-    if (!utilityModal.contains(event.target) && !event.target.closest('#utility-modal') && !event.target.closest('.add-expense-button')) {
-        utilityModal.classList.add('hidden');
-    }
+// Close the utility modal
+setupModalClose('utility-modal', null, () => {
+    utilityExpenseList.querySelectorAll('.selection-box').forEach(box => box.classList.remove('selected')); // Deselect all utility types
 });
+
+// Close the medical modal
+setupModalClose('medical-modal', 'medical-form');
+
+// Close the other expense modal
+setupModalClose('other-modal', 'other-form');
+
+// Close the previous year expense modal
+setupModalClose('previous-year-modal', 'previous-year-form');
 
     function populateExpenses(expenses) {
         // Group expenses by type
@@ -250,13 +271,26 @@ document.addEventListener('click', (event) => {
                                 <p><strong>Start Date:</strong> ${expense.startDate}</p>
                                 <p><strong>End Date:</strong> ${expense.endDate}</p>
                                 <button class="edit-expense-button" data-expense-id="${expense.id}">Edit</button>
-                                <button class="delete-expense-button" data-expense-id="${expense.id}" style="color: white; background-color: red;">Delete</button>
+                                <button class="delete-expense-button" data-expense-id="${expense.id}" style="color: white; background-color: red;";>Delete</button>
                             </li>
                         `).join('')}
                     </ul>
                 </div>
             `;
         };
+
+        // Add event listeners for mouseover and mouseout to change the button color
+document.addEventListener('mouseover', (event) => {
+    if (event.target.classList.contains('delete-expense-button')) {
+        event.target.style.backgroundColor = 'darkred'; // Change to dark red on hover
+    }
+});
+
+document.addEventListener('mouseout', (event) => {
+    if (event.target.classList.contains('delete-expense-button')) {
+        event.target.style.backgroundColor = 'red'; // Restore original red color
+    }
+});
     
         // Render utility expenses separately (centered and simplified)
         const renderUtilityExpenses = (expenses) => {
@@ -278,6 +312,19 @@ document.addEventListener('click', (event) => {
                 </div>
             `;
         };
+
+        // Add event listeners for mouseover and mouseout to change the button color
+document.addEventListener('mouseover', (event) => {
+    if (event.target.classList.contains('delete-utility-expenses-button')) {
+        event.target.style.backgroundColor = 'darkred'; // Change to dark red on hover
+    }
+});
+
+document.addEventListener('mouseout', (event) => {
+    if (event.target.classList.contains('delete-utility-expenses-button')) {
+        event.target.style.backgroundColor = 'red'; // Restore original red color
+    }
+});
     
          // Combine all expense sections in the desired order
     return `

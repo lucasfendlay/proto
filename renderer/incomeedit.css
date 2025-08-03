@@ -3,7 +3,8 @@
     display: flex; /* Use flexbox for centering */
     position: fixed;
     inset: 0; /* Shorthand for top, right, bottom, left: 0 */
-    background-color: rgba(0, 0, 0, 0.6); /* Slightly darker semi-transparent background */
+    top: 100px;
+
     display: flex;
     justify-content: center;
     align-items: center;
@@ -19,30 +20,19 @@
     padding: 0px; /* Adjust padding for a cleaner look */
     border-radius: 0px;
     width: 100%;
+    justify-content: center;
+    align-items: center;
+    top: 100px;
     max-width: 450px;
     box-shadow: 0 rgba(0, 0, 0, 0.3);
     position: static;
     text-align: center;
 }
 
-/* Completely hide the h2 and any extra space it might create */
-.modal-content h2 {
-    display: none;
-    margin: 0;
-    padding: 0;
-}
 
 /* Close button styling */
 .close {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    background-color: transparent; /* Transparent background for a cleaner look */
-    color: #333; /* Neutral color for the close icon */
-    border: none;
-    font-size: 20px;
-    cursor: pointer;
-    font-weight: bold;
+    display: none; /* Hide by default */
 }
 
 .close:hover {
@@ -88,9 +78,9 @@ select:focus, input:focus {
 
 /* Submit button styling */
 .submit-button {
-    background-color: #4CAF50; /* Green background */
+    background-color: #007bff;
     color: white;
-    border: none;
+    border: 1px solid #000000;
     padding: 12px 20px;
     border-radius: 6px;
     font-size: 16px;
@@ -100,7 +90,7 @@ select:focus, input:focus {
 }
 
 .submit-button:hover {
-    background-color: #45a049;
+    background-color: #0056b3;
 }
 
 
@@ -194,5 +184,18 @@ select:focus, input:focus {
     color: #555;
     margin-bottom: 8px; /* Add more space between list items */
     line-height: 1.5; /* Increase line height for better spacing */
+}
+
+.danger-button {
+    background-color: red; /* Red background */
+    color: white; /* White text */
+    border: 1px solid #000000; /* Black border */
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.danger-button:hover {
+    background-color: #a71d2a; /* Darker red on hover */
 }
 

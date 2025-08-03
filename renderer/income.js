@@ -62,10 +62,19 @@ async function saveIncome(memberId, income) {
         }
 
         console.log(`Income saved for member ${memberId}:`, income);
-    } catch (error) {
-        console.error('Error saving income:', error);
-    }
-}
+
+                // Hide the modal after saving
+                const modal = document.getElementById('income-modal');
+                modal.classList.add('hidden'); // Add the 'hidden' class
+                modal.style.display = 'none'; // Ensure the modal is hidden
+        
+                // Optionally reset the form
+                const incomeForm = document.getElementById('income-form');
+                incomeForm.reset(); // Clear all input fields in the form
+            } catch (error) {
+                console.error('Error saving income:', error);
+            }
+        }
 
     async function displayHouseholdMembers() {
         const householdMemberContainer = document.getElementById('household-member-container');
@@ -119,7 +128,7 @@ async function saveIncome(memberId, income) {
                                                     <p><strong>Start Date:</strong> ${income.startDate}</p>
                                                     <p><strong>End Date:</strong> ${income.endDate}</p>
                                                     <button class="edit-income-button" data-member-id="${member.householdMemberId}" data-income-id="${income.id}">Edit</button>
-                                                    <button class="delete-income-button" data-member-id="${member.householdMemberId}" data-income-id="${income.id}" style="color: red;">Delete</button>
+            <button class="delete-income-button danger-button" data-member-id="${member.householdMemberId}" data-income-id="${income.id}">Delete</button>
                                                 </li>
                                             `).join('')}
                                     </ul>
@@ -150,6 +159,8 @@ async function saveIncome(memberId, income) {
     
                 householdMemberContainer.appendChild(memberDiv);
             });
+
+            attachDeleteIncomeListeners(); // Attach delete listeners after rendering members
     
             // Attach event listeners for Edit and Delete buttons
 document.querySelectorAll('.edit-income-button').forEach(button => {
@@ -167,6 +178,8 @@ document.querySelectorAll('.edit-income-button').forEach(button => {
             }
 
             const fetchedIncome = await response.json();
+            currentIncomeType = fetchedIncome.type;
+
 
             if (fetchedIncome) {
                 // Populate modal with income details
@@ -181,9 +194,11 @@ document.querySelectorAll('.edit-income-button').forEach(button => {
                 editingIncomeId = incomeId; // Set editing ID
                 isEditing = true; // Set editing mode
 
-                modalTitle.textContent = `Edit Income`;
+                modalTitle.textContent = `Edit ${fetchedIncome.type} Year Income`;
                 addIncomeButton.textContent = 'Save and Update'; // Change button text
                 modal.classList.remove('hidden');
+                modal.style.display = 'block'; // Ensure the modal is visible
+
             } else {
                 alert('Failed to fetch income details.');
             }
@@ -195,35 +210,48 @@ document.querySelectorAll('.edit-income-button').forEach(button => {
 });
     
             // Add event listeners for income buttons
-            document.querySelectorAll('.add-income-button').forEach(button => {
-                button.addEventListener('click', function () {
-                    currentMemberId = this.dataset.memberId;
-                    currentIncomeType = this.dataset.type;
-    
-                    modalTitle.textContent = `Add ${currentIncomeType === 'Current' ? 'Current Year' : 'Previous Year'} Income`;
-    
-                    // Set Start Date based on income type
-                    const startDate = currentIncomeType === 'Current'
-                        ? '2025-01-01' // 1st of January 2025
-                        : '2024-01-01'; // 1st of January 2024
-                    document.getElementById('income-start-date').value = startDate;
-    
-                    // Set End Date based on income type
-                    const endDate = currentIncomeType === 'Current'
-                        ? '2025-12-31' // Default to December 31, 2025, for current income
-                        : '2024-12-31'; // Default to December 31, 2024, for previous income
-                    document.getElementById('income-end-date').value = endDate;
-    
-                    modal.classList.remove('hidden');
-                });
-            });
+// Use event delegation for add-income-button
+document.getElementById('household-member-container').addEventListener('click', function (event) {
+    if (event.target.classList.contains('add-income-button')) {
+        // Reset the modal fields
+        incomeForm.reset(); // Clear all input fields in the form
+        isEditing = false; // Ensure editing mode is disabled
+        editingIncomeId = null; // Clear any previously set editing ID
+        addIncomeButton.textContent = 'Add Income'; // Reset button text
+
+        // Set the current member and income type
+        currentMemberId = event.target.dataset.memberId;
+        currentIncomeType = event.target.dataset.type;
+
+        // Update the modal title
+        modalTitle.textContent = `Add ${currentIncomeType === 'Current' ? 'Current Year' : 'Previous Year'} Income`;
+
+        // Set default start and end dates based on income type
+        const startDate = currentIncomeType === 'Current'
+            ? '2025-01-01' // 1st of January 2025
+            : '2024-01-01'; // 1st of January 2024
+        document.getElementById('income-start-date').value = startDate;
+
+        const endDate = currentIncomeType === 'Current'
+            ? '2025-12-31' // 31st of December 2025
+            : '2024-12-31'; // 31st of December 2024
+        document.getElementById('income-end-date').value = endDate;
+
+        // Show the modal
+        modal.classList.remove('hidden');
+        modal.style.display = 'block';
+    }
+});
         }
     }
 
-    // Close modal
     closeModal.addEventListener('click', () => {
-        modal.classList.add('hidden');
-        incomeForm.reset();
+        modal.classList.add('hidden'); // Add the 'hidden' class
+        modal.style.display = 'none'; // Hide the modal
+        incomeForm.reset(); // Reset the form
+        isEditing = false; // Reset editing mode
+        editingIncomeId = null; // Reset editing ID
+        addIncomeButton.textContent = 'Add Income'; // Reset button text
     });
 
     let isEditing = false; // Track whether the modal is in edit mode
@@ -256,6 +284,15 @@ addIncomeButton.addEventListener('click', async () => {
                         updatedIncome: income
                     })
                 });
+
+                // Hide the modal after saving
+        const modal = document.getElementById('income-modal');
+        modal.classList.add('hidden'); // Add the 'hidden' class
+        modal.style.display = 'none'; // Ensure the modal is hidden
+
+        // Optionally reset the form
+        const incomeForm = document.getElementById('income-form');
+        incomeForm.reset(); // Clear all input fields in the form
     
                 if (!response.ok) {
                     throw new Error('Failed to update income.');
@@ -312,13 +349,14 @@ incomeItem.innerHTML = `
     <p><strong>Start Date:</strong> ${income.startDate}</p>
     <p><strong>End Date:</strong> ${income.endDate}</p>
     <button class="edit-income-button" data-member-id="${currentMemberId}" data-income-id="${income.id}">Edit</button>
-    <button class="delete-income-button" data-member-id="${currentMemberId}" data-income-id="${income.id}" style="color: red;">Delete</button>
+    <button class="delete-income-button danger-button" data-member-id="${currentMemberId}" data-income-id="${income.id}">Delete</button>
 `;
 
 incomeList.appendChild(incomeItem);
 
-// Add event listeners for the new Edit and Delete buttons
-attachIncomeEventListeners(incomeItem);
+// Attach event listeners for the new Edit and Delete buttons
+attachIncomeEventListeners(incomeItem); // Attach edit listener for the new income item
+attachDeleteIncomeListeners(); // Reattach delete listeners for all delete buttons
 
 // Close the modal and reset the form
 modal.classList.add('hidden'); // Close the modal
@@ -347,17 +385,20 @@ incomeForm.reset(); // Reset the form
 function attachIncomeEventListeners(incomeItem) {
     incomeItem.querySelector('.edit-income-button').addEventListener('click', async function () {
         const incomeId = this.dataset.incomeId;
+        const memberId = this.dataset.memberId;
         const BACKEND_URL = window.location.origin || "http://localhost:3000";
 
+        console.log('Edit button clicked with:', { incomeId, memberId });
 
         try {
             // Fetch income details from the backend API
-            const response = await fetch(`${BACKEND_URL}/get-income/${currentMemberId}/${incomeId}`);
+            const response = await fetch(`${BACKEND_URL}/get-income/${memberId}/${incomeId}`);
             if (!response.ok) {
                 throw new Error('Failed to fetch income details.');
             }
 
             const fetchedIncome = await response.json();
+            console.log('Fetched income details:', fetchedIncome);
 
             if (fetchedIncome) {
                 // Populate modal with income details
@@ -367,13 +408,18 @@ function attachIncomeEventListeners(incomeItem) {
                 document.getElementById('income-end-date').value = fetchedIncome.endDate;
                 document.getElementById('income-amount').value = fetchedIncome.amount;
 
-                currentIncomeType = fetchedIncome.type;
-                editingIncomeId = incomeId;
-                isEditing = true;
+                currentMemberId = memberId; // Set current member ID
+                currentIncomeType = fetchedIncome.type; // Set current income type (e.g., "Current" or "Previous")
+                editingIncomeId = incomeId; // Set editing ID
+                isEditing = true; // Set editing mode
 
-                modalTitle.textContent = `Edit Income`;
+                // Update the modal title dynamically based on the income type
+                const incomeTypeText = fetchedIncome.type === 'Current' ? 'Current Year' : 'Previous Year';
+                modalTitle.textContent = `Edit ${incomeTypeText} Income`;
+
                 addIncomeButton.textContent = 'Save and Update'; // Change button text
                 modal.classList.remove('hidden');
+                modal.style.display = 'block'; // Ensure the modal is visible
             } else {
                 alert('Failed to fetch income details.');
             }
@@ -389,59 +435,64 @@ function attachIncomeEventListeners(incomeItem) {
         return urlParams.get(name);
     }
 
-// Attach event listener for delete buttons
-document.addEventListener('click', async function (event) {
-    if (event.target.classList.contains('delete-income-button')) {
-        const incomeId = event.target.dataset.incomeId;
-        const memberId = event.target.dataset.memberId;
-        const BACKEND_URL = window.location.origin || "http://localhost:3000";
+    function attachDeleteIncomeListeners() {
+        document.querySelectorAll('.delete-income-button').forEach(button => {
+            button.addEventListener('click', async function () {
+                const incomeId = this.dataset.incomeId;
+                const memberId = this.dataset.memberId;
+    
+                console.log('Delete button clicked with:', { incomeId, memberId });
+    
+                if (!incomeId || !memberId || memberId === "null") {
+                    alert('Missing or invalid income or member ID.');
+                    return;
+                }
+    
+                const confirmDelete = confirm('Are you sure you want to delete this income?');
+                if (!confirmDelete) return;
+    
+                try {
+                    console.log('Sending DELETE request with:', { clientId, memberId, incomeId });
+    
+                    const response = await fetch(`${BACKEND_URL}/delete-income?clientId=${clientId}&memberId=${memberId}&incomeId=${incomeId}`, {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+    
+                    if (!response.ok) {
+                        const errorMessage = await response.text();
+                        console.error('Backend error response:', errorMessage);
+                        throw new Error('Failed to delete income.');
+                    }
+    
+                    console.log('Income deleted successfully from the database.');
+                    const incomeItem = document.querySelector(`[data-income-id="${incomeId}"]`);
+                    if (incomeItem) {
+                        incomeItem.remove();
 
+                        const members = await loadHouseholdMembers();
+        await window.eligibilityChecks.PACEEligibilityCheck(members);
+        await window.eligibilityChecks.LISEligibilityCheck(members);
+        await window.eligibilityChecks.MSPEligibilityCheck(members);
+        await window.eligibilityChecks.PTRREligibilityCheck(members);
+        await window.eligibilityChecks.SNAPEligibilityCheck(members);
 
-        // Retrieve the clientId from the query parameter
-        const clientId = getQueryParameter('id'); // Get the client ID from the query parameter
+        console.log('Eligibility Checks:', window.eligibilityChecks);
 
-        // Confirm deletion
-        const confirmDelete = confirm('Are you sure you want to delete this income entry?');
-        if (!confirmDelete) return;
-
-        try {
-            // Delete income from the backend API
-            const response = await fetch(`${BACKEND_URL}/delete-income`, {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clientId, memberId, incomeId })
+        // Update the UI
+        await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
+        await window.eligibilityChecks.displaySNAPHouseholds();
+                    }
+                    } catch (error) {
+                    console.error('Error deleting income:', error);
+                    alert('Failed to delete income. Please try again.');
+                }
             });
-
-            if (!response.ok) {
-                throw new Error('Failed to delete income.');
-            }
-
-            // Call displayHouseholdMembers to refresh the UI
-            await displayHouseholdMembers();
-
-            // Run eligibility checks and update the UI
-            const members = await loadHouseholdMembers();
-            await window.eligibilityChecks.PACEEligibilityCheck(members);
-            await window.eligibilityChecks.LISEligibilityCheck(members);
-            await window.eligibilityChecks.MSPEligibilityCheck(members);
-            await window.eligibilityChecks.PTRREligibilityCheck(members);
-            await window.eligibilityChecks.SNAPEligibilityCheck(members);
-
-            console.log('Eligibility Checks:', window.eligibilityChecks);
-
-            // Update the UI
-            await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
-            await window.eligibilityChecks.displaySNAPHouseholds();
-
-            console.log(`Income with ID ${incomeId} deleted successfully.`);
-        } catch (error) {
-            console.error('Error deleting income:', error);
-            alert('Failed to delete income. Please try again.');
-        }
+        });
     }
-});
 
     // Display household members on page load
     await displayHouseholdMembers();
 
 });
+
