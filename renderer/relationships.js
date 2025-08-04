@@ -115,26 +115,6 @@ document.addEventListener('DOMContentLoaded', async function () {
                     console.log(`Updated meals for spouse: ${relatedMemberId}`);
                 }
     
-                // Check for grandchild/grandparent relationship and age condition
-                if ((relationship === 'grandchild' || relationship === 'grandparent') && relatedMemberAge < 18) {
-                    relatedMember.meals = 'yes';
-    
-                    // Save the updated meals property
-                    await fetch(`/update-household-member`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            clientId,
-                            memberId: relatedMemberId,
-                            updatedData: { meals: 'yes' },
-                        }),
-                    });
-    
-                    console.log(`Updated meals for grandchild/grandparent: ${relatedMemberId}`);
-                }
-    
                 // Check for parent/child relationship and age condition
                 if ((relationship === 'parent' || relationship === 'child') && relatedMemberAge < 22) {
                     relatedMember.meals = 'yes';
@@ -154,8 +134,64 @@ document.addEventListener('DOMContentLoaded', async function () {
     
                     console.log(`Updated meals for parent/child: ${relatedMemberId}`);
                 }
+
+                if ((relationship === 'step-parent' || relationship === 'step-child') && relatedMemberAge < 22) {
+                    relatedMember.meals = 'yes';
     
-                // Additional relationship checks (step-child, adopted child, etc.) can follow the same pattern
+                    // Save the updated meals property
+                    await fetch(`/update-household-member`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            clientId,
+                            memberId: relatedMemberId,
+                            updatedData: { meals: 'yes' },
+                        }),
+                    });
+    
+                    console.log(`Updated meals for step-parent/step-child: ${relatedMemberId}`);
+                }
+
+                if ((relationship === 'adoptive parent' || relationship === 'adopted child') && relatedMemberAge < 22) {
+                    relatedMember.meals = 'yes';
+
+                    // Save the updated meals property
+                    await fetch(`/update-household-member`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            clientId,
+                            memberId: relatedMemberId,
+                            updatedData: { meals: 'yes' },
+                        }),
+                    });
+
+                    console.log(`Updated meals for adoptive parent/adopted child: ${relatedMemberId}`);
+                }
+
+                if ((relationship === 'guardian' || relationship === 'ward') && relatedMemberAge < 18) {
+                    relatedMember.meals = 'yes';
+    
+                    // Save the updated meals property
+                    await fetch(`/update-household-member`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            clientId,
+                            memberId: relatedMemberId,
+                            updatedData: { meals: 'yes' },
+                        }),
+                    });
+    
+                    console.log(`Updated meals for guardian/ward: ${relatedMemberId}`);
+                }
+    
             }
     
             // Trigger eligibility checks
