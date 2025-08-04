@@ -84,38 +84,64 @@ async function saveIncome(memberId, income) {
     
                 // Populate member details
                 memberDiv.innerHTML = `
-                    <h3>${member.firstName} ${member.middleInitial || ''} ${member.lastName}</h3>
-                    <p><strong>Date of Birth:</strong> ${member.dob || 'N/A'}</p>
-                    <p><strong>Marital Status:</strong> ${member.maritalStatus || 'N/A'}</p>
-                    <div class="income-list">
-                        ${
-                            member.income && Array.isArray(member.income) && member.income.length > 0
-                                ? `
-                                    <h4>Income:</h4>
-                                    <ul id="income-list-${member.householdMemberId}">
-                                        ${member.income
-                                            .sort((a, b) => {
-                                                // Sort by type: "Current" first, then "Previous"
-                                                if (a.type === "Current" && b.type === "Previous") return -1;
-                                                if (a.type === "Previous" && b.type === "Current") return 1;
-                                                return 0; // Keep the order for other cases
-                                            })
-                                            .map(income => `
-                                                <li data-income-id="${income.id}">
-                                                    <p><strong>Income Type:</strong> ${income.type}</p>
-                                                    <p><strong>Income Kind:</strong> ${income.kind}</p>
-                                                    <p><strong>Amount:</strong> $${income.amount}</p>
-                                                    <p><strong>Frequency:</strong> ${income.frequency}</p>
-                                                    <p><strong>Start Date:</strong> ${income.startDate}</p>
-                                                    <p><strong>End Date:</strong> ${income.endDate}</p>
-                                                </li>
-                                            `).join('')}
-                                    </ul>
-                                `
-                                : '<p></p>'
-                        }
-                    </div>
-                `;
+    <h3>${member.firstName} ${member.middleInitial || ''} ${member.lastName}</h3>
+    <p><strong>Date of Birth:</strong> ${member.dob || 'N/A'}</p>
+    <p><strong>Marital Status:</strong> ${member.maritalStatus || 'N/A'}</p>
+    <div class="income-list">
+        ${
+            member.income && Array.isArray(member.income) && member.income.length > 0
+                ? `
+                    ${
+                        member.income.some(income => income.type === "Current")
+                            ? `
+                                <h4>Current Year Income:</h4>
+                                <ul id="current-income-list-${member.householdMemberId}">
+                                    ${member.income
+                                        .filter(income => income.type === "Current")
+                                        .map(income => `
+                                            <li data-income-id="${income.id}">
+                                                <p><strong>Income Type:</strong> ${income.type}</p>
+                                                <p><strong>Income Kind:</strong> ${income.kind}</p>
+                                                <p><strong>Amount:</strong> $${income.amount}</p>
+                                                <p><strong>Frequency:</strong> ${income.frequency}</p>
+                                                <p><strong>Start Date:</strong> ${income.startDate}</p>
+                                                <p><strong>End Date:</strong> ${income.endDate}</p>
+                                                <div class="button-container">
+                                                </div>
+                                            </li>
+                                        `).join('')}
+                                </ul>
+                            `
+                            : ''
+                    }
+                    ${
+                        member.income.some(income => income.type === "Previous")
+                            ? `
+                                <h4>Previous Year Income:</h4>
+                                <ul id="previous-income-list-${member.householdMemberId}">
+                                    ${member.income
+                                        .filter(income => income.type === "Previous")
+                                        .map(income => `
+                                            <li data-income-id="${income.id}">
+                                                <p><strong>Income Type:</strong> ${income.type}</p>
+                                                <p><strong>Income Kind:</strong> ${income.kind}</p>
+                                                <p><strong>Amount:</strong> $${income.amount}</p>
+                                                <p><strong>Frequency:</strong> ${income.frequency}</p>
+                                                <p><strong>Start Date:</strong> ${income.startDate}</p>
+                                                <p><strong>End Date:</strong> ${income.endDate}</p>
+                                                <div class="button-container">
+                                                </div>
+                                            </li>
+                                        `).join('')}
+                                </ul>
+                            `
+                            : ''
+                    }
+                `
+                : '<p>No income records available.</p>'
+        }
+    </div>
+`;
     
                 
     
