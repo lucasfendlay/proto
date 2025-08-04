@@ -181,6 +181,63 @@
             </form>
         </div>
     </div>
+    <style>
+    /* Style for the income list container */
+.income-list {
+    list-style-type: none; /* Remove default bullet points */
+    padding: 0; /* Remove default padding */
+    margin: 0; /* Remove default margin */
+}
+
+/* Style for each income list item */
+.income-list li {
+    display: grid; /* Use CSS Grid for layout */
+    grid-template-columns: repeat(6, 1fr); /* Define 6 equal columns */
+    grid-auto-rows: minmax(40px, auto); /* Ensure consistent row height */
+    gap: 10px; /* Add spacing between grid items */
+    padding: 10px; /* Add padding inside each item */
+    margin-bottom: 10px; /* Add spacing between list items */
+    border: 1px solid #ccc; /* Add a border around each item */
+    border-radius: 8px; /* Round the corners */
+    background-color: #f9f9f9; /* Light background color */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+}
+
+/* Style for the income details */
+.income-list li p {
+    margin: 0; /* Remove default margin */
+    font-size: 0.9rem; /* Adjust font size */
+    line-height: 1.4; /* Adjust line height for readability */
+}
+
+/* Style for the buttons */
+.income-list li button {
+    margin-top: 10px; /* Add spacing above buttons */
+    padding: 5px 10px; /* Add padding inside buttons */
+    font-size: 0.85rem; /* Adjust font size for buttons */
+    border: none; /* Remove default border */
+    border-radius: 4px; /* Round the corners */
+    cursor: pointer; /* Change cursor to pointer */
+}
+
+/* Style for the edit button */
+.income-list li .edit-income-button {
+    background-color: #007bff; /* Blue background */
+    color: white; /* White text */
+}
+
+/* Style for the delete button */
+.income-list li .delete-income-button {
+    background-color: #dc3545; /* Red background */
+    color: white; /* White text */
+}
+
+/* Add spacing between buttons */
+.income-list li .edit-income-button + .delete-income-button {
+    margin-left: 10px; /* Add spacing between buttons */
+}
+
+</style>
 
     <script>
 

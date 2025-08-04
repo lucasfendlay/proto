@@ -270,8 +270,11 @@ setupModalClose('previous-year-modal', 'previous-year-form');
                                 <p><strong>Frequency:</strong> ${expense.frequency}</p>
                                 <p><strong>Start Date:</strong> ${expense.startDate}</p>
                                 <p><strong>End Date:</strong> ${expense.endDate}</p>
+                                        <div class="button-container">
+
                                 <button class="edit-expense-button" data-expense-id="${expense.id}">Edit</button>
                                 <button class="delete-expense-button" data-expense-id="${expense.id}" style="color: white; background-color: red;";>Delete</button>
+                                </div>
                             </li>
                         `).join('')}
                     </ul>

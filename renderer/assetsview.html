@@ -79,6 +79,52 @@
         </div>
     </div>
 
+    <style>
+        /* Style for the list header */
+.list-header {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* Adjust based on the number of columns */
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    padding: 10px;
+    border-bottom: 1px solid #ccc;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+/* Style for the list container */
+.asset-list {
+    margin: 20px auto;
+    max-width: 800px; /* Adjust as needed */
+}
+
+/* Center items within the list */
+.list-item {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* Adjust based on the number of columns */
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Style for the button container */
+.button-container {
+    grid-column: span 3; /* Span across all columns */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+    </style>
+
     <script>
         function getQueryParameter(name) {
             const urlParams = new URLSearchParams(window.location.search);

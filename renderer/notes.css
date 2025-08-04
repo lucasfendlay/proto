@@ -35,9 +35,19 @@
     width: 95%; /* Use full width of the parent container */
     padding: 10px;
     box-sizing: border-box;
-    border: 1px solid #ccc;
-    border-top: none; /* Remove top border to connect with the input box */
+    border: 1px solid #000000;
     background-color: #007bff;
+    color: white;
+    cursor: pointer;
+    text-align: center;
+}
+
+#save-note:hover {
+    background-color: #0056b3; /* Darker shade on hover */
+    width: 95%; /* Use full width of the parent container */
+    padding: 10px;
+    box-sizing: border-box;
+    border: 1px solid #000000;
     color: white;
     cursor: pointer;
     text-align: center;
@@ -138,6 +148,7 @@
     #save-note {
         width: 100%; /* Make the save button full width */
         padding: 8px; /* Adjust padding */
+        border: 1px solid #000000; /* Keep border for consistency */
     }
 
     #notes-list {
@@ -165,6 +176,7 @@
     #save-note {
         font-size: 0.9rem; /* Adjust font size for the save button */
         padding: 6px; /* Adjust padding */
+        border: 1px solid #000000; /* Keep border for consistency */
     }
 
     #notes-list {

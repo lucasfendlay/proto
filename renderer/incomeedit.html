@@ -195,6 +195,71 @@
             background-color: #0056b3; /* Blue background on hover */
             color: white; /* White text on hover */
         }
+
+        .income-list {
+    list-style-type: none; /* Remove default bullet points */
+    padding: 0; /* Remove default padding */
+    margin: 0; /* Remove default margin */
+}
+
+/* Style for each income list item */
+.income-list li {
+    display: grid; /* Use CSS Grid for layout */
+    grid-template-columns: repeat(6, 1fr); /* Define 6 equal columns */
+    grid-auto-rows: minmax(40px, auto); /* Ensure consistent row height */
+    gap: 10px; /* Add spacing between grid items */
+    padding: 10px; /* Add padding inside each item */
+    margin-bottom: 10px; /* Add spacing between list items */
+    border: 1px solid #ccc; /* Add a border around each item */
+    border-radius: 8px; /* Round the corners */
+    background-color: #f9f9f9; /* Light background color */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+}
+
+/* Style for the income details */
+.income-list li p {
+    margin: 0; /* Remove default margin */
+    font-size: 0.9rem; /* Adjust font size */
+    line-height: 1.4; /* Adjust line height for readability */
+}
+
+/* Style for the income list item buttons */
+.income-list li .button-container {
+    display: flex; /* Use flexbox for layout */
+    justify-content: center; /* Center the buttons horizontally */
+    align-items: center; /* Center the buttons vertically */
+    gap: 10px; /* Add spacing between the buttons */
+    grid-column: span 6; /* Ensure the container spans the full width */
+}
+
+/* Style for individual buttons */
+.income-list li .button-container button {
+    padding: 8px 16px; /* Add padding for better appearance */
+    border: 1px solid #000000; /* Optional: Add a border */
+    color: white; /* Button text color */
+    cursor: pointer; /* Pointer cursor on hover */
+    transition: background-color 0.3s; /* Smooth hover effect */
+}
+
+/* Hover effect for buttons */
+.income-list li .button-container button:hover {
+    background-color: #0056b3; /* Darker blue on hover */
+}
+
+/* Style for the delete button */
+.income-list li .button-container .delete-income-button {
+    padding: 8px 16px;
+    border: 1px solid #000000;
+    background-color: red; /* Red background */
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+/* Hover effect for the delete button */
+.income-list li .button-container .delete-income-button:hover {
+    background-color: darkred; /* Darker red on hover */
+}
     </style>
 
     <script>

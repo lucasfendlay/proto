@@ -107,14 +107,32 @@ async function saveAsset(memberId, asset) {
                         <ul id="asset-list-${member.householdMemberId}">
                             ${
                                 member.assets && Array.isArray(member.assets)
-                                    ? member.assets.map(asset => `
-                                        <li data-asset-id="${asset.id}">
-                                            <p><strong>Type:</strong> ${asset.type}</p>
-                                            <p><strong>Description:</strong> ${asset.description}</p>
-                                            <p><strong>Value:</strong> $${asset.value}</p>
-                                            <button class="edit-asset-button" data-member-id="${member.householdMemberId}" data-asset-id="${asset.id}">Edit</button>
-<button class="delete-asset-button danger-button" data-member-id="${member.householdMemberId}" data-asset-id="${asset.id}">Delete</button>                                        </li>
-                                    `).join('')
+    ? member.assets.map(asset => `
+        <li class="list-item" data-asset-id="${asset.id}">
+            <p><strong>Type:</strong> ${asset.type}</p>
+            <p><strong>Description:</strong> ${asset.description}</p>
+            <p><strong>Value:</strong> $${asset.value}</p>
+            <div class="button-container">
+<button 
+    class="button edit-asset-button" 
+    data-member-id="${member.householdMemberId}" 
+    data-asset-id="${asset.id}" 
+    style="background-color: #007bff; color: white; border: 1px solid #000000;"
+    onmouseover="this.style.backgroundColor='#0056b3';" 
+    onmouseout="this.style.backgroundColor='#007bff';">
+    Edit
+</button>
+<button 
+    class="button delete-asset-button" 
+    data-member-id="${member.householdMemberId}" 
+    data-asset-id="${asset.id}" 
+    style="background-color: red; color: white; border: 1px solid #000000;"
+    onmouseover="this.style.backgroundColor='#a71d2a';" 
+    onmouseout="this.style.backgroundColor='red';"
+>
+    Delete
+</button>        </li>
+    `).join('')
                                     : ''
                             }
                         </ul>
@@ -287,7 +305,7 @@ alert('Failed to fetch asset details.');
             value: parseFloat(document.getElementById('asset-value').value),
         };
     
-        if (currentMemberId && asset.type && asset.description && asset.value) {
+        if (currentMemberId && asset.type && asset.value) {
             if (isEditing) {
                 try {
                     // Update existing asset in the database
@@ -341,28 +359,47 @@ alert('Failed to fetch asset details.');
                 }
             } else {
                 // Add new asset
-                await saveAsset(currentMemberId, asset);
-    
-                // Update the UI with the new asset entry
-                const assetList = document.getElementById(`asset-list-${currentMemberId}`);
-                const assetItem = document.createElement('li');
-                assetItem.setAttribute('data-asset-id', asset.id);
-                assetItem.innerHTML = `
-                    <p><strong>Type:</strong> ${asset.type}</p>
-                    <p><strong>Description:</strong> ${asset.description}</p>
-                    <p><strong>Value:</strong> $${asset.value}</p>
-                    <button class="edit-asset-button" data-member-id="${currentMemberId}" data-asset-id="${asset.id}">Edit</button>
-                    <button class="delete-asset-button" data-member-id="${currentMemberId}" data-asset-id="${asset.id}" style="color: red;">Delete</button>
-                `;
-    
-                assetList.appendChild(assetItem);
-    
-                // Add event listeners for the new Edit and Delete buttons
-                attachAssetEventListeners(assetItem);
-    
-                // Close the modal and reset the form
-                modal.classList.add('hidden'); // Close the modal
-                assetForm.reset(); // Reset the form
+await saveAsset(currentMemberId, asset);
+
+// Update the UI with the new asset entry
+const assetList = document.getElementById(`asset-list-${currentMemberId}`);
+const assetItem = document.createElement('li');
+assetItem.setAttribute('data-asset-id', asset.id);
+assetItem.classList.add('list-item'); // Add the same class as the existing list items
+assetItem.innerHTML = `
+    <p><strong>Type:</strong> ${asset.type}</p>
+    <p><strong>Description:</strong> ${asset.description}</p>
+    <p><strong>Value:</strong> $${asset.value}</p>
+    <div class="button-container">
+        <button 
+            class="button edit-asset-button" 
+            data-member-id="${currentMemberId}" 
+            data-asset-id="${asset.id}" 
+            style="background-color: #007bff; color: white; border: 1px solid #000000;"
+            onmouseover="this.style.backgroundColor='#0056b3';" 
+            onmouseout="this.style.backgroundColor='#007bff';">
+            Edit
+        </button>
+        <button 
+            class="button delete-asset-button" 
+            data-member-id="${currentMemberId}" 
+            data-asset-id="${asset.id}" 
+            style="background-color: red; color: white; border: 1px solid #000000;"
+            onmouseover="this.style.backgroundColor='#a71d2a';" 
+            onmouseout="this.style.backgroundColor='red';">
+            Delete
+        </button>
+    </div>
+`;
+
+assetList.appendChild(assetItem);
+
+// Add event listeners for the new Edit and Delete buttons
+attachAssetEventListeners(assetItem);
+
+// Close the modal and reset the form
+modal.classList.add('hidden'); // Close the modal
+assetForm.reset(); // Reset the form
             }
         } else {
             alert('Please fill out all fields.');

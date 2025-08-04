@@ -103,40 +103,68 @@ async function saveIncome(memberId, income) {
     
                 // Populate member details
                 memberDiv.innerHTML = `
-                    <h3>${member.firstName} ${member.middleInitial || ''} ${member.lastName}</h3>
-                    <p><strong>Date of Birth:</strong> ${member.dob || 'N/A'}</p>
-                    <p><strong>Marital Status:</strong> ${member.maritalStatus || 'N/A'}</p>
-                    <div class="income-list">
-                        ${
-                            member.income && Array.isArray(member.income) && member.income.length > 0
-                                ? `
-                                    <h4>Income:</h4>
-                                    <ul id="income-list-${member.householdMemberId}">
-                                        ${member.income
-                                            .sort((a, b) => {
-                                                // Sort by type: "Current" first, then "Previous"
-                                                if (a.type === "Current" && b.type === "Previous") return -1;
-                                                if (a.type === "Previous" && b.type === "Current") return 1;
-                                                return 0; // Keep the order for other cases
-                                            })
-                                            .map(income => `
-                                                <li data-income-id="${income.id}">
-                                                    <p><strong>Income Type:</strong> ${income.type}</p>
-                                                    <p><strong>Income Kind:</strong> ${income.kind}</p>
-                                                    <p><strong>Amount:</strong> $${income.amount}</p>
-                                                    <p><strong>Frequency:</strong> ${income.frequency}</p>
-                                                    <p><strong>Start Date:</strong> ${income.startDate}</p>
-                                                    <p><strong>End Date:</strong> ${income.endDate}</p>
+    <h3>${member.firstName} ${member.middleInitial || ''} ${member.lastName}</h3>
+    <p><strong>Date of Birth:</strong> ${member.dob || 'N/A'}</p>
+    <p><strong>Marital Status:</strong> ${member.maritalStatus || 'N/A'}</p>
+    <div class="income-list">
+        ${
+            member.income && Array.isArray(member.income) && member.income.length > 0
+                ? `
+                    ${
+                        member.income.some(income => income.type === "Current")
+                            ? `
+                                <h4>Current Year Income:</h4>
+                                <ul id="current-income-list-${member.householdMemberId}">
+                                    ${member.income
+                                        .filter(income => income.type === "Current")
+                                        .map(income => `
+                                            <li data-income-id="${income.id}">
+                                                <p><strong>Income Type:</strong> ${income.type}</p>
+                                                <p><strong>Income Kind:</strong> ${income.kind}</p>
+                                                <p><strong>Amount:</strong> $${income.amount}</p>
+                                                <p><strong>Frequency:</strong> ${income.frequency}</p>
+                                                <p><strong>Start Date:</strong> ${income.startDate}</p>
+                                                <p><strong>End Date:</strong> ${income.endDate}</p>
+                                                <div class="button-container">
                                                     <button class="edit-income-button" data-member-id="${member.householdMemberId}" data-income-id="${income.id}">Edit</button>
-            <button class="delete-income-button danger-button" data-member-id="${member.householdMemberId}" data-income-id="${income.id}">Delete</button>
-                                                </li>
-                                            `).join('')}
-                                    </ul>
-                                `
-                                : '<p></p>'
-                        }
-                    </div>
-                `;
+                                                    <button class="delete-income-button" data-member-id="${member.householdMemberId}" data-income-id="${income.id}">Delete</button>
+                                                </div>
+                                            </li>
+                                        `).join('')}
+                                </ul>
+                            `
+                            : ''
+                    }
+                    ${
+                        member.income.some(income => income.type === "Previous")
+                            ? `
+                                <h4>Previous Year Income:</h4>
+                                <ul id="previous-income-list-${member.householdMemberId}">
+                                    ${member.income
+                                        .filter(income => income.type === "Previous")
+                                        .map(income => `
+                                            <li data-income-id="${income.id}">
+                                                <p><strong>Income Type:</strong> ${income.type}</p>
+                                                <p><strong>Income Kind:</strong> ${income.kind}</p>
+                                                <p><strong>Amount:</strong> $${income.amount}</p>
+                                                <p><strong>Frequency:</strong> ${income.frequency}</p>
+                                                <p><strong>Start Date:</strong> ${income.startDate}</p>
+                                                <p><strong>End Date:</strong> ${income.endDate}</p>
+                                                <div class="button-container">
+                                                    <button class="edit-income-button" data-member-id="${member.householdMemberId}" data-income-id="${income.id}">Edit</button>
+                                                    <button class="delete-income-button" data-member-id="${member.householdMemberId}" data-income-id="${income.id}">Delete</button>
+                                                </div>
+                                            </li>
+                                        `).join('')}
+                                </ul>
+                            `
+                            : ''
+                    }
+                `
+                : '<p>No income records available.</p>'
+        }
+    </div>
+`;
     
                 // Conditional logic for showing buttons
                 if (member.meals === 'yes' || member.selections?.['Is this person currently enrolled in LIS/ Extra Help?'] === 'no' || member.selections?.['Is this person currently enrolled in the Medicare Savings Program?'] === 'no') {
@@ -209,7 +237,6 @@ document.querySelectorAll('.edit-income-button').forEach(button => {
     });
 });
     
-            // Add event listeners for income buttons
 // Use event delegation for add-income-button
 document.getElementById('household-member-container').addEventListener('click', function (event) {
     if (event.target.classList.contains('add-income-button')) {
@@ -270,10 +297,9 @@ addIncomeButton.addEventListener('click', async () => {
 
     const BACKEND_URL = window.location.origin || "http://localhost:3000";
 
-
     if (currentMemberId && income.kind && income.type && income.frequency && income.startDate && income.endDate && income.amount) {
-        if (isEditing) {
-            try {
+        try {
+            if (isEditing) {
                 // Update existing income in the database
                 const response = await fetch(`${BACKEND_URL}/update-income`, {
                     method: 'PUT',
@@ -285,19 +311,10 @@ addIncomeButton.addEventListener('click', async () => {
                     })
                 });
 
-                // Hide the modal after saving
-        const modal = document.getElementById('income-modal');
-        modal.classList.add('hidden'); // Add the 'hidden' class
-        modal.style.display = 'none'; // Ensure the modal is hidden
-
-        // Optionally reset the form
-        const incomeForm = document.getElementById('income-form');
-        incomeForm.reset(); // Clear all input fields in the form
-    
                 if (!response.ok) {
                     throw new Error('Failed to update income.');
                 }
-    
+
                 // Update the UI for the existing income entry
                 const incomeItem = document.querySelector(`[data-income-id="${editingIncomeId}"]`);
                 if (incomeItem) {
@@ -308,78 +325,79 @@ addIncomeButton.addEventListener('click', async () => {
                     incomeItem.querySelector('p:nth-child(5)').innerHTML = `<strong>Start Date:</strong> ${income.startDate}`;
                     incomeItem.querySelector('p:nth-child(6)').innerHTML = `<strong>End Date:</strong> ${income.endDate}`;
                 }
-    
-                // Reset modal state
-                isEditing = false;
-                editingIncomeId = null; // Reset editing ID
-                addIncomeButton.textContent = 'Add Income'; // Reset button text
-                modal.classList.add('hidden'); // Close the modal
-                incomeForm.reset(); // Reset the form
-            } catch (error) {
-                console.error('Error updating income:', error);
-                alert('Failed to update income. Please try again.');
+            } else {
+                // Save new income to the database
+                await saveIncome(currentMemberId, income);
+
+                // Dynamically update the income list UI
+                updateIncomeListUI(currentMemberId, income);
             }
-        } else {
-            // Add new income logic remains unchanged
-await saveIncome(currentMemberId, income);
 
-// Ensure the income list exists
-let incomeList = document.getElementById(`income-list-${currentMemberId}`);
-if (!incomeList) {
-    // Create the income list if it doesn't exist
-    incomeList = document.createElement('ul');
-    incomeList.id = `income-list-${currentMemberId}`;
-    const memberDiv = document.querySelector(`[data-member-id="${currentMemberId}"]`);
-    if (memberDiv) {
-        memberDiv.querySelector('.income-list').appendChild(incomeList);
-    } else {
-        console.error(`Member div for ID ${currentMemberId} not found.`);
-        return;
-    }
-}
+            // Reset modal state
+            modal.classList.add('hidden');
+            incomeForm.reset();
+            isEditing = false;
+            editingIncomeId = null;
+            addIncomeButton.textContent = 'Add Income';
 
-// Update the UI with the new income entry
-const incomeItem = document.createElement('li');
-incomeItem.setAttribute('data-income-id', income.id);
-incomeItem.innerHTML = `
-    <p><strong>Income Type:</strong> ${income.type}</p>
-    <p><strong>Income Kind:</strong> ${income.kind}</p>
-    <p><strong>Amount:</strong> $${income.amount}</p>
-    <p><strong>Frequency:</strong> ${income.frequency}</p>
-    <p><strong>Start Date:</strong> ${income.startDate}</p>
-    <p><strong>End Date:</strong> ${income.endDate}</p>
-    <button class="edit-income-button" data-member-id="${currentMemberId}" data-income-id="${income.id}">Edit</button>
-    <button class="delete-income-button danger-button" data-member-id="${currentMemberId}" data-income-id="${income.id}">Delete</button>
-`;
+            // Close the modal
+            modal.style.display = 'none';
 
-incomeList.appendChild(incomeItem);
-
-// Attach event listeners for the new Edit and Delete buttons
-attachIncomeEventListeners(incomeItem); // Attach edit listener for the new income item
-attachDeleteIncomeListeners(); // Reattach delete listeners for all delete buttons
-
-// Close the modal and reset the form
-modal.classList.add('hidden'); // Close the modal
-incomeForm.reset(); // Reset the form
+        } catch (error) {
+            console.error('Error saving income:', error);
+            alert('Failed to save income. Please try again.');
         }
-
-        // Run eligibility checks and update the UI
-        const members = await loadHouseholdMembers();
-        await window.eligibilityChecks.PACEEligibilityCheck(members);
-        await window.eligibilityChecks.LISEligibilityCheck(members);
-        await window.eligibilityChecks.MSPEligibilityCheck(members);
-        await window.eligibilityChecks.PTRREligibilityCheck(members);
-        await window.eligibilityChecks.SNAPEligibilityCheck(members);
-
-        console.log('Eligibility Checks:', window.eligibilityChecks);
-
-        // Update the UI
-        await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
-        await window.eligibilityChecks.displaySNAPHouseholds();
     } else {
         alert('Please fill out all fields.');
     }
 });
+
+// Function to dynamically update the income list UI
+function updateIncomeListUI(memberId, income) {
+    const memberDiv = document.querySelector(`[data-member-id="${memberId}"]`);
+    if (!memberDiv) {
+        console.error(`Member div for ID ${memberId} not found.`);
+        return;
+    }
+
+    const incomeListId = income.type === "Current" 
+        ? `current-income-list-${memberId}` 
+        : `previous-income-list-${memberId}`;
+    let incomeList = document.getElementById(incomeListId);
+
+    // If the income list doesn't exist, create it
+    if (!incomeList) {
+        incomeList = document.createElement('ul');
+        incomeList.id = incomeListId;
+
+        const incomeHeader = document.createElement('h4');
+        incomeHeader.textContent = income.type === "Current" ? "Current Year Income:" : "Previous Year Income:";
+        memberDiv.querySelector('.income-list').appendChild(incomeHeader);
+        memberDiv.querySelector('.income-list').appendChild(incomeList);
+    }
+
+    // Add the new income item to the list
+    const incomeItem = document.createElement('li');
+    incomeItem.setAttribute('data-income-id', income.id);
+    incomeItem.innerHTML = `
+        <p><strong>Income Type:</strong> ${income.type}</p>
+        <p><strong>Income Kind:</strong> ${income.kind}</p>
+        <p><strong>Amount:</strong> $${income.amount}</p>
+        <p><strong>Frequency:</strong> ${income.frequency}</p>
+        <p><strong>Start Date:</strong> ${income.startDate}</p>
+        <p><strong>End Date:</strong> ${income.endDate}</p>
+        <div class="button-container">
+            <button class="edit-income-button" data-member-id="${memberId}" data-income-id="${income.id}">Edit</button>
+            <button class="delete-income-button" data-member-id="${memberId}" data-income-id="${income.id}">Delete</button>
+        </div>
+    `;
+
+    incomeList.appendChild(incomeItem);
+
+    // Attach event listeners for the new Edit and Delete buttons
+    attachIncomeEventListeners(incomeItem);
+    attachDeleteIncomeListeners();
+}
 
 // Helper function to attach event listeners to income items
 function attachIncomeEventListeners(incomeItem) {

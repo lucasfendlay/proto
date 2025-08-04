@@ -198,6 +198,63 @@
         <li>Loading...</li>
     </ul>
 
+    <style>
+        #interactionList {
+            font-size: 0.9rem; /* Adjust the font size for the list */
+            line-height: 1.4; /* Adjust line height for better readability */
+        }
+    
+        #interactionList li {
+            font-size: 0.9rem; /* Ensure the font size is consistent for list items */
+            line-height: 1.4; /* Adjust line height for list items */
+            word-wrap: break-word; /* Ensure long text wraps within the container */
+        }
+    
+        #interactionList li div {
+            font-size: 0.85rem; /* Slightly smaller font for individual sections */
+        }
+    </style>
+
+<style>
+    #interactionList {
+        list-style-type: none; /* Remove default bullet points */
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column; /* Stack items vertically */
+        gap: 15px; /* Add space between each interaction */
+        width: 90%; /* Make the interaction tracker stretch across the full width */
+    }
+
+    #interactionList li {
+        display: flex;
+        flex-wrap: wrap; /* Allow content to wrap if needed */
+        align-items: flex-start; /* Align items at the top */
+        padding: 15px; /* Add padding inside each interaction */
+        border: 1px solid #ccc; /* Add a border around each interaction */
+        border-radius: 8px; /* Round the corners */
+        background-color: #f9f9f9; /* Light background color */
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+        width: 90%; /* Ensure each interaction stretches across the full width */
+    }
+
+    #interactionList li div {
+        flex: 1; /* Allow each section to stretch equally */
+        margin-right: 10px; /* Add space between sections */
+        word-wrap: break-word; /* Ensure long text wraps within the container */
+    }
+
+    #interactionList li div:last-child {
+        margin-right: 0; /* Remove margin after the last section */
+    }
+
+    #interactionList li strong {
+        font-weight: bold;
+        display: block; /* Ensure labels are on their own line */
+        margin-bottom: 5px; /* Add space below labels */
+    }
+</style>
+
     <script>
         // Function to get query parameter by name
         function getQueryParam(name) {

@@ -164,6 +164,16 @@
         z-index: 1000;
     }
 
+    .household-member1-box {
+    max-width: 600px; /* Set a maximum width */
+    margin: 0 auto; /* Center the container */
+    padding: 20px; /* Add some padding */
+    border: 1px solid #ccc; /* Optional: Add a border */
+    border-radius: 8px; /* Optional: Add rounded corners */
+    max-width: 65%;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Optional: Add a shadow */
+}
+
     .modal.hidden {
         display: none;
     }
@@ -221,6 +231,73 @@
     width: 80%; /* Adjust the width as needed */
     padding: 20px; /* Add padding inside the modal */
     box-sizing: border-box; /* Ensure padding doesn't affect the width */
+}
+
+/* Style for the expense list */
+.expense-list {
+    list-style-type: none; /* Remove default bullet points */
+    padding: 0; /* Remove default padding */
+    margin: 0; /* Remove default margin */
+    width: 90%; /* Set a width for the list */
+}
+
+/* Style for each expense list item */
+.expense-list li {
+    display: grid; /* Use CSS Grid for layout */
+    grid-template-columns: repeat(6, 1fr); /* Define 6 equal columns */
+    grid-auto-rows: minmax(40px, auto); /* Ensure consistent row height */
+    gap: 10px; /* Add spacing between grid items */
+    padding: 10px; /* Add padding inside each item */
+    margin-bottom: 10px; /* Add spacing between list items */
+    border: 1px solid #ccc; /* Add a border around each item */
+    border-radius: 8px; /* Round the corners */
+    background-color: #f9f9f9; /* Light background color */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+}
+
+/* Style for the expense details */
+.expense-list li p {
+    margin: 0; /* Remove default margin */
+    font-size: 0.9rem; /* Adjust font size */
+    line-height: 1.4; /* Adjust line height for readability */
+}
+
+/* Style for the expense list item buttons */
+.expense-list li .button-container {
+    display: flex; /* Use flexbox for layout */
+    justify-content: center; /* Center the buttons horizontally */
+    align-items: center; /* Center the buttons vertically */
+    gap: 10px; /* Add spacing between the buttons */
+    grid-column: span 6; /* Ensure the container spans the full width */
+}
+
+/* Style for individual buttons */
+.expense-list li .button-container button {
+    padding: 8px 16px; /* Add padding for better appearance */
+    border: 1px solid #000000; /* Optional: Add a border */
+    color: white; /* Button text color */
+    cursor: pointer; /* Pointer cursor on hover */
+    transition: background-color 0.3s; /* Smooth hover effect */
+}
+
+/* Hover effect for buttons */
+.expense-list li .button-container button:hover {
+    background-color: #0056b3; /* Darker blue on hover */
+}
+
+/* Style for the delete button */
+.expense-list li .button-container .delete-expense-button {
+    padding: 8px 16px;
+    border: 1px solid #000000;
+    background-color: red; /* Red background */
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+/* Hover effect for the delete button */
+.expense-list li .button-container .delete-expense-button:hover {
+    background-color: darkred; /* Darker red on hover */
 }
 </style>
 

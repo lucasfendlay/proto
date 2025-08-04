@@ -95,15 +95,13 @@ async function saveAsset(memberId, asset) {
                         <ul id="asset-list-${member.householdMemberId}">
                             ${
                                 member.assets && Array.isArray(member.assets)
-                                    ? member.assets.map(asset => `
-                                        <li data-asset-id="${asset.id}">
-                                            <p><strong>Type:</strong> ${asset.type}</p>
-                                            <p><strong>Description:</strong> ${asset.description}</p>
-                                            <p><strong>Value:</strong> $${asset.value}</p>
-                                            <button class="edit-asset-button" data-member-id="${member.householdMemberId}" data-asset-id="${asset.id}">Edit</button>
-                                            <button class="delete-asset-button" data-member-id="${member.householdMemberId}" data-asset-id="${asset.id}" style="color: red;">Delete</button>
-                                        </li>
-                                    `).join('')
+    ? member.assets.map(asset => `
+        <li class="list-item" data-asset-id="${asset.id}">
+            <p><strong>Type:</strong> ${asset.type}</p>
+            <p><strong>Description:</strong> ${asset.description}</p>
+            <p><strong>Value:</strong> $${asset.value}</p>
+                    </li>
+    `).join('')
                                     : ''
                             }
                         </ul>
@@ -138,8 +136,6 @@ const showAddAssetButton = selections['Is this person currently enrolled in LIS/
                     const addAssetButton = document.createElement('button');
                     addAssetButton.classList.add('add-asset-button');
                     addAssetButton.dataset.memberId = member.householdMemberId;
-                    addAssetButton.textContent = 'Add Asset';
-                    memberDiv.appendChild(addAssetButton);
                 }
     
                 householdMemberContainer.appendChild(memberDiv);

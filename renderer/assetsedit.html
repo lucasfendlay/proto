@@ -57,18 +57,24 @@
                 <label for="asset-type">Type of Asset:</label>
                 <select id="asset-type" required>
                     <option value="" disabled selected>Select Type of Asset</option>
-                    <option value="Real Estate">Real Estate</option>
-                    <option value="Vehicle">Vehicle</option>
-                    <option value="Bank Account">Bank Account</option>
-                    <option value="Investment">Investment</option>
-                    <option value="Retirement Account">Retirement Account</option>
-                    <option value="Personal Property">Personal Property</option>
-                    <option value="Other">Other</option>
+                    <option value="Checking Account">Checking Account</option>
+                    <option value="Savings Account">Savings Account</option>
+                    <option value="Stocks">Stocks</option>
+                    <option value="Bonds">Bonds</option>
+                    <option value="Annuities">Annuities</option>
+                    <option value="Certificates of Deposit">Certificates of Deposit</option>
+                    <option value="Mutual Funds">Mutual Funds</option>
+                    <option value="401K">401K</option>
+                    <option value="IRA">IRA</option>
+                    <option value="Money Market Account">Money Market Account</option>
+                    <option value="Cryptocurrency">Cryptocurrency</option>
+                    <option value="Non-Residential Property">Non-Residential Property</option>
+                    <option value="Cash On Hand">Cash On Hand</option>
                 </select>
 
                 <!-- Description -->
                 <label for="asset-description">Description:</label>
-                <input type="text" id="asset-description" class="text-input" placeholder="Enter asset description" required>
+                <input type="text" id="asset-description" class="text-input" placeholder="Enter asset description">
 
                 <!-- Value -->
                 <label for="asset-value">Value:</label>
@@ -101,6 +107,53 @@
             background-color: #0056b3; /* Blue background on hover */
             color: white; /* White text on hover */
         }
+
+/* Style for the list header */
+.list-header {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* Adjust based on the number of columns */
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    padding: 10px;
+    border-bottom: 1px solid #ccc;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+/* Style for the list container */
+.asset-list {
+    margin: 20px auto;
+    max-width: 800px; /* Adjust as needed */
+}
+
+/* Center items within the list */
+.list-item {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* Adjust based on the number of columns */
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Style for the button container */
+.button-container {
+    grid-column: span 3; /* Span across all columns */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+
+
     </style>
 
     <script>
