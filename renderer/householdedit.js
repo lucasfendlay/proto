@@ -69,7 +69,6 @@ addSelfButton.addEventListener('mouseout', () => {
         
                 // Check if the number of household members exceeds the household size
                 if (clientData.householdMembers.length >= clientData.householdSize) {
-                    alert('The number of household members cannot exceed the selected household size.');
                     return;
                 }
         
@@ -516,7 +515,6 @@ document.getElementById('add-household-member').addEventListener('click', async 
 
         // Check if the number of household members exceeds the household size
         if (clientData.householdMembers.length >= clientData.householdSize) {
-            alert('The number of household members cannot exceed the selected household size.');
             return;
         }
 
@@ -811,22 +809,24 @@ async function openEditModal(member) {
         mealsQuestion.style.display = 'block'; // Ensure mealsQuestion is visible for non-students
     }
 
-    if (member.citizen === 'no') {
-        nonCitizenStatusContainer.style.display = 'block'; // Show the dropdown
-        if (member.nonCitizenStatus) {
-            nonCitizenStatus.value = member.nonCitizenStatus; // Select the saved value
-
-            // Hide the mealsQuestion if "Ineligible Non-Citizen" is selected
-            if (member.nonCitizenStatus.toLowerCase() === 'ineligible non-citizen') {
-                mealsQuestion.style.display = 'none';
-            } else {
-                mealsQuestion.style.display = 'block';
+        // Handle the citizen status
+        if (member.citizen === 'no') {
+            nonCitizenStatusContainer.style.display = 'block'; // Show the dropdown
+            if (member.nonCitizenStatus) {
+                nonCitizenStatus.value = member.nonCitizenStatus; // Select the saved value
+    
+                // Hide the mealsQuestion if "Ineligible Non-Citizen" is selected
+                if (member.nonCitizenStatus.toLowerCase() === 'ineligible non-citizen') {
+                    mealsQuestion.style.display = 'none';
+                } else {
+                    mealsQuestion.style.display = 'block';
+                }
             }
+        } else {
+            nonCitizenStatusContainer.style.display = 'none'; // Hide the dropdown for citizens
+            nonCitizenStatus.value = ''; // Reset the dropdown value
+            mealsQuestion.style.display = 'block'; // Ensure mealsQuestion is visible for citizens
         }
-    } else {
-        nonCitizenStatusContainer.style.display = 'none'; // Hide the dropdown for citizens
-        mealsQuestion.style.display = 'block'; // Ensure mealsQuestion is visible for citizens
-    }
 
     // Step 4: Highlight the selected options for modal questions
     const modalQuestions = [
@@ -1209,3 +1209,50 @@ async function loadHouseholdMembers() {
         return [];
     }
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    const citizenYes = document.getElementById('modal-citizen-yes');
+    const citizenNo = document.getElementById('modal-citizen-no');
+    const nonCitizenStatusContainer = document.getElementById('nonCitizenStatusContainer');
+    const nonCitizenStatus = document.getElementById('nonCitizenStatus');
+    const mealsQuestion = document.getElementById('mealsQuestion');
+
+    // Initialize dropdown visibility based on the current citizen value
+    const initializeCitizenStatus = () => {
+        if (citizenYes.classList.contains('selected')) {
+            // If "Yes" is selected for citizen
+            nonCitizenStatusContainer.style.display = 'none';
+            mealsQuestion.style.display = 'block'; // Show the meals question
+        } else if (citizenNo.classList.contains('selected')) {
+            // If "No" is selected for citizen
+            nonCitizenStatusContainer.style.display = 'block';
+        }
+    };
+
+    // Call the initialization function on page load
+    initializeCitizenStatus();
+
+    // Add event listeners for clicks
+    citizenYes.addEventListener('click', () => {
+        nonCitizenStatusContainer.style.display = 'none';
+        mealsQuestion.style.display = 'block'; // Show the meals question
+        console.log('Citizenship status saved: uscitizen');
+    });
+
+    citizenNo.addEventListener('click', () => {
+        nonCitizenStatusContainer.style.display = 'block';
+        console.log('Citizenship status saved: noncitizen');
+    });
+
+    nonCitizenStatus.addEventListener('change', () => {
+        const selectedStatus = nonCitizenStatus.value;
+        console.log('Non-citizenship status selected:', selectedStatus);
+
+        // Hide the mealsQuestion if "Ineligible Non-Citizen" is selected
+        if (selectedStatus.toLowerCase() === 'ineligible non-citizen') {
+            mealsQuestion.style.display = 'none';
+        } else {
+            mealsQuestion.style.display = 'block';
+        }
+    });
+});

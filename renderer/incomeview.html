@@ -413,6 +413,57 @@ window.onload = function () {
 };
     </script>
 
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+    const farmworkerQuestion = document.querySelector('.selection-box');
+    const clientId = getQueryParameter('id'); // Get client ID from query parameters
+    const BACKEND_URL = window.location.origin || "http://localhost:3000";
+
+    console.log('Client ID:', clientId); // Debugging
+
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
+
+    try {
+        // Fetch client data from the backend
+        const response = await fetch(`${BACKEND_URL}/get-client/${clientId}`);
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to fetch client data: ${errorText}`);
+        }
+
+        const client = await response.json();
+        console.log('Client Data:', client); // Debugging
+
+        // Extract household members
+        const householdMembers = client.householdMembers || [];
+        console.log('Household Members:', householdMembers); // Debugging
+
+        // Check if at least one member has meals: yes
+        const hasMeals = householdMembers.some(member => member.meals === 'yes');
+        console.log('Has Meals:', hasMeals); // Debugging
+
+        // Show or hide the question based on the condition
+        if (hasMeals) {
+            farmworkerQuestion.style.display = 'block'; // Show the question
+        } else {
+            farmworkerQuestion.style.display = 'none'; // Hide the question
+        }
+        console.log('Farmworker Question Element:', farmworkerQuestion); // Debugging
+    } catch (error) {
+        console.error('Error fetching client data:', error);
+    }
+});
+
+// Helper function to get query parameters
+function getQueryParameter(name) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name);
+}
+    </script>
+
     <!-- Scripts -->
 
     <script src="estimations.js"></script>

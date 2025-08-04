@@ -45,18 +45,22 @@ document.addEventListener('DOMContentLoaded', function () {
         // Use activeUser for comparison
         const cleanedUsername = note.username || 'Automated Import';
 
+        // Check if the buttons should be displayed
+        const shouldShowButtons =
+            note.text !== 'New screening initiated.' &&
+            note.text !== 'Inbound call logged.' &&
+            note.text !== 'Outbound call logged.' &&
+            note.text !== 'Profile checked out.' &&
+            note.text !== 'Profile released.' &&
+            note.text !== 'Profile terminated.' &&
+            !note.text.startsWith('Referral provided.') &&
+            cleanedUsername === activeUser;
+
         noteDiv.innerHTML = `
             <p>${note.text}</p>
             <small>${note.timestamp} by ${cleanedUsername}</small>
             ${
-                note.text !== 'New screening initiated.' &&
-                note.text !== 'Inbound call logged.' &&
-                note.text !== 'Outbound call logged.' &&
-                note.text !== 'Profile checked out.' &&
-                note.text !== 'Profile released.' &&
-                note.text !== 'Profile terminated.' &&
-                !note.text.startsWith('Referral provided.') &&
-                cleanedUsername === activeUser
+                shouldShowButtons
                     ? ` <br>
                 <button class="interactive" onclick="window.editNote('${clientId}', ${notes.length - 1 - index})">Edit</button>
                 <button class="interactive" onclick="window.deleteNote('${clientId}', ${notes.length - 1 - index})">Delete</button>

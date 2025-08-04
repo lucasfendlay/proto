@@ -349,9 +349,20 @@ function refer(name) {
         })
         .then(result => {
             console.log('Referral note saved successfully:', result); // Debugging
-            alert(`Referral for ${name} has been successfully logged.`);
 
-            renderNotes(clientId);
+            // Render the notes and ensure buttons are hidden for the new note
+            renderNotes(clientId).then(() => {
+                const notesList = document.getElementById('notes-list');
+                const lastNote = notesList.lastElementChild;
+
+                // Hide the Edit and Delete buttons for the newly added note
+                if (lastNote && note.text.startsWith('Referral provided.')) {
+                    const buttons = lastNote.querySelectorAll('button');
+                    buttons.forEach(button => {
+                        button.style.display = 'none';
+                    });
+                }
+            });
         })
         .catch(error => {
             console.error('Error saving referral note:', error);
