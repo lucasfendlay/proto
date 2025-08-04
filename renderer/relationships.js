@@ -234,6 +234,12 @@ document.addEventListener('DOMContentLoaded', async function () {
             noMembersMessage.textContent = 'No household members found.';
             householdMemberContainer.appendChild(noMembersMessage);
         } else {
+            // Sort members to show headOfHousehold: true first
+            members.sort((a, b) => {
+                if (a.headOfHousehold === b.headOfHousehold) return 0;
+                return a.headOfHousehold ? -1 : 1;
+            });
+    
             members.forEach(member => {
                 const memberDiv = document.createElement('div');
                 memberDiv.classList.add('household-member');

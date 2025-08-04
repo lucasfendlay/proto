@@ -130,51 +130,53 @@ console.log('Residence Status:', member.residenceStatus, 'Processed Residence St
         }
 
         // Conditional logic for PTRR
-        if (
-            ((years >= 18 && isDisabled) && residenceStatus !== 'other') ||
-            ((years >= 50 && isWidowed) && residenceStatus !== 'other') ||
-            (years >= 65 && residenceStatus !== 'other')
-        ) {
-            console.log('PTRR Condition Met:', {
-                years,
-                isDisabled,
-                isWidowed,
-                residenceStatus
-            });
-        
-            try {
-                const response = await fetch(`/get-client/${clientId}`);
-                const client = await response.json();
-        
-                console.log('Client Response:', client);
-        
-                if (client && client.residenceStatus === 'other') {
-                    console.log('Skipping PTRR question because residenceStatus is "other".');
-                    await saveDefaultSelection(clientId, member.householdMemberId, "Has this person already applied for PTRR this year?", "Not Interested");
-                } else {
-                    hasQuestions = true;
-                    console.log('Appending PTRR question to the DOM.');
-                    memberDiv.innerHTML += `
-                        <div class="selection-box">
-                            <label>Has this person already applied for PTRR this year?</label>
-                            <div data-value="yes" class="selection-option">Yes</div>
-                            <div data-value="no" class="selection-option">No</div>
-                            <div data-value="notinterested" class="selection-option">Not Interested</div>
-                        </div>
-                    `;
-                }
-            } catch (error) {
-                console.error('Error fetching client data for PTRR logic:', error);
+if (member.headOfHousehold === true) {
+    if (
+        ((years >= 18 && isDisabled) && residenceStatus !== 'other') ||
+        ((years >= 50 && isWidowed) && residenceStatus !== 'other') ||
+        (years >= 65 && residenceStatus !== 'other')
+    ) {
+        console.log('PTRR Condition Met:', {
+            years,
+            isDisabled,
+            isWidowed,
+            residenceStatus
+        });
+
+        try {
+            const response = await fetch(`/get-client/${clientId}`);
+            const client = await response.json();
+
+            console.log('Client Response:', client);
+
+            if (client && client.residenceStatus === 'other') {
+                console.log('Skipping PTRR question because residenceStatus is "other".');
+                await saveDefaultSelection(clientId, member.householdMemberId, "Has this person already applied for PTRR this year?", "Not Interested");
+            } else {
+                hasQuestions = true;
+                console.log('Appending PTRR question to the DOM.');
+                memberDiv.innerHTML += `
+                    <div class="selection-box">
+                        <label>Has this person already applied for PTRR this year?</label>
+                        <div data-value="yes" class="selection-option">Yes</div>
+                        <div data-value="no" class="selection-option">No</div>
+                        <div data-value="notinterested" class="selection-option">Not Interested</div>
+                    </div>
+                `;
             }
-        } else {
-            console.log('PTRR Condition Not Met:', {
-                years,
-                isDisabled,
-                isWidowed,
-                residenceStatus
-            });
-            await saveDefaultSelection(clientId, member.householdMemberId, "Has this person already applied for PTRR this year?", "Not Interested");
+        } catch (error) {
+            console.error('Error fetching client data for PTRR logic:', error);
         }
+    } else {
+        console.log('PTRR Condition Not Met:', {
+            years,
+            isDisabled,
+            isWidowed,
+            residenceStatus
+        });
+        await saveDefaultSelection(clientId, member.householdMemberId, "Has this person already applied for PTRR this year?", "Not Interested");
+    }
+}
 
         // Only append the member to the container if they have applicable questions
         if (hasQuestions) {
@@ -243,15 +245,21 @@ console.log('Residence Status:', member.residenceStatus, 'Processed Residence St
     async function displayHouseholdMembers() {
         const householdMemberContainer = document.getElementById('householdMemberContainer');
         householdMemberContainer.innerHTML = '';
-
+    
         const members = await loadHouseholdMembers();
         let appendedMembers = 0;
-
+    
         if (members.length === 0) {
             const noMembersMessage = document.createElement('p');
             noMembersMessage.textContent = 'No household members found.';
             householdMemberContainer.appendChild(noMembersMessage);
         } else {
+            // Sort members to show headOfHousehold: true first
+            members.sort((a, b) => {
+                if (a.headOfHousehold === b.headOfHousehold) return 0;
+                return a.headOfHousehold ? -1 : 1;
+            });
+    
             for (const member of members) {
                 const wasAppended = await addHouseholdMemberToUI(member);
                 if (wasAppended) {

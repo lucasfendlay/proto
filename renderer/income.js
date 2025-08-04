@@ -76,30 +76,35 @@ async function saveIncome(memberId, income) {
             }
         }
 
-    async function displayHouseholdMembers() {
-        const householdMemberContainer = document.getElementById('household-member-container');
-
-
-        // Clear the container to prevent duplicates
-        householdMemberContainer.innerHTML = ''; // Clear all existing content
-    
-        // Add styles to make the container narrower
-        householdMemberContainer.align = 'center'; // Center the container
-        householdMemberContainer.style.minWidth = '925px'; // Set a minimum width for the container
-        householdMemberContainer.style.maxWidth = '925px'; // Adjust the width as needed
-        householdMemberContainer.style.margin = '0 auto'; // Center the container
-    
-        const members = await loadHouseholdMembers();
-    
-        if (members.length === 0) {
-            const noMembersMessage = document.createElement('p');
-            noMembersMessage.textContent = 'No household members found.';
-            householdMemberContainer.appendChild(noMembersMessage);
-        } else {
-            members.forEach(member => {
-                const memberDiv = document.createElement('div');
-                memberDiv.classList.add('household-member1-box'); // Add a class for styling
-                memberDiv.setAttribute('data-member-id', member.householdMemberId);
+        async function displayHouseholdMembers() {
+            const householdMemberContainer = document.getElementById('household-member-container');
+        
+            // Clear the container to prevent duplicates
+            householdMemberContainer.innerHTML = ''; // Clear all existing content
+        
+            // Add styles to make the container narrower
+            householdMemberContainer.align = 'center'; // Center the container
+            householdMemberContainer.style.minWidth = '925px'; // Set a minimum width for the container
+            householdMemberContainer.style.maxWidth = '925px'; // Adjust the width as needed
+            householdMemberContainer.style.margin = '0 auto'; // Center the container
+        
+            const members = await loadHouseholdMembers();
+        
+            if (members.length === 0) {
+                const noMembersMessage = document.createElement('p');
+                noMembersMessage.textContent = 'No household members found.';
+                householdMemberContainer.appendChild(noMembersMessage);
+            } else {
+                // Sort members to show headOfHousehold: true first
+                members.sort((a, b) => {
+                    if (a.headOfHousehold === b.headOfHousehold) return 0;
+                    return a.headOfHousehold ? -1 : 1;
+                });
+        
+                members.forEach(member => {
+                    const memberDiv = document.createElement('div');
+                    memberDiv.classList.add('household-member1-box'); // Add a class for styling
+                    memberDiv.setAttribute('data-member-id', member.householdMemberId);
     
                 // Populate member details
                 memberDiv.innerHTML = `

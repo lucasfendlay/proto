@@ -79,24 +79,32 @@ async function saveAsset(memberId, asset) {
     await window.eligibilityChecks.displaySNAPHouseholds();
 }
 
-    async function displayHouseholdMembers() {
-        const householdMemberContainer = document.getElementById('household-member-container');
-    
-        householdMemberContainer.align = 'center'; // Center the container
-        householdMemberContainer.style.minWidth = '925px'; // Ensure minimum width
-        householdMemberContainer.style.maxWidth = '925px'; // Adjust the width as needed
-        householdMemberContainer.style.margin = '0 auto'; // Center the container
-    
-        const members = await loadHouseholdMembers();
-    
-        if (members.length === 0) {
-            const noMembersMessage = document.createElement('p');
-            noMembersMessage.textContent = 'No household members found.';
-            householdMemberContainer.appendChild(noMembersMessage);
-        } else {
-            members.forEach(member => {
-                const memberDiv = document.createElement('div');
-                memberDiv.classList.add('household-member1-box'); // Add a class for styling
+async function displayHouseholdMembers() {
+    const householdMemberContainer = document.getElementById('household-member-container');
+
+    householdMemberContainer.align = 'center'; // Center the container
+    householdMemberContainer.style.minWidth = '925px'; // Ensure minimum width
+    householdMemberContainer.style.maxWidth = '925px'; // Adjust the width as needed
+    householdMemberContainer.style.margin = '0 auto'; // Center the container
+
+    const members = await loadHouseholdMembers();
+
+    householdMemberContainer.innerHTML = ''; // Clear existing content
+
+    if (members.length === 0) {
+        const noMembersMessage = document.createElement('p');
+        noMembersMessage.textContent = 'No household members found.';
+        householdMemberContainer.appendChild(noMembersMessage);
+    } else {
+        // Sort members to show headOfHousehold: true first
+        members.sort((a, b) => {
+            if (a.headOfHousehold === b.headOfHousehold) return 0;
+            return a.headOfHousehold ? -1 : 1;
+        });
+
+        members.forEach(member => {
+            const memberDiv = document.createElement('div');
+            memberDiv.classList.add('household-member1-box'); // Add a class for styling
     
                 // Populate member details
                 memberDiv.innerHTML = `

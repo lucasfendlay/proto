@@ -97,53 +97,40 @@ async function loadSavedData() {
             // Display all previously saved household members
             if (clientData.householdMembers && Array.isArray(clientData.householdMembers)) {
                 householdMemberContainer.innerHTML = ''; // Clear existing members
-                clientData.householdMembers.forEach((member) => {
+            
+                // Sort members to display the head of household at the top
+                const sortedMembers = clientData.householdMembers.sort((a, b) => {
+                    return b.headOfHousehold - a.headOfHousehold; // `true` (1) comes before `false` (0)
+                });
+            
+                sortedMembers.forEach((member) => {
                     const memberElement = document.createElement('div');
                     memberElement.classList.add('household-member'); // Add a class for styling
                     memberElement.innerHTML = `
-<p class="household-member-info"><strong>Name:</strong> ${capitalizeFirstLetter(member.firstName || '')} ${member.middleInitial ? capitalizeFirstLetter(member.middleInitial || '') : ''} ${capitalizeFirstLetter(member.lastName || '')}</p>    <p class="household-member-info"><strong>DOB:</strong> ${member.dob}</p>
-    <p class="household-member-info"><strong>Age:</strong> ${member.age}</p>
-    <p class="household-member-info"><strong>Marital Status:</strong> ${capitalizeFirstLetter(member.maritalStatus)}</p>
-    ${member.previousMaritalStatus && member.previousMaritalStatus.toLowerCase() !== 'n/a' ? 
-        `<p class="household-member-info"><strong>Previous Marital Status:</strong> ${capitalizeFirstLetter(member.previousMaritalStatus)}</p>` 
-        : ''}
-            <p class="household-member-info"><strong>Disability:</strong> ${capitalizeFirstLetter(member.disability)}</p>
-    <p class="household-member-info"><strong>Medicare:</strong> ${capitalizeFirstLetter(member.medicare)}</p>
-    <p class="household-member-info"><strong>Medicaid:</strong> ${capitalizeFirstLetter(member.medicaid)}</p>
-    <p class="household-member-info"><strong>US Citizen:</strong> ${capitalizeFirstLetter(member.citizen)}</p>
-${member.nonCitizenStatus && member.nonCitizenStatus.toLowerCase() !== 'citizen' 
-    ? `<p class="household-member-info"><strong>Non-Citizen Status:</strong> ${capitalizeFirstLetter(member.nonCitizenStatus)}</p>` 
-    : ''}
-    <p class="household-member-info"><strong>Student:</strong> ${capitalizeFirstLetter(member.student)}</p>
-${member.studentStatus.toLowerCase() !== 'notstudent' ? `<p class="household-member-info"><strong>Student Status:</strong> ${capitalizeFirstLetter(member.studentStatus)}</p>` : ''}    <p class="household-member-info"><strong>Included in SNAP Household:</strong> ${capitalizeFirstLetter(member.meals)}</p>
-    
-`;
-            
+                    ${member.headOfHousehold ? `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block;"><strong>Head of Household</strong></p>` : ''}
+                        <p class="household-member-info"><strong>Name:</strong> ${capitalizeFirstLetter(member.firstName || '')} ${member.middleInitial ? capitalizeFirstLetter(member.middleInitial || '') : ''} ${capitalizeFirstLetter(member.lastName || '')}</p>
+                        <p class="household-member-info"><strong>DOB:</strong> ${member.dob}</p>
+                        <p class="household-member-info"><strong>Age:</strong> ${member.age}</p>
+                        <p class="household-member-info"><strong>Marital Status:</strong> ${capitalizeFirstLetter(member.maritalStatus)}</p>
+                        ${member.previousMaritalStatus && member.previousMaritalStatus.toLowerCase() !== 'n/a' ? 
+                            `<p class="household-member-info"><strong>Previous Marital Status:</strong> ${capitalizeFirstLetter(member.previousMaritalStatus)}</p>` 
+                            : ''}
+                        <p class="household-member-info"><strong>Disability:</strong> ${capitalizeFirstLetter(member.disability)}</p>
+                        <p class="household-member-info"><strong>Medicare:</strong> ${capitalizeFirstLetter(member.medicare)}</p>
+                        <p class="household-member-info"><strong>Medicaid:</strong> ${capitalizeFirstLetter(member.medicaid)}</p>
+                        <p class="household-member-info"><strong>US Citizen:</strong> ${capitalizeFirstLetter(member.citizen)}</p>
+                        ${member.nonCitizenStatus && member.nonCitizenStatus.toLowerCase() !== 'citizen' 
+                            ? `<p class="household-member-info"><strong>Non-Citizen Status:</strong> ${capitalizeFirstLetter(member.nonCitizenStatus)}</p>` 
+                            : ''}
+                        <p class="household-member-info"><strong>Student:</strong> ${capitalizeFirstLetter(member.student)}</p>
+                        ${member.studentStatus.toLowerCase() !== 'notstudent' ? `<p class="household-member-info"><strong>Student Status:</strong> ${capitalizeFirstLetter(member.studentStatus)}</p>` : ''}    
+                        <p class="household-member-info"><strong>Included in SNAP Household:</strong> ${capitalizeFirstLetter(member.meals)}</p>
+                        </div>
+                    `;
                     householdMemberContainer.appendChild(memberElement);
-                });
-            
-                // Add event listeners to all "Edit" buttons
-                document.querySelectorAll('.edit-member-button').forEach((button) => {
-                    button.addEventListener('click', (event) => {
-                        const memberId = event.target.getAttribute('data-member-id');
-                        const member = clientData.householdMembers.find((m) => m.householdMemberId === memberId);
-                        if (member) {
-                            openEditModal(member); // Open the modal in edit mode
-                        }
-                    });
-                });
-            
-                // Add event listeners to all "Delete" buttons
-                document.querySelectorAll('.delete-member-button').forEach((button) => {
-                    button.addEventListener('click', async (event) => {
-                        const memberId = event.target.getAttribute('data-member-id');
-                        await deleteHouseholdMember(memberId); // Call the delete function
-                    });
-                });
+                });            
             }
 
-            // Check and add the "Add Self" button
-            await checkAndAddSelfButton(clientData);
         }
     } catch (error) {
         console.error('Error loading saved data:', error);

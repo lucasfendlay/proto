@@ -46,21 +46,26 @@ document.addEventListener('DOMContentLoaded', async function () {
     async function displayHouseholdMembers() {
         const householdMemberContainer = document.createElement('div');
         householdMemberContainer.classList.add('household-member-container');
-
+    
         // Add styles to make the container narrower
-    householdMemberContainer.style.maxWidth = '600px'; // Adjust the width as needed
-    householdMemberContainer.style.margin = '0 auto'; // Center the container
-
+        householdMemberContainer.style.maxWidth = '600px'; // Adjust the width as needed
+        householdMemberContainer.style.margin = '0 auto'; // Center the container
+    
         document.body.appendChild(householdMemberContainer);
     
         const members = await loadHouseholdMembers();
-    
     
         if (members.length === 0) {
             const noMembersMessage = document.createElement('p');
             noMembersMessage.textContent = 'No household members found.';
             householdMemberContainer.appendChild(noMembersMessage);
         } else {
+            // Sort members to show headOfHousehold: true first
+            members.sort((a, b) => {
+                if (a.headOfHousehold === b.headOfHousehold) return 0;
+                return a.headOfHousehold ? -1 : 1;
+            });
+    
             members.forEach(member => {
                 const memberDiv = document.createElement('div');
                 memberDiv.classList.add('household-member');

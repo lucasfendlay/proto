@@ -51,12 +51,18 @@ document.addEventListener('DOMContentLoaded', async function () {
             noMembersMessage.textContent = 'No household members found.';
             householdMemberContainer.appendChild(noMembersMessage);
         } else {
+            // Sort members: headOfHousehold: true listed first
+            members.sort((a, b) => b.headOfHousehold - a.headOfHousehold);
+    
             members.forEach(member => {
                 const memberDiv = document.createElement('div');
                 memberDiv.classList.add('household-member-box'); // Add a class for styling
     
+    
                 // Populate member details
                 memberDiv.innerHTML = `
+                ${member.headOfHousehold ? `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block;"><strong>Head of Household</strong></p>` : ''}
+
                     <h3>${member.firstName} ${member.middleInitial || ''} ${member.lastName}</h3>
                     <p><strong>Age:</strong> ${member.age?.split('Y')[0] || 'N/A'}</p>
                     <p><strong>Marital Status:</strong> ${member.maritalStatus || 'N/A'}</p>
@@ -503,9 +509,24 @@ try {
     console.error('Error saving household members:', error);
 }}
 
-    async function PTRREligibilityCheck(members) {
-        for (const member of members) {
-            try {
+async function PTRREligibilityCheck(members) {
+    // Filter members to include only those with headOfHousehold: true
+    const headOfHouseholdMembers = members.filter(member => member.headOfHousehold === true);
+
+    // Set PTRR eligibility as "Not Checked" for members who are not head of household
+    members.forEach(member => {
+        if (!member.headOfHousehold) {
+            member.PTRR = {
+                combinedIncome: 0,
+                eligibility: ["Not Checked"]
+            };
+            console.log(`PTRR eligibility set to "Not Checked" for ${member.firstName} ${member.lastName}`);
+        }
+    });
+
+    // Process only head of household members
+    for (const member of headOfHouseholdMembers) {
+        try {
                 // Step 1: Calculate total gross income for the previous year
                 const incomes = member.income || [];
                 const previousYearIncomes = incomes.filter(income => income.type && income.type.toLowerCase() === "previous");

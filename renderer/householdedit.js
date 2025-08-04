@@ -145,35 +145,54 @@ async function loadSavedData() {
             // Display all previously saved household members
             if (clientData.householdMembers && Array.isArray(clientData.householdMembers)) {
                 householdMemberContainer.innerHTML = ''; // Clear existing members
-                clientData.householdMembers.forEach((member) => {
+            
+                // Sort members to display the head of household at the top
+                const sortedMembers = clientData.householdMembers.sort((a, b) => {
+                    return b.headOfHousehold - a.headOfHousehold; // `true` (1) comes before `false` (0)
+                });
+            
+                sortedMembers.forEach((member) => {
                     const memberElement = document.createElement('div');
                     memberElement.classList.add('household-member'); // Add a class for styling
                     memberElement.innerHTML = `
-<p class="household-member-info"><strong>Name:</strong> ${capitalizeFirstLetter(member.firstName || '')} ${member.middleInitial ? capitalizeFirstLetter(member.middleInitial || '') : ''} ${capitalizeFirstLetter(member.lastName || '')}</p>    <p class="household-member-info"><strong>DOB:</strong> ${member.dob}</p>
-    <p class="household-member-info"><strong>Age:</strong> ${member.age}</p>
-    <p class="household-member-info"><strong>Marital Status:</strong> ${capitalizeFirstLetter(member.maritalStatus)}</p>
-    ${member.previousMaritalStatus && member.previousMaritalStatus.toLowerCase() !== 'n/a' ? 
-        `<p class="household-member-info"><strong>Previous Marital Status:</strong> ${capitalizeFirstLetter(member.previousMaritalStatus)}</p>` 
-        : ''}
-            <p class="household-member-info"><strong>Disability:</strong> ${capitalizeFirstLetter(member.disability)}</p>
-    <p class="household-member-info"><strong>Medicare:</strong> ${capitalizeFirstLetter(member.medicare)}</p>
-    <p class="household-member-info"><strong>Medicaid:</strong> ${capitalizeFirstLetter(member.medicaid)}</p>
-    <p class="household-member-info"><strong>US Citizen:</strong> ${capitalizeFirstLetter(member.citizen)}</p>
-${member.nonCitizenStatus && member.nonCitizenStatus.toLowerCase() !== 'citizen' 
-    ? `<p class="household-member-info"><strong>Non-Citizen Status:</strong> ${capitalizeFirstLetter(member.nonCitizenStatus)}</p>` 
-    : ''}
-    <p class="household-member-info"><strong>Student:</strong> ${capitalizeFirstLetter(member.student)}</p>
-${member.studentStatus.toLowerCase() !== 'notstudent' ? `<p class="household-member-info"><strong>Student Status:</strong> ${capitalizeFirstLetter(member.studentStatus)}</p>` : ''}    <p class="household-member-info"><strong>Included in SNAP Household:</strong> ${capitalizeFirstLetter(member.meals)}</p>
-    <div class="button-container">
-        <button class="edit-member-button" data-member-id="${member.householdMemberId}">Edit</button>
-        <button class="delete-member-button" data-member-id="${member.householdMemberId}" style="color: white; background-color: red" 
-    onmouseover="this.style.backgroundColor='darkred'" 
-    onmouseout="this.style.backgroundColor='red'">Delete</button>
-    </div>
-`;
-            
+                    ${member.headOfHousehold ? `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block;"><strong>Head of Household</strong></p>` : ''}
+                        <p class="household-member-info"><strong>Name:</strong> ${capitalizeFirstLetter(member.firstName || '')} ${member.middleInitial ? capitalizeFirstLetter(member.middleInitial || '') : ''} ${capitalizeFirstLetter(member.lastName || '')}</p>
+                        <p class="household-member-info"><strong>DOB:</strong> ${member.dob}</p>
+                        <p class="household-member-info"><strong>Age:</strong> ${member.age}</p>
+                        <p class="household-member-info"><strong>Marital Status:</strong> ${capitalizeFirstLetter(member.maritalStatus)}</p>
+                        ${member.previousMaritalStatus && member.previousMaritalStatus.toLowerCase() !== 'n/a' ? 
+                            `<p class="household-member-info"><strong>Previous Marital Status:</strong> ${capitalizeFirstLetter(member.previousMaritalStatus)}</p>` 
+                            : ''}
+                        <p class="household-member-info"><strong>Disability:</strong> ${capitalizeFirstLetter(member.disability)}</p>
+                        <p class="household-member-info"><strong>Medicare:</strong> ${capitalizeFirstLetter(member.medicare)}</p>
+                        <p class="household-member-info"><strong>Medicaid:</strong> ${capitalizeFirstLetter(member.medicaid)}</p>
+                        <p class="household-member-info"><strong>US Citizen:</strong> ${capitalizeFirstLetter(member.citizen)}</p>
+                        ${member.nonCitizenStatus && member.nonCitizenStatus.toLowerCase() !== 'citizen' 
+                            ? `<p class="household-member-info"><strong>Non-Citizen Status:</strong> ${capitalizeFirstLetter(member.nonCitizenStatus)}</p>` 
+                            : ''}
+                        <p class="household-member-info"><strong>Student:</strong> ${capitalizeFirstLetter(member.student)}</p>
+                        ${member.studentStatus.toLowerCase() !== 'notstudent' ? `<p class="household-member-info"><strong>Student Status:</strong> ${capitalizeFirstLetter(member.studentStatus)}</p>` : ''}    
+                        <p class="household-member-info"><strong>Included in SNAP Household:</strong> ${capitalizeFirstLetter(member.meals)}</p>
+                        <div class="button-container">
+                            <button class="edit-member-button" data-member-id="${member.householdMemberId}">Edit</button>
+                            <button class="delete-member-button" data-member-id="${member.householdMemberId}" style="color: white; background-color: red" 
+                                onmouseover="this.style.backgroundColor='darkred'" 
+                                onmouseout="this.style.backgroundColor='red'">Delete</button>
+                            ${!member.headOfHousehold ? `<button class="make-head-button" data-member-id="${member.householdMemberId}">Make Head of Household</button>` : ''}
+                        </div>
+                    `;
                     householdMemberContainer.appendChild(memberElement);
                 });
+            
+                // Add event listeners to "Make Head of Household" buttons
+                document.querySelectorAll('.make-head-button').forEach((button) => {
+                    button.addEventListener('click', async (event) => {
+                        const memberId = event.target.getAttribute('data-member-id');
+                        await makeHeadOfHousehold(memberId); // Call the function to update head of household
+                    });
+                });
+            
+            
             
                 // Add event listeners to all "Edit" buttons
                 document.querySelectorAll('.edit-member-button').forEach((button) => {
@@ -220,6 +239,54 @@ ${member.studentStatus.toLowerCase() !== 'notstudent' ? `<p class="household-mem
 function capitalizeFirstLetter(string) {
     if (!string) return ''; // Return an empty string if input is falsy
     return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+async function makeHeadOfHousehold(memberId) {
+    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
+
+    try {
+        // Fetch the current household members
+        const response = await fetch(`/get-client/${clientId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client data: ${response.statusText}`);
+        }
+        const clientData = await response.json();
+
+        if (clientData && clientData.householdMembers) {
+            // Update headOfHousehold property
+            const updatedMembers = clientData.householdMembers.map((member) => ({
+                ...member,
+                headOfHousehold: member.householdMemberId === memberId,
+            }));
+
+            // Send the updated members to the backend
+            const updateResponse = await fetch(`/update-household-members`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    clientId,
+                    members: updatedMembers,
+                }),
+            });
+
+            if (updateResponse.ok) {
+                console.log(`Successfully updated head of household to member ID: ${memberId}`);
+                await loadSavedData(); // Reload the data to reflect changes
+            } else {
+                console.error('Failed to update head of household:', updateResponse.statusText);
+            }
+        } else {
+            console.error('No household members found to update.');
+        }
+    } catch (error) {
+        console.error('Error updating head of household:', error);
+    }
 }
 
 // Function to handle saving the selection
@@ -683,6 +750,12 @@ async function addHouseholdMember() {
             answers.studentStatus = 'notstudent';
         }
 
+        const clientData = await fetch(`/get-client/${clientId}`).then(res => res.json());
+        if (!clientData) {
+            console.error('Client data not found.');
+            return;
+        }
+
         // Prepare the data to save
         const householdMemberData = {
             householdMemberId: crypto.randomUUID(), // Generate a unique ID
@@ -696,6 +769,8 @@ async function addHouseholdMember() {
             nonCitizenStatus,
             studentStatus,
             ...answers,
+            headOfHousehold: clientData.householdMembers.length === 0 // Automatically set as Head of Household if no members exist
+
         };
 
         // If nonCitizenStatus is "ineligible non-citizen", set meals to "no"

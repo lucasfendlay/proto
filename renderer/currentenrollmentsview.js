@@ -176,15 +176,21 @@ document.addEventListener('DOMContentLoaded', async function () {
     async function displayHouseholdMembers() {
         const householdMemberContainer = document.getElementById('householdMemberContainer');
         householdMemberContainer.innerHTML = '';
-
+    
         const members = await loadHouseholdMembers();
         let appendedMembers = 0;
-
+    
         if (members.length === 0) {
             const noMembersMessage = document.createElement('p');
             noMembersMessage.textContent = 'No household members found.';
             householdMemberContainer.appendChild(noMembersMessage);
         } else {
+            // Sort members to show headOfHousehold: true first
+            members.sort((a, b) => {
+                if (a.headOfHousehold === b.headOfHousehold) return 0;
+                return a.headOfHousehold ? -1 : 1;
+            });
+    
             for (const member of members) {
                 const wasAppended = await addHouseholdMemberToUI(member);
                 if (wasAppended) {
