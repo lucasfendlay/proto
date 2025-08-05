@@ -52,6 +52,31 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     }
 
+    // Helper function to clear a selection in the database
+async function clearSelection(clientId, memberId, question) {
+    try {
+        const response = await fetch('/clear-household-member-selection', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                clientId,
+                memberId,
+                question
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to clear selection: ${response.statusText}`);
+        }
+
+        console.log(`Cleared: Question = "${question}"`);
+    } catch (error) {
+        console.error('Error clearing selection:', error);
+    }
+}
+
     async function addHouseholdMemberToUI(member) {
         const householdMemberContainer = document.getElementById('householdMemberContainer');
         const memberDiv = document.createElement('div');
@@ -92,20 +117,69 @@ console.log('Residence Status:', member.residenceStatus, 'Processed Residence St
 
         let hasQuestions = false;
 
-        // Conditional logic for PACE
-        if (years >= 65 || (years === 64 && months === 11 && days > 0) && !isOnMedicaid) {
-            hasQuestions = true;
-            memberDiv.innerHTML += `
-                <div class="selection-box">
-                    <label>Is this person currently enrolled in PACE?</label>
-                    <div data-value="yes" class="selection-option">Yes</div>
-                    <div data-value="no" class="selection-option">No</div>
-                    <div data-value="notinterested" class="selection-option">Not Interested</div>
-                </div>
-            `;
-        } else {
-            await saveDefaultSelection(clientId, member.householdMemberId, "Is this person currently enrolled in PACE?", "Not Interested");
+        // Conditional logic for Pennsylvania residency question
+if (years >= 65 || (years === 64 && months === 11 && days > 0) && !isOnMedicaid) {
+    hasQuestions = true;
+
+    // Add Pennsylvania residency question
+    memberDiv.innerHTML += `
+        <div class="selection-box">
+            <label>Has this person lived in Pennsylvania for at least the last 90 consecutive days?</label>
+            <div data-value="yes" class="selection-option">Yes</div>
+            <div data-value="no" class="selection-option">No</div>
+        </div>
+    `;
+
+    // Add PACE question (initially hidden)
+    const paceQuestionHTML = `
+        <div class="selection-box pace-question" style="display: none;">
+            <label>Is this person currently enrolled in PACE?</label>
+            <div data-value="yes" class="selection-option">Yes</div>
+            <div data-value="no" class="selection-option">No</div>
+            <div data-value="notinterested" class="selection-option">Not Interested</div>
+        </div>
+    `;
+    memberDiv.innerHTML += paceQuestionHTML;
+
+// Recall saved selections and set visibility for PACE question
+try {
+    const response = await fetch(`/get-household-member-selections/${clientId}/${member.householdMemberId}`);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch saved selections: ${response.statusText}`);
+    }
+
+    const savedSelections = await response.json();
+
+    memberDiv.querySelectorAll('.selection-box').forEach(box => {
+        const question = box.querySelector('label').innerText.trim();
+        const savedValue = savedSelections[question];
+
+        if (savedValue) {
+            const optionToSelect = box.querySelector(`.selection-option[data-value="${savedValue}"]`);
+            if (optionToSelect) {
+                optionToSelect.classList.add('selected');
+            }
+
+            // Handle special logic for Pennsylvania residency question
+            if (question === "Has this person lived in Pennsylvania for at least the last 90 consecutive days?") {
+                const paceQuestion = memberDiv.querySelector('.pace-question');
+                if (savedValue === 'yes') {
+                    paceQuestion.style.display = 'block';
+                } else {
+                    paceQuestion.style.display = 'none';
+                    paceQuestion.querySelectorAll('.selection-option').forEach(paceOption => {
+                        paceOption.classList.remove('selected');
+                    });
+                }
+            }
         }
+    });
+} catch (error) {
+    console.error('Error fetching or applying saved selections:', error);
+}
+} else {
+    // Save default selection for PACE question if residency conditions are not met
+}
 
         // Conditional logic for LIS and MSP
         if (isOnMedicare && !isOnMedicaid) {
@@ -199,42 +273,79 @@ if (member.headOfHousehold === true) {
             });
 
             // Modify the event listener for saving selections
-            memberDiv.querySelectorAll('.selection-option').forEach(option => {
-                option.addEventListener('click', async function () {
-                    const parent = this.parentElement;
-                    parent.querySelectorAll('.selection-option').forEach(sibling => sibling.classList.remove('selected'));
-                    this.classList.add('selected');
+memberDiv.querySelectorAll('.selection-option').forEach(option => {
+    option.addEventListener('click', async function () {
+        const parent = this.parentElement;
+        parent.querySelectorAll('.selection-option').forEach(sibling => sibling.classList.remove('selected'));
+        this.classList.add('selected');
 
-                    const question = parent.querySelector('label').innerText.trim();
-                    const value = this.dataset.value;
+        const question = parent.querySelector('label').innerText.trim();
+        const value = this.dataset.value;
 
-                    // Save the selection immediately
-                    await fetch('/save-household-member-selection', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            clientId,
-                            memberId: member.householdMemberId,
-                            question,
-                            value
-                        })
-                    });
+        // Save the selection immediately
+        await fetch('/save-household-member-selection', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                clientId,
+                memberId: member.householdMemberId,
+                question,
+                value
+            })
+        });
 
-                    console.log(`Saved: Question = "${question}", Value = "${value}"`);
+        console.log(`Saved: Question = "${question}", Value = "${value}"`);
 
-                    // Trigger eligibility checks after saving
-                    const members = await window.eligibilityChecks.loadHouseholdMembers();
-                    await window.eligibilityChecks.PACEEligibilityCheck(members);
-                    await window.eligibilityChecks.LISEligibilityCheck(members);
-                    await window.eligibilityChecks.MSPEligibilityCheck(members);
-                    await window.eligibilityChecks.PTRREligibilityCheck(members);
-
-                    // Optionally update the UI
-                    await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
+        // Handle special logic for Pennsylvania residency question
+        if (question === "Has this person lived in Pennsylvania for at least the last 90 consecutive days?") {
+            const paceQuestion = memberDiv.querySelector('.pace-question');
+            if (value === 'yes') {
+                paceQuestion.style.display = 'block';
+                await fetch('/save-household-member-selection', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        clientId,
+                        memberId: member.householdMemberId,
+                        question: "Is this person currently enrolled in PACE?",
+                        value: null
+                    })
                 });
-            });
+            } else {
+                paceQuestion.style.display = 'none';
+                paceQuestion.querySelectorAll('.selection-option').forEach(paceOption => {
+                    paceOption.classList.remove('selected');
+                });
+                await fetch('/save-household-member-selection', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        clientId,
+                        memberId: member.householdMemberId,
+                        question: "Is this person currently enrolled in PACE?",
+                        value: "residencynotmet"
+                    })
+                });
+            }
+        }
+
+        // Trigger eligibility checks after saving
+        const members = await window.eligibilityChecks.loadHouseholdMembers();
+        await window.eligibilityChecks.PACEEligibilityCheck(members);
+        await window.eligibilityChecks.LISEligibilityCheck(members);
+        await window.eligibilityChecks.MSPEligibilityCheck(members);
+        await window.eligibilityChecks.PTRREligibilityCheck(members);
+
+        // Optionally update the UI
+        await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
+    });
+});
 
             return true; // Member has questions and was appended
         }

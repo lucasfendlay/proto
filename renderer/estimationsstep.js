@@ -58,7 +58,6 @@ document.addEventListener('DOMContentLoaded', async function () {
                 const memberDiv = document.createElement('div');
                 memberDiv.classList.add('household-member-box'); // Add a class for styling
     
-    
                 // Populate member details
                 memberDiv.innerHTML = `
                 ${member.headOfHousehold ? `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block;"><strong>Head of Household</strong></p>` : ''}
@@ -440,17 +439,25 @@ if (years < 64 || (years === 64 && months < 11) || (years === 64 && months === 1
     // Check PACE and Medicaid enrollment
     const paceEnrollment = member.selections?.["Is this person currently enrolled in PACE?"]?.toLowerCase();
     const medicaidEnrollment = member.medicaid?.toLowerCase();
+    const paResidency = member.selections?.["Has this person lived in Pennsylvania for at least the last 90 consecutive days?"]?.toLowerCase();
 
     if (medicaidEnrollment === "yes") {
         eligibility.push("Enrolled in Medicaid");
         member.selections = member.selections || {};
         member.selections["Is this person currently enrolled in PACE?"] = "onmedicaid"; // Set paceEnrollment to "onmedicaid"
+    } else if (paResidency === "no") {
+        eligibility.push("Residency Not Met");
+        member.selections = member.selections || {};
+        member.selections["Is this person currently enrolled in PACE?"] = "residencynotmet";
+    } else if (paceEnrollment === "residencynotmet") {
+        eligibility.push("Residency Not Met");
+        member.selections = member.selections || {};
+        member.selections["Is this person currently enrolled in PACE?"] = "residencynotmet";
     } else if (paceEnrollment === "yes") {
         eligibility.push("Already Enrolled");
     } else if (paceEnrollment === "notinterested") {
     eligibility.push("Not Interested");
-} else if (!paceEnrollment || paceEnrollment.toLowerCase().trim() === "onmedicaid" || paceEnrollment.toLowerCase().trim() === "n/a" || paceEnrollment.toLowerCase().trim()
-     === "not interested" || paceEnrollment.toLowerCase().trim() === "agecriterianotmet") {
+} else if (!paceEnrollment) {
     eligibility.push("Needs Current Enrollment Status");
     } else {
         // Income-based eligibility checks
