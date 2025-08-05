@@ -78,7 +78,7 @@ select:focus, input:focus {
 
 /* Submit button styling */
 .submit-button {
-    background-color: #007bff;
+    background-color: #28a745;
     color: white;
     border: 1px solid #000000;
     padding: 12px 20px;
@@ -90,7 +90,7 @@ select:focus, input:focus {
 }
 
 .submit-button:hover {
-    background-color: #0056b3;
+    background-color: #218838;
 }
 
 

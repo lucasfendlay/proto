@@ -846,16 +846,9 @@ function setupAddOrUpdateButton(isEditing, member = null) {
 async function openEditModal(member) {
     setModalHeader('edit'); // Set the modal header to "Edit Household Member"
     const householdMemberModal = document.getElementById('householdMemberModal');
-    const addMemberButton = document.getElementById('add-member');
-    const nonCitizenStatusContainer = document.getElementById('nonCitizenStatusContainer');
-    const nonCitizenStatus = document.getElementById('nonCitizenStatus');
-    const studentStatusContainer = document.getElementById('studentStatusContainer');
-    const studentStatus = document.getElementById('studentStatus');
-    const mealsQuestion = document.getElementById('mealsQuestion');
-    const previousMaritalStatusDropdown = document.getElementById('previousMaritalStatus'); // Get the dropdown
 
-    // Step 1: Prepare the modal logic to identify visible questions
-    await prepareHouseholdMemberModal(); // Resets modal and prepares it based on client data
+    // Step 1: Prepare the modal (reuse the logic from add modal)
+    await prepareHouseholdMemberModal();
 
     // Step 2: Autofill the modal with the member's data
     document.getElementById('firstName').value = member.firstName || '';
@@ -863,48 +856,11 @@ async function openEditModal(member) {
     document.getElementById('lastName').value = member.lastName || '';
     document.getElementById('dob').value = member.dob || '';
     document.getElementById('maritalStatus').value = member.maritalStatus || '';
+    document.getElementById('previousMaritalStatus').value = member.previousMaritalStatus || '';
+    document.getElementById('studentStatus').value = member.studentStatus || '';
+    document.getElementById('nonCitizenStatus').value = member.nonCitizenStatus || '';
 
-    // Step 3: Autofill the previousMaritalStatus dropdown
-    if (previousMaritalStatusDropdown) {
-        previousMaritalStatusDropdown.value = member.previousMaritalStatus || ''; // Set the dropdown value
-    }
-
-    if (member.student === 'yes') {
-        studentStatusContainer.style.display = 'block'; // Show the student status dropdown
-        if (member.studentStatus) {
-            studentStatus.value = member.studentStatus; // Select the saved value
-        }
-
-        // Hide the mealsQuestion if "Ineligible Student" is selected
-        if (member.studentStatus.toLowerCase() === 'ineligible student') {
-            mealsQuestion.style.display = 'none';
-        }
-    } else {
-        studentStatusContainer.style.display = 'none'; // Hide the student status dropdown
-        studentStatus.value = ''; // Reset the student status value
-        mealsQuestion.style.display = 'block'; // Ensure mealsQuestion is visible for non-students
-    }
-
-        // Handle the citizen status
-        if (member.citizen === 'no') {
-            nonCitizenStatusContainer.style.display = 'block'; // Show the dropdown
-            if (member.nonCitizenStatus) {
-                nonCitizenStatus.value = member.nonCitizenStatus; // Select the saved value
-    
-                // Hide the mealsQuestion if "Ineligible Non-Citizen" is selected
-                if (member.nonCitizenStatus.toLowerCase() === 'ineligible non-citizen') {
-                    mealsQuestion.style.display = 'none';
-                } else {
-                    mealsQuestion.style.display = 'block';
-                }
-            }
-        } else {
-            nonCitizenStatusContainer.style.display = 'none'; // Hide the dropdown for citizens
-            nonCitizenStatus.value = ''; // Reset the dropdown value
-            mealsQuestion.style.display = 'block'; // Ensure mealsQuestion is visible for citizens
-        }
-
-    // Step 4: Highlight the selected options for modal questions
+    // Step 3: Highlight the selected options for modal questions
     const modalQuestions = [
         { id: 'disability', elements: ['modal-disability-yes', 'modal-disability-no'] },
         { id: 'medicare', elements: ['modal-medicare-yes', 'modal-medicare-no'] },
@@ -924,28 +880,37 @@ async function openEditModal(member) {
                 } else {
                     element.classList.remove('selected');
                 }
-
-                // Add click event listener to allow changing the selection
-                element.addEventListener('click', () => {
-                    // Remove 'selected' class from all elements in the group
-                    question.elements.forEach((id) => {
-                        const siblingElement = document.getElementById(id);
-                        if (siblingElement) {
-                            siblingElement.classList.remove('selected');
-                        }
-                    });
-
-                    // Add 'selected' class to the clicked element
-                    element.classList.add('selected');
-                });
             }
         });
     });
 
-    // Set up the button for updating the member
+    // Step 4: Handle visibility of conditional fields
+    const nonCitizenStatusContainer = document.getElementById('nonCitizenStatusContainer');
+    const studentStatusContainer = document.getElementById('studentStatusContainer');
+    const mealsQuestion = document.getElementById('mealsQuestion');
+
+    if (member.citizen === 'no') {
+        nonCitizenStatusContainer.style.display = 'block';
+        if (member.nonCitizenStatus.toLowerCase() === 'ineligible non-citizen') {
+            mealsQuestion.style.display = 'none';
+        }
+    } else {
+        nonCitizenStatusContainer.style.display = 'none';
+    }
+
+    if (member.student === 'yes') {
+        studentStatusContainer.style.display = 'block';
+        if (member.studentStatus.toLowerCase() === 'ineligible student') {
+            mealsQuestion.style.display = 'none';
+        }
+    } else {
+        studentStatusContainer.style.display = 'none';
+    }
+
+    // Step 5: Set up the button for updating the member
     setupAddOrUpdateButton(true, member);
 
-    // Show the modal
+    // Step 6: Show the modal
     householdMemberModal.style.display = 'block';
 }
 

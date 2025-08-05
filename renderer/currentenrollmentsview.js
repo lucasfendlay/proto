@@ -118,8 +118,7 @@ console.log('Residence Status:', member.residenceStatus, 'Processed Residence St
         let hasQuestions = false;
 
         // Conditional logic for Pennsylvania residency question
-if (years >= 65 || (years === 64 && months === 11 && days > 0) && !isOnMedicaid) {
-    hasQuestions = true;
+        if ((years >= 65 || (years === 64 && months === 11 && days > 0)) && !isOnMedicaid) {    hasQuestions = true;
 
     // Add Pennsylvania residency question
     memberDiv.innerHTML += `

@@ -185,9 +185,9 @@ select:focus, input:focus {
 
 /* Submit button styling */
 .submit-button {
-    background-color: #007bff; /* blue background */
+    background-color: #28a745; /* blue background */
     color: white;
-    border: none;
+    border: 1px solid #000000;
     padding: 12px 20px;
     border-radius: 6px;
     font-size: 16px;
@@ -197,7 +197,7 @@ select:focus, input:focus {
 }
 
 .submit-button:hover {
-    background-color: #45a049;
+    background-color: #218838;
 }
 
 
@@ -274,25 +274,6 @@ select:focus, input:focus {
     font-size: 16px;
     padding: 12px;
 }
-
-/* Submit button styling */
-.submit-button {
-    background-color: #007bff; /* Green background */
-    color: white;
-    border: solid 1px #000000;;
-    padding: 12px 20px;
-    border-radius: 6px;
-    font-size: 16px;
-    cursor: pointer;
-    width: 100%;
-    transition: background-color 0.3s ease;
-}
-
-.submit-button:hover {
-    background-color: #0056b3;
-}
-
-
 
 .button-container {
     display: flex;

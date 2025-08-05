@@ -434,7 +434,8 @@ const [years, months, days] = age
 if (years < 64 || (years === 64 && months < 11) || (years === 64 && months === 11 && days < 0)) {
     eligibility.push("Age Criteria Not Met");
     member.selections = member.selections || {};
-    member.selections["Is this person currently enrolled in PACE?"] = "agecriterianotmet";
+    member.selections["Is this person currently enrolled in PACE?"] = null;
+    member.selections["Has this person lived in Pennsylvania for at least the last 90 consecutive days?"] = null; // Clear residency selection
 } else {
     // Check PACE and Medicaid enrollment
     const paceEnrollment = member.selections?.["Is this person currently enrolled in PACE?"]?.toLowerCase();
@@ -444,23 +445,20 @@ if (years < 64 || (years === 64 && months < 11) || (years === 64 && months === 1
     if (medicaidEnrollment === "yes") {
         eligibility.push("Enrolled in Medicaid");
         member.selections = member.selections || {};
-        member.selections["Is this person currently enrolled in PACE?"] = "onmedicaid"; // Set paceEnrollment to "onmedicaid"
+        member.selections["Is this person currently enrolled in PACE?"] = null; // Set paceEnrollment to "onmedicaid"
+        member.selections["Has this person lived in Pennsylvania for at least the last 90 consecutive days?"] = null; // Clear residency selection
     } else if (paResidency === "no") {
         eligibility.push("Residency Not Met");
         member.selections = member.selections || {};
-        member.selections["Is this person currently enrolled in PACE?"] = "residencynotmet";
-    } else if (paceEnrollment === "residencynotmet") {
-        eligibility.push("Residency Not Met");
-        member.selections = member.selections || {};
-        member.selections["Is this person currently enrolled in PACE?"] = "residencynotmet";
+        member.selections["Is this person currently enrolled in PACE?"] = null;
     } else if (paceEnrollment === "yes") {
         eligibility.push("Already Enrolled");
     } else if (paceEnrollment === "notinterested") {
-    eligibility.push("Not Interested");
-} else if (!paceEnrollment) {
-    eligibility.push("Needs Current Enrollment Status");
+        eligibility.push("Not Interested");
+    } else if (!paceEnrollment || paResidency === null) {
+        eligibility.push("Needs Current Enrollment Status");
     } else {
-        // Income-based eligibility checks
+        // Proceed to income-based eligibility checks only if none of the above conditions are met
         if (spouse) {
             if (member.combinedIncome < 17700) {
                 eligibility.push("Likely Eligible for PACE");
