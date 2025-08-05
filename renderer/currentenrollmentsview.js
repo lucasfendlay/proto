@@ -122,7 +122,7 @@ console.log('Residence Status:', member.residenceStatus, 'Processed Residence St
 
     // Add Pennsylvania residency question
     memberDiv.innerHTML += `
-        <div class="selection-box">
+        <div class="selection-box readonly">
             <label>Has this person lived in Pennsylvania for at least the last 90 consecutive days?</label>
             <div data-value="yes" class="selection-option">Yes</div>
             <div data-value="no" class="selection-option">No</div>
@@ -131,7 +131,7 @@ console.log('Residence Status:', member.residenceStatus, 'Processed Residence St
 
     // Add PACE question (initially hidden)
     const paceQuestionHTML = `
-        <div class="selection-box pace-question" style="display: none;">
+        <div class="selection-box pace-question readonly" style="display: none;">
             <label>Is this person currently enrolled in PACE?</label>
             <div data-value="yes" class="selection-option">Yes</div>
             <div data-value="no" class="selection-option">No</div>
@@ -184,13 +184,13 @@ try {
         if (isOnMedicare && !isOnMedicaid) {
             hasQuestions = true;
             memberDiv.innerHTML += `
-                <div class="selection-box">
+                <div class="selection-box readonly">
                     <label>Is this person currently enrolled in LIS/ Extra Help?</label>
                     <div data-value="yes" class="selection-option">Yes</div>
                     <div data-value="no" class="selection-option">No</div>
                     <div data-value="notinterested" class="selection-option">Not Interested</div>
                 </div>
-                <div class="selection-box">
+                <div class="selection-box readonly">
                     <label>Is this person currently enrolled in the Medicare Savings Program?</label>
                     <div data-value="yes" class="selection-option">Yes</div>
                     <div data-value="no" class="selection-option">No</div>
@@ -229,7 +229,7 @@ if (member.headOfHousehold === true) {
                 hasQuestions = true;
                 console.log('Appending PTRR question to the DOM.');
                 memberDiv.innerHTML += `
-                    <div class="selection-box">
+                    <div class="selection-box readonly">
                         <label>Has this person already applied for PTRR this year?</label>
                         <div data-value="yes" class="selection-option">Yes</div>
                         <div data-value="no" class="selection-option">No</div>

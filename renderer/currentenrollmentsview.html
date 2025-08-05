@@ -11,6 +11,11 @@
     <style>
 /* ...existing code... */
 
+.read-only {
+    pointer-events: none; /* Disable all interactions */
+    opacity: 0.6; /* Optional: Dim the page to indicate read-only mode */
+}
+
 
 .selection-box.readonly {
     pointer-events: none; /* Makes the selection box readonly */
