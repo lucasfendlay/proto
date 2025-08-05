@@ -155,7 +155,6 @@ async function loadSavedData() {
                     const memberElement = document.createElement('div');
                     memberElement.classList.add('household-member'); // Add a class for styling
                     memberElement.innerHTML = `
-                    ${member.headOfHousehold ? `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block;"><strong>Head of Household</strong></p>` : ''}
                         <p class="household-member-info"><strong>Name:</strong> ${capitalizeFirstLetter(member.firstName || '')} ${member.middleInitial ? capitalizeFirstLetter(member.middleInitial || '') : ''} ${capitalizeFirstLetter(member.lastName || '')}</p>
                         <p class="household-member-info"><strong>DOB:</strong> ${member.dob}</p>
                         <p class="household-member-info"><strong>Age:</strong> ${member.age}</p>
@@ -179,6 +178,8 @@ async function loadSavedData() {
                                 onmouseover="this.style.backgroundColor='darkred'" 
                                 onmouseout="this.style.backgroundColor='red'">Delete</button>
                             ${!member.headOfHousehold ? `<button class="make-head-button" data-member-id="${member.householdMemberId}">Make Head of Household</button>` : ''}
+                                                ${member.headOfHousehold ? `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block;"><strong>Head of Household</strong></p>` : ''}
+
                         </div>
                     `;
                     householdMemberContainer.appendChild(memberElement);
