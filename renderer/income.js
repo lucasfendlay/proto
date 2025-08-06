@@ -61,6 +61,19 @@ async function saveIncome(memberId, income) {
             throw new Error('Failed to save income.');
         }
 
+        const members = await loadHouseholdMembers();
+        await window.eligibilityChecks.PACEEligibilityCheck(members);
+        await window.eligibilityChecks.LISEligibilityCheck(members);
+        await window.eligibilityChecks.MSPEligibilityCheck(members);
+        await window.eligibilityChecks.PTRREligibilityCheck(members);
+        await window.eligibilityChecks.SNAPEligibilityCheck(members);
+
+        console.log('Eligibility Checks:', window.eligibilityChecks);
+
+        // Update the UI
+        await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
+        await window.eligibilityChecks.displaySNAPHouseholds();
+
         console.log(`Income saved for member ${memberId}:`, income);
 
                 // Hide the modal after saving
@@ -315,6 +328,19 @@ addIncomeButton.addEventListener('click', async () => {
                         updatedIncome: income
                     })
                 });
+
+                const members = await loadHouseholdMembers();
+        await window.eligibilityChecks.PACEEligibilityCheck(members);
+        await window.eligibilityChecks.LISEligibilityCheck(members);
+        await window.eligibilityChecks.MSPEligibilityCheck(members);
+        await window.eligibilityChecks.PTRREligibilityCheck(members);
+        await window.eligibilityChecks.SNAPEligibilityCheck(members);
+
+        console.log('Eligibility Checks:', window.eligibilityChecks);
+
+        // Update the UI
+        await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
+        await window.eligibilityChecks.displaySNAPHouseholds();
 
                 if (!response.ok) {
                     throw new Error('Failed to update income.');

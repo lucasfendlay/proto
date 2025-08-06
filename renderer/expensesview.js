@@ -196,6 +196,11 @@ const memberState = {
         const medicalExpenses = expenses.filter(expense => expense.type === 'Medical');
         const otherExpenses = expenses.filter(expense => expense.type === 'Other');
         const previousYearExpenses = expenses.filter(expense => expense.type === 'Previous Year');
+
+            // Helper function to format amounts
+    const formatAmount = (amount) => {
+        return Number.isInteger(amount) ? amount : amount.toFixed(2);
+    };
     
         // Helper function to render a list of expenses
         const renderExpenseList = (expenses, title) => {
@@ -208,7 +213,7 @@ const memberState = {
                             <li data-expense-id="${expense.id}">
                                 <p><strong>Type:</strong> ${expense.type}</p>
                                 <p><strong>Kind:</strong> ${expense.kind}</p>
-                                <p><strong>Amount:</strong> $${expense.amount}</p>
+                            <p><strong>Amount:</strong> $${formatAmount(expense.amount)}</p>
                                 <p><strong>Frequency:</strong> ${expense.frequency}</p>
                                 <p><strong>Start Date:</strong> ${expense.startDate}</p>
                                 <p><strong>End Date:</strong> ${expense.endDate}</p>

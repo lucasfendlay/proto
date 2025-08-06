@@ -24,6 +24,28 @@ const memberState = {
     }
 };
 
+// Add event listener to autofill fields based on dropdown selection
+document.getElementById('expense-kind').addEventListener('change', function () {
+    const selectedValue = this.value; // Get the selected dropdown value
+    const expenseType = modalTitle.textContent.includes('Previous Year') ? 'Previous Year' : 'Medical'; // Determine the expense type
+    const amountInput = document.getElementById('expense-amount');
+    const frequencyInput = document.getElementById('expense-frequency');
+
+    if (expenseType === 'Medical' && selectedValue === 'Medicare Part B Premium') {
+        // Autofill for Medical -> Medicare Part B Premium
+        amountInput.value = '185';
+        frequencyInput.value = 'Monthly';
+    } else if (expenseType === 'Previous Year' && selectedValue === 'Medicare Part B Premium') {
+        // Autofill for Previous Year -> Medicare Part B Premium
+        amountInput.value = '174.70';
+        frequencyInput.value = 'Monthly';
+    } else {
+        // Clear autofilled fields if a different dropdown is selected
+        amountInput.value = '';
+        frequencyInput.value = '';
+    }
+});
+
     // Define dropdown options for each expense type
     const dropdownOptions = {
         Shelter: [
@@ -60,6 +82,7 @@ const memberState = {
     { value: 'Property Taxes', label: 'Property Taxes' },
     { value: 'Rent', label: 'Rent' }
 ]
+
     };
     // Load household members
     async function loadHouseholdMembers() {
@@ -260,6 +283,11 @@ setupModalClose('previous-year-modal', 'previous-year-form');
         const medicalExpenses = expenses.filter(expense => expense.type === 'Medical');
         const otherExpenses = expenses.filter(expense => expense.type === 'Other');
         const previousYearExpenses = expenses.filter(expense => expense.type === 'Previous Year');
+
+        // Helper function to format amounts
+    const formatAmount = (amount) => {
+        return Number.isInteger(amount) ? amount : amount.toFixed(2);
+    };
     
         // Helper function to render a list of expenses
         const renderExpenseList = (expenses, title) => {
@@ -272,7 +300,7 @@ setupModalClose('previous-year-modal', 'previous-year-form');
                             <li data-expense-id="${expense.id}">
                                 <p><strong>Type:</strong> ${expense.type}</p>
                                 <p><strong>Kind:</strong> ${expense.kind}</p>
-                                <p><strong>Amount:</strong> $${expense.amount}</p>
+                            <p><strong>Amount:</strong> $${formatAmount(expense.amount)}</p>
                                 <p><strong>Frequency:</strong> ${expense.frequency}</p>
                                 <p><strong>Start Date:</strong> ${expense.startDate}</p>
                                 <p><strong>End Date:</strong> ${expense.endDate}</p>
