@@ -319,6 +319,23 @@ addIncomeButton.addEventListener('click', async () => {
         amount: parseFloat(document.getElementById('income-amount').value)
     };
 
+// Validation for start and end dates
+const startDate = new Date(`${income.startDate}T00:00:00Z`); // Parse start date into a Date object with UTC
+const endDate = new Date(`${income.endDate}T00:00:00Z`); // Parse end date into a Date object with UTC
+
+const startYear = startDate.getUTCFullYear(); // Extract the year from the start date (UTC)
+const endYear = endDate.getUTCFullYear(); // Extract the year from the end date (UTC)
+
+if (income.type === 'Current' && (startYear !== 2025 || endYear !== 2025)) {
+    alert('For Current Year Income, both Start Date and End Date must be in 2025.');
+    return;
+}
+
+if (income.type === 'Previous' && (startYear !== 2024 || endYear !== 2024)) {
+    alert('For Previous Year Income, both Start Date and End Date must be in 2024.');
+    return;
+}
+
     const BACKEND_URL = window.location.origin || "http://localhost:3000";
 
     if (currentMemberId && income.kind && income.type && income.frequency && income.startDate && income.endDate && income.amount) {
@@ -334,19 +351,6 @@ addIncomeButton.addEventListener('click', async () => {
                         updatedIncome: income
                     })
                 });
-
-                const members = await loadHouseholdMembers();
-        await window.eligibilityChecks.PACEEligibilityCheck(members);
-        await window.eligibilityChecks.LISEligibilityCheck(members);
-        await window.eligibilityChecks.MSPEligibilityCheck(members);
-        await window.eligibilityChecks.PTRREligibilityCheck(members);
-        await window.eligibilityChecks.SNAPEligibilityCheck(members);
-
-        console.log('Eligibility Checks:', window.eligibilityChecks);
-
-        // Update the UI
-        await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
-        await window.eligibilityChecks.displaySNAPHouseholds();
 
                 if (!response.ok) {
                     throw new Error('Failed to update income.');
