@@ -67,12 +67,14 @@ async function saveIncome(memberId, income) {
         await window.eligibilityChecks.MSPEligibilityCheck(members);
         await window.eligibilityChecks.PTRREligibilityCheck(members);
         await window.eligibilityChecks.SNAPEligibilityCheck(members);
+        await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
 
         console.log('Eligibility Checks:', window.eligibilityChecks);
 
         // Update the UI
         await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
         await window.eligibilityChecks.displaySNAPHouseholds();
+        await window.eligibilityChecks.displayLIHEAPHouseholds();
 
         console.log(`Income saved for member ${memberId}:`, income);
 
@@ -356,6 +358,25 @@ if (income.type === 'Previous' && (startYear !== 2024 || endYear !== 2024)) {
                     throw new Error('Failed to update income.');
                 }
 
+                    // Re-run eligibility checks and update the display
+    const members = await loadHouseholdMembers();
+    await window.eligibilityChecks.PACEEligibilityCheck(members);
+    await window.eligibilityChecks.LISEligibilityCheck(members);
+    await window.eligibilityChecks.MSPEligibilityCheck(members);
+    await window.eligibilityChecks.PTRREligibilityCheck(members);
+    await window.eligibilityChecks.SNAPEligibilityCheck(members);
+    await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
+
+    console.log('Eligibility Checks:', window.eligibilityChecks);
+
+    // Update the UI
+    await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
+    await window.eligibilityChecks.displaySNAPHouseholds();
+    await window.eligibilityChecks.displayLIHEAPHouseholds();
+
+    console.log('Income updated and checks re-run for member:', currentMemberId);
+
+
                 // Update the UI for the existing income entry
                 const incomeItem = document.querySelector(`[data-income-id="${editingIncomeId}"]`);
                 if (incomeItem) {
@@ -535,12 +556,14 @@ function attachIncomeEventListeners(incomeItem) {
         await window.eligibilityChecks.MSPEligibilityCheck(members);
         await window.eligibilityChecks.PTRREligibilityCheck(members);
         await window.eligibilityChecks.SNAPEligibilityCheck(members);
+        await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
 
         console.log('Eligibility Checks:', window.eligibilityChecks);
 
         // Update the UI
         await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
         await window.eligibilityChecks.displaySNAPHouseholds();
+        await window.eligibilityChecks.displayLIHEAPHouseholds();
                     }
                     } catch (error) {
                     console.error('Error deleting income:', error);

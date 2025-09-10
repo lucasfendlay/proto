@@ -630,6 +630,24 @@ async function saveExpense() {
         return;
     }
 
+    // Validate the year of the expense
+    const startDate = new Date(`${expenseStartDate}T00:00:00Z`);
+    const endDate = new Date(`${expenseEndDate}T00:00:00Z`);
+    const startYear = startDate.getUTCFullYear();
+    const endYear = endDate.getUTCFullYear();
+
+    const expenseType = modalTitle.textContent.includes('Previous Year') ? 'Previous Year' : modalTitle.textContent.split(' ')[1];
+
+    if (expenseType === 'Previous Year' && (startYear !== 2024 || endYear !== 2024)) {
+        alert(`For ${expenseType} Expenses, both Start Date and End Date must be in 2024.`);
+        return;
+    }
+
+    if (expenseType !== 'Previous Year' && (startYear !== 2025 || endYear !== 2025)) {
+        alert(`For ${expenseType} Expenses, both Start Date and End Date must be in 2025.`);
+        return;
+    }
+
     // Create a new expense object
     const newExpense = {
         id: `expense-${Date.now()}`, // Generate a unique ID
@@ -717,6 +735,30 @@ async function overwriteExpense() {
     // Validate input fields
     if (!expenseKind || !expenseFrequency || !expenseStartDate || !expenseEndDate || !expenseAmount) {
         alert('Please fill out all fields.');
+        return;
+    }
+
+    // Validate input fields
+    if (!expenseKind || !expenseFrequency || !expenseStartDate || !expenseEndDate || !expenseAmount) {
+        alert('Please fill out all fields.');
+        return;
+    }
+
+    // Validate the year of the expense
+    const startDate = new Date(`${expenseStartDate}T00:00:00Z`);
+    const endDate = new Date(`${expenseEndDate}T00:00:00Z`);
+    const startYear = startDate.getUTCFullYear();
+    const endYear = endDate.getUTCFullYear();
+
+    const expenseType = modalTitle.textContent.includes('Previous Year') ? 'Previous Year' : modalTitle.textContent.split(' ')[1];
+
+    if (expenseType === 'Previous Year' && (startYear !== 2024 || endYear !== 2024)) {
+        alert(`For ${expenseType} Expenses, both Start Date and End Date must be in 2024.`);
+        return;
+    }
+
+    if (expenseType !== 'Previous Year' && (startYear !== 2025 || endYear !== 2025)) {
+        alert(`For ${expenseType} Expenses, both Start Date and End Date must be in 2025.`);
         return;
     }
 
