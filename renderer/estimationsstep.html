@@ -94,7 +94,19 @@
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     margin-top: 20px; /* Add consistent spacing above the SNAP container */
 }
-        
+ 
+#liheap-household-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center the content horizontally */
+    min-width: 500px; /* Ensure minimum width for better visibility */
+    max-width: 500px; /* Limit maximum width for layout consistency */
+    padding: 20px;
+    background: #f9f9f9;
+    border-radius: 8px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    margin-top: 20px; /* Add consistent spacing above the SNAP container */
+}
         /* SNAP household box */
         
         .snap-household-box h3 {
@@ -112,8 +124,10 @@
             </div>
             </div>
 
+            <div id="snap-household-container"></div>
+            <div id="liheap-household-container"></div>
+
     <div id="household-members-container" class="household-member-container"></div>
-    <div id="snap-household-container"></div>
 
         <!-- Add Save and Release Profile button -->
         <div class="button-container">

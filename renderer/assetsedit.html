@@ -27,8 +27,10 @@
     </style>
 
 <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
-    <div id="household-members-container" class="left-sidebar"></div>
     <div id="snap-household-container" class="left-sidebar"></div>
+    <div id="liheap-household-container" class="left-sidebar"></div>
+
+    <div id="household-members-container" class="left-sidebar"></div>
 </div>
 
 <div id="notes-container">
@@ -165,7 +167,7 @@
         function GoToNextPage() {
             const clientId = getQueryParameter('id');
             if (clientId) {
-                window.location.href = `estimationsstep.html?id=${clientId}`;
+                window.location.href = `expensesedit.html?id=${clientId}`;
             } else {
                 console.error('Client ID not found in query parameters.');
             }

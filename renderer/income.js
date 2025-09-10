@@ -184,15 +184,21 @@ async function saveIncome(memberId, income) {
     </div>
 `;
     
-                // Conditional logic for showing buttons
-                if (member.meals === 'yes' || member.selections?.['Is this person currently enrolled in LIS/ Extra Help?'] === 'no' || member.selections?.['Is this person currently enrolled in the Medicare Savings Program?'] === 'no') {
-                    const addCurrentYearIncomeButton = document.createElement('button');
-                    addCurrentYearIncomeButton.classList.add('add-income-button');
-                    addCurrentYearIncomeButton.dataset.memberId = member.householdMemberId;
-                    addCurrentYearIncomeButton.dataset.type = 'Current';
-                    addCurrentYearIncomeButton.textContent = 'Add Current Year Income';
-                    memberDiv.appendChild(addCurrentYearIncomeButton);
-                }
+if (
+    member.meals === 'yes' || 
+    member.selections?.['Is this person currently enrolled in LIS/ Extra Help?'] === 'no' || 
+    member.selections?.['Is this person currently enrolled in the Medicare Savings Program?'] === 'no' ||
+    (   !member.LIHEAP?.eligibility?.includes('Already Enrolled') &&
+        !member.LIHEAP?.eligibility?.includes('Not Likely Eligible for LIHEAP (Heating cost included in rent, household rent is subsidized)') &&
+        !member.LIHEAP?.eligibility?.includes('Not Interested'))
+) {
+    const addCurrentYearIncomeButton = document.createElement('button');
+    addCurrentYearIncomeButton.classList.add('add-income-button');
+    addCurrentYearIncomeButton.dataset.memberId = member.householdMemberId;
+    addCurrentYearIncomeButton.dataset.type = 'Current';
+    addCurrentYearIncomeButton.textContent = 'Add Current Year Income';
+    memberDiv.appendChild(addCurrentYearIncomeButton);
+}
     
                 if (member.selections?.['Is this person currently enrolled in PACE?'] === 'no' || member.selections?.['Has this person already applied for PTRR this year?'] === 'no') {
                     const addPreviousYearIncomeButton = document.createElement('button');

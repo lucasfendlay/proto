@@ -84,8 +84,9 @@ body {
     </style>
 
 <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
-    <div id="household-members-container" class="left-sidebar"></div>
     <div id="snap-household-container" class="left-sidebar"></div>
+    <div id="liheap-household-container" class="left-sidebar"></div>
+    <div id="household-members-container" class="left-sidebar"></div>
 </div>
 
 <div id="notes-container">
@@ -155,11 +156,44 @@ body {
     </div>
 
     <div class="selection-box">
+        <label id="liheap-label">Has your household already received LIHEAP this season?</label>
+        <div id="liheap-yes" data-value="yes">Yes</div>
+        <div id="liheap-no" data-value="no">No</div>
+        <div id="liheap-notinterested" data-value="notinterested">Not Interested</div>
+    </div>
+
+    <div class="selection-box" id="heatingCrisis-container" style="display: block;">
+        <label id="heatingCrisis-label">Are you in danger of losing your heating in the next 15 days?</label>
+        <div id="heatingCrisis-yes" data-value="yes">Yes</div>
+        <div id="heatingCrisis-no" data-value="no">No</div>
+    </div>
+
+    <div class="selection-box" id="residenceStatusCurrent-container">
+        <label id="residenceStatusCurrent-label">What is your current residence status?</label>
+        <div id="residenceStatusCurrent-owned" data-value="owned">Own Home</div>
+        <div id="residenceStatusCurrent-rented" data-value="rented">Renting with Formal Lease</div>
+        <div id="residenceStatusCurrent-rentedowned" data-value="rentedowned">Own/Rent</div>
+        <div id="residenceStatusCurrent-other" data-value="other">Other/No Formal Agreement</div>
+    </div>
+
+    <div class="selection-box">
         <label id="residenceStatus-label">What was your residence status during the previous year?</label>
         <div id="residenceStatus-owned" data-value="owned">Owned Home</div>
         <div id="residenceStatus-rented" data-value="rented">Rented with Formal Lease</div>
         <div id="residenceStatus-rentedowned" data-value="rentedowned">Owned/Rented</div>
         <div id="residenceStatus-other" data-value="other">Other/No Formal Agreement</div>
+    </div>
+
+    <div class="selection-box" id="subsidizedHousing-container" style="display: none;">
+        <label id="subsidizedHousing-label">Does your household receive a housing subsidy, such as Section 8?</label>
+        <div id="subsidizedHousing-yes" data-value="yes">Yes</div>
+        <div id="subsidizedHousing-no" data-value="no">No</div>
+    </div>
+    
+    <div class="selection-box" id="heatingCost-container" style="display: none;">
+        <label id="heatingCost-label">Is the cost of your heating included in the cost of rent?</label>
+        <div id="heatingCost-yes" data-value="yes">Yes</div>
+        <div id="heatingCost-no" data-value="no">No</div>
     </div>
 
     <div class="button-container">
@@ -289,11 +323,11 @@ body {
         </form>
 
     <script>
-// Function to get query parameter by name
+// Utility function to get query parameters
 function getQueryParam(name) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get(name);
-        }
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name);
+}
 
         function goToRelationshipsEdit() {
     const clientId = getQueryParameter('id');

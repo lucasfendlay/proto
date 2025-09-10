@@ -194,6 +194,8 @@ app.get('/get-client/:clientId', async (req, res) => {
 
 // Update a client
 app.put('/update-client', async (req, res) => {
+    console.log('Request body received at /update-client:', req.body);
+
     const { clientId, clientData } = req.body;
 
     try {

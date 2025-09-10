@@ -81,8 +81,10 @@
     </style>
 
 <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
-    <div id="household-members-container" class="left-sidebar"></div>
     <div id="snap-household-container" class="left-sidebar"></div>
+    <div id="liheap-household-container" class="left-sidebar"></div>
+
+    <div id="household-members-container" class="left-sidebar"></div>
 </div>
 
 <div id="notes-container">
@@ -176,7 +178,7 @@
 
     <div class="button-container">
         <button id="save-exit" onclick="goToIncomeView()">Save and Release Profile</button>
-        <button id="save-continue" onclick="GoToExpensesEdit()">Save and Continue</button> <br>
+        <button id="save-continue" onclick="GoToAssetsEdit()">Save and Continue</button> <br>
     </div>
 
     <style>
@@ -269,10 +271,10 @@ function getQueryParameter(name) {
     return urlParams.get(name);
 }
 
-function GoToExpensesEdit() {
+function GoToAssetsEdit() {
     const clientId = getQueryParameter('id');
     if (clientId) {
-        window.location.href = `expensesedit.html?id=${clientId}`;
+        window.location.href = `assetsedit.html?id=${clientId}`;
     } else {
         console.error('Client ID not found in query parameters.');
     }

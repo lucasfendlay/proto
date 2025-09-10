@@ -145,8 +145,9 @@ margin-top: 60px; /* Adjust this value to match the height of the navigation con
 
 
     <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
+        <div id="snap-household-container" class="left-sidebar"></div>
+        <div id="liheap-household-container" class="left-sidebar"></div>
         <div id="household-members-container" class="left-sidebar"></div>
-    <div id="snap-household-container" class="left-sidebar"></div>
 </div>
 
     <form id="clientForm">
@@ -595,6 +596,7 @@ margin-top: 60px; /* Adjust this value to match the height of the navigation con
                         <div><strong>Phone:</strong> ${log.callerPhoneNumber || ''}</div>
                         <div><strong>Direction:</strong> ${log.callDirection || ''}</div>
                         <div><strong>Reason:</strong> ${log.reasonForCall || ''}</div>
+                        <div><strong>Service Center:</strong> ${log.servicingCenter || ''}</div>
                         <div><strong>Referral:</strong> ${log.referralSource || 'N/A'}</div>
                         ${log.specificReferral ? `<div><strong>Specifically:</strong> ${log.specificReferral}</div>` : ''}
                     `;

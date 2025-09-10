@@ -48,8 +48,8 @@ document.addEventListener('DOMContentLoaded', function () {
         // Check if the buttons should be displayed
         const shouldShowButtons =
             note.text !== 'New screening initiated.' &&
-            note.text !== 'Inbound call logged.' &&
-            note.text !== 'Outbound call logged.' &&
+            !note.text.includes('Inbound call logged') &&
+            !note.text.includes('Outbound call logged') &&            
             note.text !== 'Profile checked out.' &&
             note.text !== 'Profile released.' &&
             note.text !== 'Profile terminated.' &&

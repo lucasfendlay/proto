@@ -234,6 +234,61 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     }
 
+    async function displayLIHEAPHouseholds() {
+        const liheapHouseholdContainer = document.getElementById('liheap-household-container');
+        if (!liheapHouseholdContainer) {
+            console.error('liheap-household-container element not found in the DOM.');
+            return;
+        }
+    
+        const members = await loadHouseholdMembers();
+        liheapHouseholdContainer.innerHTML = ''; // Clear existing content
+    
+        // Check if client is not interested in LIHEAP
+        const clientId = getQueryParameter('id');
+        const client = await fetch(`/get-client/${clientId}`)
+            .then(response => response.json())
+            .catch(error => {
+                console.error('Error fetching client data:', error);
+                return null;
+            });
+    
+        if (client && client.liheapEnrollment === 'notinterested') {
+            const notInterestedMessage = document.createElement('p');
+            notInterestedMessage.textContent = 'No LIHEAP household found.';
+            liheapHouseholdContainer.appendChild(notInterestedMessage);
+            return;
+        }
+    
+        if (members.length === 0) {
+            const noHouseholdsMessage = document.createElement('p');
+            noHouseholdsMessage.textContent = 'No LIHEAP household found.';
+            liheapHouseholdContainer.appendChild(noHouseholdsMessage);
+            return;
+        }
+    
+        // Use the combined values from the first member (since they are uniform across the household)
+        const combinedYearlyIncome = members[0]?.LIHEAP?.combinedYearlyIncome || 0;
+        const eligibility = members[0]?.LIHEAP?.eligibility || 'Not Available';
+    
+        // Create a container for the LIHEAP household details
+        const householdDiv = document.createElement('div');
+        householdDiv.classList.add('household-member-box'); // Add a class for styling
+    
+        // Populate household details
+        householdDiv.innerHTML = `
+            <details class="custom-details">
+                <summary><h3>LIHEAP Household</h3></summary>
+                <p><strong>Combined Yearly Income:</strong> $${combinedYearlyIncome.toFixed(2)}</p>
+                <hr class="separator-bar">
+            </details>
+            <p><strong>Members:</strong> ${members.map(member => `${member.firstName} ${member.lastName}`).join(', ')}</p>
+            <p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
+        `;
+    
+        liheapHouseholdContainer.appendChild(householdDiv);
+    }
+
 // After PACEEligibilityCheck, reload and display updated household members
 async function updateAndDisplayHouseholdMembers() {
     const clientId = getQueryParameter('id'); // Get the client ID from the query parameter
@@ -1402,11 +1457,9 @@ console.log(`Is Elderly: ${isElderly}`);
                 snapEligibility = ["Likely Eligible for SNAP"];
             } else if (combinedAssets > 4500) {
                 snapEligibility = ["Not Likely Eligible for SNAP (Income and Assets)"];
-            } else if (totalNetIncome > netIncomeLimit && totalShelterExpenses === 0 || totalUtilityAllowance === 0) {
-                snapEligibility = ["Determination Pending Expenses (Over Gross Income Limit)"];
             } else if (totalNetIncome <= netIncomeLimit && combinedAssets <= 4500) {
                 snapEligibility = ["Likely Eligible for SNAP"];
-            } else if (totalNetIncome > netIncomeLimit === totalOtherExpenses > 0) {
+            } else if (totalNetIncome > netIncomeLimit) {
                 snapEligibility = ["Not Likely Eligible for SNAP (Income)"];
             }
         } else {
@@ -1506,6 +1559,101 @@ if (!client) {
 // Log the isFarmworker property from the client object
 console.log("isFarmworker:", client.isFarmworker);
 
+async function LIHEAPEligibilityCheck() {
+    try {
+        // Retrieve the client ID from the query parameter
+        const clientId = getQueryParameter('id');
+        if (!clientId || typeof clientId !== 'string') {
+            throw new Error('Invalid or missing clientId in query parameters.');
+        }
+
+        // Fetch the full client object using the client ID
+        const response = await fetch(`/get-client/${encodeURIComponent(clientId)}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client data: ${response.statusText}`);
+        }
+
+        const client = await response.json();
+
+        // Ensure the client object contains householdMembers and it's an array
+        if (!client || !Array.isArray(client.householdMembers)) {
+            console.error('LIHEAPEligibilityCheck: client.householdMembers is not an array:', client.householdMembers);
+            return;
+        }
+
+        const members = client.householdMembers;
+
+        // Combine all members' yearly income
+        let combinedYearlyIncome = 0;
+
+        members.forEach(member => {
+            const incomes = member.income || [];
+
+            // Calculate yearly income for each income source
+            const yearlyIncome = incomes.reduce((sum, income) => {
+                const yearlyAmount = calculateYearlyIncome(
+                    income.amount,
+                    income.frequency,
+                    income.startDate,
+                    income.endDate
+                );
+                return sum + yearlyAmount;
+            }, 0);
+
+            combinedYearlyIncome += yearlyIncome;
+        });
+
+        // Determine LIHEAP eligibility
+        const householdSize = members.length;
+        const incomeLimits = [
+            0, 23475, 31725, 39975, 48225, 56475, 64725, 72975, 81225, 89475, 97725, 105975, 114225, 122475, 130725, 138975
+        ];
+        const incomeLimit = incomeLimits[householdSize] || 0;
+
+        const eligibility = [];
+        if (client.liheapEnrollment === 'notinterested') {
+            eligibility.push("Not Interested");
+        } else if (client.liheapEnrollment === 'yes' && client.heatingCrisis === 'no') {
+            eligibility.push("Already Enrolled");
+        } else if (client.subsidizedHousing === 'yes' && client.heatingCost === 'yes') {
+            eligibility.push("Not Likely Eligible for LIHEAP (Heating cost included in rent, household rent is subsidized)");
+        } else if (client.heatingCrisis === 'yes') {
+            eligibility.push("Likely Eligible for LIHEAP (Crisis)");
+        } else if (combinedYearlyIncome <= incomeLimit) {
+            eligibility.push("Likely Eligible for LIHEAP");
+        } else {
+            eligibility.push("Not Likely Eligible for LIHEAP (Income)");
+        }
+
+        // Update each member with the combined income and eligibility
+        members.forEach(member => {
+            member.LIHEAP = {
+                combinedYearlyIncome: combinedYearlyIncome,
+                eligibility: eligibility
+            };
+
+            console.log(`Updated LIHEAP object for ${member.firstName} ${member.lastName}:`, member.LIHEAP);
+        });
+
+        // Save the updated household members back to the server
+        const saveResponse = await fetch(`/save-household-members`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ clientId, householdMembers: members }),
+        });
+
+        if (saveResponse.ok) {
+            console.log('Household members saved successfully.');
+        } else {
+            console.error('Failed to save household members:', saveResponse.statusText);
+        }
+    } catch (error) {
+        console.error('Error processing LIHEAP eligibility:', error);
+    }
+}
+
 // Initialize PACE eligibility check and update the UI
 const members = await loadHouseholdMembers();
 await PACEEligibilityCheck(members);
@@ -1513,6 +1661,10 @@ await LISEligibilityCheck(members);
 await MSPEligibilityCheck(members);
 await PTRREligibilityCheck(members);
 await SNAPEligibilityCheck(members, client.isFarmworker);
+
+// Initialize LIHEAP eligibility check and update the UI
+await LIHEAPEligibilityCheck(members);
+await displayLIHEAPHouseholds();
 
 // Update and display household members after eligibility checks
 await updateAndDisplayHouseholdMembers();
@@ -1530,6 +1682,15 @@ window.eligibilityChecks = {
     LISEligibilityCheck,
     MSPEligibilityCheck,
     PTRREligibilityCheck,
-    SNAPEligibilityCheck
+    SNAPEligibilityCheck,
+    displayLIHEAPHouseholds
+
 };
+
+// Ensure the global object exists
+window.eligibilityChecks = window.eligibilityChecks || {};
+
+// Add LIHEAPEligibilityCheck to the global object
+window.eligibilityChecks.LIHEAPEligibilityCheck = LIHEAPEligibilityCheck;
+
 });

@@ -12,6 +12,14 @@
         <label for="Agent">Contact Center Specialist:</label>
         <input type="text" id="Agent" name="Agent" readonly><br><br>
 
+        <label for="servicingCenter">Service Center:</label>
+<select id="servicingCenter" name="servicingCenter" required>
+    <option value="" disabled selected>Select Servicing Center</option>
+    <option value="PACE Application Center">PACE Application Center</option>
+    <option value="Benephilly">Benephilly</option>
+    <option value="SNAP Gov">SNAP Gov</option>
+</select><br><br>
+
         <label for="callerSelection">Select Contact:</label>
         <select id="callerSelection" name="callerSelection" required>
             <option value="">Select Contact</option>
@@ -107,6 +115,7 @@
     const callLog = {
         callerFirstName: callerFirstName,
         callerLastName: callerLastName,
+        servicingCenter: document.getElementById('servicingCenter').value,
         callerPhoneNumber: document.getElementById('callerPhoneNumber').value.trim(),
         callDirection: document.getElementById('callDirection').value,
         reasonForCall: document.getElementById('reasonForCall').value,
@@ -130,7 +139,7 @@
         if (result.success) {
             const activeUser = sessionStorage.getItem('loggedInUser');
             const note = {
-                text: `${callLog.callDirection} call logged.`,
+                text: `${callLog.callDirection} call logged. <br><br> Service Center: <br> ${callLog.servicingCenter}.`,
                 timestamp: callLog.timestamp,
                 username: activeUser
             };

@@ -101,8 +101,8 @@ function createNavigationButtons() {
         { label: 'Relationships', action: GoToRelationshipsEdit, page: 'relationshipsedit.html' },
         { label: 'Current Enrollments', action: GoToCurrentEnrollmentsEdit, page: 'currentenrollmentsedit.html' },
         { label: 'Income', action: GoToIncomeEdit, page: 'incomeedit.html' },
-        { label: 'Expenses', action: GoToExpensesEdit, page: 'expensesedit.html' },
         { label: 'Assets', action: GoToAssetsEdit, page: 'assetsedit.html' },
+        { label: 'Expenses', action: GoToExpensesEdit, page: 'expensesedit.html' },
         { label: 'Estimations', action: GoToEstimationsEdit, page: 'estimationsstep.html' },
         { label: 'Referrals', action: GoToReferralsEdit, page: 'referralsedit.html' }
     ];
