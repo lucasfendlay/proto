@@ -71,7 +71,7 @@
         }
 
         async function logNewCall() {
-    const requiredFields = ['callerFirstName', 'callerLastName', 'callerPhoneNumber', 'callDirection', 'reasonForCall'];
+    const requiredFields = ['callerFirstName', 'callerLastName', 'servicingCenter', 'callerPhoneNumber', 'callDirection', 'reasonForCall'];
     for (const field of requiredFields) {
         if (!document.getElementById(field).value) {
             alert('Please fill out all required fields.');

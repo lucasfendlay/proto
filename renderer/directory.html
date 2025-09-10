@@ -7,9 +7,51 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 
+
 <style>
+    /* Shared container width */
+    .container {
+        width: 100%; /* Full width */
+        max-width: 1200px; /* Optional: Limit the maximum width */
+        margin: 0 auto; /* Center the container horizontally */
+    }
+
+    /* Input fields */
     input[type="text"] {
-        width: 85%;
+        width: 100%; /* Full width within the container */
+        box-sizing: border-box; /* Include padding and border in the width */
+        margin-bottom: 10px; /* Add spacing between inputs */
+        align-self: center; /* Center the input fields */
+        padding: 10px; /* Add padding for better usability */
+        border: 1px solid #ccc; /* Light gray border */
+        border-radius: 4px; /* Slightly rounded corners */
+        font-size: 16px; /* Increase font size for better readability */
+    }
+
+    /* Client list container */
+    #clientList {
+        width: 100%; /* Full width within the container */
+        padding: 0; /* Remove default padding */
+    }
+
+    /* List items */
+    #clientList li {
+        width: 100%; /* Full width of the container */
+        text-align: left; /* Left justify the text */
+        padding: 10px; /* Add padding for readability */
+        border-bottom: 1px solid #ccc; /* Optional: Add a border for separation */
+        list-style: none; /* Remove default bullet points */
+    }
+
+    /* Links inside list items */
+    #clientList li a {
+        text-decoration: none; /* Remove underline from links */
+        color: #000dff; /* Set link color to black */
+        display: block; /* Make the link take up the full width of the list item */
+    }
+
+    #clientList li a:hover {
+        background-color: #f0f0f0; /* Optional: Add a hover effect */
     }
 </style>
 
@@ -19,6 +61,7 @@
     <br>
     <button onclick="saveClientAndLogCall()">Add New Client</button>
     <br><br>
+    <div class="container">
     <input type="text" id="searchFirstName" oninput="searchClients()" placeholder="Search by first name...">
     <input type="text" id="searchLastName" oninput="searchClients()" placeholder="Search by last name...">
     <input type="text" id="searchPhoneNumber" oninput="searchClients()" placeholder="Search by phone number...">
@@ -26,6 +69,7 @@
     <input type="text" id="searchCity" oninput="searchClients()" placeholder="Search by city...">
     <input type="text" id="searchCounty" oninput="searchClients()" placeholder="Search by county...">
     <ul id="clientList"></ul>
+    </div>
     <script>
         async function fetchClients() {
     try {
@@ -87,15 +131,24 @@ async function searchClients() {
         clientList.appendChild(noResultsMessage);
     } else {
         filteredClients.forEach((client) => {
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <a href="profileview.html?id=${client.id}">
-                    ${client.firstName} ${client.lastName} | 
-                    Phone: ${client.phoneNumber} | 
-                    Address: ${client.streetAddress}, ${client.city}, ${client.state}, ${client.zipCode}, ${client.county}
-                </a>`;
-            clientList.appendChild(li);
-        });
+    // Check if any field is undefined
+    if (
+        !client.firstName ||
+        !client.lastName ||
+        !client.phoneNumber
+    ) {
+        return; // Skip this client if any field is undefined
+    }
+
+    const li = document.createElement('li');
+    li.innerHTML = `
+        <a href="profileview.html?id=${client.id}">
+            ${client.firstName} ${client.lastName} | 
+            Phone: ${client.phoneNumber} | 
+            Address: ${client.streetAddress}, ${client.city}, ${client.state}, ${client.zipCode}, ${client.county}
+        </a>`;
+    clientList.appendChild(li);
+});
     }
 }
 
@@ -112,16 +165,24 @@ async function loadClients() {
         clientList.appendChild(noResultsMessage);
     } else {
         clients.forEach((client) => {
-            console.log('Adding client to list:', client);
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <a href="profileview.html?id=${client.id}">
-                    ${client.firstName} ${client.lastName} | 
-                    Phone: ${client.phoneNumber} | 
-                    Address: ${client.streetAddress}, ${client.city}, ${client.state}, ${client.zipCode}, ${client.county}
-                </a>`;
-            clientList.appendChild(li);
-        });
+    // Check if any field is undefined
+    if (
+        !client.firstName ||
+        !client.lastName ||
+        !client.phoneNumber
+    ) {
+        return; // Skip this client if any field is undefined
+    }
+
+    const li = document.createElement('li');
+    li.innerHTML = `
+        <a href="profileview.html?id=${client.id}">
+            ${client.firstName} ${client.lastName} | 
+            Phone: ${client.phoneNumber} | 
+            Address: ${client.streetAddress}, ${client.city}, ${client.state}, ${client.zipCode}, ${client.county}
+        </a>`;
+    clientList.appendChild(li);
+});
     }
 }
 
