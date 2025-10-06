@@ -139,7 +139,7 @@ async function loadSavedData() {
 
 function capitalizeFirstLetter(string) {
     if (!string) return ''; // Return an empty string if input is falsy
-    return string.charAt(0).toUpperCase() + string.slice(1);
+    return string.toUpperCase(); // Convert the entire string to uppercase
 }
 
 // Function to handle saving the selection

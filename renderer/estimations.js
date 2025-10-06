@@ -60,81 +60,83 @@ document.addEventListener('DOMContentLoaded', async function () {
     
                 // Populate member details
                 memberDiv.innerHTML = `
-                ${member.headOfHousehold ? `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block;"><strong>Head of Household</strong></p>` : ''}
-
-                    <h3>${member.firstName} ${member.middleInitial || ''} ${member.lastName}</h3>
+                    ${member.headOfHousehold ? `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block;"><strong>Head of Household</strong></p>` : ''}
+    
+                    <h3>${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.middleInitial || '')} ${capitalizeFirstLetter(member.lastName)}</h3>
                     <p><strong>Age:</strong> ${member.age?.split('Y')[0] || 'N/A'}</p>
-                    <p><strong>Marital Status:</strong> ${member.maritalStatus || 'N/A'}</p>
+                    <p><strong>Marital Status:</strong> ${capitalizeFirstLetter(member.maritalStatus || 'N/A')}</p>
                     ${
                         member.relationships?.some(r => r.relationship === 'spouse')
                             ? `<p><strong>Spouse:</strong> ${
-                                  members.find(m => m.householdMemberId === member.relationships.find(r => r.relationship === 'spouse')?.relatedMemberId)?.firstName || 'N/A'
+                                  capitalizeFirstLetter(members.find(m => m.householdMemberId === member.relationships.find(r => r.relationship === 'spouse')?.relatedMemberId)?.firstName || 'N/A')
                               } ${
-                                  members.find(m => m.householdMemberId === member.relationships.find(r => r.relationship === 'spouse')?.relatedMemberId)?.lastName || ''
+                                  capitalizeFirstLetter(members.find(m => m.householdMemberId === member.relationships.find(r => r.relationship === 'spouse')?.relatedMemberId)?.lastName || '')
                               }</p>`
                             : ''
-                    }${
+                    }
+                    ${
                         member.PACE?.eligibility?.includes('Not Checked')
-            ? '' // Omit the field if eligibility is "Not Checked"
-            : `
-                        <details class="custom-details">
-                <summary><br><strong>PACE</strong><br>
-                <p><strong></strong> ${
-                    member.PACE?.eligibility?.join(', ') || 'Not Available'
-                }</summary></p>
-                  <hr class="separator-bar">
-
-                <p><strong>Gross Adjusted Income:</strong> $${member.PACE?.combinedIncome?.toFixed(2) || 'N/A'}</p>
-            </details>
-            `                 }
-                ${
-                    member.LIS?.eligibility?.includes('Not Checked')
-            ? '' // Omit the field if LIS eligibility is "Not Checked"
-            : `
-            <details class="custom-details">
-                <summary><br><strong>LIS</strong><br>
-                <p><strong></strong> ${
-                    member.LIS?.eligibility?.join(', ') || 'Not Available'
-                }</summary></p>
-                <hr class="separator-bar">
-
-                <p><strong>Gross Income:</strong> $${member.LIS?.combinedIncome?.toFixed(2) || 'N/A'}</p>
-                <p><strong>Combined Assets:</strong> $${member.LIS?.combinedAssets?.toFixed(2) || 'N/A'}</p>
-            </details>
-            `
-    }
-    ${
-        member.MSP?.eligibility?.includes('Not Checked')
-            ? '' // Omit the field if MSP eligibility is "Not Checked"
-            : `
-            <details class="custom-details">
-                <summary><br><strong>MSP</strong>
-                <p><strong></strong> ${
-                    member.MSP?.eligibility?.join(', ') || 'Not Available'
-                }</summary></p>
+                            ? '' // Omit the field if eligibility is "Not Checked"
+                            : `
+                            <details class="custom-details">
+                                <summary><br><strong>PACE</strong><br>
+                                <p><strong></strong> ${
+                                    member.PACE?.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+                                }</summary></p>
                                 <hr class="separator-bar">
-
-                <p><strong>Gross Adjusted Income:</strong> $${member.MSP?.combinedIncome?.toFixed(2) || 'N/A'}</p>
-                <p><strong>Combined Assets:</strong> $${member.MSP?.combinedAssets?.toFixed(2) || 'N/A'}</p>
-            </details>
-            `
-    }
-    ${
-        member.PTRR?.eligibility?.includes('Not Checked')
-            ? '' // Omit the field if PTRR eligibility is "Not Checked"
-            : `
-            <details class="custom-details">
-                <summary><br><strong>PTRR Eligibility</strong>
-                <p><strong></strong> ${
-                    member.PTRR?.eligibility?.join(', ') || 'Not Available'
-                }</summary></p>
-                                                <hr class="separator-bar">
-
-                <p><strong>Gross Income:</strong> $${member.PTRR?.combinedIncome?.toFixed(2) || 'N/A'}</p>
-            </details>
-            `
-    }
-            `;
+    
+                                <p><strong>Gross Adjusted Income:</strong> $${member.PACE?.combinedIncome?.toFixed(2) || 'N/A'}</p>
+                            </details>
+                            `
+                    }
+                    ${
+                        member.LIS?.eligibility?.includes('Not Checked')
+                            ? '' // Omit the field if LIS eligibility is "Not Checked"
+                            : `
+                            <details class="custom-details">
+                                <summary><br><strong>LIS</strong><br>
+                                <p><strong></strong> ${
+                                    member.LIS?.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+                                }</summary></p>
+                                <hr class="separator-bar">
+    
+                                <p><strong>Gross Income:</strong> $${member.LIS?.combinedIncome?.toFixed(2) || 'N/A'}</p>
+                                <p><strong>Combined Assets:</strong> $${member.LIS?.combinedAssets?.toFixed(2) || 'N/A'}</p>
+                            </details>
+                            `
+                    }
+                    ${
+                        member.MSP?.eligibility?.includes('Not Checked')
+                            ? '' // Omit the field if MSP eligibility is "Not Checked"
+                            : `
+                            <details class="custom-details">
+                                <summary><br><strong>MSP</strong>
+                                <p><strong></strong> ${
+                                    member.MSP?.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+                                }</summary></p>
+                                <hr class="separator-bar">
+    
+                                <p><strong>Gross Adjusted Income:</strong> $${member.MSP?.combinedIncome?.toFixed(2) || 'N/A'}</p>
+                                <p><strong>Combined Assets:</strong> $${member.MSP?.combinedAssets?.toFixed(2) || 'N/A'}</p>
+                            </details>
+                            `
+                    }
+                    ${
+                        member.PTRR?.eligibility?.includes('Not Checked')
+                            ? '' // Omit the field if PTRR eligibility is "Not Checked"
+                            : `
+                            <details class="custom-details">
+                                <summary><br><strong>PTRR Eligibility</strong>
+                                <p><strong></strong> ${
+                                    member.PTRR?.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+                                }</summary></p>
+                                <hr class="separator-bar">
+    
+                                <p><strong>Gross Income:</strong> $${member.PTRR?.combinedIncome?.toFixed(2) || 'N/A'}</p>
+                            </details>
+                            `
+                    }
+                `;
                 householdMemberContainer.appendChild(memberDiv);
             });
         }
@@ -183,7 +185,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             snapHouseholds.forEach(household => {
                 const householdDiv = document.createElement('div');
                 householdDiv.classList.add('household-member-box'); // Apply the same class for styling
-                
+    
                 // Use the uniform values from the first member of the household
                 const combinedMonthlyIncome = household[0]?.SNAP?.combinedMonthlyIncome || 0; // Uniform value
                 const totalNetIncome = household[0]?.SNAP?.totalNetIncome || 0; // Uniform value
@@ -191,7 +193,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 const totalUtilityAllowance = household[0]?.SNAP?.totalUtilityAllowance || 0; // Uniform value
                 const totalMedicalExpenses = household[0]?.SNAP?.totalMedicalExpenses || 0; // Uniform value
                 const totalOtherExpenses = household[0]?.SNAP?.totalOtherExpenses || 0; // Uniform value
-                const eligibility = household[0]?.SNAP?.eligibility || 'Not Available';
+                const eligibility = household[0]?.SNAP?.eligibility?.map(capitalizeFirstLetter) || 'Not Available';
                 const benefitAmount = household[0]?.SNAP?.benefitAmount || 0;
                 const combinedAssets = household[0]?.SNAP?.combinedAssets || 0; // Uniform value
     
@@ -199,41 +201,41 @@ document.addEventListener('DOMContentLoaded', async function () {
                 const isNotLikelyEligible = Array.isArray(eligibility)
                     ? eligibility.some(e => e.includes('Not'))
                     : eligibility.includes('Not');
-                
+    
                 // Populate household details
                 householdDiv.innerHTML = `
-<details class="custom-details">
-  <summary><h3>SNAP Household</h3></summary>
-  <p><strong>Total Gross Income:</strong> $${combinedMonthlyIncome.toFixed(2)}</p>
-  <p><strong>Shelter Deduction:</strong> $${excessShelterCost.toFixed(2)}</p>
-  <p><strong>Medical Expense Deductions:</strong> $${totalMedicalExpenses.toFixed(2)}</p>
-  <p><strong>Other Expense Deductions:</strong> $${totalOtherExpenses.toFixed(2)}</p>
-  <p><strong>Adjusted Net Income:</strong> $${totalNetIncome.toFixed(2)}</p>
-  <p><strong>Combined Assets:</strong> $${combinedAssets.toFixed(2)}</p>
-  <hr class="separator-bar">
-</details>
-  <p><strong>Members:</strong> ${household.map(member => `${member.firstName} ${member.lastName}`).join(', ')}</p>
-
-                    <p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
-                    ${
-                        !isNotLikelyEligible
-                            ? `
-                            <p><strong>Estimated Benefit Amount:</strong> ${
-                                benefitAmount < 23 ? "Up to $23.00" : `Up to $23.00 - $${benefitAmount.toFixed(2)}`
-                            }</p>
-                            <p><strong>Expedited Eligibility:</strong> ${
-                                household[0]?.SNAP?.expeditedEligibility
-                            }</p>
-                            `
-                            : ''
-                    }
-                `;
-            
+    <details class="custom-details">
+      <summary><h3>SNAP Household</h3></summary>
+      <p><strong>Total Gross Income:</strong> $${combinedMonthlyIncome.toFixed(2)}</p>
+      <p><strong>Shelter Deduction:</strong> $${excessShelterCost.toFixed(2)}</p>
+      <p><strong>Medical Expense Deductions:</strong> $${totalMedicalExpenses.toFixed(2)}</p>
+      <p><strong>Other Expense Deductions:</strong> $${totalOtherExpenses.toFixed(2)}</p>
+      <p><strong>Adjusted Net Income:</strong> $${totalNetIncome.toFixed(2)}</p>
+      <p><strong>Combined Assets:</strong> $${combinedAssets.toFixed(2)}</p>
+      <hr class="separator-bar">
+    </details>
+      <p><strong>Members:</strong> ${household.map(member => `${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.lastName)}`).join(', ')}</p>
+    
+                        <p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
+                        ${
+                            !isNotLikelyEligible
+                                ? `
+                                <p><strong>Estimated Benefit Amount:</strong> ${
+                                    benefitAmount < 23 ? "Up to $23.00" : `Up to $23.00 - $${benefitAmount.toFixed(2)}`
+                                }</p>
+                                <p><strong>Expedited Eligibility:</strong> ${
+                                    capitalizeFirstLetter(household[0]?.SNAP?.expeditedEligibility || 'N/A')
+                                }</p>
+                                `
+                                : ''
+                        }
+                    `;
+    
                 snapHouseholdContainer.appendChild(householdDiv);
             });
         }
     }
-
+    
     async function displayLIHEAPHouseholds() {
         const liheapHouseholdContainer = document.getElementById('liheap-household-container');
         if (!liheapHouseholdContainer) {
@@ -269,7 +271,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     
         // Use the combined values from the first member (since they are uniform across the household)
         const combinedYearlyIncome = members[0]?.LIHEAP?.combinedYearlyIncome || 0;
-        const eligibility = members[0]?.LIHEAP?.eligibility || 'Not Available';
+        const eligibility = members[0]?.LIHEAP?.eligibility?.map(capitalizeFirstLetter) || 'Not Available';
     
         // Create a container for the LIHEAP household details
         const householdDiv = document.createElement('div');
@@ -282,7 +284,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 <p><strong>Combined Yearly Income:</strong> $${combinedYearlyIncome.toFixed(2)}</p>
                 <hr class="separator-bar">
             </details>
-            <p><strong>Members:</strong> ${members.map(member => `${member.firstName} ${member.lastName}`).join(', ')}</p>
+            <p><strong>Members:</strong> ${members.map(member => `${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.lastName)}`).join(', ')}</p>
             <p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
         `;
     
@@ -1655,6 +1657,11 @@ async function LIHEAPEligibilityCheck() {
     } catch (error) {
         console.error('Error processing LIHEAP eligibility:', error);
     }
+}
+
+function capitalizeFirstLetter(string) {
+    if (!string) return ''; // Return an empty string if input is falsy
+    return string.toUpperCase(); // Convert the entire string to uppercase
 }
 
 // Initialize PACE eligibility check and update the UI

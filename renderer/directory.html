@@ -7,18 +7,21 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 
-
 <style>
-    /* Shared container width */
-    .container {
+     /* Shared container width */
+     .container {
         width: 100%; /* Full width */
-        max-width: 1200px; /* Optional: Limit the maximum width */
+        max-width: 1500px; /* Optional: Limit the maximum width */
         margin: 0 auto; /* Center the container horizontally */
+        display: flex; /* Enable flexbox */
+        flex-direction: column; /* Stack children vertically */
+        align-items: center; /* Center children horizontally */
     }
 
     /* Input fields */
     input[type="text"] {
         width: 100%; /* Full width within the container */
+        max-width: 1500px; /* Optional: Limit the maximum width */
         box-sizing: border-box; /* Include padding and border in the width */
         margin-bottom: 10px; /* Add spacing between inputs */
         align-self: center; /* Center the input fields */
@@ -31,13 +34,18 @@
     /* Client list container */
     #clientList {
         width: 100%; /* Full width within the container */
+        max-width: 1500px; /* Optional: Limit the maximum width */
         padding: 0; /* Remove default padding */
+        display: flex; /* Enable flexbox for the list */
+        flex-direction: column; /* Stack list items vertically */
+        align-items: center; /* Center list items horizontally */
     }
 
     /* List items */
     #clientList li {
         width: 100%; /* Full width of the container */
-        text-align: left; /* Left justify the text */
+        max-width: 1500px; /* Optional: Limit the maximum width */
+        text-align: center; /* Center the text */
         padding: 10px; /* Add padding for readability */
         border-bottom: 1px solid #ccc; /* Optional: Add a border for separation */
         list-style: none; /* Remove default bullet points */
@@ -45,7 +53,6 @@
 
     /* Links inside list items */
     #clientList li a {
-        text-decoration: none; /* Remove underline from links */
         color: #000dff; /* Set link color to black */
         display: block; /* Make the link take up the full width of the list item */
     }
@@ -62,166 +69,188 @@
     <button onclick="saveClientAndLogCall()">Add New Client</button>
     <br><br>
     <div class="container">
-    <input type="text" id="searchFirstName" oninput="searchClients()" placeholder="Search by first name...">
-    <input type="text" id="searchLastName" oninput="searchClients()" placeholder="Search by last name...">
-    <input type="text" id="searchPhoneNumber" oninput="searchClients()" placeholder="Search by phone number...">
-    <input type="text" id="searchStreetAddress" oninput="searchClients()" placeholder="Search by street address...">
-    <input type="text" id="searchCity" oninput="searchClients()" placeholder="Search by city...">
-    <input type="text" id="searchCounty" oninput="searchClients()" placeholder="Search by county...">
-    <ul id="clientList"></ul>
+        <input type="text" id="searchFirstName" oninput="searchClients()" placeholder="Search by first name...">
+        <input type="text" id="searchLastName" oninput="searchClients()" placeholder="Search by last name...">
+        <input type="text" id="searchPhoneNumber" oninput="searchClients()" placeholder="Search by phone number...">
+        <input type="text" id="searchStreetAddress" oninput="searchClients()" placeholder="Search by street address...">
+        <input type="text" id="searchCity" oninput="searchClients()" placeholder="Search by city...">
+        <input type="text" id="searchCounty" oninput="searchClients()" placeholder="Search by county...">
+        <ul id="clientList"></ul>
     </div>
+
+    <!-- Add Fuse.js via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js/dist/fuse.min.js"></script>
+
     <script>
         async function fetchClients() {
-    try {
-        const response = await fetch('/get-all-clients');
-        console.log('Response:', response); // Log the raw response
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        console.log('Fetched Data:', data); // Log the parsed data
-        return data.clients || []; // Return the clients array
-    } catch (error) {
-        console.error('Error fetching clients:', error);
-        return [];
-    }
-}
-
-async function searchClients() {
-    console.log('searchClients function triggered'); // Debugging
-
-    const firstNameInput = document.getElementById('searchFirstName').value.toLowerCase();
-    const lastNameInput = document.getElementById('searchLastName').value.toLowerCase();
-    const phoneNumberInput = document.getElementById('searchPhoneNumber').value.toLowerCase();
-    const streetAddressInput = document.getElementById('searchStreetAddress').value.toLowerCase();
-    const cityInput = document.getElementById('searchCity').value.toLowerCase();
-    const countyInput = document.getElementById('searchCounty').value.toLowerCase();
-
-    console.log('Search Inputs:', {
-        firstNameInput,
-        lastNameInput,
-        phoneNumberInput,
-        streetAddressInput,
-        cityInput,
-        countyInput
-    });
-
-    const clients = await fetchClients();
-    console.log('Fetched Clients:', clients);
-
-    const filteredClients = clients.filter(client => {
-        return (
-            (!firstNameInput || client.firstName?.toLowerCase().includes(firstNameInput)) &&
-            (!lastNameInput || client.lastName?.toLowerCase().includes(lastNameInput)) &&
-            (!phoneNumberInput || client.phoneNumber?.toLowerCase().includes(phoneNumberInput)) &&
-            (!streetAddressInput || client.streetAddress?.toLowerCase().includes(streetAddressInput)) &&
-            (!cityInput || client.city?.toLowerCase().includes(cityInput)) &&
-            (!countyInput || client.county?.toLowerCase().includes(countyInput))
-        );
-    });
-
-    console.log('Filtered Clients:', filteredClients);
-
-    const clientList = document.getElementById('clientList');
-    clientList.innerHTML = ''; // Clear existing entries
-
-    if (filteredClients.length === 0) {
-        const noResultsMessage = document.createElement('li');
-        noResultsMessage.textContent = 'No clients found.';
-        clientList.appendChild(noResultsMessage);
-    } else {
-        filteredClients.forEach((client) => {
-    // Check if any field is undefined
-    if (
-        !client.firstName ||
-        !client.lastName ||
-        !client.phoneNumber
-    ) {
-        return; // Skip this client if any field is undefined
-    }
-
-    const li = document.createElement('li');
-    li.innerHTML = `
-        <a href="profileview.html?id=${client.id}">
-            ${client.firstName} ${client.lastName} | 
-            Phone: ${client.phoneNumber} | 
-            Address: ${client.streetAddress}, ${client.city}, ${client.state}, ${client.zipCode}, ${client.county}
-        </a>`;
-    clientList.appendChild(li);
-});
-    }
-}
-
-async function loadClients() {
-    const clients = await fetchClients();
-    console.log('Clients to display:', clients); // Log the clients
-    const clientList = document.getElementById('clientList');
-    clientList.innerHTML = '';
-
-    if (clients.length === 0) {
-        console.log('No clients found.');
-        const noResultsMessage = document.createElement('li');
-        noResultsMessage.textContent = 'No clients found.';
-        clientList.appendChild(noResultsMessage);
-    } else {
-        clients.forEach((client) => {
-    // Check if any field is undefined
-    if (
-        !client.firstName ||
-        !client.lastName ||
-        !client.phoneNumber
-    ) {
-        return; // Skip this client if any field is undefined
-    }
-
-    const li = document.createElement('li');
-    li.innerHTML = `
-        <a href="profileview.html?id=${client.id}">
-            ${client.firstName} ${client.lastName} | 
-            Phone: ${client.phoneNumber} | 
-            Address: ${client.streetAddress}, ${client.city}, ${client.state}, ${client.zipCode}, ${client.county}
-        </a>`;
-    clientList.appendChild(li);
-});
-    }
-}
-
-        async function saveClientAndLogCall() {
-        const client = {
-            id: generateUniqueId(),
-            createdAt: new Date(),
-        };
-
         try {
-            const response = await fetch('/add-client', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(client),
-            });
-
+            const response = await fetch('/get-all-clients');
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-
             const data = await response.json();
-
-            if (data.success) {
-                console.log('Client added to the database:', client);
-                window.location.href = `call-logging.html?id=${client.id}`;
-            } else {
-                console.error('Failed to add client:', data.message);
-            }
+            return data.clients || [];
         } catch (error) {
-            console.error('Error adding client:', error);
+            console.error('Error fetching clients:', error);
+            return [];
         }
     }
 
-        function generateUniqueId() {
-        const randomSixDigits = Math.floor(100000 + Math.random() * 900000); // Generate a random 6-digit number
-        return `ID${randomSixDigits}`;
+    async function searchClients() {
+    const searchInputs = {
+        firstName: document.getElementById('searchFirstName').value,
+        lastName: document.getElementById('searchLastName').value,
+        phoneNumber: document.getElementById('searchPhoneNumber').value,
+        streetAddress: document.getElementById('searchStreetAddress').value,
+        city: document.getElementById('searchCity').value,
+        county: document.getElementById('searchCounty').value,
+    };
+
+    const clients = await fetchClients();
+
+    // Combine all search inputs into a single query string
+    const query = Object.values(searchInputs).filter(Boolean).join(' ');
+
+    // Fuse.js configuration
+    const options = {
+        keys: ['firstName', 'lastName', 'phoneNumber', 'streetAddress', 'city', 'county'],
+        threshold: 0.4, // Adjust threshold for sensitivity
+        includeScore: true,
+        distance: 100,
+        ignoreLocation: true, // Ignore location to focus on content match
+    };
+
+    const fuse = new Fuse(clients, options);
+    let results = query ? fuse.search(query) : clients.map(client => ({ item: client, score: 0 }));
+
+    // Sort results by relevance score (closest match) first, then by most recent note timestamp
+    results.sort((a, b) => {
+        if (a.score !== b.score) {
+            return a.score - b.score; // Lower score means closer match
+        }
+        const aLastNote = a.item.notes?.[a.item.notes.length - 1]?.timestamp || 0;
+        const bLastNote = b.item.notes?.[b.item.notes.length - 1]?.timestamp || 0;
+        return new Date(bLastNote) - new Date(aLastNote); // Most recent note first
+    });
+
+    const clientList = document.getElementById('clientList');
+    clientList.innerHTML = '';
+
+    if (results.length === 0) {
+        const noResultsMessage = document.createElement('li');
+        noResultsMessage.textContent = 'No clients found.';
+        clientList.appendChild(noResultsMessage);
+    } else {
+        results.forEach(({ item: client }) => {
+            if (!client.firstName || !client.lastName || !client.phoneNumber) {
+                return;
+            }
+
+            // Get the most recent note timestamp
+            const mostRecentNote = client.notes?.[client.notes.length - 1];
+            const mostRecentActivity = mostRecentNote ? mostRecentNote.timestamp : 'No recent activity';
+
+            const li = document.createElement('li');
+            li.innerHTML = `
+    <a href="profileview.html?id=${client.id}">
+        <strong>${client.firstName || ''} ${client.lastName || ''}</strong> | 
+        ${client.phoneNumber ? `Phone: ${client.phoneNumber} | ` : ''}
+        ${client.streetAddress || client.city || client.state || client.zipCode ? `Address: ${[
+            client.streetAddress,
+            client.city,
+            client.state,
+            client.zipCode,
+            client.county ? `${client.county} County` : ''
+        ].filter(Boolean).join(', ')} | ` : ''}
+        <strong>Most Recent Activity:</strong> ${mostRecentActivity}
+    </a>`;
+            clientList.appendChild(li);
+        });
     }
+}
+
+    async function loadClients() {
+        const clients = await fetchClients();
+
+        // Sort clients by the most recent note timestamp
+        clients.sort((a, b) => {
+            const aLastNote = a.notes?.[a.notes.length - 1]?.timestamp || 0;
+            const bLastNote = b.notes?.[b.notes.length - 1]?.timestamp || 0;
+            return new Date(bLastNote) - new Date(aLastNote);
+        });
+
+        const clientList = document.getElementById('clientList');
+        clientList.innerHTML = '';
+
+        if (clients.length === 0) {
+            const noResultsMessage = document.createElement('li');
+            noResultsMessage.textContent = 'No clients found.';
+            clientList.appendChild(noResultsMessage);
+        } else {
+            clients.forEach((client) => {
+                if (!client.firstName || !client.lastName || !client.phoneNumber) {
+                    return;
+                }
+
+                // Get the most recent note timestamp
+                const mostRecentNote = client.notes?.[client.notes.length - 1];
+                const mostRecentActivity = mostRecentNote ? mostRecentNote.timestamp : 'No recent activity';
+
+                const li = document.createElement('li');
+                li.innerHTML = `
+    <a href="profileview.html?id=${client.id}">
+        <strong>${client.firstName || ''} ${client.lastName || ''}</strong> | 
+        ${client.phoneNumber ? `Phone: ${client.phoneNumber} | ` : ''}
+        ${client.streetAddress || client.city || client.state || client.zipCode ? `Address: ${[
+            client.streetAddress,
+            client.city,
+            client.state,
+            client.zipCode,
+            client.county ? `${client.county} County` : ''
+        ].filter(Boolean).join(', ')} | ` : ''}
+        <strong>Most Recent Activity:</strong> ${mostRecentActivity}
+    </a>`;
+                clientList.appendChild(li);
+            });
+        }
+    }
+
+        async function saveClientAndLogCall() {
+            const client = {
+                id: generateUniqueId(),
+                createdAt: new Date(),
+            };
+
+            try {
+                const response = await fetch('/add-client', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(client),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.success) {
+                    console.log('Client added to the database:', client);
+                    window.location.href = `call-logging.html?id=${client.id}`;
+                } else {
+                    console.error('Failed to add client:', data.message);
+                }
+            } catch (error) {
+                console.error('Error adding client:', error);
+            }
+        }
+
+        function generateUniqueId() {
+            const randomSixDigits = Math.floor(100000 + Math.random() * 900000); // Generate a random 6-digit number
+            return `ID${randomSixDigits}`;
+        }
 
         // Load all clients on page load
         window.onload = loadClients;
