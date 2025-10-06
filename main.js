@@ -138,6 +138,28 @@ app.post('/add-client-batch', async (req, res) => {
     }
 });
 
+// Delete invalid documents (missing firstName or lastName)
+app.delete('/delete-invalid-documents', async (req, res) => {
+    try {
+        const collection = db.collection('clients');
+        const result = await collection.deleteMany({
+            $or: [
+                { firstName: { $exists: false } },
+                { lastName: { $exists: false } },
+                { firstName: null },
+                { lastName: null },
+                { firstName: '' },
+                { lastName: '' }
+            ],
+        });
+
+        res.json({ success: true, deletedCount: result.deletedCount });
+    } catch (error) {
+        console.error('Error deleting invalid documents:', error);
+        res.status(500).json({ success: false, message: 'Failed to delete invalid documents.' });
+    }
+});
+
 // Clear all clients
 app.delete('/clear-clients', async (req, res) => {
     try {
