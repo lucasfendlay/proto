@@ -12,13 +12,17 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background-color: rgba(0, 0, 0, 0.8);
+    background-color: #000; /* Fully opaque black background */
     color: white;
     padding: 20px;
     border-radius: 10px;
     font-size: 18px;
     text-align: center;
     z-index: 1000;
+}
+
+#progressBar {
+    transition: width 0.3s ease;
 }
 
     </style>
@@ -35,9 +39,11 @@
     <button onclick="importClientsFromCSV()">Upload CSV</button><br><br>
 
     <div id="loadingIndicator" style="display: none;">
-        <p>Processing... Please wait. Please do not close or refresh the page or navigate to another page prior to successful completion of upload.</p>
+        <p>Importing CSV file... Please do not close or refresh this page or navigate to another page until the successful completion of upload.<br><br><span id="progressPercentage">0%</span></p>
+        <div style="width: 100%; background-color: #e0e0e0; border-radius: 5px; overflow: hidden;">
+            <div id="progressBar" style="width: 0%; height: 20px; background-color: #0011ff;"></div>
+        </div>
     </div>
-
     <br><br>
     CSV Format should be as follows:
 

@@ -65,7 +65,9 @@ function generateUniqueId() {
 
 async function importClientsFromCSV() {
     const fileInput = document.getElementById('csvFileInput');
-    const loadingIndicator = document.getElementById('loadingIndicator'); // Get the loading indicator element
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const progressBar = document.getElementById('progressBar');
+    const progressPercentage = document.getElementById('progressPercentage');
     const file = fileInput.files[0];
 
     if (!file) {
@@ -74,6 +76,8 @@ async function importClientsFromCSV() {
     }
 
     loadingIndicator.style.display = 'block'; // Show the loading indicator
+    progressBar.style.width = '0%'; // Reset progress bar
+    progressPercentage.textContent = '0%'; // Reset progress percentage
 
     const reader = new FileReader();
     reader.onload = async function(event) {
@@ -111,6 +115,8 @@ async function importClientsFromCSV() {
         }).filter(client => client !== null);
 
         const BATCH_SIZE = 100;
+        const totalBatches = Math.ceil(clients.length / BATCH_SIZE);
+
         for (let i = 0; i < clients.length; i += BATCH_SIZE) {
             const batch = clients.slice(i, i + BATCH_SIZE);
             try {
@@ -133,6 +139,12 @@ async function importClientsFromCSV() {
                         await saveNoteForClient(client.id, client.notesColumn);
                     }
                 }
+
+                // Update progress bar
+                const currentBatch = Math.floor(i / BATCH_SIZE) + 1;
+                const progress = Math.min((currentBatch / totalBatches) * 100, 100);
+                progressBar.style.width = `${progress}%`;
+                progressPercentage.textContent = `${Math.round(progress)}%`;
             } catch (error) {
                 console.error('Error importing a batch of clients:', error);
                 alert(`Failed to import a batch of clients. Error: ${error.message}`);
