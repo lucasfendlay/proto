@@ -71,12 +71,13 @@
     <button onclick="saveClientAndLogCall()">Add New Client</button>
     <br><br>
     <div class="container">
-        <input type="text" id="searchFirstName" oninput="searchClients()" placeholder="Search by first name...">
-        <input type="text" id="searchLastName" oninput="searchClients()" placeholder="Search by last name...">
-        <input type="text" id="searchPhoneNumber" oninput="searchClients()" placeholder="Search by phone number...">
-        <input type="text" id="searchStreetAddress" oninput="searchClients()" placeholder="Search by street address...">
-        <input type="text" id="searchCity" oninput="searchClients()" placeholder="Search by city...">
-        <input type="text" id="searchCounty" oninput="searchClients()" placeholder="Search by county...">
+        <input type="text" id="searchId" oninput="searchClients()" placeholder="Search by Profile ID...">
+        <input type="text" id="searchFirstName" oninput="searchClients()" placeholder="Search by First Name...">
+        <input type="text" id="searchLastName" oninput="searchClients()" placeholder="Search by Last Name...">
+        <input type="text" id="searchPhoneNumber" oninput="searchClients()" placeholder="Search by Phone Number...">
+        <input type="text" id="searchStreetAddress" oninput="searchClients()" placeholder="Search by Street Address...">
+        <input type="text" id="searchCity" oninput="searchClients()" placeholder="Search by City...">
+        <input type="text" id="searchCounty" oninput="searchClients()" placeholder="Search by County...">
         <ul id="clientList"></ul>
     </div>
 
@@ -100,32 +101,51 @@
 
     async function searchClients() {
     const searchInputs = {
-        firstName: document.getElementById('searchFirstName').value,
-        lastName: document.getElementById('searchLastName').value,
-        phoneNumber: document.getElementById('searchPhoneNumber').value,
-        streetAddress: document.getElementById('searchStreetAddress').value,
-        city: document.getElementById('searchCity').value,
-        county: document.getElementById('searchCounty').value,
+        id: document.getElementById('searchId').value.toLowerCase(),
+        firstName: document.getElementById('searchFirstName').value.toLowerCase(),
+        lastName: document.getElementById('searchLastName').value.toLowerCase(),
+        phoneNumber: document.getElementById('searchPhoneNumber').value.toLowerCase(),
+        streetAddress: document.getElementById('searchStreetAddress').value.toLowerCase(),
+        city: document.getElementById('searchCity').value.toLowerCase(),
+        county: document.getElementById('searchCounty').value.toLowerCase(),
     };
 
     const clients = await fetchClients();
 
-    // Combine all search inputs into a single query string
-    const query = Object.values(searchInputs).filter(Boolean).join(' ');
-
-    // Fuse.js configuration
-    const options = {
-        keys: ['firstName', 'lastName', 'phoneNumber', 'streetAddress', 'city', 'county'],
-        threshold: 0.4, // Adjust threshold for sensitivity
-        includeScore: true,
-        distance: 100,
-        ignoreLocation: true, // Ignore location to focus on content match
-    };
-
+// Fuse.js configuration
+const options = {
+    keys: [
+        {
+            name: 'id',
+            weight: 1,
+            getFn: (client) => client.id.replace(/^id/i, ''), // Remove "id" prefix (case-insensitive)
+        },
+        { name: 'firstName', weight: 1 },
+        { name: 'lastName', weight: 1 },
+        { name: 'phoneNumber', weight: 1 },
+        { name: 'streetAddress', weight: 1 },
+        { name: 'city', weight: 1 },
+        { name: 'county', weight: 1 },
+    ],
+    threshold: 0.4, // Adjust threshold for sensitivity
+    includeScore: true,
+    distance: 100,
+    ignoreLocation: true, // Ignore location to focus on content match
+};
     const fuse = new Fuse(clients, options);
-    let results = query ? fuse.search(query) : clients.map(client => ({ item: client, score: 0 }));
+
+    // Filter clients using Fuse.js for fuzzy matching
+    let results = clients;
+
+    Object.keys(searchInputs).forEach(key => {
+        if (searchInputs[key]) {
+            const filteredResults = fuse.search(searchInputs[key]).map(result => result.item);
+            results = results.filter(client => filteredResults.includes(client));
+        }
+    });
 
     // Sort results by relevance score (closest match) first, then by most recent note timestamp
+    results = results.map(client => ({ item: client, score: 0 })); // Reset scores for sorting
     results.sort((a, b) => {
         if (a.score !== b.score) {
             return a.score - b.score; // Lower score means closer match
@@ -154,19 +174,19 @@
 
             const li = document.createElement('li');
             li.innerHTML = `
-    <a href="profileview.html?id=${client.id}">
-        <strong>Profile: ${client.id}</strong> | 
-        ${client.firstName || ''} ${client.lastName || ''}| 
-        ${client.phoneNumber ? `Phone: ${client.phoneNumber} | ` : ''}
-        ${client.streetAddress || client.city || client.state || client.zipCode ? `Address: ${[
-            client.streetAddress,
-            client.city,
-            client.state,
-            client.zipCode,
-            client.county ? `${client.county} County` : ''
-        ].filter(Boolean).join(', ')} | ` : ''}
-        <strong>Most Recent Activity:</strong> ${mostRecentActivity}
-    </a>`;
+                <a href="profileview.html?id=${client.id}">
+                    <strong>Profile: ${client.id}</strong> | 
+                    ${client.firstName || ''} ${client.lastName || ''} | 
+                    ${client.phoneNumber ? `Phone: ${client.phoneNumber} | ` : ''}
+                    ${client.streetAddress || client.city || client.state || client.zipCode ? `Address: ${[
+                        client.streetAddress,
+                        client.city,
+                        client.state,
+                        client.zipCode,
+                        client.county ? `${client.county} County` : ''
+                    ].filter(Boolean).join(', ')} | ` : ''}
+                    <strong>Most Recent Activity:</strong> ${mostRecentActivity}
+                </a>`;
             clientList.appendChild(li);
         });
     }
@@ -202,7 +222,7 @@
             const li = document.createElement('li');
             li.innerHTML = `
     <a href="profileview.html?id=${client.id}">
-        <strong>Profile: ${client.id}</strong> | 
+        <strong>Profile: ${client.id} </strong> | 
         ${client.firstName || ''} ${client.lastName || ''} | 
         ${client.phoneNumber ? `Phone: ${client.phoneNumber} | ` : ''}
         ${client.streetAddress || client.city || client.state || client.zipCode ? `Address: ${[

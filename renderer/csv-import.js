@@ -65,6 +65,7 @@ function generateUniqueId() {
 
 async function importClientsFromCSV() {
     const fileInput = document.getElementById('csvFileInput');
+    const loadingIndicator = document.getElementById('loadingIndicator'); // Get the loading indicator element
     const file = fileInput.files[0];
 
     if (!file) {
@@ -72,27 +73,27 @@ async function importClientsFromCSV() {
         return;
     }
 
+    loadingIndicator.style.display = 'block'; // Show the loading indicator
+
     const reader = new FileReader();
     reader.onload = async function(event) {
         const csvData = event.target.result;
         const rows = csvData.split('\n').map(row => row.split(','));
 
-        // Ensure the first row (header row) is skipped
         if (rows.length <= 1) {
             alert('The CSV file is empty or only contains headers.');
+            loadingIndicator.style.display = 'none'; // Hide the loading indicator
             return;
         }
 
-        // Process rows 2 and onward (skip the first row)
         const clients = rows.slice(1).map((row, index) => {
-            // Skip empty rows
             if (row.every(cell => !cell.trim())) {
                 return null;
             }
 
-            const id = row[0]?.trim() || generateUniqueId(); // Generate ID if blank
-            const speakingLanguage = row[9]?.trim() || ''; // Column J
-            const notesColumn = row[10]?.trim() || ''; // Column K (now treated as notes)
+            const id = row[0]?.trim() || generateUniqueId();
+            const speakingLanguage = row[9]?.trim() || '';
+            const notesColumn = row[10]?.trim() || '';
 
             return {
                 id: id,
@@ -104,47 +105,49 @@ async function importClientsFromCSV() {
                 state: row[6]?.trim(),
                 zipCode: row[7]?.trim(),
                 county: row[8]?.trim(),
-                speakingLanguage: speakingLanguage, // Save speakingLanguage directly
-                notesColumn: notesColumn // Save column K data as notes
+                speakingLanguage: speakingLanguage,
+                notesColumn: notesColumn
             };
-        }).filter(client => client !== null); // Remove null entries for empty rows
+        }).filter(client => client !== null);
 
-        try {
-            // Send clients to the server
-            const response = await fetch('/add-client-batch', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clients })
-            });
+        const BATCH_SIZE = 100;
+        for (let i = 0; i < clients.length; i += BATCH_SIZE) {
+            const batch = clients.slice(i, i + BATCH_SIZE);
+            try {
+                const response = await fetch('/add-client-batch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clients: batch })
+                });
 
-            if (response.ok) {
-                // Automatically save notes for each client
-                const timestamp = new Date().toLocaleString();
-                for (const client of clients) {
-                    // Save the first automatic note
+                if (!response.ok) {
+                    const errorDetails = await response.text();
+                    console.error('Batch error:', errorDetails);
+                    alert(`Failed to import a batch of clients. Server responded with: ${errorDetails}`);
+                    continue;
+                }
+
+                for (const client of batch) {
                     await saveNoteForClient(client.id, `Profile created.`);
-
-                    // Save the note from the notesColumn (if it exists)
                     if (client.notesColumn) {
                         await saveNoteForClient(client.id, client.notesColumn);
                     }
                 }
-
-                alert('Clients imported successfully!');
-                window.location.href = 'home.html'; // Redirect to the home page
-            } else {
-                const errorDetails = await response.json();
-                console.error('Server error:', errorDetails);
-                alert(`Failed to import clients. Server responded with: ${errorDetails.message || 'Unknown error'}`);
+            } catch (error) {
+                console.error('Error importing a batch of clients:', error);
+                alert(`Failed to import a batch of clients. Error: ${error.message}`);
+                continue;
             }
-        } catch (error) {
-            console.error('Error importing clients:', error);
-            alert(`Failed to import clients. Error: ${error.message}`);
         }
+
+        alert('All clients imported successfully!');
+        loadingIndicator.style.display = 'none'; // Hide the loading indicator
+        window.location.href = 'home.html';
     };
 
     reader.onerror = function() {
         alert('Failed to read the file. Please try again.');
+        loadingIndicator.style.display = 'none'; // Hide the loading indicator
     };
 
     reader.readAsText(file);

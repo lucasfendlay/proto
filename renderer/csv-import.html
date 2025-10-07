@@ -5,6 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Import Clients</title>
     <link rel="stylesheet" href="styles.css">
+    <style>
+
+#loadingIndicator {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    font-size: 18px;
+    text-align: center;
+    z-index: 1000;
+}
+
+    </style>
 </head>
 <body>
     <button onclick="window.location.href='home.html'">Home</button>
@@ -15,7 +32,12 @@
 
     <!-- Add CSV Upload Section -->
     <input type="file" id="csvFileInput" accept=".csv"><br><br>
-    <button onclick="importClientsFromCSV()">Upload CSV</button>
+    <button onclick="importClientsFromCSV()">Upload CSV</button><br><br>
+
+    <div id="loadingIndicator" style="display: none;">
+        <p>Processing... Please wait. Please do not close or refresh the page or navigate to another page prior to successful completion of upload.</p>
+    </div>
+
     <br><br>
     CSV Format should be as follows:
 
