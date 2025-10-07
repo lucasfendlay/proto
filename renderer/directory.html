@@ -100,97 +100,99 @@
     }
 
     async function searchClients() {
-    const searchInputs = {
-        id: document.getElementById('searchId').value.toLowerCase(),
-        firstName: document.getElementById('searchFirstName').value.toLowerCase(),
-        lastName: document.getElementById('searchLastName').value.toLowerCase(),
-        phoneNumber: document.getElementById('searchPhoneNumber').value.toLowerCase(),
-        streetAddress: document.getElementById('searchStreetAddress').value.toLowerCase(),
-        city: document.getElementById('searchCity').value.toLowerCase(),
-        county: document.getElementById('searchCounty').value.toLowerCase(),
-    };
+        const searchInputs = {
+            id: document.getElementById('searchId').value.trim(),
+            firstName: document.getElementById('searchFirstName').value.trim(),
+            lastName: document.getElementById('searchLastName').value.trim(),
+            phoneNumber: document.getElementById('searchPhoneNumber').value.trim(),
+            streetAddress: document.getElementById('searchStreetAddress').value.trim(),
+            city: document.getElementById('searchCity').value.trim(),
+            county: document.getElementById('searchCounty').value.trim(),
+        };
 
-    const clients = await fetchClients();
-
-// Fuse.js configuration
-const options = {
-    keys: [
-        {
-            name: 'id',
-            weight: 1,
-            getFn: (client) => client.id.replace(/^id/i, ''), // Remove "id" prefix (case-insensitive)
-        },
-        { name: 'firstName', weight: 1 },
-        { name: 'lastName', weight: 1 },
-        { name: 'phoneNumber', weight: 1 },
-        { name: 'streetAddress', weight: 1 },
-        { name: 'city', weight: 1 },
-        { name: 'county', weight: 1 },
-    ],
-    threshold: 0.4, // Adjust threshold for sensitivity
-    includeScore: true,
-    distance: 100,
-    ignoreLocation: true, // Ignore location to focus on content match
-};
-    const fuse = new Fuse(clients, options);
-
-    // Filter clients using Fuse.js for fuzzy matching
-    let results = clients;
-
-    Object.keys(searchInputs).forEach(key => {
-        if (searchInputs[key]) {
-            const filteredResults = fuse.search(searchInputs[key]).map(result => result.item);
-            results = results.filter(client => filteredResults.includes(client));
+        // Check if all search fields are empty
+        const allFieldsEmpty = Object.values(searchInputs).every(value => value === '');
+        if (allFieldsEmpty) {
+            await loadClients(); // Repopulate the client list with all clients
+            return;
         }
-    });
 
-    // Sort results by relevance score (closest match) first, then by most recent note timestamp
-    results = results.map(client => ({ item: client, score: 0 })); // Reset scores for sorting
-    results.sort((a, b) => {
-        if (a.score !== b.score) {
-            return a.score - b.score; // Lower score means closer match
-        }
-        const aLastNote = a.item.notes?.[a.item.notes.length - 1]?.timestamp || 0;
-        const bLastNote = b.item.notes?.[b.item.notes.length - 1]?.timestamp || 0;
-        return new Date(bLastNote) - new Date(aLastNote); // Most recent note first
-    });
+        const clients = await fetchClients();
 
-    const clientList = document.getElementById('clientList');
-    clientList.innerHTML = '';
+        // Prepare Fuse.js options
+        const fuseOptions = {
+            includeScore: true,
+            threshold: 0.4, // Adjust for fuzziness tolerance
+        };
 
-    if (results.length === 0) {
-        const noResultsMessage = document.createElement('li');
-        noResultsMessage.textContent = 'No clients found.';
-        clientList.appendChild(noResultsMessage);
-    } else {
-        results.forEach(({ item: client }) => {
-            if (!client.firstName || !client.lastName || !client.phoneNumber) {
-                return;
+        // Perform field-specific searches
+        const fieldResults = {};
+        for (const [field, query] of Object.entries(searchInputs)) {
+            if (query) {
+                const fuse = new Fuse(clients, { ...fuseOptions, keys: [field] });
+                fieldResults[field] = fuse.search(query);
             }
+        }
 
-            // Get the most recent note timestamp
-            const mostRecentNote = client.notes?.[client.notes.length - 1];
-            const mostRecentActivity = mostRecentNote ? mostRecentNote.timestamp : 'No recent activity';
+        // Aggregate scores for each client
+        const clientScores = {};
+        for (const [field, results] of Object.entries(fieldResults)) {
+            results.forEach(({ item, score }) => {
+                if (!clientScores[item.id]) {
+                    clientScores[item.id] = { client: item, totalScore: 0 };
+                }
+                clientScores[item.id].totalScore += (1 - score); // Higher score = more relevant
+            });
+        }
 
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <a href="profileview.html?id=${client.id}">
-                    <strong>Profile: ${client.id}</strong> | 
-                    ${client.firstName || ''} ${client.lastName || ''} | 
-                    ${client.phoneNumber ? `Phone: ${client.phoneNumber} | ` : ''}
-                    ${client.streetAddress || client.city || client.state || client.zipCode ? `Address: ${[
-                        client.streetAddress,
-                        client.city,
-                        client.state,
-                        client.zipCode,
-                        client.county ? `${client.county} County` : ''
-                    ].filter(Boolean).join(', ')} | ` : ''}
-                    <strong>Most Recent Activity:</strong> ${mostRecentActivity}
-                </a>`;
-            clientList.appendChild(li);
+        // Convert aggregated scores to a sorted array
+        const sortedResults = Object.values(clientScores).sort((a, b) => {
+            if (b.totalScore === a.totalScore) {
+                // Sort by most recent note timestamp if scores are equal
+                const aLastNote = a.client.notes?.[a.client.notes.length - 1]?.timestamp || 0;
+                const bLastNote = b.client.notes?.[b.client.notes.length - 1]?.timestamp || 0;
+                return new Date(bLastNote) - new Date(aLastNote);
+            }
+            return b.totalScore - a.totalScore; // Higher total score first
         });
+
+        // Render the results
+        const clientList = document.getElementById('clientList');
+        clientList.innerHTML = '';
+
+        if (sortedResults.length === 0) {
+            const noResultsMessage = document.createElement('li');
+            noResultsMessage.textContent = 'No clients found.';
+            clientList.appendChild(noResultsMessage);
+        } else {
+            sortedResults.forEach(({ client }) => {
+                if (!client.firstName || !client.lastName || !client.phoneNumber) {
+                    return;
+                }
+
+                // Get the most recent note timestamp
+                const mostRecentNote = client.notes?.[client.notes.length - 1];
+                const mostRecentActivity = mostRecentNote ? mostRecentNote.timestamp : 'No recent activity';
+
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <a href="profileview.html?id=${client.id}">
+                        <strong>Profile: ${client.id}</strong> | 
+                        ${client.firstName || ''} ${client.lastName || ''} | 
+                        ${client.phoneNumber ? `Phone: ${client.phoneNumber} | ` : ''}
+                        ${client.streetAddress || client.city || client.state || client.zipCode ? `Address: ${[
+                            client.streetAddress,
+                            client.city,
+                            client.state,
+                            client.zipCode,
+                            client.county ? `${client.county} County` : ''
+                        ].filter(Boolean).join(', ')} | ` : ''}
+                        <strong>Most Recent Activity:</strong> ${mostRecentActivity}
+                    </a>`;
+                clientList.appendChild(li);
+            });
+        }
     }
-}
 
     async function loadClients() {
         const clients = await fetchClients();
