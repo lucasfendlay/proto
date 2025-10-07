@@ -39,6 +39,8 @@
         display: flex; /* Enable flexbox for the list */
         flex-direction: column; /* Stack list items vertically */
         align-items: center; /* Center list items horizontally */
+        text-transform: uppercase; /* Force all text to display in uppercase */
+
     }
 
     /* List items */
@@ -153,7 +155,8 @@
             const li = document.createElement('li');
             li.innerHTML = `
     <a href="profileview.html?id=${client.id}">
-        <strong>${client.firstName || ''} ${client.lastName || ''}</strong> | 
+        <strong>Profile: ${client.id}</strong> | 
+        ${client.firstName || ''} ${client.lastName || ''}| 
         ${client.phoneNumber ? `Phone: ${client.phoneNumber} | ` : ''}
         ${client.streetAddress || client.city || client.state || client.zipCode ? `Address: ${[
             client.streetAddress,
@@ -193,13 +196,14 @@
                 }
 
                 // Get the most recent note timestamp
-                const mostRecentNote = client.notes?.[client.notes.length - 1];
-                const mostRecentActivity = mostRecentNote ? mostRecentNote.timestamp : 'No recent activity';
+            const mostRecentNote = client.notes?.[client.notes.length - 1];
+            const mostRecentActivity = mostRecentNote ? mostRecentNote.timestamp : 'No recent activity';
 
-                const li = document.createElement('li');
-                li.innerHTML = `
+            const li = document.createElement('li');
+            li.innerHTML = `
     <a href="profileview.html?id=${client.id}">
-        <strong>${client.firstName || ''} ${client.lastName || ''}</strong> | 
+        <strong>Profile: ${client.id}</strong> | 
+        ${client.firstName || ''} ${client.lastName || ''} | 
         ${client.phoneNumber ? `Phone: ${client.phoneNumber} | ` : ''}
         ${client.streetAddress || client.city || client.state || client.zipCode ? `Address: ${[
             client.streetAddress,
@@ -210,9 +214,9 @@
         ].filter(Boolean).join(', ')} | ` : ''}
         <strong>Most Recent Activity:</strong> ${mostRecentActivity}
     </a>`;
-                clientList.appendChild(li);
-            });
-        }
+            clientList.appendChild(li);
+        });
+    }
     }
 
         async function saveClientAndLogCall() {

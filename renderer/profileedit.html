@@ -561,15 +561,15 @@ margin-top: 60px; /* Adjust this value to match the height of the navigation con
             }
 
             // Populate form fields with client data
-            document.getElementById('firstName').value = callerFirstName || client.firstName || '';
-            document.getElementById('lastName').value = callerLastName || client.lastName || '';
-            document.getElementById('phoneNumber').value = callerPhoneNumber || client.phoneNumber || '';
-            document.getElementById('streetAddress').value = client.streetAddress || '';
-            document.getElementById('city').value = client.city || '';
-            document.getElementById('state').value = client.state || 'PA'; // Default to "PA" if no state is provided
-            document.getElementById('zipCode').value = client.zipCode || '';
-            document.getElementById('county').value = client.county || '';
-            document.getElementById('speakingLanguage').value = client.speakingLanguage || '';
+document.getElementById('firstName').value = (callerFirstName || client.firstName || '').toUpperCase();
+document.getElementById('lastName').value = (callerLastName || client.lastName || '').toUpperCase();
+document.getElementById('phoneNumber').value = (callerPhoneNumber || client.phoneNumber || '').toUpperCase();
+document.getElementById('streetAddress').value = (client.streetAddress || '').toUpperCase();
+document.getElementById('city').value = (client.city || '').toUpperCase();
+document.getElementById('state').value = (client.state || 'PA').toUpperCase(); // Default to "PA" if no state is provided
+document.getElementById('zipCode').value = (client.zipCode || '').toUpperCase();
+document.getElementById('county').value = (client.county || '');
+document.getElementById('speakingLanguage').value = (client.speakingLanguage || '');
 
             // Highlight the selected interpreter button
             if (client.interpreter) {
@@ -590,15 +590,15 @@ margin-top: 60px; /* Adjust this value to match the height of the navigation con
                 client.callLogs.forEach(log => {
                     const li = document.createElement('li');
                     li.innerHTML = `
-                        <div><strong>Agent:</strong> ${log.agent || 'Unknown Agent'}</div>
-                        <div><strong>Timestamp:</strong> ${log.timestamp || 'Unknown Time'}</div>
-                        <div><strong>Caller:</strong> ${log.callerFirstName || ''} ${log.callerLastName || ''}</div>
-                        <div><strong>Phone:</strong> ${log.callerPhoneNumber || ''}</div>
-                        <div><strong>Direction:</strong> ${log.callDirection || ''}</div>
-                        <div><strong>Reason:</strong> ${log.reasonForCall || ''}</div>
-                        <div><strong>Service Center:</strong> ${log.servicingCenter || ''}</div>
-                        <div><strong>Referral:</strong> ${log.referralSource || 'N/A'}</div>
-                        ${log.specificReferral ? `<div><strong>Specifically:</strong> ${log.specificReferral}</div>` : ''}
+                        <div><strong>Agent:</strong> ${log.agent?.toUpperCase() || 'UNKNOWN AGENT'}</div>
+                            <div><strong>Timestamp:</strong> ${log.timestamp?.toUpperCase() || 'UNKNOWN TIME'}</div>
+                            <div><strong>Caller:</strong> ${(log.callerFirstName || '').toUpperCase()} ${(log.callerLastName || '').toUpperCase()}</div>
+                            <div><strong>Phone:</strong> ${log.callerPhoneNumber?.toUpperCase() || ''}</div>
+                            <div><strong>Direction:</strong> ${log.callDirection?.toUpperCase() || ''}</div>
+                            <div><strong>Service Center:</strong> ${log.servicingCenter?.toUpperCase() || ''}</div>
+                            <div><strong>Reason:</strong> ${log.reasonForCall?.toUpperCase() || ''}</div>
+                            <div><strong>Referral:</strong> ${log.referralSource?.toUpperCase() || 'N/A'}</div>
+                            ${log.specificReferral ? `<div><strong>Specifically:</strong> ${log.specificReferral.toUpperCase()}</div>` : ''}
                     `;
                     interactionList.appendChild(li);
                 });
@@ -688,10 +688,11 @@ async function updateClientData(field, value) {
 
 // Add event listeners to text inputs
 document.querySelectorAll('input[type="text"]').forEach(input => {
-    input.addEventListener('blur', (event) => {
+    input.addEventListener('blur', async (event) => {
         const field = event.target.id; // Use the input's ID as the field name
         const value = event.target.value;
-        updateClientData(field, value);
+        await updateClientData(field, value); // Wait for the client data to be updated
+        loadClientData(); // Reload client data to ensure it is displayed in all caps
     });
 });
 
@@ -820,7 +821,6 @@ async function releaseProfile() {
 }
 
 async function confirmAndTerminate() {
-    if (confirm("Are you sure you want to terminate this profile? This action cannot be undone.")) {
         const clientId = getQueryParam('id');
         const timestamp = new Date().toLocaleString();
         const activeUser = sessionStorage.getItem('loggedInUser');
@@ -831,52 +831,98 @@ async function confirmAndTerminate() {
             return;
         }
 
-        try {
-            await saveClient();
+        // Check the current termination status
+        const terminateButton = document.getElementById('terminate-button');
+        const isTerminated = terminateButton.textContent === "Undo Profile Termination";
 
-            const response = await fetch('/update-client', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ clientId, clientData: { terminated: true } }),
-            });
+        const confirmationMessage = isTerminated
+            ? "Are you sure you want to undo the termination of this profile?"
+            : "Are you sure you want to terminate this profile?";
 
-            const result = await response.json();
-            if (!response.ok || !result.success) {
-                console.error('Failed to terminate profile:', result.message);
-                alert('Failed to terminate profile.');
-                return;
-            }
+        if (confirm(confirmationMessage)) {
+            try {
+                await saveClient();
 
-            const note = {
-                text: "Profile terminated.",
-                timestamp: timestamp,
-                username: activeUser,
-            };
+                const response = await fetch('/update-client', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ clientId, clientData: { terminated: !isTerminated } }),
+                });
 
-            const noteResponse = await fetch('/add-note-to-client', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ clientId, note }),
-            });
+                const result = await response.json();
+                if (!response.ok || !result.success) {
+                    console.error('Failed to update termination status:', result.message);
+                    alert('Failed to update termination status.');
+                    return;
+                }
 
-            const noteResult = await noteResponse.json();
-            if (!noteResponse.ok || !noteResult.success) {
-                console.error('Failed to add termination note:', noteResult.message);
-                alert('Failed to add termination note.');
-                return;
-            }
+                const note = {
+                    text: isTerminated ? "Profile termination undone." : "Profile terminated.",
+                    timestamp: timestamp,
+                    username: activeUser,
+                };
 
-            alert("The profile has been successfully terminated.");
-            document.getElementById('terminationStatus').style.display = 'block';
-            document.getElementById('terminate-button').style.display = 'none';
+                const noteResponse = await fetch('/add-note-to-client', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ clientId, note }),
+                });
+
+                const noteResult = await noteResponse.json();
+                if (!noteResponse.ok || !noteResult.success) {
+                    console.error('Failed to add termination note:', noteResult.message);
+                    alert('Failed to add termination note.');
+                    return;
+                }
+
+                alert(isTerminated ? "The profile termination has been undone." : "The profile has been successfully terminated.");
+                document.getElementById('terminationStatus').style.display = isTerminated ? 'none' : 'block';
+                terminateButton.textContent = isTerminated ? "Terminate Profile" : "Undo Profile Termination";
+            // Reload the page after the operation
+            location.reload();
         } catch (error) {
-            console.error("Error terminating the profile:", error);
-            alert("An error occurred while terminating the profile. Please try again.");
+            console.error("Error updating the profile termination status:", error);
+            alert("An error occurred while updating the profile termination status. Please try again.");
         }
+    }
+}
+
+    // Update the button text on page load based on the termination status
+    async function updateTerminateButton() {
+    const clientId = getQueryParam('id');
+    try {
+        const response = await fetch(`/get-client/${clientId}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client: ${response.statusText}`);
+        }
+
+        const client = await response.json();
+        const terminateButton = document.getElementById('terminate-button');
+        const terminationStatus = document.getElementById('terminationStatus');
+
+        console.log('Client termination status:', client.terminated); // Debugging log
+
+        if (client.terminated) {
+            terminateButton.textContent = "Undo Profile Termination";
+            terminationStatus.style.display = 'block'; // Show "PROFILE TERMINATED" message
+            terminateButton.style.display = 'inline-block'; // Ensure the button is visible
+        } else {
+            terminateButton.textContent = "Terminate Profile";
+            terminationStatus.style.display = 'none'; // Hide "PROFILE TERMINATED" message
+            terminateButton.style.display = 'inline-block'; // Ensure the button is visible
+        }
+    } catch (error) {
+        console.error('Error updating terminate button:', error);
     }
 }
 
@@ -909,6 +955,8 @@ async function toggleSidebarVisibility() {
 window.onload = function () {
     loadClientData();
     toggleSidebarVisibility();
+    updateTerminateButton();
+
 };
     </script>
         <script src="estimations.js"></script>

@@ -116,40 +116,71 @@
 
         const logCallResult = await logCallResponse.json();
         if (logCallResponse.ok && logCallResult.success) {
-            // Create a note for the call
+            // Create a note for profile creation
             const activeUser = sessionStorage.getItem('loggedInUser');
-            const note = {
+            const profileCreationNote = {
+                text: `Profile created.`,
+                timestamp: callLog.timestamp,
+                username: activeUser,
+            };
+
+            // Add the profile creation note to the database
+            const addProfileNoteResponse = await fetch('/add-note-to-client', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ clientId, note: profileCreationNote }),
+            });
+
+            const addProfileNoteResult = await addProfileNoteResponse.json();
+            if (!addProfileNoteResponse.ok || !addProfileNoteResult.success) {
+                alert('Failed to add profile creation note.');
+                return;
+            }
+
+            // Create a note for the call
+            const callNote = {
                 text: `${callLog.callDirection} call logged. <br><br> Service Center: <br> ${callLog.servicingCenter}.`,
                 timestamp: callLog.timestamp,
                 username: activeUser,
             };
 
-            // Add the note to the database
-            const addNoteResponse = await fetch('/add-note-to-client', {
+            // Add the call note to the database
+            const addCallNoteResponse = await fetch('/add-note-to-client', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ clientId, note }),
+                body: JSON.stringify({ clientId, note: callNote }),
             });
 
-            const addNoteResult = await addNoteResponse.json();
-            if (!addNoteResponse.ok || !addNoteResult.success) {
+            const addCallNoteResult = await addCallNoteResponse.json();
+            if (!addCallNoteResponse.ok || !addCallNoteResult.success) {
                 alert('Failed to add note to client.');
                 return;
             }
 
-            // Add the note to the notes container in the UI
+            // Add the notes to the notes container in the UI
             const notesContainer = document.getElementById('notesContainer');
             if (notesContainer) {
-                const noteElement = document.createElement('div');
-                noteElement.classList.add('note');
-                noteElement.innerHTML = `
-                    <p><strong>${note.timestamp}</strong></p>
-                    <p>${note.text}</p>
-                    <p><em>Logged by: ${note.username}</em></p>
+                const profileNoteElement = document.createElement('div');
+                profileNoteElement.classList.add('note');
+                profileNoteElement.innerHTML = `
+                    <p><strong>${profileCreationNote.timestamp}</strong></p>
+                    <p>${profileCreationNote.text}</p>
+                    <p><em>Logged by: ${profileCreationNote.username}</em></p>
                 `;
-                notesContainer.appendChild(noteElement);
+                notesContainer.appendChild(profileNoteElement);
+
+                const callNoteElement = document.createElement('div');
+                callNoteElement.classList.add('note');
+                callNoteElement.innerHTML = `
+                    <p><strong>${callNote.timestamp}</strong></p>
+                    <p>${callNote.text}</p>
+                    <p><em>Logged by: ${callNote.username}</em></p>
+                `;
+                notesContainer.appendChild(callNoteElement);
             }
 
             // Redirect based on the reason for the call

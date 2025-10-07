@@ -138,7 +138,7 @@ app.post('/add-client-batch', async (req, res) => {
     }
 });
 
-// Delete invalid documents (missing firstName or lastName)
+// Delete invalid documents (missing fields or matching specific invalid values)
 app.delete('/delete-invalid-documents', async (req, res) => {
     try {
         const collection = db.collection('clients');
@@ -149,7 +149,8 @@ app.delete('/delete-invalid-documents', async (req, res) => {
                 { firstName: null },
                 { lastName: null },
                 { firstName: '' },
-                { lastName: '' }
+                { lastName: '' },
+                { firstName: 'id', lastName: 'firstName', phoneNumber: 'lastName' } // Additional invalid criteria
             ],
         });
 

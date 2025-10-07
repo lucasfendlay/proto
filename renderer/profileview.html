@@ -286,15 +286,15 @@
             document.getElementById('profileId').textContent = `Profile: ${client.id || 'N/A'}`;
 
             // Populate fields with client data
-            document.getElementById('firstName').textContent = client.firstName || 'N/A';
-            document.getElementById('lastName').textContent = client.lastName || 'N/A';
-            document.getElementById('phoneNumber').textContent = client.phoneNumber || 'N/A';
-            document.getElementById('streetAddress').textContent = client.streetAddress || 'N/A';
-            document.getElementById('city').textContent = client.city || 'N/A';
-            document.getElementById('state').textContent = client.state || 'N/A';
-            document.getElementById('zipCode').textContent = client.zipCode || 'N/A';
-            document.getElementById('county').textContent = client.county || 'N/A';
-            document.getElementById('speakingLanguage').textContent = client.speakingLanguage || 'N/A';
+            document.getElementById('firstName').textContent = client.firstName.toUpperCase() || 'N/A';
+            document.getElementById('lastName').textContent = client.lastName.toUpperCase() || 'N/A';
+            document.getElementById('phoneNumber').textContent = client.phoneNumber.toUpperCase() || 'N/A';
+            document.getElementById('streetAddress').textContent = client.streetAddress.toUpperCase() || 'N/A';
+            document.getElementById('city').textContent = client.city.toUpperCase() || 'N/A';
+            document.getElementById('state').textContent = client.state.toUpperCase() || 'N/A';
+            document.getElementById('zipCode').textContent = client.zipCode.toUpperCase() || 'N/A';
+            document.getElementById('county').textContent = client.county.toUpperCase() || 'N/A';
+            document.getElementById('speakingLanguage').textContent = client.speakingLanguage.toUpperCase() || 'N/A';
 
             // Handle interpreter field
             if (client.interpreter === 'yes') {
@@ -322,15 +322,15 @@
                 client.callLogs.forEach(log => {
                     const li = document.createElement('li');
                     li.innerHTML = `
-                        <div><strong>Agent:</strong> ${log.agent || 'Unknown Agent'}</div>
-                        <div><strong>Timestamp:</strong> ${log.timestamp || 'Unknown Time'}</div>
-                        <div><strong>Caller:</strong> ${log.callerFirstName || ''} ${log.callerLastName || ''}</div>
-                        <div><strong>Phone:</strong> ${log.callerPhoneNumber || ''}</div>
-                        <div><strong>Direction:</strong> ${log.callDirection || ''}</div>
-                        <div><strong>Reason:</strong> ${log.reasonForCall || ''}</div>
-                        <div><strong>Service Center:</strong> ${log.servicingCenter || ''}</div>
-                        <div><strong>Referral:</strong> ${log.referralSource || 'N/A'}</div>
-                        ${log.specificReferral ? `<div><strong>Specifically:</strong> ${log.specificReferral}</div>` : ''}
+                        <div><strong>Agent:</strong> ${log.agent?.toUpperCase() || 'UNKNOWN AGENT'}</div>
+                            <div><strong>Timestamp:</strong> ${log.timestamp?.toUpperCase() || 'UNKNOWN TIME'}</div>
+                            <div><strong>Caller:</strong> ${(log.callerFirstName || '').toUpperCase()} ${(log.callerLastName || '').toUpperCase()}</div>
+                            <div><strong>Phone:</strong> ${log.callerPhoneNumber?.toUpperCase() || ''}</div>
+                            <div><strong>Direction:</strong> ${log.callDirection?.toUpperCase() || ''}</div>
+                            <div><strong>Service Center:</strong> ${log.servicingCenter?.toUpperCase() || ''}</div>
+                            <div><strong>Reason:</strong> ${log.reasonForCall?.toUpperCase() || ''}</div>
+                            <div><strong>Referral:</strong> ${log.referralSource?.toUpperCase() || 'N/A'}</div>
+                            ${log.specificReferral ? `<div><strong>Specifically:</strong> ${log.specificReferral.toUpperCase()}</div>` : ''}
                     `;
                     interactionList.appendChild(li);
                 });

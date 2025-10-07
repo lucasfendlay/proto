@@ -53,6 +53,8 @@ document.addEventListener('DOMContentLoaded', function () {
             note.text !== 'Profile checked out.' &&
             note.text !== 'Profile released.' &&
             note.text !== 'Profile terminated.' &&
+            note.text !== 'Profile termination undone.' &&
+            note.text !== 'Profile created.' &&
             !note.text.startsWith('Referral provided.') &&
             cleanedUsername === activeUser;
 
