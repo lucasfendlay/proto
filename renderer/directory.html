@@ -172,7 +172,7 @@
 
                 // Get the most recent note timestamp
                 const mostRecentNote = client.notes?.[client.notes.length - 1];
-                const mostRecentActivity = mostRecentNote ? mostRecentNote.timestamp : 'No recent activity';
+                const mostRecentActivity = mostRecentNote ? mostRecentNote.timestamp : '<strong>No recent activity</strong>';
 
                 const li = document.createElement('li');
                 li.innerHTML = `

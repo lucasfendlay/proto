@@ -90,28 +90,88 @@ async function importClientsFromCSV() {
             return;
         }
 
+        const updatedRows = [rows[0]]; // Start with the header row
+        const existingClientsResponse = await fetch('/get-all-clients'); // Fetch all existing clients
+        const existingClientsData = await existingClientsResponse.json();
+        const existingClients = existingClientsData.clients || [];
+
+        let shouldExportCsv = false; // Flag to determine if CSV export is needed
+
         const clients = rows.slice(1).map((row, index) => {
             if (row.every(cell => !cell.trim())) {
                 return null;
             }
 
-            const id = row[0]?.trim() || generateUniqueId();
-            const speakingLanguage = row[9]?.trim() || '';
-            const notesColumn = row[10]?.trim() || '';
+            const id = row[0]?.trim();
+            const mailID = row[10]?.trim() || ''; // Column K (mailID)
 
-            return {
-                id: id,
+            if (id) {
+                const normalizedId = id.trim(); // Ensure ID is trimmed
+                const existingClient = existingClients.find(client => client.id === normalizedId);
+            
+                if (existingClient) {
+                    // Update only the mailID field for the existing client
+                    const normalizedMailID = mailID.trim(); // Ensure mailID is trimmed
+                    existingClient.mailID = normalizedMailID;
+            
+                    // Always add a note to the existing profile
+                    saveNoteForClient(
+                        existingClient.id,
+                        buildClientNote({
+                            mailID: normalizedMailID,
+                            dataSource: row[12]?.trim() || '', // Column M (dataSource)
+                            outreachMailDate: row[13]?.trim() || '' // Column N (outreachMailDate)
+                        })
+                    );
+            
+                    // Update the row in the CSV
+                    updatedRows[index + 1] = row; // Keep the row as is
+                    updatedRows[index + 1][10] = normalizedMailID; // Update mailID in the row
+                    return null; // Skip creating a new client object
+                }
+            }
+
+            const speakingLanguage = row[9]?.trim() || '';
+            const primaryBenefit = row[11]?.trim() || ''; // New column
+            const dataSource = row[12]?.trim() || ''; // New column
+            const outreachMailDate = row[13]?.trim() || ''; // New column
+
+            const client = {
+                id: id || generateUniqueId(),
                 firstName: row[1]?.trim(),
                 lastName: row[2]?.trim(),
                 phoneNumber: row[3]?.trim(),
-                streetAddress: row[4]?.trim(),
+                streetAddress: row[4]?.trim().replace(/^"|"$/g, ''),
                 city: row[5]?.trim(),
                 state: row[6]?.trim(),
                 zipCode: row[7]?.trim(),
                 county: row[8]?.trim(),
                 speakingLanguage: speakingLanguage,
-                notesColumn: notesColumn
+                mailID: mailID,
+                primaryBenefit: primaryBenefit,
+                dataSource: dataSource,
+                outreachMailDate: outreachMailDate
             };
+
+            updatedRows.push([
+                client.id,
+                client.firstName,
+                client.lastName,
+                client.phoneNumber,
+                client.streetAddress,
+                client.city,
+                client.state,
+                client.zipCode,
+                client.county,
+                client.speakingLanguage,
+                client.mailID,
+                client.primaryBenefit,
+                client.dataSource,
+                client.outreachMailDate
+            ]);
+
+            shouldExportCsv = true; // Mark that a new client was added, so CSV export is needed
+            return client;
         }).filter(client => client !== null);
 
         const BATCH_SIZE = 100;
@@ -133,11 +193,18 @@ async function importClientsFromCSV() {
                     continue;
                 }
 
-                for (const client of batch) {
-                    await saveNoteForClient(client.id, `Profile created.`);
-                    if (client.notesColumn) {
-                        await saveNoteForClient(client.id, client.notesColumn);
+                const responseData = await response.json();
+                const importedClients = responseData.clients || [];
+
+                for (let j = 0; j < batch.length; j++) {
+                    const client = batch[j];
+                    const importedClient = importedClients[j];
+                    if (importedClient && importedClient.id) {
+                        client.id = importedClient.id; // Update the ID with the server-generated ID
+                        updatedRows[i + j + 1][0] = importedClient.id; // Update the ID in the CSV row
                     }
+
+                    await saveNoteForClient(client.id, buildClientNote(client, true)); // Pass true for isNewProfile
                 }
 
                 // Update progress bar
@@ -152,6 +219,16 @@ async function importClientsFromCSV() {
             }
         }
 
+        // Trigger CSV download only if new clients were added
+        if (shouldExportCsv) {
+            const updatedCsvContent = updatedRows.map(row => row.join(',')).join('\n');
+            const blob = new Blob([updatedCsvContent], { type: 'text/csv' });
+            const downloadLink = document.createElement('a');
+            downloadLink.href = URL.createObjectURL(blob);
+            downloadLink.download = 'updated-clients.csv';
+            downloadLink.click();
+        }
+
         alert('All clients imported successfully!');
         loadingIndicator.style.display = 'none'; // Hide the loading indicator
         window.location.href = 'home.html';
@@ -163,6 +240,30 @@ async function importClientsFromCSV() {
     };
 
     reader.readAsText(file);
+}
+
+function buildClientNote(client, isNewProfile) {
+    const noteParts = [];
+
+    if (isNewProfile) {
+        noteParts.push('<strong>Profile created.</strong><br><br>');
+    }
+
+    if (client.mailID) {
+        noteParts.push(`<strong>Mail ID: ${client.mailID} </strong><br><br>`);
+    }
+    if (client.primaryBenefit) {
+        noteParts.push(`<strong>Primary Benefit: ${client.primaryBenefit}</strong><br><br>`);
+    }
+    if (client.dataSource) {
+        noteParts.push(`<strong>Data Source: ${client.dataSource}</strong><br><br>`);
+    }
+    if (client.outreachMailDate) {
+        noteParts.push(`<strong>Outreach Mail Date: ${client.outreachMailDate}</strong><br><br>`);
+    }
+
+    // Join the note parts with two line breaks
+    return noteParts.join('\r\n\r\n'); // Use \r\n for better cross-platform compatibility
 }
 
 // Helper function to save a note for a client
