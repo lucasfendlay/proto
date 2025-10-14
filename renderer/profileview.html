@@ -325,7 +325,7 @@
                         <div><strong>Agent:</strong> ${log.agent?.toUpperCase() || 'UNKNOWN AGENT'}</div>
                             <div><strong>Timestamp:</strong> ${log.timestamp?.toUpperCase() || 'UNKNOWN TIME'}</div>
                             <div><strong>Caller:</strong> ${(log.callerFirstName || '').toUpperCase()} ${(log.callerLastName || '').toUpperCase()}</div>
-                            <div><strong>Phone:</strong> ${log.callerPhoneNumber?.toUpperCase() || ''}</div>
+                            <div><strong>Phone:</strong> ${formatPhoneNumber(log.callerPhoneNumber) || ''}</div>
                             <div><strong>Direction:</strong> ${log.callDirection?.toUpperCase() || ''}</div>
                             <div><strong>Service Center:</strong> ${log.servicingCenter?.toUpperCase() || ''}</div>
                             <div><strong>Reason:</strong> ${log.reasonForCall?.toUpperCase() || ''}</div>
@@ -346,6 +346,13 @@
         console.error('Error loading client data:', error);
     }
 }
+
+function formatPhoneNumber(phone) {
+        if (!phone) return '';
+        const cleaned = phone.replace(/\D/g, ''); // Remove all non-numeric characters
+        const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/); // Match the phone number pattern
+        return match ? `(${match[1]})-${match[2]}-${match[3]}` : phone; // Format if valid, else return original
+    }
 
 // Navigation functions for Release button
 function GoToProfileEditChecked() {

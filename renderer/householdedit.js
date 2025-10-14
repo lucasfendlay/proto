@@ -210,28 +210,40 @@ async function loadSavedData() {
                         <p class="household-member-info"><strong>Name:</strong> ${capitalizeFirstLetter(member.firstName || '')} ${member.middleInitial ? capitalizeFirstLetter(member.middleInitial || '') : ''} ${capitalizeFirstLetter(member.lastName || '')}</p>
                         <p class="household-member-info"><strong>DOB:</strong> ${member.dob}</p>
                         <p class="household-member-info"><strong>Age:</strong> ${member.age}</p>
+                        <p class="household-member-info"><strong>Legal Sex:</strong> ${capitalizeFirstLetter(member.legalSex)}</p>
+                        <p class="household-member-info"><strong>SSN:</strong> ${member.socialSecurityNumber ? member.socialSecurityNumber : 'N/A'}</p>
                         <p class="household-member-info"><strong>Marital Status:</strong> ${capitalizeFirstLetter(member.maritalStatus)}</p>
-                        ${member.previousMaritalStatus && member.previousMaritalStatus.toLowerCase() !== 'n/a' ? 
-                            `<p class="household-member-info"><strong>Previous Marital Status:</strong> ${capitalizeFirstLetter(member.previousMaritalStatus)}</p>` 
-                            : ''}
+                        ${
+                            member.previousMaritalStatus && typeof member.previousMaritalStatus === 'string' && member.previousMaritalStatus.toLowerCase() !== 'n/a'
+                                ? `<p class="household-member-info"><strong>Previous Marital Status:</strong> ${capitalizeFirstLetter(member.previousMaritalStatus)}</p>`
+                                : ''
+                        }
                         <p class="household-member-info"><strong>Disability:</strong> ${capitalizeFirstLetter(member.disability)}</p>
                         <p class="household-member-info"><strong>Medicare:</strong> ${capitalizeFirstLetter(member.medicare)}</p>
                         <p class="household-member-info"><strong>Medicaid:</strong> ${capitalizeFirstLetter(member.medicaid)}</p>
                         <p class="household-member-info"><strong>US Citizen:</strong> ${capitalizeFirstLetter(member.citizen)}</p>
-                        ${member.nonCitizenStatus && member.nonCitizenStatus.toLowerCase() !== 'citizen' 
-                            ? `<p class="household-member-info"><strong>Non-Citizen Status:</strong> ${capitalizeFirstLetter(member.nonCitizenStatus)}</p>` 
-                            : ''}
+                        ${
+                            member.nonCitizenStatus && member.nonCitizenStatus.toLowerCase() !== 'citizen'
+                                ? `<p class="household-member-info"><strong>Non-Citizen Status:</strong> ${capitalizeFirstLetter(member.nonCitizenStatus)}</p>`
+                                : ''
+                        }
                         <p class="household-member-info"><strong>Student:</strong> ${capitalizeFirstLetter(member.student)}</p>
-                        ${member.studentStatus.toLowerCase() !== 'notstudent' ? `<p class="household-member-info"><strong>Student Status:</strong> ${capitalizeFirstLetter(member.studentStatus)}</p>` : ''}    
+                        ${
+                            member.studentStatus && member.studentStatus.toLowerCase() !== 'notstudent'
+                                ? `<p class="household-member-info"><strong>Student Status:</strong> ${capitalizeFirstLetter(member.studentStatus)}</p>`
+                                : ''
+                        }
                         <p class="household-member-info"><strong>Included in SNAP Household:</strong> ${capitalizeFirstLetter(member.meals)}</p>
                         <div class="button-container">
                             <button class="edit-member-button" data-member-id="${member.householdMemberId}">Edit</button>
                             <button class="delete-member-button" data-member-id="${member.householdMemberId}" style="color: white; background-color: red" 
                                 onmouseover="this.style.backgroundColor='darkred'" 
                                 onmouseout="this.style.backgroundColor='red'">Delete</button>
-                            ${!member.headOfHousehold ? `<button class="make-head-button" data-member-id="${member.householdMemberId}">Make Head of Household</button>` : ''}
-                                                ${member.headOfHousehold ? `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block;"><strong>Head of Household</strong></p>` : ''}
-
+                            ${
+                                !member.headOfHousehold
+                                    ? `<button class="make-head-button" data-member-id="${member.householdMemberId}">Make Head of Household</button>`
+                                    : `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block;"><strong>Head of Household</strong></p>`
+                            }
                         </div>
                     `;
                     householdMemberContainer.appendChild(memberElement);
@@ -973,17 +985,36 @@ async function prepareHouseholdMemberModal() {
             'middleInitial',
             'lastName',
             'dob',
+            'socialSecurityNumber',
+            'legalSex',
             'maritalStatus',
             'previousMaritalStatus',
             'studentStatus',
             'nonCitizenStatus'
         ];
+
+            // Make SSN field editable and hide the "Edit SSN" button
+    const ssnInput = document.getElementById('socialSecurityNumber');
+    const editSSNButton = document.getElementById('editSSNButton');
+    ssnInput.readOnly = false; // Make the SSN field editable
+    if (editSSNButton) {
+        editSSNButton.style.display = 'none'; // Hide the "Edit SSN" button
+    }
+
+        resetSSNFields();
+
         modalFields.forEach((fieldId) => {
             const field = document.getElementById(fieldId);
             if (field) {
                 field.value = ''; // Clear the input field
             }
         });
+
+                // Hide the "Next" button initially
+                const nextButton = document.getElementById('nextSSNButton');
+                if (nextButton) {
+                    nextButton.style.display = 'none';
+                }
 
         // Reset visibility of all modal questions
         const modalQuestions = [
@@ -1248,15 +1279,18 @@ async function addHouseholdMember() {
 
     try {
         // Gather data from the modal
+        const ssnInput = document.getElementById('socialSecurityNumber');
         const firstName = document.getElementById('firstName').value.trim();
-        const middleInitial = document.getElementById('middleInitial').value.trim();
         const lastName = document.getElementById('lastName').value.trim();
-        const dob = document.getElementById('dob').value; // Date of birth
+        const socialSecurityNumber = ssnInput.value.trim();
+        const middleInitial = document.getElementById('middleInitial').value.trim();
+        const dob = document.getElementById('dob').value;
+        const legalSex = document.getElementById('legalSex').value;
         const maritalStatus = document.getElementById('maritalStatus').value;
         const previousMaritalStatus = document.getElementById('previousMaritalStatus').value;
-        const studentStatus = document.getElementById('studentStatus').value;
         const nonCitizenStatus = document.getElementById('nonCitizenStatus').value;
-
+        const studentStatus = document.getElementById('studentStatus').value;
+        
         // Calculate age in Years, Months, and Days
         const calculateAge = (dob) => {
             const birthDate = new Date(dob);
@@ -1335,6 +1369,8 @@ async function addHouseholdMember() {
             middleInitial,
             lastName,
             dob,
+            legalSex,
+            socialSecurityNumber,
             age: `${age.years} Years, ${age.months} Months, ${age.days} Days`,
             maritalStatus,
             previousMaritalStatus,
@@ -1426,10 +1462,57 @@ async function openEditModal(member) {
     document.getElementById('middleInitial').value = member.middleInitial || '';
     document.getElementById('lastName').value = member.lastName || '';
     document.getElementById('dob').value = member.dob || '';
+    document.getElementById('socialSecurityNumber').value = member.socialSecurityNumber || '';
+    document.getElementById('legalSex').value = member.legalSex || '';
     document.getElementById('maritalStatus').value = member.maritalStatus || '';
     document.getElementById('previousMaritalStatus').value = member.previousMaritalStatus || '';
     document.getElementById('studentStatus').value = member.studentStatus || '';
     document.getElementById('nonCitizenStatus').value = member.nonCitizenStatus || '';
+
+    // Make SSN field read-only and add "Edit SSN" button if a valid 9-digit SSN exists
+const ssnInput = document.getElementById('socialSecurityNumber');
+const confirmSSNContainer = document.getElementById('confirmSSNContainer');
+
+if (ssnInput.value && /^\d{3}-\d{2}-\d{4}$/.test(ssnInput.value)) { // Check if SSN is in the format xxx-xx-xxxx
+    const editSSNButton = document.createElement('button'); // Create the "Edit SSN" button
+    ssnInput.readOnly = true; // Make the SSN field read-only
+    confirmSSNContainer.style.display = 'none'; // Hide the confirm SSN container
+
+    // Configure the "Edit SSN" button
+    editSSNButton.id = 'editSSNButton';
+    editSSNButton.textContent = 'Edit SSN';
+
+    // Apply the same styles as #nextSSNButton
+    editSSNButton.style.display = 'inline-block';
+    editSSNButton.style.marginTop = '10px';
+    editSSNButton.style.padding = '10px 15px';
+    editSSNButton.style.cursor = 'pointer';
+    editSSNButton.style.border = '1px solid #000000';
+    editSSNButton.style.borderRadius = '5px';
+    editSSNButton.style.transition = 'background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease';
+
+    // Add hover effect
+    editSSNButton.addEventListener('mouseover', () => {
+        editSSNButton.style.backgroundColor = '#0056b3';
+        editSSNButton.style.color = 'white';
+        editSSNButton.style.borderColor = '#003f7f';
+    });
+    editSSNButton.addEventListener('mouseout', () => {
+        editSSNButton.style.backgroundColor = '';
+        editSSNButton.style.color = '';
+        editSSNButton.style.borderColor = '#000000';
+    });
+
+    // Add a click event listener to trigger the resetSSN function
+    editSSNButton.addEventListener('click', (event) => {
+        event.preventDefault(); // Prevent the default button behavior
+        resetSSNFields(); // Call the resetSSN function
+        editSSNButton.style.display = 'none'; // Hide the "Edit SSN" button
+    });
+
+    // Insert the "Edit SSN" button after the SSN input field
+    ssnInput.parentNode.insertBefore(editSSNButton, ssnInput.nextSibling);
+}
 
     // Step 3: Highlight the selected options for modal questions
     const modalQuestions = [
@@ -1520,6 +1603,8 @@ async function updateHouseholdMember(memberId) {
         const middleInitial = document.getElementById('middleInitial').value.trim();
         const lastName = document.getElementById('lastName').value.trim();
         const dob = document.getElementById('dob').value;
+        const socialSecurityNumber = document.getElementById('socialSecurityNumber').value.trim();
+        const legalSex= document.getElementById('legalSex').value;
         const maritalStatus = document.getElementById('maritalStatus').value;
         const previousMaritalStatus = document.getElementById('previousMaritalStatus').value;
         const nonCitizenStatus = document.getElementById('nonCitizenStatus').value;
@@ -1585,6 +1670,8 @@ async function updateHouseholdMember(memberId) {
             middleInitial,
             lastName,
             dob,
+            socialSecurityNumber,
+            legalSex,
             age: `${age.years} Years, ${age.months} Months, ${age.days} Days`,
             maritalStatus,
             previousMaritalStatus,

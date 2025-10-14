@@ -90,7 +90,10 @@ async function importClientsFromCSV() {
             return;
         }
 
-        const updatedRows = [rows[0]]; // Start with the header row
+        // Replace blank cells with "N/A"
+        const sanitizedRows = rows.map(row => row.map(cell => cell.trim() || ''));
+
+        const updatedRows = [sanitizedRows[0]]; // Start with the header row
         const existingClientsResponse = await fetch('/get-all-clients'); // Fetch all existing clients
         const existingClientsData = await existingClientsResponse.json();
         const existingClients = existingClientsData.clients || [];
@@ -101,19 +104,19 @@ async function importClientsFromCSV() {
             if (row.every(cell => !cell.trim())) {
                 return null;
             }
-
+        
             const id = row[0]?.trim();
             const mailID = row[10]?.trim() || ''; // Column K (mailID)
-
+        
             if (id) {
                 const normalizedId = id.trim(); // Ensure ID is trimmed
                 const existingClient = existingClients.find(client => client.id === normalizedId);
-            
+        
                 if (existingClient) {
                     // Update only the mailID field for the existing client
                     const normalizedMailID = mailID.trim(); // Ensure mailID is trimmed
                     existingClient.mailID = normalizedMailID;
-            
+        
                     // Always add a note to the existing profile
                     saveNoteForClient(
                         existingClient.id,
@@ -123,35 +126,92 @@ async function importClientsFromCSV() {
                             outreachMailDate: row[13]?.trim() || '' // Column N (outreachMailDate)
                         })
                     );
-            
+        
                     // Update the row in the CSV
                     updatedRows[index + 1] = row; // Keep the row as is
                     updatedRows[index + 1][10] = normalizedMailID; // Update mailID in the row
                     return null; // Skip creating a new client object
                 }
             }
-
+        
             const speakingLanguage = row[9]?.trim() || '';
             const primaryBenefit = row[11]?.trim() || ''; // New column
             const dataSource = row[12]?.trim() || ''; // New column
             const outreachMailDate = row[13]?.trim() || ''; // New column
+            const dateOfBirth = row[14]?.trim() || ''; // New column
+            const legalSex = row[15]?.trim() || ''; // New column
+            const socialSecurity = row[16]?.trim() || ''; // New column
+        
+            // Create a new client object
+const client = {
+    id: (id || generateUniqueId()).toUpperCase(),
+    firstName: row[1]?.trim().toUpperCase(),
+    lastName: row[2]?.trim().toUpperCase(),
+    phoneNumber: row[3]?.trim().toUpperCase(),
+    streetAddress: row[4]?.trim().replace(/^"|"$/g, '').toUpperCase(),
+    city: row[5]?.trim().toUpperCase(),
+    state: row[6]?.trim().toUpperCase(),
+    zipCode: row[7]?.trim().toUpperCase(),
+    county: row[8]?.trim().toUpperCase(),
+    speakingLanguage: speakingLanguage.toUpperCase(),
+    mailID: mailID.toUpperCase(),
+    primaryBenefit: primaryBenefit.toUpperCase(),
+    dataSource: dataSource.toUpperCase(),
+    outreachMailDate: outreachMailDate.toUpperCase(),
+    householdMembers: [] // Prepare an array for household members
+};
+        
+            // Add household member data to the client object
+            if (dateOfBirth || legalSex || socialSecurity) {
+                // Normalize legalSex values
+                const normalizedLegalSex = legalSex.toUpperCase() === 'M' ? 'MALE' : legalSex.toUpperCase() === 'F' ? 'FEMALE' : legalSex.toUpperCase();
+            
+                // Helper function to calculate age in years, months, and days
+const calculateAge = (dob) => {
+    const birthDate = new Date(dob);
+    const today = new Date();
+    today.setDate(today.getDate() - 1); // Subtract 1 day from the current date
+    let years = today.getFullYear() - birthDate.getFullYear();
+    let months = today.getMonth() - birthDate.getMonth();
+    let days = today.getDate() - birthDate.getDate();
 
-            const client = {
-                id: id || generateUniqueId(),
-                firstName: row[1]?.trim(),
-                lastName: row[2]?.trim(),
-                phoneNumber: row[3]?.trim(),
-                streetAddress: row[4]?.trim().replace(/^"|"$/g, ''),
-                city: row[5]?.trim(),
-                state: row[6]?.trim(),
-                zipCode: row[7]?.trim(),
-                county: row[8]?.trim(),
-                speakingLanguage: speakingLanguage,
-                mailID: mailID,
-                primaryBenefit: primaryBenefit,
-                dataSource: dataSource,
-                outreachMailDate: outreachMailDate
-            };
+    if (days < 0) {
+        months -= 1;
+        days += new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+    }
+    if (months < 0) {
+        years -= 1;
+        months += 12;
+    }
+
+    return { years, months, days };
+};
+
+// Reformat dateOfBirth from MM/DD/YYYY to YYYY/MM/DD and calculate age
+let formattedDateOfBirth = '';
+let age = null;
+
+if (dateOfBirth) {
+    const [month, day, year] = dateOfBirth.split('/');
+    if (month && day && year) {
+        formattedDateOfBirth = `${year}-${month}-${day}`; // Ensure correct order
+
+        // Calculate age
+        const { years, months, days } = calculateAge(formattedDateOfBirth);
+        age = `${years} years, ${months} months, ${days} days`; // Format age as a string
+    }
+}
+
+client.householdMembers.push({
+    householdMemberId: crypto.randomUUID(), // Ensure a unique ID is generated
+    firstName: client.firstName.toUpperCase(),
+    lastName: client.lastName.toUpperCase(),
+    dob: formattedDateOfBirth,
+    age: age, // Include the calculated age as a string
+    legalSex: normalizedLegalSex || '',
+    socialSecurityNumber: socialSecurity ? socialSecurity.toUpperCase() : ''
+});
+            }
 
             updatedRows.push([
                 client.id,
@@ -169,14 +229,15 @@ async function importClientsFromCSV() {
                 client.dataSource,
                 client.outreachMailDate
             ]);
-
+        
             shouldExportCsv = true; // Mark that a new client was added, so CSV export is needed
-            return client;
+            return client; // Return the properly defined client object
         }).filter(client => client !== null);
-
+        
         const BATCH_SIZE = 100;
         const totalBatches = Math.ceil(clients.length / BATCH_SIZE);
-
+        
+        // Step 1: Send all clients in batches
         for (let i = 0; i < clients.length; i += BATCH_SIZE) {
             const batch = clients.slice(i, i + BATCH_SIZE);
             try {
@@ -185,17 +246,17 @@ async function importClientsFromCSV() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ clients: batch })
                 });
-
+        
                 if (!response.ok) {
                     const errorDetails = await response.text();
                     console.error('Batch error:', errorDetails);
                     alert(`Failed to import a batch of clients. Server responded with: ${errorDetails}`);
                     continue;
                 }
-
+        
                 const responseData = await response.json();
                 const importedClients = responseData.clients || [];
-
+        
                 for (let j = 0; j < batch.length; j++) {
                     const client = batch[j];
                     const importedClient = importedClients[j];
@@ -203,10 +264,10 @@ async function importClientsFromCSV() {
                         client.id = importedClient.id; // Update the ID with the server-generated ID
                         updatedRows[i + j + 1][0] = importedClient.id; // Update the ID in the CSV row
                     }
-
+        
                     await saveNoteForClient(client.id, buildClientNote(client, true)); // Pass true for isNewProfile
                 }
-
+        
                 // Update progress bar
                 const currentBatch = Math.floor(i / BATCH_SIZE) + 1;
                 const progress = Math.min((currentBatch / totalBatches) * 100, 100);
@@ -216,6 +277,13 @@ async function importClientsFromCSV() {
                 console.error('Error importing a batch of clients:', error);
                 alert(`Failed to import a batch of clients. Error: ${error.message}`);
                 continue;
+            }
+        }
+        
+        // Step 2: Create household members for each client
+        for (const client of clients) {
+            for (const member of client.householdMembers) {
+                await createHouseholdMember(client.id, member);
             }
         }
 
@@ -240,6 +308,37 @@ async function importClientsFromCSV() {
     };
 
     reader.readAsText(file);
+}
+
+async function createHouseholdMember(clientId, householdMemberData) {
+    try {
+        // Ensure the householdMemberId is included
+        householdMemberData.householdMemberId = householdMemberData.householdMemberId || crypto.randomUUID();
+
+        // Set headOfHousehold to true
+        householdMemberData.headOfHousehold = true;
+
+        // Log the data being sent for debugging
+        console.log('Sending householdMemberData:', householdMemberData);
+
+        const response = await fetch('/save-household-member', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                clientId: clientId,
+                member: householdMemberData // Match the backend's `member` field
+            })
+        });
+
+        if (!response.ok) {
+            const errorDetails = await response.text();
+            console.error(`Failed to create household member for client ${clientId}:`, errorDetails);
+        } else {
+            console.log(`Household member created successfully for client ${clientId}`);
+        }
+    } catch (error) {
+        console.error(`Error creating household member for client ${clientId}:`, error);
+    }
 }
 
 function buildClientNote(client, isNewProfile) {

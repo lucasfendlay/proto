@@ -225,6 +225,36 @@ body {
                 <input type="date" id="dob" name="dob" class="selection-box-input"><br><br>
             </div>
             <div class="selection-box">
+                <label for="legalSex">Legal Sex:</label>
+                <select id="legalSex" name="legalSex" class="selection-box-input">
+                    <option value="" disabled selected>Select Legal Sex</option>
+                    <option value="MALE">MALE</option>
+                    <option value="FEMALE">FEMALE</option>
+                    </select><br><br>
+            </div>
+            <label for="socialSecurityNumber">Social Security Number:</label>
+<input 
+    type="text" 
+    id="socialSecurityNumber" 
+    name="socialSecurityNumber" 
+    placeholder="xxx-xx-xxxx" 
+    maxlength="11" 
+    oninput="formatSSN(this)" 
+    >
+<button type="button" id="nextSSNButton" onclick="showConfirmSSN()" style="display: none;">Next</button><br><br>
+
+<div id="confirmSSNContainer" style="display: none;">
+    <label for="confirmSocialSecurityNumber">Confirm Social Security Number:</label>
+    <input 
+        type="text" 
+        id="confirmSocialSecurityNumber" 
+        name="confirmSocialSecurityNumber" 
+        placeholder="xxx-xx-xxxx" 
+        maxlength="11" 
+        oninput="formatSSN(this)" 
+    >
+</div>
+            <div class="selection-box">
                 <label for="maritalStatus">Current Marital Status:</label>
                 <select id="maritalStatus" name="maritalStatus" class="selection-box-input">
                     <option value="" disabled selected>Select Marital Status</option>
@@ -412,6 +442,88 @@ async function toggleSidebarVisibility() {
         console.error('Error toggling sidebar visibility:', error);
     }
 }
+
+function showConfirmSSN() {
+    const ssnLabel = document.querySelector('label[for="socialSecurityNumber"]');
+    const ssnInput = document.getElementById('socialSecurityNumber');
+    const nextButton = document.getElementById('nextSSNButton');
+    const confirmSSNContainer = document.getElementById('confirmSSNContainer');
+
+    // Check if the SSN field is filled
+    if (ssnInput.value.length === 11) {
+        // Hide the SSN label, input, and button
+        ssnLabel.style.display = 'none';
+        ssnInput.style.display = 'none';
+        nextButton.style.display = 'none';
+
+        // Show the Confirm SSN input
+        confirmSSNContainer.style.display = 'block';
+    } else {
+        alert('Please enter a valid Social Security Number before proceeding.');
+    }
+}
+
+function resetSSNFields() {
+    const ssnLabel = document.querySelector('label[for="socialSecurityNumber"]');
+    const ssnInput = document.getElementById('socialSecurityNumber');
+    const nextButton = document.getElementById('nextSSNButton');
+    const confirmSSNContainer = document.getElementById('confirmSSNContainer');
+    const confirmSSNInput = document.getElementById('confirmSocialSecurityNumber');
+
+    // Reset visibility
+    ssnLabel.style.display = 'block';
+    ssnInput.style.display = 'block';
+    nextButton.style.display = 'inline-block';
+    confirmSSNContainer.style.display = 'none';
+
+    // Clear input values
+    ssnInput.value = '';
+    confirmSSNInput.value = '';
+}
+
+function formatSSN(input) {
+    const nextButton = document.getElementById('nextSSNButton');
+
+    // Remove all non-digit characters
+    let value = input.value.replace(/\D/g, '');
+
+    // Format the value as ###-##-####
+    if (value.length > 3 && value.length <= 5) {
+        value = `${value.slice(0, 3)}-${value.slice(3)}`;
+    } else if (value.length > 5) {
+        value = `${value.slice(0, 3)}-${value.slice(3, 5)}-${value.slice(5, 9)}`;
+    }
+
+    // Set the formatted value back to the input
+    input.value = value;
+
+    // Only show the "Next" button for the initial SSN field
+    if (input.id === 'socialSecurityNumber') {
+        if (value.length === 11) {
+            nextButton.style.display = 'inline-block';
+        } else {
+            nextButton.style.display = 'none';
+        }
+    }
+}
+
+function validateConfirmSSN() {
+    const ssnInput = document.getElementById('socialSecurityNumber');
+    const confirmSSNInput = document.getElementById('confirmSocialSecurityNumber');
+
+    // Check if the confirm SSN field has 11 characters
+    if (confirmSSNInput.value.length === 11) {
+        if (confirmSSNInput.value !== ssnInput.value) {
+            alert('The Social Security Numbers entered do not match. Please try again.');
+            resetSSNFields(); // Reset both fields
+        }
+    }
+}
+
+// Add an event listener to the confirm SSN field
+document.getElementById('confirmSocialSecurityNumber').addEventListener('input', function () {
+    validateConfirmSSN();
+});
 
 // Call the function after the page loads
 window.onload = function () {
