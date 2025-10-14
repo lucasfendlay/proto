@@ -246,7 +246,9 @@ function buildClientNote(client, isNewProfile) {
     const noteParts = [];
 
     if (isNewProfile) {
-        noteParts.push('<strong>Profile created.</strong><br><br>');
+        noteParts.push('<strong>Profile created and outreach letter sent.</strong><br><br>');
+    } else {
+        noteParts.push('<strong>Non-responder letter sent.</strong><br><br>');
     }
 
     if (client.mailID) {
