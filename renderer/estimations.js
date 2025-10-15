@@ -179,7 +179,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     
         if (snapHouseholds.length === 0) {
             const noHouseholdsMessage = document.createElement('p');
-            noHouseholdsMessage.textContent = 'No SNAP household found.';
+            noHouseholdsMessage.textContent = 'NO SNAP HOUSEHOLDS FOUND.';
             snapHouseholdContainer.appendChild(noHouseholdsMessage);
         } else {
             snapHouseholds.forEach(household => {
@@ -197,39 +197,39 @@ document.addEventListener('DOMContentLoaded', async function () {
                 const benefitAmount = household[0]?.SNAP?.benefitAmount || 0;
                 const combinedAssets = household[0]?.SNAP?.combinedAssets || 0; // Uniform value
     
-                // Check if eligibility includes the word "Not"
-                const isNotLikelyEligible = Array.isArray(eligibility)
-                    ? eligibility.some(e => e.includes('Not'))
-                    : eligibility.includes('Not');
-    
-                // Populate household details
-                householdDiv.innerHTML = `
-    <details class="custom-details">
-      <summary><h3>SNAP Household</h3></summary>
-      <p><strong>Total Gross Income:</strong> $${combinedMonthlyIncome.toFixed(2)}</p>
-      <p><strong>Shelter Deduction:</strong> $${excessShelterCost.toFixed(2)}</p>
-      <p><strong>Medical Expense Deductions:</strong> $${totalMedicalExpenses.toFixed(2)}</p>
-      <p><strong>Other Expense Deductions:</strong> $${totalOtherExpenses.toFixed(2)}</p>
-      <p><strong>Adjusted Net Income:</strong> $${totalNetIncome.toFixed(2)}</p>
-      <p><strong>Combined Assets:</strong> $${combinedAssets.toFixed(2)}</p>
-      <hr class="separator-bar">
-    </details>
-      <p><strong>Members:</strong> ${household.map(member => `${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.lastName)}`).join(', ')}</p>
-    
-                        <p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
-                        ${
-                            !isNotLikelyEligible
-                                ? `
-                                <p><strong>Estimated Benefit Amount:</strong> ${
-                                    benefitAmount < 23 ? "Up to $23.00" : `Up to $23.00 - $${benefitAmount.toFixed(2)}`
-                                }</p>
-                                <p><strong>Expedited Eligibility:</strong> ${
-                                    capitalizeFirstLetter(household[0]?.SNAP?.expeditedEligibility || 'N/A')
-                                }</p>
-                                `
-                                : ''
-                        }
-                    `;
+                // Check if eligibility does NOT include "Not"
+const isLikelyEligible = Array.isArray(eligibility)
+? !eligibility.some(item => item.includes("Not"))
+: !String(eligibility).includes("Not");
+
+// Populate household details
+householdDiv.innerHTML = `
+<details class="custom-details">
+<summary><h3>SNAP HOUSEHOLD</h3></summary>
+<p><strong>Total Gross Income:</strong> $${combinedMonthlyIncome.toFixed(2)}</p>
+<p><strong>Shelter Deduction:</strong> $${excessShelterCost.toFixed(2)}</p>
+<p><strong>Medical Expense Deductions:</strong> $${totalMedicalExpenses.toFixed(2)}</p>
+<p><strong>Other Expense Deductions:</strong> $${totalOtherExpenses.toFixed(2)}</p>
+<p><strong>Adjusted Net Income:</strong> $${totalNetIncome.toFixed(2)}</p>
+<p><strong>Combined Assets:</strong> $${combinedAssets.toFixed(2)}</p>
+<hr class="separator-bar">
+</details>
+<p><strong>Members:</strong> ${household.map(member => `${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.lastName)}`).join(', ')}</p>
+
+<p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
+${
+    isLikelyEligible && benefitAmount > 0
+        ? `
+        <p><strong>Estimated Benefit Amount:</strong> ${
+            benefitAmount < 23 ? "Up to $23.00" : `Up to $23.00 - $${benefitAmount.toFixed(2)}`
+        }</p>
+        <p><strong>Expedited Eligibility:</strong> ${
+            capitalizeFirstLetter(household[0]?.SNAP?.expeditedEligibility || 'N/A')
+        }</p>
+        `
+        : ''
+    }
+`;
     
                 snapHouseholdContainer.appendChild(householdDiv);
             });
@@ -257,14 +257,14 @@ document.addEventListener('DOMContentLoaded', async function () {
     
         if (client && client.liheapEnrollment === 'notinterested') {
             const notInterestedMessage = document.createElement('p');
-            notInterestedMessage.textContent = 'No LIHEAP household found.';
+            notInterestedMessage.textContent = 'NO LIHEAP HOUSEHOLDS FOUND.';
             liheapHouseholdContainer.appendChild(notInterestedMessage);
             return;
         }
     
         if (members.length === 0) {
             const noHouseholdsMessage = document.createElement('p');
-            noHouseholdsMessage.textContent = 'No LIHEAP household found.';
+            noHouseholdsMessage.textContent = 'NO LIHEAP HOUSEHOLDS FOUND.';
             liheapHouseholdContainer.appendChild(noHouseholdsMessage);
             return;
         }
@@ -280,7 +280,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         // Populate household details
         householdDiv.innerHTML = `
             <details class="custom-details">
-                <summary><h3>LIHEAP Household</h3></summary>
+                <summary><h3>LIHEAP HOUSEHOLD</h3></summary>
                 <p><strong>Combined Yearly Income:</strong> $${combinedYearlyIncome.toFixed(2)}</p>
                 <hr class="separator-bar">
             </details>
@@ -600,26 +600,34 @@ async function PTRREligibilityCheck(members) {
                 const previousYearEnd = new Date(`${previousYear}-12-31`);
     
                 let totalGrossIncome = previousYearIncomes.reduce((sum, income) => {
-                    const yearlyAmount = calculateYearlyIncome(
+                    let yearlyAmount = calculateYearlyIncome(
                         income.amount,
                         income.frequency,
                         income.startDate,
                         income.endDate
                     );
-    
+                
+                    // If income kind is "Social Security Retirement" or "Railroad Retirement", divide by 2
+                    if (
+                        income.kind?.toLowerCase() === "ssa retirement" || // Case-insensitive comparison
+                        income.kind?.toLowerCase() === "railroad retirement"
+                    ) {
+                        yearlyAmount /= 2;
+                    }
+                
                     // Only include income active during the previous year
                     const incomeStart = new Date(income.startDate);
                     const incomeEnd = income.endDate ? new Date(income.endDate) : new Date();
-    
+                
                     if (incomeStart <= previousYearEnd && incomeEnd >= previousYearStart) {
                         const activeStart = incomeStart < previousYearStart ? previousYearStart : incomeStart;
                         const activeEnd = incomeEnd > previousYearEnd ? previousYearEnd : incomeEnd;
-    
+                
                         const activeDays = Math.min((activeEnd - activeStart) / (1000 * 60 * 60 * 24) + 1, 365);
                         const proratedMultiplier = activeDays / 365; // Prorate for the active days in the year
                         return sum + yearlyAmount * proratedMultiplier;
                     }
-    
+                
                     return sum;
                 }, 0);
     

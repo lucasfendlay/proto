@@ -7,6 +7,10 @@
     <link rel="stylesheet" href="styles.css"> <!-- Assuming a shared stylesheet -->
     <link rel="stylesheet" href="notes.css"> <!-- Assuming a shared stylesheet for notes -->
     <style>
+
+details > summary {
+    cursor: pointer; /* Change cursor to hand */
+}
         .styled-table {
             width: 100%;
             min-width: 960px; /* Minimum width */
@@ -49,8 +53,10 @@
         <h1>Referrals</h1>
 
         <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
-            <div id="household-members-container" class="left-sidebar"></div>
             <div id="snap-household-container" class="left-sidebar"></div>
+            <div id="liheap-household-container" class="left-sidebar"></div>
+        
+            <div id="household-members-container" class="left-sidebar"></div>
         </div>
 
         <div id="notes-container">

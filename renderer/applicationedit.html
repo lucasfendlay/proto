@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Client Profile</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="notes.css">
+
+    <style>
+        body {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            margin-top: 60px; /* Adjust this value to match the height of the navigation container */
+
+        }
+
+        .form-field {
+            margin-bottom: 15px;
+        }
+
+        .form-field label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .read-only-field {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .button-container {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .button-container button {
+            flex: 1;
+            padding: 10px 15px;
+        }
+    </style>
+    <style>
+    body {
+    max-width: 1200px; /* Adjust the max-width as needed */
+    margin: 0 auto;
+    padding: 20px;
+    margin-top: 60px; /* Adjust this value to match the height of the navigation container */
+    }
+        
+    </style>
+    <style>
+        #interactionList {
+            list-style-type: none; /* Remove default bullet points */
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column; /* Stack items vertically */
+            align-items: center; /* Center items horizontally */
+            gap: 15px; /* Add space between each interaction */
+            width: 90%; /* Make the interaction tracker stretch across the full width */
+        }
+    
+        #interactionList li {
+            display: flex;
+            justify-content: space-between; /* Stretch content across the width */
+            align-items: center; /* Align items at the top */
+            padding: 15px; /* Add padding inside each interaction */
+            border: 1px solid #ccc; /* Add a border around each interaction */
+            border-radius: 8px; /* Round the corners */
+            background-color: #f9f9f9; /* Light background color */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+            width: 90%; /* Ensure each interaction stretches across the full width */
+        }
+    
+        #interactionList li div {
+            flex: 1; /* Allow each section to stretch equally */
+            margin-right: 10px; /* Add space between sections */
+        }
+    
+        #interactionList li div:last-child {
+            margin-right: 0; /* Remove margin after the last section */
+        }
+    
+        #interactionList li strong {
+            font-weight: bold;
+            display: block; /* Ensure labels are on their own line */
+            margin-bottom: 5px; /* Add space below labels */
+        }
+    </style>
+
+    <style>
+        .button-container {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .button-container button {
+            flex: 1;
+            padding: 10px 15px;
+        }
+
+        .selection-box div.selected {
+            background-color: #007bff;
+            color: white;
+            border: 1px solid #0056b3;
+            border-radius: 5px;
+            padding: 5px;
+        }
+
+        .read-only-field {
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="notes-container">
+        <textarea id="note-input" placeholder="Add Note..."></textarea>
+        <button id="save-note">Save Note</button>
+        <div id="notes-list">
+            </div>
+            </div>
+
+    <script src="viewnavigation.js"></script>
+
+    <h1>View Client Profile</h1>
+
+
+
+    <h2 id="profileId">Profile: Loading...</h2> <!-- New header for Profile ID -->
+    <p id="terminationStatus" style="color: red; display: none;"><strong>PROFILE TERMINATED</strong></p> <!-- Termination status -->
+
+
+    <button id="call-logging-button" class="interactive" onclick="confirmAndLogCall()">Log New Call</button>
+
+
+    <form id="clientForm">
+        <div class="form-field">
+            <label for="firstName">First Name:</label>
+            <span id="firstName" class="read-only-field">Loading...</span>
+        </div>
+        <div class="form-field">
+            <label for="lastName">Last Name:</label>
+            <span id="lastName" class="read-only-field">Loading...</span>
+        </div>
+        <div class="form-field">
+            <label for="phoneNumber">Phone Number:</label>
+            <span id="phoneNumber" class="read-only-field">Loading...</span>
+        </div>
+        <div class="form-field">
+            <label for="streetAddress">Street Address:</label>
+            <span id="streetAddress" class="read-only-field">Loading...</span>
+        </div>
+        <div class="form-field">
+            <label for="city">City:</label>
+            <span id="city" class="read-only-field">Loading...</span>
+        </div>
+        <div class="form-field">
+            <label for="state">State:</label>
+            <span id="state" class="read-only-field">Loading...</span>
+        </div>
+        <div class="form-field">
+            <label for="zipCode">Zip Code:</label>
+            <span id="zipCode" class="read-only-field">Loading...</span>
+        </div>
+        <div class="form-field">
+            <label for="county">County:</label>
+            <span id="county" class="read-only-field">Loading...</span>
+        </div>
+        <div class="form-field">
+            <label for="speakingLanguage">Preferred Speaking Language:</label>
+            <span id="speakingLanguage" class="read-only-field">Loading...</span>
+        </div>
+        <div class="form-field">
+            <label for="interpreter">Interpreter Used:</label>
+            <span id="interpreter" class="read-only-field">Loading...</span>
+        </div>
+    </form>
+
+
+    <div class="button-container">
+        <!-- ...existing buttons... -->
+        <button id="profile-edit-button" class="interactive" onclick="if(confirm('Are you sure you want to check out this profile?')) { GoToProfileEditChecked(); }">Check Out Profile</button>    </div>
+
+        <h2>Interaction Tracker</h2>
+    <ul id="interactionList">
+        <li>Loading...</li>
+    </ul>
+
+    <style>
+        #interactionList {
+            font-size: 0.9rem; /* Adjust the font size for the list */
+            line-height: 1.4; /* Adjust line height for better readability */
+        }
+    
+        #interactionList li {
+            font-size: 0.9rem; /* Ensure the font size is consistent for list items */
+            line-height: 1.4; /* Adjust line height for list items */
+            word-wrap: break-word; /* Ensure long text wraps within the container */
+        }
+    
+        #interactionList li div {
+            font-size: 0.85rem; /* Slightly smaller font for individual sections */
+        }
+    </style>
+
+<style>
+    #interactionList {
+        list-style-type: none; /* Remove default bullet points */
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column; /* Stack items vertically */
+        gap: 15px; /* Add space between each interaction */
+        width: 90%; /* Make the interaction tracker stretch across the full width */
+    }
+
+    #interactionList li {
+        display: flex;
+        flex-wrap: wrap; /* Allow content to wrap if needed */
+        align-items: flex-start; /* Align items at the top */
+        padding: 15px; /* Add padding inside each interaction */
+        border: 1px solid #ccc; /* Add a border around each interaction */
+        border-radius: 8px; /* Round the corners */
+        background-color: #f9f9f9; /* Light background color */
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+        width: 90%; /* Ensure each interaction stretches across the full width */
+    }
+
+    #interactionList li div {
+        flex: 1; /* Allow each section to stretch equally */
+        margin-right: 10px; /* Add space between sections */
+        word-wrap: break-word; /* Ensure long text wraps within the container */
+    }
+
+    #interactionList li div:last-child {
+        margin-right: 0; /* Remove margin after the last section */
+    }
+
+    #interactionList li strong {
+        font-weight: bold;
+        display: block; /* Ensure labels are on their own line */
+        margin-bottom: 5px; /* Add space below labels */
+    }
+</style>
+
+    <script>
+        // Function to get query parameter by name
+        function getQueryParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        // Function to load client data and display it in read-only mode
+        async function loadClientData() {
+    const clientId = getQueryParam('id');
+    console.log(`Loading client data for ID: ${clientId}`);
+    try {
+        const response = await fetch(`/get-client/${clientId}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client: ${response.statusText}`);
+        }
+
+        const client = await response.json();
+        if (client) {
+            console.log('Client data loaded:', client);
+
+            // Populate the Profile ID in the header
+            document.getElementById('profileId').textContent = `Profile: ${client.id || 'N/A'}`;
+
+            // Populate fields with client data
+            document.getElementById('firstName').textContent = client.firstName.toUpperCase() || 'N/A';
+            document.getElementById('lastName').textContent = client.lastName.toUpperCase() || 'N/A';
+            document.getElementById('phoneNumber').textContent = client.phoneNumber.toUpperCase() || 'N/A';
+            document.getElementById('streetAddress').textContent = client.streetAddress.toUpperCase() || 'N/A';
+            document.getElementById('city').textContent = client.city.toUpperCase() || 'N/A';
+            document.getElementById('state').textContent = client.state.toUpperCase() || 'N/A';
+            document.getElementById('zipCode').textContent = client.zipCode.toUpperCase() || 'N/A';
+            document.getElementById('county').textContent = client.county.toUpperCase() || 'N/A';
+            document.getElementById('speakingLanguage').textContent = client.speakingLanguage.toUpperCase() || 'N/A';
+
+            // Handle interpreter field
+            if (client.interpreter === 'yes') {
+                document.getElementById('interpreter').textContent = 'Yes';
+            } else if (client.interpreter === 'no') {
+                document.getElementById('interpreter').textContent = 'No';
+            } else {
+                document.getElementById('interpreter').textContent = 'N/A'; // Default to "N/A"
+            }
+
+            // Display "PROFILE TERMINATED" if applicable
+            if (client.terminated) {
+                const terminationStatus = document.getElementById('terminationStatus');
+                terminationStatus.style.display = 'block'; // Show the termination status
+            }
+
+            // Populate interaction tracker
+            const interactionList = document.getElementById('interactionList');
+            interactionList.innerHTML = ''; // Clear existing entries
+
+            if (client.callLogs && client.callLogs.length > 0) {
+                // Sort call logs by timestamp in descending order
+                client.callLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+                client.callLogs.forEach(log => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <div><strong>Agent:</strong> ${log.agent?.toUpperCase() || 'UNKNOWN AGENT'}</div>
+                            <div><strong>Timestamp:</strong> ${log.timestamp?.toUpperCase() || 'UNKNOWN TIME'}</div>
+                            <div><strong>Caller:</strong> ${(log.callerFirstName || '').toUpperCase()} ${(log.callerLastName || '').toUpperCase()}</div>
+                            <div><strong>Phone:</strong> ${formatPhoneNumber(log.callerPhoneNumber) || ''}</div>
+                            <div><strong>Direction:</strong> ${log.callDirection?.toUpperCase() || ''}</div>
+                            <div><strong>Service Center:</strong> ${log.servicingCenter?.toUpperCase() || ''}</div>
+                            <div><strong>Reason:</strong> ${log.reasonForCall?.toUpperCase() || ''}</div>
+                            <div><strong>Referral:</strong> ${log.referralSource?.toUpperCase() || 'N/A'}</div>
+                            ${log.specificReferral ? `<div><strong>Specifically:</strong> ${log.specificReferral.toUpperCase()}</div>` : ''}
+                    `;
+                    interactionList.appendChild(li);
+                });
+            } else {
+                const noLogsMessage = document.createElement('li');
+                noLogsMessage.textContent = 'No call logs available.';
+                interactionList.appendChild(noLogsMessage);
+            }
+        } else {
+            alert('Client not found');
+        }
+    } catch (error) {
+        console.error('Error loading client data:', error);
+    }
+}
+
+function formatPhoneNumber(phone) {
+        if (!phone) return '';
+        const cleaned = phone.replace(/\D/g, ''); // Remove all non-numeric characters
+        const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/); // Match the phone number pattern
+        return match ? `(${match[1]})-${match[2]}-${match[3]}` : phone; // Format if valid, else return original
+    }
+
+// Navigation functions for Release button
+function GoToProfileEditChecked() {
+    const clientId = getQueryParam('id');
+    if (clientId) {
+        window.location.href = `profileedit.html?id=${clientId}`;
+    } else {
+        console.error('Client ID not found in query parameters.');
+    }
+}
+
+        function GoToCallLogging() {
+            const clientId = getQueryParam('id');
+            window.location.href = `call-loggingreturning.html?id=${clientId}`;
+        }
+
+        async function confirmAndLogCall() {
+    if (confirm("Are you sure you want to log a new call?")) {
+        const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
+        console.log('Client ID:', clientId);
+
+        if (!clientId) {
+            alert('Client ID is missing from the URL.');
+            return;
+        }
+
+        // Redirect to the call logging page
+        const redirectUrl = `call-loggingreturning.html?id=${clientId}`;
+        console.log('Redirecting to:', redirectUrl);
+        window.location.href = redirectUrl;
+    }
+}
+
+// Load client data on page load
+window.onload = loadClientData;
+    </script>
+    <script src="notes.js"></script>
+</body>
+</html>

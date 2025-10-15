@@ -969,23 +969,80 @@ app.delete('/delete-utility-expenses', async (req, res) => {
     }
 });
 
-// Save Household Members
+// Backend: Merge incoming data with existing data
 app.post('/save-household-members', async (req, res) => {
     const { clientId, householdMembers } = req.body;
 
     try {
-        const collection = db.collection('clients');
-        const result = await collection.updateOne(
-            { id: clientId },
-            { $set: { householdMembers } }
-        );
+        const existingClient = await getClientFromDatabase(clientId); // Fetch existing client data
+        if (!existingClient) {
+            return res.status(404).send('Client not found');
+        }
 
-        res.json({ success: result.modifiedCount > 0 });
+        // Merge existing household members with incoming data
+        const updatedHouseholdMembers = householdMembers.map(member => {
+            const existingMember = existingClient.householdMembers.find(m => m.householdMemberId === member.householdMemberId);
+            return {
+                ...existingMember,
+                ...member,
+                SNAP: {
+                    ...existingMember?.SNAP,
+                    ...member.SNAP,
+                },
+
+                LIHEAP: {
+                    ...existingMember?.LIHEAP,
+                    ...member.LIHEAP,
+                },
+
+                PACE: {
+                    ...existingMember?.PACE,
+                    ...member.PACE,
+                },
+
+                LIS: {
+                    ...existingMember?.LIS,
+                    ...member.LIS,
+                },
+
+                MSP: {
+                    ...existingMember?.MSP,
+                    ...member.MSP,
+                },
+
+                PTRR: {
+                    ...existingMember?.PTRR,
+                    ...member.PTRR,
+                },
+            };
+        });
+
+        // Save updated data to the database
+        await saveClientToDatabase(clientId, { ...existingClient, householdMembers: updatedHouseholdMembers });
+        res.status(200).send('Household members updated successfully.');
     } catch (error) {
         console.error('Error saving household members:', error);
-        res.status(500).json({ success: false, message: 'Failed to save household members.' });
+        res.status(500).send('Internal server error');
     }
 });
+
+async function getClientFromDatabase(clientId) {
+    try {
+        return await db.collection('clients').findOne({ id: clientId });
+    } catch (error) {
+        console.error('Error fetching client from database:', error);
+        throw error;
+    }
+}
+
+async function saveClientToDatabase(clientId, updatedData) {
+    try {
+        return await db.collection('clients').updateOne({ id: clientId }, { $set: updatedData });
+    } catch (error) {
+        console.error('Error saving client to database:', error);
+        throw error;
+    }
+}
 
 // Add a Referral
 app.post('/add-referral', async (req, res) => {

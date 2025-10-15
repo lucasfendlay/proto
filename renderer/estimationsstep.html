@@ -8,6 +8,29 @@
     <link rel="stylesheet" href="notes.css">
     <link rel="stylesheet" href="householdedit.css">
     <style>
+
+        #save-continue {
+            display: none; /* Default to block, will be toggled by JS */
+        }
+
+#save-exit, #save-continue {
+            border: 1px solid #000000;
+            border-radius: 5px; /* Rounded corners */
+            padding: 10px 20px; /* Add padding for better spacing */
+            background-color: #007bff; /* Light background color */
+            color: white; /* Blue text color */
+            transition: background-color 0.3s, color 0.3s; /* Smooth hover effect */
+        }
+    
+        /* Hover effect for the buttons */
+        #save-exit:hover, #save-continue:hover {
+            background-color: #0056b3; /* Blue background on hover */
+            color: white; /* White text on hover */
+        }
+
+        details > summary {
+    cursor: pointer; /* Change cursor to hand */
+}
         /* General styles */
         body {
             font-family: Arial, sans-serif;
@@ -131,7 +154,10 @@
 
         <!-- Add Save and Release Profile button -->
         <div class="button-container">
-            <button id="save-release" onclick="redirectToEstimationsView()">Save and Release Profile</button>
+            <button id="save-continue" onclick="continueToApplications()">Continue to Application Page</button>
+        </div>
+        <div class="button-container">
+            <button id="save-exit" onclick="redirectToEstimationsView()">Save and Release Profile</button>
         </div>
     
 </body>
@@ -209,6 +235,54 @@ async function redirectToEstimationsView() {
     } finally {
         // Redirect to the estimations view page regardless of success or failure
         window.location.href = `estimationsview.html?id=${clientId}`;
+    }
+}
+
+async function continueToApplication() {
+    // Retrieve the client ID from the query parameters
+    const clientId = getQueryParameter('id');
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
+
+    const noteContent = "Applying: X.";
+    const timestamp = new Date().toLocaleString();
+    const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
+
+    if (!activeUser) {
+        console.error("No active user found in sessionStorage.");
+        return;
+    }
+
+    try {
+        // Perform any necessary save operations here
+        console.log("Saving profile and redirecting...");
+
+        // Add a note about the action
+        const note = {
+            text: noteContent,
+            timestamp: timestamp,
+            username: activeUser
+        };
+
+        const addNoteResponse = await fetch(`/add-note-to-client`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ clientId, note })
+        });
+
+        if (!addNoteResponse.ok) {
+            console.warn('Failed to add note to client.');
+        }
+
+    } catch (error) {
+        console.error("Error during continueToApplication:", error);
+    } finally {
+        // Redirect to the estimations view page regardless of success or failure
+        window.location.href = `applicationedit.html?id=${clientId}`;
     }
 }
 </script>
