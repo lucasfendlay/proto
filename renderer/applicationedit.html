@@ -3,392 +3,443 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>View Client Profile</title>
+    <title>Applicant</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="householdedit.css">
     <link rel="stylesheet" href="notes.css">
-
     <style>
-        body {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            margin-top: 60px; /* Adjust this value to match the height of the navigation container */
 
-        }
+select:disabled {
+    cursor: default; /* Ensures the cursor remains the default arrow */
+}
+details > summary {
+    cursor: pointer; /* Change cursor to hand */
+}
 
-        .form-field {
-            margin-bottom: 15px;
-        }
+.button-container button {
+    border: 1px solid #000000; /* Add a blue border */
+    border-radius: 5px; /* Optional: Add rounded corners */
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; /* Smooth transition for hover effects */
+}
 
-        .form-field label {
-            font-weight: bold;
-            display: block;
-            margin-bottom: 5px;
-        }
+.button-container button:hover {
+    background-color: #0056b3; /* Darker blue background on hover */
+    color: white; /* Ensure text is visible */
+    border-color: #003f7f; /* Darker border color on hover */
+}
 
-        .read-only-field {
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            background-color: #f9f9f9;
-            display: block;
-            width: 100%;
-            box-sizing: border-box;
-        }
+.error {
+    border: 2px solid red;
+}
 
-        .button-container {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 20px;
-        }
-
-        .button-container button {
-            flex: 1;
-            padding: 10px 15px;
-        }
-    </style>
-    <style>
-    body {
+.household-member-info p {
+    text-align: left; /* Ensure text is left-aligned */
+    word-wrap: break-word; /* Allow long words to break and wrap */
+    white-space: normal; /* Ensure normal wrapping behavior */
+}
+body {
     max-width: 1200px; /* Adjust the max-width as needed */
     margin: 0 auto;
     padding: 20px;
     margin-top: 60px; /* Adjust this value to match the height of the navigation container */
-    }
+
+}
         
     </style>
     <style>
-        #interactionList {
-            list-style-type: none; /* Remove default bullet points */
-            padding: 0;
-            margin: 0;
-            display: flex;
-            flex-direction: column; /* Stack items vertically */
-            align-items: center; /* Center items horizontally */
-            gap: 15px; /* Add space between each interaction */
-            width: 90%; /* Make the interaction tracker stretch across the full width */
-        }
-    
-        #interactionList li {
-            display: flex;
-            justify-content: space-between; /* Stretch content across the width */
-            align-items: center; /* Align items at the top */
-            padding: 15px; /* Add padding inside each interaction */
-            border: 1px solid #ccc; /* Add a border around each interaction */
-            border-radius: 8px; /* Round the corners */
-            background-color: #f9f9f9; /* Light background color */
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
-            width: 90%; /* Ensure each interaction stretches across the full width */
-        }
-    
-        #interactionList li div {
-            flex: 1; /* Allow each section to stretch equally */
-            margin-right: 10px; /* Add space between sections */
-        }
-    
-        #interactionList li div:last-child {
-            margin-right: 0; /* Remove margin after the last section */
-        }
-    
-        #interactionList li strong {
-            font-weight: bold;
-            display: block; /* Ensure labels are on their own line */
-            margin-bottom: 5px; /* Add space below labels */
-        }
-    </style>
-
-    <style>
         .button-container {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .button-container button {
-            flex: 1;
-            padding: 10px 15px;
-        }
-
-        .selection-box div.selected {
-            background-color: #007bff;
-            color: white;
-            border: 1px solid #0056b3;
-            border-radius: 5px;
-            padding: 5px;
-        }
-
-        .read-only-field {
-            font-weight: bold;
-            margin-bottom: 10px;
-            display: block;
-        }
-    </style>
-</head>
-<body>
-    <div id="notes-container">
-        <textarea id="note-input" placeholder="Add Note..."></textarea>
-        <button id="save-note">Save Note</button>
-        <div id="notes-list">
-            </div>
-            </div>
-
-    <script src="viewnavigation.js"></script>
-
-    <h1>View Client Profile</h1>
-
-
-
-    <h2 id="profileId">Profile: Loading...</h2> <!-- New header for Profile ID -->
-    <p id="terminationStatus" style="color: red; display: none;"><strong>PROFILE TERMINATED</strong></p> <!-- Termination status -->
-
-
-    <button id="call-logging-button" class="interactive" onclick="confirmAndLogCall()">Log New Call</button>
-
-
-    <form id="clientForm">
-        <div class="form-field">
-            <label for="firstName">First Name:</label>
-            <span id="firstName" class="read-only-field">Loading...</span>
-        </div>
-        <div class="form-field">
-            <label for="lastName">Last Name:</label>
-            <span id="lastName" class="read-only-field">Loading...</span>
-        </div>
-        <div class="form-field">
-            <label for="phoneNumber">Phone Number:</label>
-            <span id="phoneNumber" class="read-only-field">Loading...</span>
-        </div>
-        <div class="form-field">
-            <label for="streetAddress">Street Address:</label>
-            <span id="streetAddress" class="read-only-field">Loading...</span>
-        </div>
-        <div class="form-field">
-            <label for="city">City:</label>
-            <span id="city" class="read-only-field">Loading...</span>
-        </div>
-        <div class="form-field">
-            <label for="state">State:</label>
-            <span id="state" class="read-only-field">Loading...</span>
-        </div>
-        <div class="form-field">
-            <label for="zipCode">Zip Code:</label>
-            <span id="zipCode" class="read-only-field">Loading...</span>
-        </div>
-        <div class="form-field">
-            <label for="county">County:</label>
-            <span id="county" class="read-only-field">Loading...</span>
-        </div>
-        <div class="form-field">
-            <label for="speakingLanguage">Preferred Speaking Language:</label>
-            <span id="speakingLanguage" class="read-only-field">Loading...</span>
-        </div>
-        <div class="form-field">
-            <label for="interpreter">Interpreter Used:</label>
-            <span id="interpreter" class="read-only-field">Loading...</span>
-        </div>
-    </form>
-
-
-    <div class="button-container">
-        <!-- ...existing buttons... -->
-        <button id="profile-edit-button" class="interactive" onclick="if(confirm('Are you sure you want to check out this profile?')) { GoToProfileEditChecked(); }">Check Out Profile</button>    </div>
-
-        <h2>Interaction Tracker</h2>
-    <ul id="interactionList">
-        <li>Loading...</li>
-    </ul>
-
-    <style>
-        #interactionList {
-            font-size: 0.9rem; /* Adjust the font size for the list */
-            line-height: 1.4; /* Adjust line height for better readability */
-        }
-    
-        #interactionList li {
-            font-size: 0.9rem; /* Ensure the font size is consistent for list items */
-            line-height: 1.4; /* Adjust line height for list items */
-            word-wrap: break-word; /* Ensure long text wraps within the container */
-        }
-    
-        #interactionList li div {
-            font-size: 0.85rem; /* Slightly smaller font for individual sections */
-        }
-    </style>
-
-<style>
-    #interactionList {
-        list-style-type: none; /* Remove default bullet points */
-        padding: 0;
-        margin: 0;
-        display: flex;
-        flex-direction: column; /* Stack items vertically */
-        gap: 15px; /* Add space between each interaction */
-        width: 90%; /* Make the interaction tracker stretch across the full width */
-    }
-
-    #interactionList li {
-        display: flex;
-        flex-wrap: wrap; /* Allow content to wrap if needed */
-        align-items: flex-start; /* Align items at the top */
-        padding: 15px; /* Add padding inside each interaction */
-        border: 1px solid #ccc; /* Add a border around each interaction */
-        border-radius: 8px; /* Round the corners */
-        background-color: #f9f9f9; /* Light background color */
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
-        width: 90%; /* Ensure each interaction stretches across the full width */
-    }
-
-    #interactionList li div {
-        flex: 1; /* Allow each section to stretch equally */
-        margin-right: 10px; /* Add space between sections */
-        word-wrap: break-word; /* Ensure long text wraps within the container */
-    }
-
-    #interactionList li div:last-child {
-        margin-right: 0; /* Remove margin after the last section */
-    }
-
-    #interactionList li strong {
-        font-weight: bold;
-        display: block; /* Ensure labels are on their own line */
-        margin-bottom: 5px; /* Add space below labels */
-    }
-</style>
-
-    <script>
-        // Function to get query parameter by name
-        function getQueryParam(name) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get(name);
-        }
-
-        // Function to load client data and display it in read-only mode
-        async function loadClientData() {
-    const clientId = getQueryParam('id');
-    console.log(`Loading client data for ID: ${clientId}`);
-    try {
-        const response = await fetch(`/get-client/${clientId}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client: ${response.statusText}`);
-        }
-
-        const client = await response.json();
-        if (client) {
-            console.log('Client data loaded:', client);
-
-            // Populate the Profile ID in the header
-            document.getElementById('profileId').textContent = `Profile: ${client.id || 'N/A'}`;
-
-            // Populate fields with client data
-            document.getElementById('firstName').textContent = client.firstName.toUpperCase() || 'N/A';
-            document.getElementById('lastName').textContent = client.lastName.toUpperCase() || 'N/A';
-            document.getElementById('phoneNumber').textContent = client.phoneNumber.toUpperCase() || 'N/A';
-            document.getElementById('streetAddress').textContent = client.streetAddress.toUpperCase() || 'N/A';
-            document.getElementById('city').textContent = client.city.toUpperCase() || 'N/A';
-            document.getElementById('state').textContent = client.state.toUpperCase() || 'N/A';
-            document.getElementById('zipCode').textContent = client.zipCode.toUpperCase() || 'N/A';
-            document.getElementById('county').textContent = client.county.toUpperCase() || 'N/A';
-            document.getElementById('speakingLanguage').textContent = client.speakingLanguage.toUpperCase() || 'N/A';
-
-            // Handle interpreter field
-            if (client.interpreter === 'yes') {
-                document.getElementById('interpreter').textContent = 'Yes';
-            } else if (client.interpreter === 'no') {
-                document.getElementById('interpreter').textContent = 'No';
-            } else {
-                document.getElementById('interpreter').textContent = 'N/A'; // Default to "N/A"
+                display: flex;
+                gap: 10px; /* Adds spacing between buttons */
+                flex-wrap: wrap; /* Ensures buttons wrap to the next line if needed */
+            }
+        
+            .button-container button {
+                flex: 1; /* Ensures buttons are evenly spaced */
+                padding: 10px 15px;
             }
 
-            // Display "PROFILE TERMINATED" if applicable
-            if (client.terminated) {
-                const terminationStatus = document.getElementById('terminationStatus');
-                terminationStatus.style.display = 'block'; // Show the termination status
-            }
-
-            // Populate interaction tracker
-            const interactionList = document.getElementById('interactionList');
-            interactionList.innerHTML = ''; // Clear existing entries
-
-            if (client.callLogs && client.callLogs.length > 0) {
-                // Sort call logs by timestamp in descending order
-                client.callLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-                client.callLogs.forEach(log => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `
-                        <div><strong>Agent:</strong> ${log.agent?.toUpperCase() || 'UNKNOWN AGENT'}</div>
-                            <div><strong>Timestamp:</strong> ${log.timestamp?.toUpperCase() || 'UNKNOWN TIME'}</div>
-                            <div><strong>Caller:</strong> ${(log.callerFirstName || '').toUpperCase()} ${(log.callerLastName || '').toUpperCase()}</div>
-                            <div><strong>Phone:</strong> ${formatPhoneNumber(log.callerPhoneNumber) || ''}</div>
-                            <div><strong>Direction:</strong> ${log.callDirection?.toUpperCase() || ''}</div>
-                            <div><strong>Service Center:</strong> ${log.servicingCenter?.toUpperCase() || ''}</div>
-                            <div><strong>Reason:</strong> ${log.reasonForCall?.toUpperCase() || ''}</div>
-                            <div><strong>Referral:</strong> ${log.referralSource?.toUpperCase() || 'N/A'}</div>
-                            ${log.specificReferral ? `<div><strong>Specifically:</strong> ${log.specificReferral.toUpperCase()}</div>` : ''}
-                    `;
-                    interactionList.appendChild(li);
-                });
-            } else {
-                const noLogsMessage = document.createElement('li');
-                noLogsMessage.textContent = 'No call logs available.';
-                interactionList.appendChild(noLogsMessage);
-            }
-        } else {
-            alert('Client not found');
-        }
-    } catch (error) {
-        console.error('Error loading client data:', error);
-    }
+            /* Modal content styling */
+.modal-content {
+    background-color: #ffffff;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 500px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    position: relative;
+    text-align: center;
 }
 
-function formatPhoneNumber(phone) {
-        if (!phone) return '';
-        const cleaned = phone.replace(/\D/g, ''); // Remove all non-numeric characters
-        const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/); // Match the phone number pattern
-        return match ? `(${match[1]})-${match[2]}-${match[3]}` : phone; // Format if valid, else return original
+.narrow-body {
+        margin-left: 385px; /* Space for the left sidebar */
+        margin-right: 10px; /* Optional: Space on the right */
+        max-width: calc(100% - 395px); /* Ensure the body doesn't exceed the available space */
+        margin: 0 auto; /* Center the content horizontally */
+        margin-top: 60px; /* Adjust this value to match the height of the navigation container */
     }
+        
+            </style>
+</head>
+<body class="narrow-body">
 
-// Navigation functions for Release button
-function GoToProfileEditChecked() {
-    const clientId = getQueryParam('id');
+    <h1>Applicant</h1>
+
+    <style>
+        #household-size {
+            text-align: center; /* Center the text */
+            text-align-last: center; /* Center the selected option in modern browsers */
+        }
+    </style>
+
+<div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
+    <div id="snap-household-container" class="left-sidebar"></div>
+    <div id="liheap-household-container" class="left-sidebar"></div>
+    <div id="household-members-container" class="left-sidebar"></div>
+</div>
+
+<div id="notes-container">
+    <textarea id="note-input" placeholder="Add Note..."></textarea>
+    <button id="save-note">Save Note</button>
+    <div id="notes-list">
+        </div>
+        </div>
+
+    <div id="householdMemberContainer" class="household-member-container"></div>
+
+    <div class="button-container">
+        <button id="add-household-member" style="display: none;">Add Household Member</button>
+        <button id="save-exit" onclick="redirectToHouseholdView()">Save and Release Profile</button>
+        <button id="save-continue" onclick="goToRelationshipsEdit()">Save and Continue</button> <br>
+    </div>
+
+<!-- Add this to your HTML -->
+<div id="loading-indicator" style="display: none;">Loading...</div>
+
+<div id="householdMemberModal" class="modal">
+    <div class="modal-content">
+        <form id="householdMemberForm">
+
+            <h2 id="modal-header">Add Household Member</h2>
+
+            <input type="hidden" id="householdMemberId">
+            <label for="firstName">First Name:</label>
+            <input type="text" id="firstName" name="firstName"><br><br>
+            <label for="middleInitial">Middle Initial:</label>
+            <input type="text" id="middleInitial" name="middleInitial"><br><br>
+            <label for="lastName">Last Name:</label>
+            <input type="text" id="lastName" name="lastName"><br><br>
+            <div class="selection-box">
+                <label for="dob">Date of Birth:</label>
+                <input type="date" id="dob" name="dob" class="selection-box-input"><br><br>
+            </div>
+            <div class="selection-box">
+                <label for="legalSex">Legal Sex:</label>
+                <select id="legalSex" name="legalSex" class="selection-box-input">
+                    <option value="" disabled selected>Select Legal Sex</option>
+                    <option value="MALE">MALE</option>
+                    <option value="FEMALE">FEMALE</option>
+                    </select><br><br>
+            </div>
+            <label for="socialSecurityNumber">Social Security Number:</label>
+<input 
+    type="text" 
+    id="socialSecurityNumber" 
+    name="socialSecurityNumber" 
+    placeholder="xxx-xx-xxxx" 
+    maxlength="11" 
+    oninput="formatSSN(this)" 
+    >
+<button type="button" id="nextSSNButton" onclick="showConfirmSSN()" style="display: none;">Next</button><br><br>
+
+<div id="confirmSSNContainer" style="display: none;">
+    <label for="confirmSocialSecurityNumber">Confirm Social Security Number:</label>
+    <input 
+        type="text" 
+        id="confirmSocialSecurityNumber" 
+        name="confirmSocialSecurityNumber" 
+        placeholder="xxx-xx-xxxx" 
+        maxlength="11" 
+        oninput="formatSSN(this)" 
+    >
+</div>
+<div class="selection-box">
+    <label for="maritalStatus">Current Marital Status:</label>
+    <select id="maritalStatus" name="maritalStatus" class="selection-box-input" disabled>
+        <option value="" disabled selected>Select Marital Status</option>
+        <option value="Single">Single</option>
+        <option value="Married (Living Together)">Married (Living Together)</option>
+        <option value="Married (Living Separately)">Married (Living Separately)</option>
+        <option value="Divorced">Divorced</option>
+        <option value="Widowed">Widowed</option>
+    </select><br><br>
+</div>
+<div class="selection-box">
+    <label for="previousMaritalStatus">Previous Year Marital Status:</label>
+    <select id="previousMaritalStatus" name="previousMaritalStatus" class="selection-box-input" disabled>
+        <option value="" disabled selected>Select Previous Year Marital Status</option>
+        <option value="Single">Single</option>
+        <option value="Married (Living Together)">Married (Living Together)</option>
+        <option value="Married (Living Separately)">Married (Living Separately)</option>
+        <option value="Divorced">Divorced</option>
+        <option value="Widowed">Widowed</option>
+    </select><br><br>
+</div>
+<div id="disabilityQuestion" class="selection-box">
+    <label>Is this person receiving disability benefits?</label>
+    <div id="modal-disability-yes" data-value="yes" style="pointer-events: none; opacity: 0.5;">Yes</div>
+    <div id="modal-disability-no" data-value="no" style="pointer-events: none; opacity: 0.5;">No</div>
+</div>
+<div id="medicareQuestion" class="selection-box">
+    <label>Is this person enrolled in Medicare (or will they be within the next three months)?</label>
+    <div id="modal-medicare-yes" data-value="yes" style="pointer-events: none; opacity: 0.5;">Yes</div>
+    <div id="modal-medicare-no" data-value="no" style="pointer-events: none; opacity: 0.5;">No</div>
+</div>
+<div id="medicaidQuestion" class="selection-box">
+    <label>Is this person enrolled in Medicaid?</label>
+    <div id="modal-medicaid-yes" data-value="yes" style="pointer-events: none; opacity: 0.5;">Yes</div>
+    <div id="modal-medicaid-no" data-value="no" style="pointer-events: none; opacity: 0.5;">No</div>
+</div>
+<div id="citizenQuestion" class="selection-box">
+    <label>Is this person a U.S. citizen?</label>
+    <div id="modal-citizen-yes" data-value="yes" style="pointer-events: none; opacity: 0.5;">Yes</div>
+    <div id="modal-citizen-no" data-value="no" style="pointer-events: none; opacity: 0.5;">No</div>
+</div>
+<div id="nonCitizenStatusContainer" style="display: none; margin-top: 10px;">
+    <label for="nonCitizenStatus">Select Non-Citizenship Status:</label>
+    <select id="nonCitizenStatus" disabled>
+        <option value="" disabled selected>Select status</option>
+        <option value="Lawful Permanent Resident (5+ Years)">Lawful Permanent Resident (5+ Years)</option>
+        <option value="Refugee">Refugee</option>
+        <option value="Asylee">Asylee</option>
+        <option value="Person Whose Deportation is Withheld">Person Whose Deportation is Withheld</option>
+        <option value="Conditional Entrant (5+ Years)">Conditional Entrant (5+ Years)</option>
+        <option value="Victim of Severe Trafficking">Victim of Severe Trafficking</option>
+        <option value="Cuban or Haitian Entrant">Cuban or Haitian Entrant</option>
+        <option value="Iraqi or Afghan Special Immigrant">Iraqi or Afghan Special Immigrant</option>
+        <option value="Child Under 18 in Qualified Non-Citizen Category">Child Under 18 in Qualified Non-Citizen Category</option>
+        <option value="Hmong or Highland Laotian Tribal Members">Hmong or Highland Laotian Tribal Members</option>
+        <option value="Citizen of Micronesia, Marshall Islands, or Palau">Citizen of Micronesia, Marshall Islands, or Palau</option>
+        <option value="Amerasian">Amerasian</option>
+        <option value="Person Paroled in the U.S. (1+ Years)">Person Paroled in the U.S. (1+ Years)</option>
+        <option value="Non-Citizen Who is Blind or Disabled and Receiving Disability Benefits">Non-Citizen Who is Blind or Disabled and Receiving Disability Benefits</option>
+        <option value="Non-Citizen Who Was 65+ and Lawfully Residing in the U.S. on August 22, 1996">Non-Citizen Who Was 65+ and Lawfully Residing in the U.S. on August 22, 1996</option>
+        <option value="Ineligible Non-Citizen">Ineligible Non-Citizen</option>
+    </select>
+</div>
+<div id="studentQuestion" class="selection-box">
+    <label>Is this person a student?</label>
+    <div id="modal-student-yes" data-value="yes" style="pointer-events: none; opacity: 0.5;">Yes</div>
+    <div id="modal-student-no" data-value="no" style="pointer-events: none; opacity: 0.5;">No</div>
+</div>
+<div id="studentStatusContainer" style="display: none; margin-top: 10px;">
+    <label for="studentStatus">Select Student Status:</label>
+    <select id="studentStatus" disabled>
+        <option value="" disabled selected>Select status</option>
+        <option value="Enrolled Less than Half-Time">Enrolled Less than Half-Time</option>
+        <option value="Under Age 18">Under Age 18</option>
+        <option value="High School Student">High School Student</option>
+        <option value="Age 50 or Older">Age 50 or Older</option>
+        <option value="Physically or Mentally Unfit for Employment">Physically or Mentally Unfit for Employment</option>
+        <option value="Employed at Least 20 Hours Per Week">Employed at Least 20 Hours Per Week</option>
+        <option value="Participating in a Work Study Program">Participating in a Work Study</option>
+        <option value="Participating in a Job Training Program">Participating in a Job Training Program</option>
+        <option value="Assigned to or Placed in College through a SNAP Employment or Training Program">Assigned to or Placed in College through a SNAP Employment or Training Program</option>
+        <option value="Responsible for the Care of a Child Under 6">Responsible for the Care of a Child Under 6</option>
+        <option value="Responsible for the Care of a Child Aged 6-12 and No Adequate Child Care Available">Responsible for the Care of a Child Aged 6-12 and No Adequate Child Care Available</option>
+        <option value="Single Parent Enrolled Full-Time and Responsible for a Child Under 12">Single Parent Enrolled Full-Time and Responsible for a Child Under 12</option>
+        <option value="TANF Recipient">TANF Recipient</option>
+        <option value="Ineligible Student">Ineligible Student</option>
+    </select></div>
+<div id="mealsQuestion" class="selection-box">
+    <label>Is this person included in the SNAP household?</label>
+    <div id="modal-meals-yes" data-value="yes" style="pointer-events: none; opacity: 0.5;">Yes</div>
+    <div id="modal-meals-no" data-value="no" style="pointer-events: none; opacity: 0.5;">No</div>
+</div>
+            <button type="button" id="add-member" class="submit-button">Add Member</button>
+
+        </form>
+
+    <script>
+// Utility function to get query parameters
+function getQueryParam(name) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name);
+}
+
+        function goToRelationshipsEdit() {
+    const clientId = getQueryParameter('id');
     if (clientId) {
-        window.location.href = `profileedit.html?id=${clientId}`;
+        window.location.href = `relationshipsedit.html?id=${clientId}`;
     } else {
         console.error('Client ID not found in query parameters.');
     }
 }
 
-        function GoToCallLogging() {
-            const clientId = getQueryParam('id');
-            window.location.href = `call-loggingreturning.html?id=${clientId}`;
+function redirectToHouseholdView() {
+    const clientId = getQueryParam('id');
+    if (clientId) {
+        const userConfirmed = confirm("Are you sure you want to save and release the profile?");
+        if (userConfirmed) {
+            const requestBody = {
+                clientId,
+                clientData: { screeningInProgress: false },
+            };
+
+            console.log('Request body:', requestBody); // Log the request body for debugging
+
+            // Update screeningInProgress to false in the database via REST API
+            fetch(`/update-client`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody),
+            })
+                .then((response) => {
+                    if (response.ok) {
+                        console.log('screeningInProgress set to false for client:', clientId);
+                    } else {
+                        return response.json().then((error) => {
+                            console.error('Error details:', error);
+
+                            // Check if the error message indicates no changes were made
+                            if (error.message === 'No changes were made to the client data.') {
+                                console.log('No changes were made, but proceeding with redirect.');
+                            } else {
+                                throw new Error(`Failed to update client data: ${error.message}`);
+                            }
+                        });
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error updating client data:', error);
+                })
+                .finally(() => {
+                    // Redirect to the household view page regardless of success or failure
+                    window.location.href = `householdview.html?id=${clientId}`;
+                });
+        } else {
+            console.log("User canceled the action.");
         }
-
-        async function confirmAndLogCall() {
-    if (confirm("Are you sure you want to log a new call?")) {
-        const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-        console.log('Client ID:', clientId);
-
-        if (!clientId) {
-            alert('Client ID is missing from the URL.');
-            return;
-        }
-
-        // Redirect to the call logging page
-        const redirectUrl = `call-loggingreturning.html?id=${clientId}`;
-        console.log('Redirecting to:', redirectUrl);
-        window.location.href = redirectUrl;
+    } else {
+        console.error('Client ID not found in query parameters.');
     }
 }
 
-// Load client data on page load
-window.onload = loadClientData;
+async function toggleSidebarVisibility() {
+    const clientId = getQueryParam('id');
+    try {
+        // Fetch client data via REST API
+        const response = await fetch(`/get-client/${clientId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client data: ${response.statusText}`);
+        }
+        const client = await response.json();
+        console.log('Client data:', client); // Debugging
+        console.log('screeningInProgress:', client?.screeningInProgress); // Debugging
+
+        if (client && client.screeningInProgress) {
+            document.getElementById('leftSidebarContainer').style.display = 'block';
+            console.log('Sidebar is now visible'); // Debugging
+        } else {
+            document.getElementById('leftSidebarContainer').style.display = 'none';
+            console.log('Sidebar is now hidden'); // Debugging
+        }
+    } catch (error) {
+        console.error('Error toggling sidebar visibility:', error);
+    }
+}
+
+function showConfirmSSN() {
+    const ssnLabel = document.querySelector('label[for="socialSecurityNumber"]');
+    const ssnInput = document.getElementById('socialSecurityNumber');
+    const nextButton = document.getElementById('nextSSNButton');
+    const confirmSSNContainer = document.getElementById('confirmSSNContainer');
+
+    // Check if the SSN field is filled
+    if (ssnInput.value.length === 11) {
+        // Hide the SSN label, input, and button
+        ssnLabel.style.display = 'none';
+        ssnInput.style.display = 'none';
+        nextButton.style.display = 'none';
+
+        // Show the Confirm SSN input
+        confirmSSNContainer.style.display = 'block';
+    } else {
+        alert('Please enter a valid Social Security Number before proceeding.');
+    }
+}
+
+function resetSSNFields() {
+    const ssnLabel = document.querySelector('label[for="socialSecurityNumber"]');
+    const ssnInput = document.getElementById('socialSecurityNumber');
+    const nextButton = document.getElementById('nextSSNButton');
+    const confirmSSNContainer = document.getElementById('confirmSSNContainer');
+    const confirmSSNInput = document.getElementById('confirmSocialSecurityNumber');
+
+    // Reset visibility
+    ssnLabel.style.display = 'block';
+    ssnInput.style.display = 'block';
+    nextButton.style.display = 'inline-block';
+    confirmSSNContainer.style.display = 'none';
+
+    // Clear input values
+    ssnInput.value = '';
+    confirmSSNInput.value = '';
+}
+
+function formatSSN(input) {
+    const nextButton = document.getElementById('nextSSNButton');
+
+    // Remove all non-digit characters
+    let value = input.value.replace(/\D/g, '');
+
+    // Format the value as ###-##-####
+    if (value.length > 3 && value.length <= 5) {
+        value = `${value.slice(0, 3)}-${value.slice(3)}`;
+    } else if (value.length > 5) {
+        value = `${value.slice(0, 3)}-${value.slice(3, 5)}-${value.slice(5, 9)}`;
+    }
+
+    // Set the formatted value back to the input
+    input.value = value;
+
+    // Only show the "Next" button for the initial SSN field
+    if (input.id === 'socialSecurityNumber') {
+        if (value.length === 11) {
+            nextButton.style.display = 'inline-block';
+        } else {
+            nextButton.style.display = 'none';
+        }
+    }
+}
+
+function validateConfirmSSN() {
+    const ssnInput = document.getElementById('socialSecurityNumber');
+    const confirmSSNInput = document.getElementById('confirmSocialSecurityNumber');
+
+    // Check if the confirm SSN field has 11 characters
+    if (confirmSSNInput.value.length === 11) {
+        if (confirmSSNInput.value !== ssnInput.value) {
+            alert('The Social Security Numbers entered do not match. Please try again.');
+            resetSSNFields(); // Reset both fields
+        }
+    }
+}
+
+// Add an event listener to the confirm SSN field
+document.getElementById('confirmSocialSecurityNumber').addEventListener('input', function () {
+    validateConfirmSSN();
+});
+
+// Call the function after the page loads
+window.onload = function () {
+    toggleSidebarVisibility();
+};
     </script>
+
+<script src="applying.js"></script>
+    <script src="applicant.js"></script>
     <script src="notes.js"></script>
+
 </body>
 </html>

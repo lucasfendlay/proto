@@ -8,6 +8,13 @@
     <link rel="stylesheet" href="householdedit.css">
     <link rel="stylesheet" href="notes.css">
     <style>
+
+.readonly {
+        background-color: #f0f0f0; /* Light gray background */
+        color: #6c757d; /* Slightly muted text color */
+        cursor: not-allowed; /* Show "not allowed" cursor */
+    }
+
 details > summary {
     cursor: pointer; /* Change cursor to hand */
 }
@@ -243,7 +250,9 @@ body {
     placeholder="xxx-xx-xxxx" 
     maxlength="11" 
     oninput="formatSSN(this)" 
-    >
+    readonly
+    class="readonly"
+>
 <button type="button" id="nextSSNButton" onclick="showConfirmSSN()" style="display: none;">Next</button><br><br>
 
 <div id="confirmSSNContainer" style="display: none;">
@@ -255,6 +264,8 @@ body {
         placeholder="xxx-xx-xxxx" 
         maxlength="11" 
         oninput="formatSSN(this)" 
+        readonly
+        class="readonly"
     >
 </div>
             <div class="selection-box">
@@ -371,54 +382,78 @@ function getQueryParam(name) {
     }
 }
 
-function redirectToHouseholdView() {
-    const clientId = getQueryParam('id');
-    if (clientId) {
-        const userConfirmed = confirm("Are you sure you want to save and release the profile?");
-        if (userConfirmed) {
-            const requestBody = {
+async function redirectToHouseholdView() {
+    const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
+
+    const confirmAction = confirm("Are you sure you want to save and release this profile?");
+    if (!confirmAction) {
+        return;
+    }
+
+    const noteContent = "Profile released.";
+    const timestamp = new Date().toLocaleString();
+    const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
+
+    if (!activeUser) {
+        console.error("No active user found in sessionStorage.");
+        return;
+    }
+
+    try {
+
+        // Add a note about the action
+        const note = {
+            text: noteContent,
+            timestamp: timestamp,
+            username: activeUser
+        };
+
+        const noteResponse = await fetch(`/add-note-to-client`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ clientId, note }),
+        });
+
+        if (!noteResponse.ok) {
+            throw new Error(`Failed to add note: ${noteResponse.statusText}`);
+        }
+
+        // Update screening status in the database
+        const updateResponse = await fetch(`/update-client`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
                 clientId,
                 clientData: { screeningInProgress: false },
-            };
+            }),
+        });
 
-            console.log('Request body:', requestBody); // Log the request body for debugging
+        if (!updateResponse.ok) {
+            const error = await updateResponse.json();
+            console.error('Error details:', error);
 
-            // Update screeningInProgress to false in the database via REST API
-            fetch(`/update-client`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestBody),
-            })
-                .then((response) => {
-                    if (response.ok) {
-                        console.log('screeningInProgress set to false for client:', clientId);
-                    } else {
-                        return response.json().then((error) => {
-                            console.error('Error details:', error);
-
-                            // Check if the error message indicates no changes were made
-                            if (error.message === 'No changes were made to the client data.') {
-                                console.log('No changes were made, but proceeding with redirect.');
-                            } else {
-                                throw new Error(`Failed to update client data: ${error.message}`);
-                            }
-                        });
-                    }
-                })
-                .catch((error) => {
-                    console.error('Error updating client data:', error);
-                })
-                .finally(() => {
-                    // Redirect to the household view page regardless of success or failure
-                    window.location.href = `householdview.html?id=${clientId}`;
-                });
+            // Check if the error message indicates no changes were made
+            if (error.message === 'No changes were made to the client data.') {
+                console.log('No changes were made, but proceeding with redirect.');
+                // Redirect to the household view page
+                window.location.href = `householdview.html?id=${clientId}`;
+            } else {
+                throw new Error(`Failed to update client: ${error.message}`);
+            }
         } else {
-            console.log("User canceled the action.");
+            // Redirect to household view
+            window.location.href = `householdview.html?id=${clientId}`;
         }
-    } else {
-        console.error('Client ID not found in query parameters.');
+    } catch (error) {
+        console.error("Error during redirectToHouseholdView:", error);
     }
 }
 
