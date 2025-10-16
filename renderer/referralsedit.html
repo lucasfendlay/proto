@@ -331,49 +331,55 @@ function refer(name) {
     const timestamp = new Date().toLocaleString();
 
     // Prepare the note data
-    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-    const note = {
-        id: crypto.randomUUID(), // Generate a unique ID for the note
-        text: `Referral provided. \n ${name}.`, // Note content
-        timestamp: timestamp, // Timestamp of the note
-        username: cleanedActiveUser // Associate the note with the logged-in user
-    };
+const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
+const note = {
+    id: crypto.randomUUID(), // Generate a unique ID for the note
+    text: `Referral provided. <br><br>\n ${name}.`, // Note content
+    timestamp: timestamp, // Timestamp of the note
+    username: cleanedActiveUser // Associate the note with the logged-in user
+};
 
-    // Save the note using the backend
-    fetch('/add-note-to-client', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ clientId, note })
+// Save the note using the backend
+fetch('/add-note-to-client', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ clientId, note })
+})
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Failed to save referral note: ${response.statusText}`);
+        }
+        return response.json();
     })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Failed to save referral note: ${response.statusText}`);
+    .then(result => {
+        console.log('Referral note saved successfully:', result); // Debugging
+
+        // Add the new note directly to the DOM
+        const notesList = document.getElementById('notes-list');
+        const noteDiv = document.createElement('div');
+        noteDiv.className = 'note';
+        noteDiv.innerHTML = `
+            <p>${note.text}</p>
+            <small>${note.timestamp} by ${note.username}</small>
+            ${
+                note.text.startsWith('Referral provided.')
+                    ? `<br>
+                       <button class="interactive" onclick="deleteNote('${clientId}', 0)">Delete</button>`
+                    : `<br>
+                       <button class="interactive" onclick="editNote('${clientId}', 0)">Edit</button>
+                       <button class="interactive" onclick="deleteNote('${clientId}', 0)">Delete</button>`
             }
-            return response.json();
-        })
-        .then(result => {
-            console.log('Referral note saved successfully:', result); // Debugging
+        `;
 
-            // Render the notes and ensure buttons are hidden for the new note
-            renderNotes(clientId).then(() => {
-                const notesList = document.getElementById('notes-list');
-                const lastNote = notesList.lastElementChild;
-
-                // Hide the Edit and Delete buttons for the newly added note
-                if (lastNote && note.text.startsWith('Referral provided.')) {
-                    const buttons = lastNote.querySelectorAll('button');
-                    buttons.forEach(button => {
-                        button.style.display = 'none';
-                    });
-                }
-            });
-        })
-        .catch(error => {
-            console.error('Error saving referral note:', error);
-            alert('Failed to log the referral. Please try again.');
-        });
+        // Prepend the new note to the list
+        notesList.insertBefore(noteDiv, notesList.firstChild);
+    })
+    .catch(error => {
+        console.error('Error saving referral note:', error);
+        alert('Failed to log the referral. Please try again.');
+    });
 }
 
 function getQueryParam(name) {

@@ -50,23 +50,6 @@
             <option value="Other">Another Reason</option>
         </select><br><br>
 
-        <div id="referralSourceContainer">
-            <label for="referralSource">Referral Source:</label>
-            <select id="referralSource" name="referralSource" onchange="handleReferralSourceChange()">
-                <option value selected>Select Referral Source</option>
-                <option value="Outreach">Outreach</option>
-                <option value="Referral from a Government Agency">Referral from a Government Agency</option>
-                <option value="Referral from a CBO">Referral from a Community-Based Organization</option>
-                <option value="Community Referral">Community Referral</option>
-                <option value="Internet Search">Internet Search</option>
-            </select><br><br>
-        </div>
-
-        <div id="specificReferralContainer" style="display: none;">
-            <label for="specificReferral">Specifically, which?</label>
-            <input type="text" id="specificReferral" name="specificReferral" placeholder="Enter details">
-        </div><br><br>
-
         <button type="button" onclick="goBackToProfile()">Back to Profile</button>
         <button type="button" onclick="logNewCall()">Log New Call</button>
     </form>
@@ -139,7 +122,7 @@
         if (result.success) {
             const activeUser = sessionStorage.getItem('loggedInUser');
             const note = {
-                text: `${callLog.callDirection} call logged. <br><br> Service Center: <br> ${callLog.servicingCenter}.`,
+                text: `<strong>${callLog.callDirection} call logged.</strong> <br><br> Service Center: <br><br> ${callLog.servicingCenter}.`,
                 timestamp: callLog.timestamp,
                 username: activeUser
             };

@@ -737,7 +737,7 @@ document.querySelectorAll('.selection-box div').forEach(div => {
         async function confirmAndRedirect() {
     if (confirm("Are you sure you want to start screening?")) {
         const clientId = getQueryParam('id');
-        const noteContent = "New screening initiated.";
+        const noteContent = "<strong>New screening initiated.</strong>";
         const timestamp = new Date().toLocaleString();
         const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
 

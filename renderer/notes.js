@@ -47,26 +47,45 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Check if the buttons should be displayed
         const shouldShowButtons =
-            note.text !== 'New screening initiated.' &&
-            !note.text.includes('Inbound call logged') &&
-            !note.text.includes('Outbound call logged') &&            
-            note.text !== 'Profile checked out.' &&
-            note.text !== 'Profile released.' &&
-            note.text !== 'Profile terminated.' &&
-            note.text !== 'Profile termination undone.' &&
-            note.text !== 'Profile created.' &&
-            !note.text.startsWith('Referral provided.') &&
-            cleanedUsername === activeUser;
+    note.text !== 'New screening initiated.' &&
+    !note.text.includes('Inbound call logged') &&
+    !note.text.includes('Outbound call logged') &&
+    note.text !== 'Profile checked out.' &&
+    note.text !== 'Profile released.' &&
+    note.text !== 'Profile terminated.' &&
+    note.text !== 'Profile termination undone.' &&
+    note.text !== 'Profile created.' &&
+    (!note.text.startsWith('Referral provided.') || cleanedUsername === activeUser) &&
+    note.text.startsWith('Applying') &&
+    cleanedUsername === activeUser;
 
-        noteDiv.innerHTML = `
-            <p>${note.text}</p>
+    // Apply strong formatting to specific notes
+    const strongFormattedNotes = [
+        'New screening initiated.',
+        'Profile checked out.',
+        'Profile released.',
+        'Profile terminated.',
+        'Profile termination undone.',
+        'Profile created.',
+    ];
+
+    const noteText = strongFormattedNotes.includes(note.text)
+            ? `<strong>${note.text}</strong>`
+            : note.text;
+
+            noteDiv.innerHTML = `
+            <p>${noteText}</p>
             <small>${note.timestamp} by ${cleanedUsername}</small>
             ${
                 shouldShowButtons
                     ? ` <br>
-                <button class="interactive" onclick="window.editNote('${clientId}', ${notes.length - 1 - index})">Edit</button>
-                <button class="interactive" onclick="window.deleteNote('${clientId}', ${notes.length - 1 - index})">Delete</button>
-            `
+                    <button class="interactive" onclick="window.editNote('${clientId}', ${notes.length - 1 - index})">Edit</button>
+                    <button class="interactive" onclick="window.deleteNote('${clientId}', ${notes.length - 1 - index})">Delete</button>
+                `
+                    : note.text.startsWith('Referral provided.')
+                    ? ` <br>
+                    <button class="interactive" onclick="window.deleteNote('${clientId}', ${notes.length - 1 - index})">Delete</button>
+                `
                     : ''
             }
         `;
@@ -167,7 +186,7 @@ window.GoToProfileEditChecked = async function () {
     try {
         // Save a note with a timestamp
         const timestamp = new Date().toLocaleString();
-        const noteText = `Profile checked out.`;
+        const noteText = `<strong>Profile checked out.</strong>`;
         const note = {
             text: noteText,
             timestamp: timestamp,

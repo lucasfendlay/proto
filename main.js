@@ -969,7 +969,6 @@ app.delete('/delete-utility-expenses', async (req, res) => {
     }
 });
 
-// Backend: Merge incoming data with existing data
 app.post('/save-household-members', async (req, res) => {
     const { clientId, householdMembers } = req.body;
 
@@ -982,34 +981,32 @@ app.post('/save-household-members', async (req, res) => {
         // Merge existing household members with incoming data
         const updatedHouseholdMembers = householdMembers.map(member => {
             const existingMember = existingClient.householdMembers.find(m => m.householdMemberId === member.householdMemberId);
+
             return {
                 ...existingMember,
                 ...member,
                 SNAP: {
                     ...existingMember?.SNAP,
                     ...member.SNAP,
+                    application: member.SNAP?.application || existingMember?.SNAP?.application || [],
                 },
-
                 LIHEAP: {
                     ...existingMember?.LIHEAP,
                     ...member.LIHEAP,
+                    application: member.LIHEAP?.application || existingMember?.LIHEAP?.application || [],
                 },
-
                 PACE: {
                     ...existingMember?.PACE,
                     ...member.PACE,
                 },
-
                 LIS: {
                     ...existingMember?.LIS,
                     ...member.LIS,
                 },
-
                 MSP: {
                     ...existingMember?.MSP,
                     ...member.MSP,
                 },
-
                 PTRR: {
                     ...existingMember?.PTRR,
                     ...member.PTRR,

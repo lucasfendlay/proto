@@ -178,10 +178,13 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     async function updateMemberBenefits(memberId, members, benefit) {
-        console.log(`Updating benefits for Member ID: ${memberId}`);
-        console.log('Members array:', members);
+        // Deep clone the members array to avoid unintended side effects
+        const clonedMembers = JSON.parse(JSON.stringify(members));
     
-        const member = members.find(m => m.householdMemberId === memberId);
+        console.log(`Updating benefits for Member ID: ${memberId}`);
+        console.log('Cloned Members array:', clonedMembers);
+    
+        const member = clonedMembers.find(m => m.householdMemberId === memberId);
         if (!member) {
             return;
         }
@@ -205,7 +208,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ clientId, householdMembers: members }),
+                body: JSON.stringify({ clientId, householdMembers: clonedMembers }),
             });
     
             if (response.ok) {

@@ -246,42 +246,88 @@ async function continueToApplication() {
         return;
     }
 
-    const noteContent = "Applying: X.";
-    const timestamp = new Date().toLocaleString();
     const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
-
     if (!activeUser) {
         console.error("No active user found in sessionStorage.");
         return;
     }
 
+    // Confirm the action with the user
+    const confirmAction = confirm("Are you sure you want to continue to the application step?");
+    if (!confirmAction) {
+        return;
+    }
+
     try {
-        // Perform any necessary save operations here
-        console.log("Saving profile and redirecting...");
+        // Fetch household members from the backend
+        const response = await fetch(`/get-client/${clientId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client data: ${response.statusText}`);
+        }
 
-        // Add a note about the action
-        const note = {
-            text: noteContent,
-            timestamp: timestamp,
-            username: activeUser
-        };
+        const clientData = await response.json();
+        const members = clientData.householdMembers || [];
 
-        const addNoteResponse = await fetch(`/add-note-to-client`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ clientId, note })
+        // Separate household-wide benefits and individual benefits
+        const householdBenefits = new Set(); // Set to track SNAP and LIHEAP (household-wide benefits)
+        const individualBenefitsDetails = []; // Array to store individual benefit details
+
+        members.forEach(member => {
+            const memberBenefits = []; // Track benefits for this specific member
+
+            ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'].forEach(benefit => {
+                if (member[benefit]?.application?.some(app => app.applying === true)) {
+                    if (['SNAP', 'LIHEAP'].includes(benefit)) {
+                        // Add SNAP and LIHEAP to the household-wide benefits set
+                        householdBenefits.add(benefit);
+                    } else {
+                        // Add individual benefits to the member's list
+                        memberBenefits.push(benefit);
+                    }
+                }
+            });
+
+            // If the member has individual benefits, add their name and benefits to the details
+if (memberBenefits.length > 0) {
+    individualBenefitsDetails.push(
+        `<strong>${member.firstName.toUpperCase()} ${member.lastName.toUpperCase()}</strong><br>${memberBenefits.join('<br>')}`
+    );
+            }
         });
 
-        if (!addNoteResponse.ok) {
-            console.warn('Failed to add note to client.');
-        }
+        // Generate the note content
+const householdBenefitsText = Array.from(householdBenefits).join('<br>'); // Use <br> for line breaks
+const individualBenefitsText = individualBenefitsDetails.join('<br><br>'); // Separate members with double <br>
+
+const noteContent = `<strong>Applying</strong><br><br>${householdBenefitsText}<br><br>${individualBenefitsText}`.trim();
+const timestamp = new Date().toLocaleString();
+
+// Add a note about the action
+const note = {
+    text: noteContent,
+    timestamp: timestamp,
+    username: activeUser
+};
+
+// Send the note to the backend
+const addNoteResponse = await fetch(`/add-note-to-client`, {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ clientId, note })
+});
+
+if (!addNoteResponse.ok) {
+    console.warn('Failed to add note to client.');
+}
+
+console.log("Note added:", noteContent);
 
     } catch (error) {
         console.error("Error during continueToApplication:", error);
     } finally {
-        // Redirect to the estimations view page regardless of success or failure
+        // Redirect to the application edit page regardless of success or failure
         window.location.href = `applicationedit.html?id=${clientId}`;
     }
 }

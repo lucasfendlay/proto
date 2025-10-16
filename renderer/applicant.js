@@ -2,6 +2,47 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadSavedData(); // Load and display saved data
 });
 
+function getMembersApplyingForBenefits(members) {
+    return members.filter(member => {
+        // Check if any benefit has `applying: true`
+        return Object.keys(member).some(benefit => {
+            return member[benefit]?.application?.some(app => app.applying === true);
+        });
+    });
+}
+
+async function displayDynamicQuestions() {
+    const members = await loadHouseholdMembers(); // Load all household members
+    const applyingMembers = getMembersApplyingForBenefits(members); // Get members applying for benefits
+
+    const questionContainer = document.getElementById('dynamic-questions-container');
+    questionContainer.innerHTML = ''; // Clear existing questions
+
+    if (applyingMembers.length === 0) {
+        questionContainer.innerHTML = '<p>No members are currently applying for benefits.</p>';
+        return;
+    }
+
+    applyingMembers.forEach(member => {
+        const memberDiv = document.createElement('div');
+        memberDiv.classList.add('applying-member');
+
+        // Display member name
+        memberDiv.innerHTML = `<h3>${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.lastName)}</h3>`;
+
+        // Display questions based on benefits
+        Object.keys(member).forEach(benefit => {
+            if (member[benefit]?.application?.some(app => app.applying === true)) {
+                const question = document.createElement('p');
+                question.textContent = `Question for ${benefit}: Are you sure you want to apply for ${benefit}?`;
+                memberDiv.appendChild(question);
+            }
+        });
+
+        questionContainer.appendChild(memberDiv);
+    });
+}
+
 // Function to save the selection using the `/update-client` handler
 async function saveClientUpdate(clientId, key, value) {
     try {
@@ -55,7 +96,6 @@ function getQueryParam(param) {
 }
 
 
-// Modify the loadSavedData function to call checkAndAddSelfButton
 async function loadSavedData() {
     const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
     if (!clientId) {
@@ -102,15 +142,28 @@ async function loadSavedData() {
                 }
             });
 
-            // Display all previously saved household members
+            // Display only household members with at least one applying: true value
             if (clientData.householdMembers && Array.isArray(clientData.householdMembers)) {
+                const householdMemberContainer = document.getElementById('householdMemberContainer');
                 householdMemberContainer.innerHTML = ''; // Clear existing members
-            
+
+                // Filter members with at least one applying: true value
+                const applyingMembers = clientData.householdMembers.filter(member => {
+                    return Object.keys(member).some(benefit => {
+                        return member[benefit]?.application?.some(app => app.applying === true);
+                    });
+                });
+
+                if (applyingMembers.length === 0) {
+                    householdMemberContainer.innerHTML = '<p>No members are currently applying for benefits.</p>';
+                    return;
+                }
+
                 // Sort members to display the head of household at the top
-                const sortedMembers = clientData.householdMembers.sort((a, b) => {
+                const sortedMembers = applyingMembers.sort((a, b) => {
                     return b.headOfHousehold - a.headOfHousehold; // `true` (1) comes before `false` (0)
                 });
-            
+
                 sortedMembers.forEach((member) => {
                     const memberElement = document.createElement('div');
                     memberElement.classList.add('household-member'); // Add a class for styling
@@ -153,10 +206,7 @@ async function loadSavedData() {
                     `;
                     householdMemberContainer.appendChild(memberElement);
                 });
-        
-            
-            
-            
+
                 // Add event listeners to all "Edit" buttons
                 document.querySelectorAll('.edit-member-button').forEach((button) => {
                     button.addEventListener('click', (event) => {
@@ -167,7 +217,7 @@ async function loadSavedData() {
                         }
                     });
                 });
-                }
+            }
         }
     } catch (error) {
         console.error('Error loading saved data:', error);
