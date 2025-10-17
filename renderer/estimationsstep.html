@@ -299,7 +299,15 @@ if (memberBenefits.length > 0) {
 const householdBenefitsText = Array.from(householdBenefits).join('<br>'); // Use <br> for line breaks
 const individualBenefitsText = individualBenefitsDetails.join('<br><br>'); // Separate members with double <br>
 
-const noteContent = `<strong>Applying</strong><br><br>${householdBenefitsText}<br><br>${individualBenefitsText}`.trim();
+let noteContent = '';
+if (householdBenefits.size > 0) {
+    // If household benefits exist, include them with a line break before individual benefits
+    noteContent = `<strong>Applying</strong><br><br>${householdBenefitsText}<br><br>${individualBenefitsText}`.trim();
+} else {
+    // If no household benefits, exclude the extra line break before individual benefits
+    noteContent = `<strong>Applying</strong><br><br>${individualBenefitsText}`.trim();
+}
+
 const timestamp = new Date().toLocaleString();
 
 // Add a note about the action

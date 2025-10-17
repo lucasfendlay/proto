@@ -61,376 +61,226 @@ document.addEventListener('DOMContentLoaded', async function () {
                 const memberDiv = document.createElement('div');
                 memberDiv.classList.add('household-member-box'); // Add a class for styling
     
-                // Populate member details
+                // Update the display logic for each benefit field
                 memberDiv.innerHTML = `
-                    ${member.headOfHousehold ? `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block;"><strong>Head of Household</strong></p>` : ''}
-                    <h3>${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.middleInitial || '')} ${capitalizeFirstLetter(member.lastName)}</h3>
-                    <p><strong>Age:</strong> ${member.age?.split('Y')[0] || 'N/A'}</p>
-                    <p><strong>Marital Status:</strong> ${capitalizeFirstLetter(member.maritalStatus || 'N/A')}</p>
-                    ${
-                        member.relationships?.some(r => r.relationship === 'spouse')
-                            ? `<p><strong>Spouse:</strong> ${
-                                  capitalizeFirstLetter(members.find(m => m.householdMemberId === member.relationships.find(r => r.relationship === 'spouse')?.relatedMemberId)?.firstName || 'N/A')
-                              } ${
-                                  capitalizeFirstLetter(members.find(m => m.householdMemberId === member.relationships.find(r => r.relationship === 'spouse')?.relatedMemberId)?.lastName || '')
-                              }</p>`
-                            : ''
-                    }
-                    ${
-                        member.PACE?.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('already'))  // Check if eligibility does NOT include "Not"
-                        ? '' // Omit the field if eligibility is "Not Checked"
-                            : `
-                            <details class="custom-details">
-                                <summary><br><strong>PACE</strong><br> 
-                                <p><strong></strong> ${
-                                    member.PACE?.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
-                                }<br>
-                                    <button class="benefit-apply-button" data-benefit="PACE" data-member-id="${member.householdMemberId}">
-                                    ${member.PACE?.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for PACE'}
-                                </button>
-                                </summary></p>
-                                <hr class="separator-bar">
-                                <p><strong>Gross Adjusted Income:</strong> $${member.PACE?.combinedIncome?.toFixed(2) || 'N/A'}</p>
-                            </details>
-                            `
-                    }
-                    ${
-                        member.LIS?.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('already')) // Check if eligibility does NOT include "Not"
-                        ? '' // Omit the field if LIS eligibility is "Not Checked"
-                            : `
-                            <details class="custom-details">
-                                <summary><br><strong>LIS</strong><br>
-                                                                <p><strong></strong> ${
-                                    member.LIS?.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
-                                }<br>
-                                    <button class="benefit-apply-button" data-benefit="LIS" data-member-id="${member.householdMemberId}">
-                                    ${member.LIS?.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for LIS'}
-                                </button>
-                                </summary></p>
-                                <hr class="separator-bar">
-                                <p><strong>Gross Income:</strong> $${member.LIS?.combinedIncome?.toFixed(2) || 'N/A'}</p>
-                                <p><strong>Combined Assets:</strong> $${member.LIS?.combinedAssets?.toFixed(2) || 'N/A'}</p>
-                            </details>
-                            `
-                    }
-                    ${
-                        member.MSP?.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('already')) // Check if eligibility does NOT include "Not"
-                        ? '' // Omit the field if MSP eligibility is "Not Checked"
-                            : `
-                            <details class="custom-details">
-                                <summary><br><strong>MSP</strong>
-                                <p><strong></strong> ${
-                                    member.MSP?.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
-                                }<br>
-                                    <button class="benefit-apply-button" data-benefit="MSP" data-member-id="${member.householdMemberId}">
-                                    ${member.MSP?.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for MSP'}
-                                </button>
-                                </summary></p>
-                                <hr class="separator-bar">
-                                <p><strong>Gross Adjusted Income:</strong> $${member.MSP?.combinedIncome?.toFixed(2) || 'N/A'}</p>
-                                <p><strong>Combined Assets:</strong> $${member.MSP?.combinedAssets?.toFixed(2) || 'N/A'}</p>
-                            </details>
-                            `
-                    }
-                    ${
-                        member.PTRR?.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('already')) // Check if eligibility does NOT include "Not"
-                        ? '' // Omit the field if PTRR eligibility is "Not Checked"
-                            : `
-                            <details class="custom-details">
-                                <summary><br><strong>PTRR</strong>
-
-                                <p><strong></strong> ${
-                                    member.PTRR?.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
-                                }<br>
-                                <button class="benefit-apply-button" data-benefit="PTRR" data-member-id="${member.householdMemberId}">
-                                    ${member.PTRR?.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for PTRR'}
-                                </button>    
-                                </summary></p>
-                                <hr class="separator-bar">
-                                <p><strong>Gross Income:</strong> $${member.PTRR?.combinedIncome?.toFixed(2) || 'N/A'}</p>
-                            </details>
-                            `
-                    }
-                `;
+                ${member.headOfHousehold ? `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block;"><strong>Head of Household</strong></p>` : ''}
+                <h3>${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.middleInitial || '')} ${capitalizeFirstLetter(member.lastName)}</h3>
+                <p><strong>Age:</strong> ${member.age?.split('Y')[0] || 'N/A'}</p>
+                <p><strong>Marital Status:</strong> ${capitalizeFirstLetter(member.maritalStatus || 'N/A')}</p>
+                ${
+                    member.relationships?.some(r => r.relationship === 'spouse')
+                        ? `<p><strong>Spouse:</strong> ${
+                              capitalizeFirstLetter(members.find(m => m.householdMemberId === member.relationships.find(r => r.relationship === 'spouse')?.relatedMemberId)?.firstName || 'N/A')
+                          } ${
+                              capitalizeFirstLetter(members.find(m => m.householdMemberId === member.relationships.find(r => r.relationship === 'spouse')?.relatedMemberId)?.lastName || '')
+                          }</p>`
+                        : ''
+                }
+                ${ 
+                    member.PACE?.eligibility?.includes('Not Checked') ||
+                    member.PACE?.eligibility?.includes('Age Criteria Not Met')
+                        ? '' 
+                        : `
+                    <details class="custom-details">
+                        <summary><br><strong>PACE</strong><br> 
+                        <p><strong></strong> ${
+                            member.PACE?.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+                        }<br>
+                        <button class="benefit-apply-button" data-benefit="PACE" data-member-id="${member.householdMemberId}" 
+                            style="display: ${
+                                member.PACE?.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('already'))
+                                    ? 'none'
+                                    : 'block'
+                            }; margin: 0 auto">
+                            ${member.PACE?.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for PACE'}
+                        </button>
+                        <br>
+                        </summary></p>
+                        <hr class="separator-bar">
+                        <p><strong>Gross Adjusted Income:</strong> $${member.PACE?.combinedIncome?.toFixed(2) || 'N/A'}</p>
+                    </details>
+                    `
+                }
+                ${ 
+                    member.LIS?.eligibility?.includes('Not Checked')                        ? '' 
+                        : `
+                    <details class="custom-details">
+                        <summary><br><strong>LIS</strong><br>
+                        <p><strong></strong> ${
+                            member.LIS?.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+                        }<br>
+                        <button class="benefit-apply-button" data-benefit="LIS" data-member-id="${member.householdMemberId}" 
+                            style="display: ${
+                                member.LIS?.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('already'))
+                                    ? 'none'
+                                    : 'block'
+                            }; margin: 0 auto">
+                            ${member.LIS?.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for LIS'}
+                        </button>
+                        <br>
+                        </summary></p>
+                        <hr class="separator-bar">
+                        <p><strong>Gross Income:</strong> $${member.LIS?.combinedIncome?.toFixed(2) || 'N/A'}</p>
+                        <p><strong>Combined Assets:</strong> $${member.LIS?.combinedAssets?.toFixed(2) || 'N/A'}</p>
+                    </details>
+                    `
+                }
+                ${ 
+                    member.MSP?.eligibility?.includes('Not Checked') 
+                        ? '' 
+                        : `
+                    <details class="custom-details">
+    <summary><br><strong>MSP</strong>
+    <p><strong></strong> ${
+        member.MSP?.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+    }<br>
+    <button class="benefit-apply-button" data-benefit="MSP" data-member-id="${member.householdMemberId}" 
+        style="display: ${
+    console.log('MSP Eligibility for', member.firstName, member.lastName, member.MSP?.eligibility),
+    Array.isArray(member.MSP?.eligibility) &&
+    member.MSP?.eligibility.some(e => 
+        e?.toLowerCase().includes('not') || 
+        e?.toLowerCase().includes('needs') || 
+        e?.toLowerCase().includes('already')
+    )
+        ? 'none'
+        : 'block'
+}; margin: 0 auto;">
+        ${member.MSP?.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for MSP'}
+    </button>
+    <br>
+    </summary></p>
+    <hr class="separator-bar">
+    <p><strong>Gross Adjusted Income:</strong> $${member.MSP?.combinedIncome?.toFixed(2) || 'N/A'}</p>
+    <p><strong>Combined Assets:</strong> $${member.MSP?.combinedAssets?.toFixed(2) || 'N/A'}</p>
+</details>
+                    `
+                }
+                ${ 
+                    member.PTRR?.eligibility?.includes('Not Checked') 
+                        ? '' 
+                        : `
+                        <details class="custom-details">
+                            <summary><br><strong>PTRR</strong>
+                            <p><strong></strong> ${
+                                member.PTRR?.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+                            }<br>
+                            <button class="benefit-apply-button" data-benefit="PTRR" data-member-id="${member.householdMemberId}" 
+                                style="display: ${
+                                    member.PTRR?.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('already'))
+                                        ? 'none'
+                                        : 'block'
+                                }; margin: 0 auto">
+                                ${member.PTRR?.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for PTRR'}
+                            </button>
+                            <br>
+                            </summary></p>
+                            <hr class="separator-bar">
+                            <p><strong>Gross Income:</strong> $${member.PTRR?.combinedIncome?.toFixed(2) || 'N/A'}</p>
+                        </details>
+                        `
+                }
+            `;
                 householdMemberContainer.appendChild(memberDiv);
             });
     
             // Add event listeners to the benefit buttons
             const benefitButtons = document.querySelectorAll('.benefit-apply-button');
-            benefitButtons.forEach(button => {
-                button.addEventListener('click', async (event) => {
-                    const benefit = event.target.dataset.benefit; // Get the benefit type (e.g., "PACE", "LIS")
-                    const memberId = event.target.dataset.memberId; // Get the member ID
-                    const members = await loadHouseholdMembers();
-            
-                    // Call the function to update the benefit for the specific member
-                    await updateMemberBenefits(memberId, members, benefit);
-                    await updateSaveContinueButtonVisibility(); // Update button visibility
-
-            
-                    // Refresh the display after updating
-                    await displayHouseholdMembers();
-                    await updateSaveContinueButtonVisibility(); // Update button visibility
-
-                });
-            });
-        }
-    }
-
-    async function updateMemberBenefits(memberId, members, benefit) {
-        // Deep clone the members array to avoid unintended side effects
-        const clonedMembers = JSON.parse(JSON.stringify(members));
-    
-        console.log(`Updating benefits for Member ID: ${memberId}`);
-        console.log('Cloned Members array:', clonedMembers);
-    
-        const member = clonedMembers.find(m => m.householdMemberId === memberId);
-        if (!member) {
-            return;
-        }
-    
-        // Dynamically update the specified benefit
-        member[benefit] = member[benefit] || {};
-        member[benefit].application = member[benefit].application || [];
-        let benefitApplication = member[benefit].application.find(app => app.applying !== undefined);
-    
-        if (benefitApplication) {
-            benefitApplication.applying = !benefitApplication.applying;
-        } else {
-            member[benefit].application.push({ applying: true });
-        }
-    
-        // Save the updated member to the database
-        const clientId = getQueryParameter('id');
-        try {
-            const response = await fetch(`/save-household-members`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ clientId, householdMembers: clonedMembers }),
-            });
-    
-            if (response.ok) {
-                console.log(`Benefits updated successfully for member ID ${memberId}.`);
-            } else {
-                console.error(`Failed to update benefits for member ID ${memberId}:`, response.statusText);
-            }
-        } catch (error) {
-            console.error(`Error saving benefits for member ID ${memberId}:`, error);
-        }
-    }
-
-    async function displaySNAPHouseholds() {
-        const snapHouseholdContainer = document.getElementById('snap-household-container');
-        if (!snapHouseholdContainer) {
-            console.error('snap-household-container element not found in the DOM.');
-            return;
-        }
-    
-        const members = await loadHouseholdMembers();
-        snapHouseholdContainer.innerHTML = ''; // Clear existing content
-    
-        // Group members into SNAP households based on "meals=yes"
-        const snapHouseholds = [];
-        const processedMembers = new Set();
-    
-        for (const member of members) {
-            if (processedMembers.has(member.householdMemberId)) continue;
-    
-            if (member.meals?.toLowerCase() === "yes") {
-                const snapHousehold = [member];
-                processedMembers.add(member.householdMemberId);
-    
-                for (const otherMember of members) {
-                    if (
-                        otherMember.householdMemberId !== member.householdMemberId &&
-                        otherMember.meals?.toLowerCase() === "yes"
-                    ) {
-                        snapHousehold.push(otherMember);
-                        processedMembers.add(otherMember.householdMemberId);
-                    }
-                }
-    
-                snapHouseholds.push(snapHousehold);
-            }
-        }
-    
-        if (snapHouseholds.length === 0) {
-            const noHouseholdsMessage = document.createElement('p');
-            noHouseholdsMessage.textContent = 'NO SNAP HOUSEHOLDS FOUND.';
-            snapHouseholdContainer.appendChild(noHouseholdsMessage);
-            return;
-        }
-    
-        snapHouseholds.forEach(household => {
-            const householdDiv = document.createElement('div');
-            householdDiv.classList.add('household-member-box'); // Apply the same class for styling
-    
-            // Use the uniform values from the first member of the household
-            const combinedMonthlyIncome = household[0]?.SNAP?.combinedMonthlyIncome || 0;
-            const totalNetIncome = household[0]?.SNAP?.totalNetIncome || 0;
-            const excessShelterCost = household[0]?.SNAP?.excessShelterCost || 0;
-            const totalUtilityAllowance = household[0]?.SNAP?.totalUtilityAllowance || 0;
-            const totalMedicalExpenses = household[0]?.SNAP?.totalMedicalExpenses || 0;
-            const totalOtherExpenses = household[0]?.SNAP?.totalOtherExpenses || 0;
-            const eligibility = household[0]?.SNAP?.eligibility?.map(capitalizeFirstLetter) || 'Not Available';
-            const benefitAmount = household[0]?.SNAP?.benefitAmount || 0;
-            const combinedAssets = household[0]?.SNAP?.combinedAssets || 0;
-    
-            // Check if eligibility does NOT include "Not"
-            const isLikelyEligible = Array.isArray(eligibility)
-                ? !eligibility.some(item => item.includes("Not"))
-                : !String(eligibility).includes("Not");
-    
-            // Populate household details
-            householdDiv.innerHTML = `
-                <details class="custom-details">
-                    <summary><h3>SNAP HOUSEHOLD</h3></summary>
-                    <p><strong>Total Gross Income:</strong> $${combinedMonthlyIncome.toFixed(2)}</p>
-                    <p><strong>Shelter Deduction:</strong> $${excessShelterCost.toFixed(2)}</p>
-                    <p><strong>Medical Expense Deductions:</strong> $${totalMedicalExpenses.toFixed(2)}</p>
-                    <p><strong>Other Expense Deductions:</strong> $${totalOtherExpenses.toFixed(2)}</p>
-                    <p><strong>Adjusted Net Income:</strong> $${totalNetIncome.toFixed(2)}</p>
-                    <p><strong>Combined Assets:</strong> $${combinedAssets.toFixed(2)}</p>
-                    <hr class="separator-bar">
-                </details>
-                <p><strong>Members:</strong> ${household.map(member => `${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.lastName)}`).join(', ')}</p>
-                <p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
-                ${
-                    isLikelyEligible && benefitAmount > 0
-                        ? `
-                        <p><strong>Estimated Benefit Amount:</strong> ${
-                            benefitAmount < 23 ? "Up to $23.00" : `Up to $23.00 - $${benefitAmount.toFixed(2)}`
-                        }</p>
-                        <p><strong>Expedited Eligibility:</strong> ${
-                            capitalizeFirstLetter(household[0]?.SNAP?.expeditedEligibility || 'N/A')
-                        }</p>
-                        `
-                        : ''
-                }
-                <button class="benefit-apply-button" data-benefit="SNAP">
-                    ${household.every(member => member.SNAP?.application?.some(app => app.applying)) ? 'Stop Applying' : 'Apply for SNAP'}
-                </button>
-            `;
-    
-            snapHouseholdContainer.appendChild(householdDiv);
-    
-            // Add event listener to the SNAP benefit button
-            const benefitButton = householdDiv.querySelector('.benefit-apply-button');
-            benefitButton.addEventListener('click', async (event) => {
-                const buttonLabel = event.target.textContent.trim(); // Get the current button label
-                const newApplyingState = buttonLabel === 'Apply for SNAP'; // Determine the new state
-    
-    // Update the `applying` property for SNAP for only members with meals set to "yes"
-household.forEach(member => {
-    if (member.meals?.toLowerCase() === "yes") { // Only update members with meals set to "yes"
-        member.SNAP = member.SNAP || {};
-        member.SNAP.application = member.SNAP.application || [];
-
-        if (member.SNAP.application.length === 0) {
-            // If no application exists, create one with the new state
-            member.SNAP.application.push({ applying: newApplyingState });
-        } else {
-            // Update all existing applications to the new state
-            member.SNAP.application.forEach(app => {
-                app.applying = newApplyingState;
-            });
-        }
-    }
-});
-    
-                // Save the updated members to the backend
-                const clientId = getQueryParameter('id');
-                try {
-                    const response = await fetch(`/save-household-members`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ clientId, householdMembers: members }),
-                    });
-    
-                    if (response.ok) {
-                        console.log(`SNAP application status updated to '${newApplyingState}' for all members sharing meals.`);
-                    } else {
-                        console.error('Failed to update SNAP application status:', response.statusText);
-                    }
-                } catch (error) {
-                    console.error('Error updating SNAP application status:', error);
-                }
-    
-                // Refresh the display after updating
-                await displaySNAPHouseholds();
-                await updateSaveContinueButtonVisibility(); // Update button visibility
-
-            });
-        });
-    }
-    
-async function displayLIHEAPHouseholds() {
-    const liheapHouseholdContainer = document.getElementById('liheap-household-container');
-    if (!liheapHouseholdContainer) {
-        console.error('liheap-household-container element not found in the DOM.');
-        return;
-    }
-
-    const members = await loadHouseholdMembers();
-    liheapHouseholdContainer.innerHTML = ''; // Clear existing content
-
-    if (members.length === 0) {
-        const noHouseholdsMessage = document.createElement('p');
-        noHouseholdsMessage.textContent = 'NO LIHEAP HOUSEHOLDS FOUND.';
-        liheapHouseholdContainer.appendChild(noHouseholdsMessage);
-        return;
-    }
-
-    // Use the combined values from the household
-    const combinedYearlyIncome = members[0]?.LIHEAP?.combinedYearlyIncome || 0;
-    const eligibility = members[0]?.LIHEAP?.eligibility?.map(capitalizeFirstLetter) || 'Not Available';
-
-    // Create a container for the LIHEAP household details
-    const householdDiv = document.createElement('div');
-    householdDiv.classList.add('household-member-box'); // Add a class for styling
-
-    // Populate household details
-    householdDiv.innerHTML = `
-        <details class="custom-details">
-            <summary><h3>LIHEAP HOUSEHOLD</h3></summary>
-            <p><strong>Combined Yearly Income:</strong> $${combinedYearlyIncome.toFixed(2)}</p>
-            <hr class="separator-bar">
-        </details>
-        <p><strong>Members:</strong> ${members.map(member => `${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.lastName)}`).join(', ')}</p>
-        <p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
-        <button class="benefit-apply-button" data-benefit="LIHEAP">
-            ${members.every(member => member.LIHEAP?.application?.some(app => app.applying)) ? 'Stop Applying' : 'Apply for LIHEAP'}
-        </button>
-    `;
-
-    liheapHouseholdContainer.appendChild(householdDiv);
-
-    // Add event listener to the LIHEAP benefit button
-    const benefitButton = householdDiv.querySelector('.benefit-apply-button');
-    benefitButton.addEventListener('click', async (event) => {
+benefitButtons.forEach(button => {
+    button.addEventListener('click', async (event) => {
+        const benefit = event.target.dataset.benefit; // Get the benefit type (e.g., "PACE", "LIS", "SNAP", "LIHEAP")
+        const memberId = event.target.dataset.memberId || null; // Get the member ID (if applicable)
         const buttonLabel = event.target.textContent.trim(); // Get the current button label
-        const newApplyingState = buttonLabel === 'Apply for LIHEAP'; // Determine the new state
+        const newApplyingState = buttonLabel.startsWith('Apply'); // Determine the new state
 
-        // Update the `applying` property for LIHEAP for all members
-        members.forEach(member => {
-            member.LIHEAP = member.LIHEAP || {};
-            member.LIHEAP.application = member.LIHEAP.application || [];
+        console.log(`Benefit: ${benefit}, Member ID: ${memberId}, New Applying State: ${newApplyingState}`);
 
-            if (member.LIHEAP.application.length === 0) {
-                // If no application exists, create one with the new state
-                member.LIHEAP.application.push({ applying: newApplyingState });
+        const members = await loadHouseholdMembers(); // Reload members
+
+        // Call the function to update the benefit
+        await updateMemberBenefits(members, benefit, newApplyingState, memberId);
+
+        // Refresh the display after updating
+        if (benefit === 'SNAP') {
+            await displaySNAPHouseholds();
+        } else if (benefit === 'LIHEAP') {
+            await displayLIHEAPHouseholds();
+        } else {
+            await displayHouseholdMembers(); // Refresh the display for individual benefits
+        }
+
+        // Update the visibility of the save/continue button
+        await updateSaveContinueButtonVisibility();
+    });
+});
+        }
+    }
+
+    async function updateMemberBenefits(members, benefit, newApplyingState, memberId = null) {
+        // Ensure the function only handles the specified benefit
+        const validBenefits = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
+        if (!validBenefits.includes(benefit)) {
+            console.warn(`updateMemberBenefits does not handle ${benefit}.`);
+            return;
+        }
+    
+        console.log(`Updating benefits for Benefit: ${benefit}, Applying State: ${newApplyingState}, Member ID: ${memberId || 'N/A'}`);
+    
+        // Handle SNAP updates for all members with meals: "yes"
+        if (benefit === 'SNAP') {
+            members.forEach(member => {
+                if (member.meals?.toLowerCase() === "yes") {
+                    member.SNAP = member.SNAP || {};
+                    member.SNAP.application = member.SNAP.application || [];
+    
+                    // Update the applying status
+                    if (member.SNAP.application.length === 0) {
+                        member.SNAP.application.push({ applying: newApplyingState });
+                    } else {
+                        member.SNAP.application.forEach(app => {
+                            app.applying = newApplyingState;
+                        });
+                    }
+                }
+            });
+        } 
+        // Handle LIHEAP updates for all members
+        else if (benefit === 'LIHEAP') {
+            members.forEach(member => {
+                member.LIHEAP = member.LIHEAP || {};
+                member.LIHEAP.application = member.LIHEAP.application || [];
+    
+                // Update the applying status
+                if (member.LIHEAP.application.length === 0) {
+                    member.LIHEAP.application.push({ applying: newApplyingState });
+                } else {
+                    member.LIHEAP.application.forEach(app => {
+                        app.applying = newApplyingState;
+                    });
+                }
+            });
+        } 
+        // Handle individual benefits for a specific member
+        else if (memberId) {
+            const member = members.find(m => m.householdMemberId === memberId);
+            if (!member) {
+                console.error(`Member with ID ${memberId} not found.`);
+                return;
+            }
+    
+            member[benefit] = member[benefit] || {};
+            member[benefit].application = member[benefit].application || [];
+    
+            // Update the applying status
+            if (member[benefit].application.length === 0) {
+                member[benefit].application.push({ applying: newApplyingState });
             } else {
-                // Update all existing applications to the new state
-                member.LIHEAP.application.forEach(app => {
+                member[benefit].application.forEach(app => {
                     app.applying = newApplyingState;
                 });
             }
-        });
-
+        }
+    
         // Save the updated members to the backend
         const clientId = getQueryParameter('id');
         try {
@@ -441,40 +291,237 @@ async function displayLIHEAPHouseholds() {
                 },
                 body: JSON.stringify({ clientId, householdMembers: members }),
             });
-
+    
             if (response.ok) {
-                console.log(`LIHEAP application status updated to '${newApplyingState}' for all members.`);
+                console.log(`Benefits updated successfully for Benefit: ${benefit}.`);
             } else {
-                console.error('Failed to update LIHEAP application status:', response.statusText);
+                console.error(`Failed to update benefits for Benefit: ${benefit}:`, response.statusText);
             }
         } catch (error) {
-            console.error('Error updating LIHEAP application status:', error);
+            console.error(`Error saving benefits for Benefit: ${benefit}:`, error);
         }
-
-        // Refresh the display after updating
-        await displayLIHEAPHouseholds();
-        await updateSaveContinueButtonVisibility(); // Update button visibility
-    });
-}
-
-async function updateSaveContinueButtonVisibility() {
-    const members = await loadHouseholdMembers(); // Load the household members
-
-    // Check if any member has `applying: true` in any of their benefit applications
-    const hasApplyingTrue = members.some(member =>
-        Object.values(member).some(benefit =>
-            benefit?.application?.some(app => app.applying === true)
-        )
-    );
-
-    // Get the #save-continue button
-    const saveContinueButton = document.getElementById('save-continue');
-
-    if (saveContinueButton) {
-        // Show the button if any `applying: true` exists, otherwise hide it
-        saveContinueButton.style.display = hasApplyingTrue ? 'block' : 'none';
     }
+
+// Function to display SNAP households
+async function displaySNAPHouseholds() {
+    const snapHouseholdContainer = document.getElementById('snap-household-container');
+    if (!snapHouseholdContainer) {
+        console.error('snap-household-container element not found in the DOM.');
+        return;
+    }
+
+    const members = await loadHouseholdMembers();
+    snapHouseholdContainer.innerHTML = ''; // Clear existing content
+
+    // Group members into SNAP households based on "meals=yes"
+    const snapHouseholds = [];
+    const processedMembers = new Set();
+
+    for (const member of members) {
+        if (processedMembers.has(member.householdMemberId)) continue;
+
+        if (member.meals?.toLowerCase() === "yes") {
+            const snapHousehold = [member];
+            processedMembers.add(member.householdMemberId);
+
+            for (const otherMember of members) {
+                if (
+                    otherMember.householdMemberId !== member.householdMemberId &&
+                    otherMember.meals?.toLowerCase() === "yes"
+                ) {
+                    snapHousehold.push(otherMember);
+                    processedMembers.add(otherMember.householdMemberId);
+                }
+            }
+
+            snapHouseholds.push(snapHousehold);
+        }
+    }
+
+    if (snapHouseholds.length === 0) {
+        const noHouseholdsMessage = document.createElement('p');
+        noHouseholdsMessage.textContent = 'NO SNAP HOUSEHOLDS FOUND.';
+        snapHouseholdContainer.appendChild(noHouseholdsMessage);
+        return;
+    }
+
+    snapHouseholds.forEach(household => {
+        const householdDiv = document.createElement('div');
+        householdDiv.classList.add('household-member-box'); // Apply the same class for styling
+
+        // Use the uniform values from the first member of the household
+        const combinedMonthlyIncome = household[0]?.SNAP?.combinedMonthlyIncome || 0;
+        const totalNetIncome = household[0]?.SNAP?.totalNetIncome || 0;
+        const excessShelterCost = household[0]?.SNAP?.excessShelterCost || 0;
+        const totalUtilityAllowance = household[0]?.SNAP?.totalUtilityAllowance || 0;
+        const totalMedicalExpenses = household[0]?.SNAP?.totalMedicalExpenses || 0;
+        const totalOtherExpenses = household[0]?.SNAP?.totalOtherExpenses || 0;
+        const eligibility = household[0]?.SNAP?.eligibility?.map(capitalizeFirstLetter) || 'Not Available';
+        const benefitAmount = household[0]?.SNAP?.benefitAmount || 0;
+        const combinedAssets = household[0]?.SNAP?.combinedAssets || 0;
+
+        // Check if eligibility does NOT include "Not", "needs", or "already"
+const isLikelyEligible = Array.isArray(eligibility)
+? !eligibility.some(item => 
+    item.toLowerCase().includes("not") || 
+    item.toLowerCase().includes("needs") || 
+    item.toLowerCase().includes("already")
+)
+: !String(eligibility).toLowerCase().includes("not") &&
+  !String(eligibility).toLowerCase().includes("needs") &&
+  !String(eligibility).toLowerCase().includes("already");
+
+        // Populate household details
+householdDiv.innerHTML = `
+<details class="custom-details">
+    <summary><h3>SNAP HOUSEHOLD</h3></summary>
+    <p><strong>Total Gross Income:</strong> $${combinedMonthlyIncome.toFixed(2)}</p>
+    <p><strong>Shelter Deduction:</strong> $${excessShelterCost.toFixed(2)}</p>
+    <p><strong>Medical Expense Deductions:</strong> $${totalMedicalExpenses.toFixed(2)}</p>
+    <p><strong>Other Expense Deductions:</strong> $${totalOtherExpenses.toFixed(2)}</p>
+    <p><strong>Adjusted Net Income:</strong> $${totalNetIncome.toFixed(2)}</p>
+    <p><strong>Combined Assets:</strong> $${combinedAssets.toFixed(2)}</p>
+    <hr class="separator-bar">
+</details>
+<p><strong>Members:</strong> ${household.map(member => `${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.lastName)}`).join(', ')}</p>
+<p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
+${
+    isLikelyEligible && benefitAmount >= 0
+        ? `
+        <p><strong>Estimated Benefit Amount:</strong> ${
+            benefitAmount < 23 ? "Up to $23.00" : `Up to $23.00 - $${benefitAmount.toFixed(2)}`
+        }</p>
+        <p><strong>Expedited Eligibility:</strong> ${
+            capitalizeFirstLetter(household[0]?.SNAP?.expeditedEligibility || 'N/A')
+        }</p>
+        `
+        : ''
 }
+<button class="benefit-apply-button" data-benefit="SNAP" style="display: ${isLikelyEligible ? 'block' : 'none'};">
+    ${household.every(member => member.SNAP?.application?.some(app => app.applying)) ? 'Stop Applying' : 'Apply for SNAP'}
+</button>
+`;
+        
+
+    snapHouseholdContainer.appendChild(householdDiv);
+
+    // Add event listener to the SNAP benefit button
+    const benefitButton = householdDiv.querySelector('.benefit-apply-button');
+benefitButton.addEventListener('click', async (event) => {
+    const benefit = event.target.dataset.benefit; // Get the benefit type
+    const buttonLabel = event.target.textContent.trim(); // Get the current button label
+    const newApplyingState = buttonLabel.startsWith('Apply'); // Determine the new state
+
+    const members = await loadHouseholdMembers(); // Reload members
+    await updateMemberBenefits(members, benefit, newApplyingState); // Update the benefit
+
+    // Refresh the display after updating
+    if (benefit === 'SNAP') {
+        await displaySNAPHouseholds();
+    } else if (benefit === 'LIHEAP') {
+        await displayLIHEAPHouseholds();
+    }
+    await updateSaveContinueButtonVisibility(); // Update button visibility
+});
+});
+}
+    
+    async function displayLIHEAPHouseholds() {
+        const liheapHouseholdContainer = document.getElementById('liheap-household-container');
+        if (!liheapHouseholdContainer) {
+            console.error('liheap-household-container element not found in the DOM.');
+            return;
+        }
+    
+        const members = await loadHouseholdMembers();
+        liheapHouseholdContainer.innerHTML = ''; // Clear existing content
+    
+        if (members.length === 0) {
+            const noHouseholdsMessage = document.createElement('p');
+            noHouseholdsMessage.textContent = 'NO LIHEAP HOUSEHOLDS FOUND.';
+            liheapHouseholdContainer.appendChild(noHouseholdsMessage);
+            return;
+        }
+    
+        // Use the combined values from the household
+        const combinedYearlyIncome = members[0]?.LIHEAP?.combinedYearlyIncome || 0;
+        const eligibility = members[0]?.LIHEAP?.eligibility?.map(capitalizeFirstLetter) || 'Not Available';
+    
+        // Create a container for the LIHEAP household details
+        const householdDiv = document.createElement('div');
+        householdDiv.classList.add('household-member-box'); // Add a class for styling
+    
+// Check if eligibility does NOT include "Not", "needs", or "already"
+const isLikelyEligible = Array.isArray(eligibility)
+? !eligibility.some(item => 
+    item.toLowerCase().includes("not") || 
+    item.toLowerCase().includes("needs") || 
+    item.toLowerCase().includes("already")
+)
+: !String(eligibility).toLowerCase().includes("not") &&
+  !String(eligibility).toLowerCase().includes("needs") &&
+  !String(eligibility).toLowerCase().includes("already");
+
+        // Populate household details
+        householdDiv.innerHTML = `
+            <details class="custom-details">
+                <summary><h3>LIHEAP HOUSEHOLD</h3></summary>
+                <p><strong>Combined Yearly Income:</strong> $${combinedYearlyIncome.toFixed(2)}</p>
+                <hr class="separator-bar">
+            </details>
+            <p><strong>Members:</strong> ${members.map(member => `${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.lastName)}`).join(', ')}</p>
+            <p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
+            <button class="benefit-apply-button" data-benefit="LIHEAP"style="display: ${isLikelyEligible ? 'block' : 'none'};">
+                ${members.every(member => member.LIHEAP?.application?.some(app => app.applying)) ? 'Stop Applying' : 'Apply for LIHEAP'}
+            </button>
+        `;
+    
+        liheapHouseholdContainer.appendChild(householdDiv);
+    
+        // Add event listener to the LIHEAP benefit button
+        const benefitButton = householdDiv.querySelector('.benefit-apply-button');
+benefitButton.addEventListener('click', async (event) => {
+    const benefit = event.target.dataset.benefit; // Get the benefit type
+    const buttonLabel = event.target.textContent.trim(); // Get the current button label
+    const newApplyingState = buttonLabel.startsWith('Apply'); // Determine the new state
+
+    const members = await loadHouseholdMembers(); // Reload members
+    await updateMemberBenefits(members, benefit, newApplyingState); // Update the benefit
+
+    // Refresh the display after updating
+    if (benefit === 'SNAP') {
+        await displaySNAPHouseholds();
+    } else if (benefit === 'LIHEAP') {
+        await displayLIHEAPHouseholds();
+    }
+    await updateSaveContinueButtonVisibility(); // Update button visibility
+});
+    }
+
+    async function updateSaveContinueButtonVisibility() {
+        const members = await loadHouseholdMembers(); // Load the household members
+    
+        // Check if any member has `applying: true` in any of their benefit applications
+        const hasApplyingTrue = members.some(member =>
+            Object.values(member).some(benefit =>
+                benefit?.application?.some(app => app.applying === true)
+            )
+        );
+    
+        // Get the #save-continue button
+        const saveContinueButton = document.getElementById('save-continue');
+    
+        if (saveContinueButton) {
+            // Show the button if any `applying: true` exists, otherwise hide it
+            const previousDisplay = saveContinueButton.style.display;
+            saveContinueButton.style.display = hasApplyingTrue ? 'block' : 'none';
+    
+            // If the button was shown and is now hidden, refresh the page
+            if (previousDisplay === 'block' && saveContinueButton.style.display === 'none') {
+                location.reload(); // Refresh the page
+            }
+        }
+    }
 
 // After PACEEligibilityCheck, reload and display updated household members
 async function updateAndDisplayHouseholdMembers() {

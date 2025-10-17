@@ -4,8 +4,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 function getMembersApplyingForBenefits(members) {
     return members.filter(member => {
-        // Check if any benefit has `applying: true`
+        console.log('Inspecting member:', member); // Debugging log
         return Object.keys(member).some(benefit => {
+            console.log(`Checking benefit: ${benefit}`, member[benefit]); // Debugging log
             return member[benefit]?.application?.some(app => app.applying === true);
         });
     });
@@ -112,112 +113,100 @@ async function loadSavedData() {
         const clientData = await response.json();
 
         if (clientData) {
-            // Highlight saved selections for main questions
-            const mainQuestions = [
-                { id: 'disability', elements: ['disability-yes', 'disability-no'] },
-                { id: 'medicare', elements: ['medicare-yes', 'medicare-no'] },
-                { id: 'medicaid', elements: ['medicaid-yes', 'medicaid-no'] },
-                { id: 'student', elements: ['student-yes', 'student-no'] },
-                { id: 'snap', elements: ['snap-yes', 'snap-no', 'snap-notinterested'] },
-                { id: 'liheap', elements: ['liheap-yes', 'liheap-no', 'liheap-notinterested'] },
-                { id: 'subsidizedHousing', elements: ['subsidizedHousing-yes', 'subsidizedHousing-no'] },
-                { id: 'heatingCost', elements: ['heatingCost-yes', 'heatingCost-no'] },
-                { id: 'heatingCrisis', elements: ['heatingCrisis-yes', 'heatingCrisis-no'] },
-                { id: 'residenceStatusCurrent', elements: ['residenceStatusCurrent-owned', 'residenceStatusCurrent-rented', 'residenceStatusCurrent-rentedowned', 'residenceStatusCurrent-other'] },
-                { id: 'residenceStatus', elements: ['residenceStatus-owned', 'residenceStatus-rented', 'residenceStatus-rentedowned', 'residenceStatus-other'] },
-                { id: 'citizen', elements: ['citizen-yes', 'citizen-no'] }
-            ];
+            const householdMemberContainer = document.getElementById('householdMemberContainer');
+            householdMemberContainer.innerHTML = ''; // Clear existing members
 
-            mainQuestions.forEach((question) => {
-                const savedValue = clientData[question.id];
-                if (savedValue) {
-                    question.elements.forEach((elementId) => {
-                        const element = document.getElementById(elementId);
-                        if (element && element.getAttribute('data-value') === savedValue) {
-                            element.classList.add('selected'); // Highlight the saved selection
-                        } else if (element) {
-                            element.classList.remove('selected'); // Ensure others are not highlighted
-                        }
-                    });
+            // Filter members applying for PACE, LIS, MSP, or PTRR
+            const applyingMembers = clientData.householdMembers.filter(member => {
+                const benefits = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
+                return benefits.some(benefit => member[benefit]?.application?.some(app => app.applying === true));
+            });
+
+            // Collect all members to display, including spouses
+            const membersToDisplay = new Set();
+            applyingMembers.forEach(member => {
+                membersToDisplay.add(member);
+
+                // Check if the member has a spouse and add them to the display list
+                const spouseId = member.relationships?.find(rel => rel.relationship === 'spouse')?.relatedMemberId;
+                if (spouseId) {
+                    const spouse = clientData.householdMembers.find(m => m.householdMemberId === spouseId);
+                    if (spouse) {
+                        membersToDisplay.add(spouse);
+                    }
                 }
             });
 
-            // Display only household members with at least one applying: true value
-            if (clientData.householdMembers && Array.isArray(clientData.householdMembers)) {
-                const householdMemberContainer = document.getElementById('householdMemberContainer');
-                householdMemberContainer.innerHTML = ''; // Clear existing members
-
-                // Filter members with at least one applying: true value
-                const applyingMembers = clientData.householdMembers.filter(member => {
-                    return Object.keys(member).some(benefit => {
-                        return member[benefit]?.application?.some(app => app.applying === true);
-                    });
-                });
-
-                if (applyingMembers.length === 0) {
-                    householdMemberContainer.innerHTML = '<p>No members are currently applying for benefits.</p>';
-                    return;
-                }
-
-                // Sort members to display the head of household at the top
-                const sortedMembers = applyingMembers.sort((a, b) => {
-                    return b.headOfHousehold - a.headOfHousehold; // `true` (1) comes before `false` (0)
-                });
-
-                sortedMembers.forEach((member) => {
-                    const memberElement = document.createElement('div');
-                    memberElement.classList.add('household-member'); // Add a class for styling
-                    memberElement.innerHTML = `
-                        <p class="household-member-info"><strong>Name:</strong> ${capitalizeFirstLetter(member.firstName || '')} ${member.middleInitial ? capitalizeFirstLetter(member.middleInitial || '') : ''} ${capitalizeFirstLetter(member.lastName || '')}</p>
-                        <p class="household-member-info"><strong>DOB:</strong> ${member.dob}</p>
-                        <p class="household-member-info"><strong>Age:</strong> ${member.age}</p>
-                        <p class="household-member-info"><strong>Legal Sex:</strong> ${capitalizeFirstLetter(member.legalSex)}</p>
-                        <p class="household-member-info"><strong>SSN:</strong> ${member.socialSecurityNumber ? member.socialSecurityNumber : 'N/A'}</p>
-                        <p class="household-member-info"><strong>Marital Status:</strong> ${capitalizeFirstLetter(member.maritalStatus)}</p>
-                        ${
-                            member.previousMaritalStatus && typeof member.previousMaritalStatus === 'string' && member.previousMaritalStatus.toLowerCase() !== 'n/a'
-                                ? `<p class="household-member-info"><strong>Previous Marital Status:</strong> ${capitalizeFirstLetter(member.previousMaritalStatus)}</p>`
-                                : ''
-                        }
-                        <p class="household-member-info"><strong>Disability:</strong> ${capitalizeFirstLetter(member.disability)}</p>
-                        <p class="household-member-info"><strong>Medicare:</strong> ${capitalizeFirstLetter(member.medicare)}</p>
-                        <p class="household-member-info"><strong>Medicaid:</strong> ${capitalizeFirstLetter(member.medicaid)}</p>
-                        <p class="household-member-info"><strong>US Citizen:</strong> ${capitalizeFirstLetter(member.citizen)}</p>
-                        ${
-                            member.nonCitizenStatus && member.nonCitizenStatus.toLowerCase() !== 'citizen'
-                                ? `<p class="household-member-info"><strong>Non-Citizen Status:</strong> ${capitalizeFirstLetter(member.nonCitizenStatus)}</p>`
-                                : ''
-                        }
-                        <p class="household-member-info"><strong>Student:</strong> ${capitalizeFirstLetter(member.student)}</p>
-                        ${
-                            member.studentStatus && member.studentStatus.toLowerCase() !== 'notstudent'
-                                ? `<p class="household-member-info"><strong>Student Status:</strong> ${capitalizeFirstLetter(member.studentStatus)}</p>`
-                                : ''
-                        }
-                        <p class="household-member-info"><strong>Included in SNAP Household:</strong> ${capitalizeFirstLetter(member.meals)}</p>
-                        <div class="button-container">
-                            <button class="edit-member-button" data-member-id="${member.householdMemberId}">Edit</button>
-                            ${
-                                !member.headOfHousehold
-                                    ? ``
-                                    : `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block;"><strong>Head of Household</strong></p>`
-                            }
-                        </div>
-                    `;
-                    householdMemberContainer.appendChild(memberElement);
-                });
-
-                // Add event listeners to all "Edit" buttons
-                document.querySelectorAll('.edit-member-button').forEach((button) => {
-                    button.addEventListener('click', (event) => {
-                        const memberId = event.target.getAttribute('data-member-id');
-                        const member = clientData.householdMembers.find((m) => m.householdMemberId === memberId);
-                        if (member) {
-                            openEditModal(member); // Open the modal in edit mode
-                        }
-                    });
-                });
+            // Display the members in the container
+            if (membersToDisplay.size === 0) {
+                householdMemberContainer.innerHTML = '<p>No members are currently applying for benefits.</p>';
+                return;
             }
+
+            Array.from(membersToDisplay).forEach(member => {
+                const memberElement = document.createElement('div');
+                memberElement.classList.add('household-member'); // Add a class for styling
+                memberElement.innerHTML = `
+                    <p class="household-member-info"><strong>Name:</strong> ${capitalizeFirstLetter(member.firstName || '')} ${member.middleInitial ? capitalizeFirstLetter(member.middleInitial || '') : ''} ${capitalizeFirstLetter(member.lastName || '')}</p>
+                    <p class="household-member-info"><strong>DOB:</strong> ${member.dob}</p>
+                    <p class="household-member-info"><strong>Age:</strong> ${member.age}</p>
+                    <p class="household-member-info"><strong>Legal Sex:</strong> ${capitalizeFirstLetter(member.legalSex)}</p>
+                    <p class="household-member-info"><strong>SSN:</strong> ${member.socialSecurityNumber ? member.socialSecurityNumber : 'N/A'}</p>
+                    <p class="household-member-info"><strong>Marital Status:</strong> ${capitalizeFirstLetter(member.maritalStatus)}</p>
+                    ${
+                        member.relationships?.find(rel => rel.relationship === 'spouse') 
+                        ? `<p class="household-member-info"><strong>Spouse:</strong> ${
+                            capitalizeFirstLetter(
+                                clientData.householdMembers.find(spouse => spouse.householdMemberId === member.relationships.find(rel => rel.relationship === 'spouse').relatedMemberId)?.firstName || 'N/A'
+                            ) + ' ' + 
+                            capitalizeFirstLetter(
+                                clientData.householdMembers.find(spouse => spouse.householdMemberId === member.relationships.find(rel => rel.relationship === 'spouse').relatedMemberId)?.lastName || 'N/A'
+                            )
+                        }</p>` 
+                        : ''
+                    }
+                    ${member.previousMaritalStatus && typeof member.previousMaritalStatus === 'string' && member.previousMaritalStatus.toLowerCase() !== 'n/a'
+                        ? `<p class="household-member-info"><strong>Previous Marital Status:</strong> ${capitalizeFirstLetter(member.previousMaritalStatus)}</p>`
+                        : ''
+                    }
+                    <p class="household-member-info"><strong>Disability:</strong> ${capitalizeFirstLetter(member.disability)}</p>
+                    <p class="household-member-info"><strong>Medicare:</strong> ${capitalizeFirstLetter(member.medicare)}</p>
+                    <p class="household-member-info"><strong>Medicaid:</strong> ${capitalizeFirstLetter(member.medicaid)}</p>
+                    <p class="household-member-info"><strong>US Citizen:</strong> ${capitalizeFirstLetter(member.citizen)}</p>
+                    ${
+                        member.nonCitizenStatus && member.nonCitizenStatus.toLowerCase() !== 'citizen'
+                            ? `<p class="household-member-info"><strong>Non-Citizen Status:</strong> ${capitalizeFirstLetter(member.nonCitizenStatus)}</p>`
+                            : ''
+                    }
+                    <p class="household-member-info"><strong>Student:</strong> ${capitalizeFirstLetter(member.student)}</p>
+                    ${
+                        member.studentStatus && member.studentStatus.toLowerCase() !== 'notstudent'
+                            ? `<p class="household-member-info"><strong>Student Status:</strong> ${capitalizeFirstLetter(member.studentStatus)}</p>`
+                            : ''
+                    }
+                    <p class="household-member-info"><strong>Included in SNAP Household:</strong> ${capitalizeFirstLetter(member.meals)}</p>
+                    <div class="button-container">
+                        <button class="edit-member-button" data-member-id="${member.householdMemberId}">Edit</button>
+                        ${
+                            member.headOfHousehold
+                                ? `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block;"><strong>Head of Household</strong></p>`
+                                : ''
+                        }
+                    </div>
+                `;
+                householdMemberContainer.appendChild(memberElement);
+            });
+
+            // Add event listeners to all "Edit" buttons
+            document.querySelectorAll('.edit-member-button').forEach((button) => {
+                button.addEventListener('click', (event) => {
+                    const memberId = event.target.getAttribute('data-member-id');
+                    const member = clientData.householdMembers.find((m) => m.householdMemberId === memberId);
+                    if (member) {
+                        openEditModal(member); // Open the modal in edit mode
+                    }
+                });
+            });
         }
     } catch (error) {
         console.error('Error loading saved data:', error);
