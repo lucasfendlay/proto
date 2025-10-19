@@ -1136,3 +1136,49 @@ app.get('/get-referral/:referralId', async (req, res) => {
         res.status(500).json({ success: false, message: 'Failed to fetch referral.' });
     }
 });
+
+const multer = require('multer');
+const nodemailer = require('nodemailer');
+
+// Configure multer for file uploads
+const upload = multer({ dest: 'uploads/' });
+
+// Email sending endpoint
+app.post('/send-email', upload.single('file'), async (req, res) => {
+    const { file } = req;
+    const { recipientEmail, subject, body } = req.body;
+
+    if (!file) {
+        return res.status(400).json({ success: false, message: 'No file uploaded.' });
+    }
+
+    try {
+        // Configure nodemailer
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS,
+            },
+        });
+
+        // Send the email with the file as an attachment
+        await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: recipientEmail || 'lucascampbellsounddesign@gmail.com', // Default recipient email
+            subject: subject || 'Default Subject', // Use dynamic subject or fallback to default
+            text: body || 'Default email body.', // Use dynamic body or fallback to default
+            attachments: [
+                {
+                    filename: file.originalname,
+                    path: file.path,
+                },
+            ],
+        });
+
+        res.json({ success: true, message: 'Email sent successfully!' });
+    } catch (error) {
+        console.error('Error sending email:', error);
+        res.status(500).json({ success: false, message: 'Failed to send email.' });
+    }
+});

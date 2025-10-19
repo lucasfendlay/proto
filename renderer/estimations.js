@@ -610,7 +610,10 @@ async function PTRREligibilityCheck(members) {
                     // If income kind is "Social Security Retirement" or "Railroad Retirement", divide by 2
                     if (
                         income.kind?.toLowerCase() === "ssa retirement" || // Case-insensitive comparison
-                        income.kind?.toLowerCase() === "railroad retirement"
+                        income.kind?.toLowerCase() === "ssi" ||
+                        income.kind?.toLowerCase() === "ssp" ||
+                        income.kind?.toLowerCase() === "ssdi" ||
+                        income.kind?.toLowerCase() === "railroad retirement tier 1"
                     ) {
                         yearlyAmount /= 2;
                     }

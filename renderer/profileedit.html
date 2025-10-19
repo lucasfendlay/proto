@@ -167,9 +167,22 @@ margin-top: 60px; /* Adjust this value to match the height of the navigation con
             <label for="phoneNumber">Phone Number:</label>
             <input type="text" id="phoneNumber" name="phoneNumber">
         </div>
+
+        <div class="form-field">
+            <label>Are you currently experiencing homelessness?</label>
+            <div class="selection-box">
+                <div data-value="homelessnessyes" onclick="updateHomelessness('yes')">Yes</div>
+                <div data-value="homelessnessno" onclick="updateHomelessness('no')">No</div>
+            </div>
+        </div>
+        
         <div class="form-field">
             <label for="streetAddress">Street Address:</label>
             <input type="text" id="streetAddress" name="streetAddress">
+        </div>
+        <div class="form-field">
+            <label for="streetAddress2">Address Line 2:</label>
+            <input type="text" id="streetAddress2" name="streetAddress2">
         </div>
         <div class="form-field">
             <label for="city">City:</label>
@@ -363,8 +376,8 @@ margin-top: 60px; /* Adjust this value to match the height of the navigation con
         <div class="form-field">
             <label>Interpreter Used:</label>
             <div class="selection-box">
-                <div data-value="yes" onclick="updateInterpreter('yes')">Yes</div>
-                <div data-value="no" onclick="updateInterpreter('no')">No</div>
+                <div data-value="interpreteryes" onclick="updateInterpreter('yes')">Yes</div>
+                <div data-value="interpreterno" onclick="updateInterpreter('no')">No</div>
             </div>
         </div>
     </form>
@@ -565,19 +578,30 @@ margin-top: 60px; /* Adjust this value to match the height of the navigation con
             }
 
             // Populate form fields with client data
-document.getElementById('firstName').value = (callerFirstName || client.firstName || '').toUpperCase();
-document.getElementById('lastName').value = (callerLastName || client.lastName || '').toUpperCase();
-document.getElementById('phoneNumber').value = formatPhoneNumber(callerPhoneNumber || client.phoneNumber || '');
-document.getElementById('streetAddress').value = (client.streetAddress || '').toUpperCase();
-document.getElementById('city').value = (client.city || '').toUpperCase();
-document.getElementById('state').value = (client.state || 'PA').toUpperCase(); // Default to "PA" if no state is provided
-document.getElementById('zipCode').value = (client.zipCode || '').toUpperCase();
-document.getElementById('county').value = (client.county || '');
-document.getElementById('speakingLanguage').value = (client.speakingLanguage || '');
+            document.getElementById('firstName').value = (client.firstName || '').toUpperCase();
+            document.getElementById('lastName').value = (client.lastName || '').toUpperCase();
+            document.getElementById('phoneNumber').value = formatPhoneNumber(client.phoneNumber || '');
+            document.getElementById('streetAddress').value = (client.streetAddress || '').toUpperCase();
+            document.getElementById('streetAddress2').value = (client.streetAddress2 || '').toUpperCase();
+            document.getElementById('city').value = (client.city || '').toUpperCase();
+            document.getElementById('state').value = (client.state || 'PA').toUpperCase(); // Default to "PA"
+            document.getElementById('zipCode').value = (client.zipCode || '').toUpperCase();
+            document.getElementById('county').value = (client.county || '');
+            document.getElementById('speakingLanguage').value = (client.speakingLanguage || '');
+
+            // Highlight the selected homelessness button
+            if (client.homelessness) {
+                document.querySelectorAll('.selection-box div[data-value^="homelessness"]').forEach(div => div.classList.remove('selected'));
+                const selectedHomelessness = document.querySelector(`.selection-box div[data-value="homelessness${client.homelessness}"]`);
+                if (selectedHomelessness) {
+                    selectedHomelessness.classList.add('selected');
+                }
+            }
 
             // Highlight the selected interpreter button
             if (client.interpreter) {
-                const selectedInterpreter = document.querySelector(`.selection-box div[data-value="${client.interpreter}"]`);
+                document.querySelectorAll('.selection-box div[data-value^="interpreter"]').forEach(div => div.classList.remove('selected'));
+                const selectedInterpreter = document.querySelector(`.selection-box div[data-value="interpreter${client.interpreter}"]`);
                 if (selectedInterpreter) {
                     selectedInterpreter.classList.add('selected');
                 }
@@ -633,6 +657,7 @@ async function saveClient() {
         lastName: document.getElementById('lastName').value,
         phoneNumber: document.getElementById('phoneNumber').value,
         streetAddress: document.getElementById('streetAddress').value,
+        streetAddress2: document.getElementById('streetAddress2').value,
         city: document.getElementById('city').value,
         state: document.getElementById('state').value,
         zipCode: document.getElementById('zipCode').value,
@@ -662,13 +687,36 @@ async function saveClient() {
     }
 }
 
-        // Function to update interpreter selection
-        function updateInterpreter(value) {
-    document.querySelectorAll('.selection-box div').forEach(div => div.classList.remove('selected'));
-    const selectedButton = document.querySelector(`.selection-box div[data-value="${value}"]`);
+function updateHomelessness(value) {
+    // Clear selection for homelessness buttons only
+    document.querySelectorAll('.selection-box div[data-value^="homelessness"]').forEach(div => div.classList.remove('selected'));
+    const selectedButton = document.querySelector(`.selection-box div[data-value="homelessness${value}"]`);
     if (selectedButton) {
         selectedButton.classList.add('selected');
     }
+
+    // Update the homelessness field in the client data
+    updateClientData('homelessness', value);
+
+    // Change the label for Street Address to Mailing Address if "Yes" is selected
+    const streetAddressLabel = document.querySelector('label[for="streetAddress"]');
+    if (value === 'yes') {
+        streetAddressLabel.textContent = 'Mailing Address:';
+    } else {
+        streetAddressLabel.textContent = 'Street Address:';
+    }
+}
+
+function updateInterpreter(value) {
+    // Clear selection for interpreter buttons only
+    document.querySelectorAll('.selection-box div[data-value^="interpreter"]').forEach(div => div.classList.remove('selected'));
+    const selectedButton = document.querySelector(`.selection-box div[data-value="interpreter${value}"]`);
+    if (selectedButton) {
+        selectedButton.classList.add('selected');
+    }
+
+    // Update the interpreter field in the client data
+    updateClientData('interpreter', value);
 }
 
 // Function to update client data
@@ -714,17 +762,7 @@ document.querySelectorAll('select').forEach(select => {
         const value = event.target.value;
         updateClientData(field, value);
     });
-});
-
-// Add event listeners to selection boxes
-document.querySelectorAll('.selection-box div').forEach(div => {
-    div.addEventListener('click', (event) => {
-        const field = 'interpreter'; // Assuming this is for the interpreter field
-        const value = event.target.dataset.value;
-        updateClientData(field, value);
-    });
-});
-        
+});     
 
         function GoToProfileView() {
     const clientId = getQueryParam('id'); // Retrieve the client ID from the URL

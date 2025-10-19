@@ -90,6 +90,9 @@ body {
         }
     </style>
 
+<button id="generate-pdf-button">Generate PDF</button>
+
+
 <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
     <div id="snap-household-container" class="left-sidebar"></div>
     <div id="liheap-household-container" class="left-sidebar"></div>
@@ -104,87 +107,6 @@ body {
         </div>
 
     <div id="householdMemberContainer" class="household-member-container"></div>
-
-    <div class="form-field">
-        <label for="county">County:</label>
-        <select id="county" name="county">
-            <option value="" disabled selected>Select County</option>
-            <option value="Adams">Adams</option>
-            <option value="Allegheny">Allegheny</option>
-            <option value="Armstrong">Armstrong</option>
-            <option value="Beaver">Beaver</option>
-            <option value="Bedford">Bedford</option>
-            <option value="Berks">Berks</option>
-            <option value="Blair">Blair</option>
-            <option value="Bradford">Bradford</option>
-            <option value="Bucks">Bucks</option>
-            <option value="Butler">Butler</option>
-            <option value="Cambria">Cambria</option>
-            <option value="Cameron">Cameron</option>
-            <option value="Carbon">Carbon</option>
-            <option value="Centre">Centre</option>
-            <option value="Chester">Chester</option>
-            <option value="Clarion">Clarion</option>
-            <option value="Clearfield">Clearfield</option>
-            <option value="Clinton">Clinton</option>
-            <option value="Columbia">Columbia</option>
-            <option value="Crawford">Crawford</option>
-            <option value="Cumberland">Cumberland</option>
-            <option value="Dauphin">Dauphin</option>
-            <option value="Delaware">Delaware</option>
-            <option value="Elk">Elk</option>
-            <option value="Erie">Erie</option>
-            <option value="Fayette">Fayette</option>
-            <option value="Forest">Forest</option>
-            <option value="Franklin">Franklin</option>
-            <option value="Fulton">Fulton</option>
-            <option value="Greene">Greene</option>
-            <option value="Huntingdon">Huntingdon</option>
-            <option value="Indiana">Indiana</option>
-            <option value="Jefferson">Jefferson</option>
-            <option value="Juniata">Juniata</option>
-            <option value="Lackawanna">Lackawanna</option>
-            <option value="Lancaster">Lancaster</option>
-            <option value="Lawrence">Lawrence</option>
-            <option value="Lebanon">Lebanon</option>
-            <option value="Lehigh">Lehigh</option>
-            <option value="Luzerne">Luzerne</option>
-            <option value="Lycoming">Lycoming</option>
-            <option value="McKean">McKean</option>
-            <option value="Monroe">Monroe</option>
-            <option value="Montgomery">Montgomery</option>
-            <option value="Montour">Montour</option>
-            <option value="Northampton">Northampton</option>
-            <option value="Northumberland">Northumberland</option>
-            <option value="Perry">Perry</option>
-            <option value="Philadelphia">Philadelphia</option>
-            <option value="Pike">Pike</option>
-            <option value="Potter">Potter</option>
-            <option value="Schuylkill">Schuylkill</option>
-            <option value="Snyder">Snyder</option>
-            <option value="Somerset">Somerset</option>
-            <option value="Sullivan">Sullivan</option>
-            <option value="Susquehanna">Susquehanna</option>
-            <option value="Tioga">Tioga</option>
-            <option value="Union">Union</option>
-            <option value="Venango">Venango</option>
-            <option value="Warren">Warren</option>
-            <option value="Washington">Washington</option>
-            <option value="Wayne">Wayne</option>
-            <option value="Westmoreland">Westmoreland</option>
-            <option value="Wyoming">Wyoming</option>
-            <option value="York">York</option>
-        </select>
-    </div>
-
-    <div class="form-field">
-        <label for="schoolDistrict">School District:</label>
-        <select id="schoolDistrict" name="schoolDistrict" disabled>
-            <option value="" disabled selected>Select School District</option>
-        </select>
-    </div>
-
-
 
     <div class="button-container">
         <button id="add-household-member" style="display: none;">Add Household Member</button>
@@ -339,6 +261,8 @@ body {
 
         </form>
 
+        <div id="dynamic-questions-container"></div>
+
     <script>
 // Utility function to get query parameters
 function getQueryParam(name) {
@@ -355,233 +279,23 @@ function getQueryParam(name) {
     }
 }
 
-async function loadClientData() {
-    const clientId = getQueryParam('id'); // Get the client ID from the URL
-
-    try {
-        const response = await fetch(`/get-client/${clientId}`); // Fetch client data
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client: ${response.statusText}`);
-        }
-
-        const client = await response.json(); // Parse the client data
-        if (client && client.county) {
-            console.log('Client data loaded:', client);
-            console.log('Client county:', client.county);
-
-            // Autofill the county dropdown
-            const countyDropdown = document.getElementById('county');
-            const countyOptions = Array.from(countyDropdown.options);
-
-            console.log('Dropdown options:', countyOptions.map(option => option.value)); // Log all dropdown options
-
-            // Find the matching option (case-insensitive)
-            const matchingCountyOption = countyOptions.find(
-                (option) => option.value.toLowerCase() === client.county.toLowerCase()
-            );
-
-            if (matchingCountyOption) {
-                countyDropdown.value = matchingCountyOption.value; // Set the dropdown value
-                console.log(`County dropdown set to: ${matchingCountyOption.value}`);
-
-                // Populate the school district dropdown based on the selected county
-                populateSchoolDistricts(matchingCountyOption.value);
-
-                // Autofill the school district dropdown if it exists in the client data
-                if (client.schoolDistrict) {
-                    const schoolDistrictDropdown = document.getElementById('schoolDistrict');
-                    const districtOptions = Array.from(schoolDistrictDropdown.options);
-
-                    const matchingDistrictOption = districtOptions.find(
-                        (option) => option.value.toLowerCase() === client.schoolDistrict.toLowerCase()
-                    );
-
-                    if (matchingDistrictOption) {
-                        schoolDistrictDropdown.value = matchingDistrictOption.value;
-                        console.log(`School district dropdown set to: ${matchingDistrictOption.value}`);
-                    } else {
-                        console.warn(`No matching school district found for: ${client.schoolDistrict}`);
-                    }
-                }
-            } else {
-                console.warn(`No matching county found for: ${client.county}`);
-            }
-        } else {
-            console.error('Client data is missing or county is not defined.');
-        }
-    } catch (error) {
-        console.error('Error loading client data:', error);
-    }
-}
-
-// Populate the school district dropdown based on the selected county
-function populateSchoolDistricts(county) {
-    const schoolDistrictDropdown = document.getElementById('schoolDistrict');
-
-    // Clear existing options
-    schoolDistrictDropdown.innerHTML = '<option value="" disabled selected>Select School District</option>';
-
-    // Get the school districts for the selected county
-    const districts = schoolDistricts[county] || [];
-
-    // Enable the dropdown if districts are available
-    if (districts.length > 0) {
-        schoolDistrictDropdown.disabled = false;
-
-        // Add the districts as options
-        districts.forEach(district => {
-            const option = document.createElement('option');
-            option.value = district;
-            option.textContent = district;
-            schoolDistrictDropdown.appendChild(option);
-        });
-    } else {
-        // Disable the dropdown if no districts are available
-        schoolDistrictDropdown.disabled = true;
-    }
-}
-
-// Ensure the script runs after the DOM is fully loaded
-document.addEventListener('DOMContentLoaded', () => {
-    loadClientData();
-});
-
-const schoolDistricts = {
-    "Adams": ["Bermudian Springs School District", "Conewago Valley School District", "Fairfield Area School District", "Gettysburg Area School District", "Littlestown Area School District", "Upper Adams School District"],
-    "Allegheny": ["Allegheny Valley School District", "Avonworth School District", "Baldwin-Whitehall School District", "Bethel Park School District", "Brentwood Borough School District"],
-    "Armstrong": ["Apollo-Ridge School District", "Armstrong School District", "Bradys Bend Area School District", "Kittanning Area School District", "Leechburg Area School District"],
-    "Beaver": ["Aliquippa School District", "Ambridge Area School District", "Beaver Area School District", "Blackhawk School District", "Center Area School District"],
-    "Bedford": ["Bedford Area School District", "Everett Area School District", "Fulton County School District", "Northern Bedford County School District", "Southern Bedford County School District"],
-    "Berks": ["Antietam School District", "Boyertown Area School District", "Brandywine Heights Area School District", "Daniel Boone Area School District", "East Penn School District"],
-    "Blair": ["Altoona Area School District", "Bellwood-Antis School District", "Claysburg-Kimmel School District", "Hollidaysburg Area School District", "Juniata Valley School District"],
-    "Bradford": ["Athens Area School District", "Bradford Area School District", "Canton Area School District", "Sayre Area School District", "Troy Area School District"],
-    "Bucks": ["Bensalem Township School District", "Bristol Borough School District", "Bristol Township School District", "Buckingham Township School District", "Central Bucks School District"],
-    "Butler": ["Butler Area School District", "Cabot School District", "Connoquenessing Area School District", "Hampton Township School District", "Mars Area School District"],
-    "Cambria": ["Cambria Heights School District", "Conemaugh Valley School District", "Ferndale Area School District", "Greater Johnstown School District", "Northern Cambria School District"],
-    "Cameron": ["Cameron County School District"],
-    "Carbon": ["Lehighton Area School District", "Palmerton Area School District", "Souderton Area School District", "Weatherly Area School District"],
-    "Centre": ["Bellefonte Area School District", "State College Area School District", "Philipsburg-Osceola Area School District"],
-    "Chester": ["Avon Grove School District", "Coatesville Area School District", "Downingtown Area School District", "Great Valley School District", "Kennett Consolidated School District"],
-    "Clarion": ["Clarion Area School District", "Eldred School District", "Forest Area School District", "Keystone School District", "Redbank Valley School District"],
-    "Clearfield": ["Curwensville Area School District", "DuBois Area School District", "Graffius School District", "Moshannon Valley School District", "West Branch Area School District"],
-    "Clinton": ["Clinton County School District", "Muncy School District"],
-    "Columbia": ["Berwick Area School District", "Bloomsburg Area School District", "Central Columbia School District", "Danville Area School District", "Millville Area School District"],
-    "Crawford": ["Cranberry Area School District", "Conneaut Area School District", "Linesville Area School District", "Meadville Area School District", "Northwestern School District"],
-    "Cumberland": ["Cumberland Valley School District", "East Pennsboro Area School District", "Shippensburg Area School District", "South Middleton School District", "West Shore School District"],
-    "Dauphin": ["Central Dauphin School District", "Dauphin County Technical School", "Halifax Area School District", "Harrisburg School District", "Lower Dauphin School District"],
-    "Delaware": ["Chichester School District", "Concord School District", "Delaware County Technical School", "Garnet Valley School District", "Haverford Township School District"],
-    "Elk": ["Elk County School District"],
-    "Erie": ["Corry Area School District", "Erie City School District", "Fairview School District", "Fort LeBoeuf School District", "Girard School District"],
-    "Fayette": ["Albert Gallatin Area School District", "Brownsville Area School District", "Connellsville Area School District", "Fayette County Area School District", "Uniontown Area School District"],
-    "Forest": ["Forest Area School District"],
-    "Franklin": ["Chambersburg Area School District", "Fannett-Metal School District", "Greencastle-Antrim School District", "Shippensburg Area School District"],
-    "Fulton": ["Fulton County School District"],
-    "Greene": ["Greene County School District", "Jefferson-Morgan School District"],
-    "Huntingdon": ["Huntingdon Area School District", "Mount Union Area School District", "Southern Huntingdon County School District"],
-    "Indiana": ["Indiana Area School District", "Penns Manor Area School District", "Purchase Line School District"],
-    "Jefferson": ["Brookville Area School District", "DuBois Area School District", "Punxsutawney Area School District"],
-    "Juniata": ["Juniata County School District"],
-    "Lackawanna": ["Carbondale Area School District", "Lakeland School District", "Mid Valley School District", "North Pocono School District", "Scranton School District"],
-    "Lancaster": ["Conestoga Valley School District", "Cocalico School District", "Columbia Borough School District", "Donegal School District", "Ephrata Area School District"],
-    "Lawrence": ["Ellwood City Area School District", "Lawrence County School District", "Neshannock Township School District"],
-    "Lebanon": ["Annville-Cleona School District", "Cornwall-Lebanon School District", "Eastern Lebanon County School District", "Lebanon School District", "Northern Lebanon School District"],
-    "Lehigh": ["Allentown School District", "Catasauqua Area School District", "East Penn School District", "Northern Lehigh School District", "Parkland School District"],
-    "Luzerne": ["Dallas School District", "Hazleton Area School District", "Kingston Area School District", "Lake-Lehman School District", "Nanticoke Area School District"],
-    "Lycoming": ["Canton Area School District", "Muncy School District", "South Williamsport Area School District", "Wellsboro Area School District"],
-    "McKean": ["Bradford Area School District", "Cameron County School District", "Port Allegany School District"],
-    "Monroe": ["East Stroudsburg Area School District", "Pleasant Valley School District", "Stroudsburg Area School District"],
-    "Montgomery": ["Abington School District", "Cheltenham Township School District", "Hatboro-Horsham School District", "Lower Merion School District", "Methacton School District"],
-    "Montour": ["Montour School District"],
-    "Northampton": ["Bethlehem Area School District", "Easton Area School District", "Nazareth Area School District", "Northampton Area School District", "Pen Argyl Area School District"],
-    "Northumberland": ["Danville Area School District", "Line Mountain School District", "Milton Area School District", "Shamokin Area School District", "Warrior Run School District"],
-    "Perry": ["Duncannon Borough School District", "Newport School District", "Susquenita School District"],
-    "Philadelphia": ["Philadelphia City School District"],
-    "Pike": ["Delaware Valley School District", "Wallenpaupack Area School District"],
-    "Potter": ["Coudersport Area School District", "Oswayo Valley School District"],
-    "Schuylkill": ["Blue Mountain School District", "Mahanoy Area School District", "Minersville Area School District", "North Schuylkill School District", "Pottsville Area School District"],
-    "Snyder": ["Middleburg Area School District", "Selinsgrove Area School District", "Shamokin Dam Area School District"],
-    "Somerset": ["Conemaugh Township Area School District", "North Star School District", "Rockwood Area School District", "Somerset Area School District"],
-    "Sullivan": ["Sullivan County School District"],
-    "Susquehanna": ["Forest City Regional School District", "Montrose Area School District"],
-    "Tioga": ["Elkland Area School District", "Wellsboro Area School District"],
-    "Union": ["Lewisburg Area School District", "Mifflinburg Area School District"],
-    "Venango": ["Cranberry Area School District", "Franklin Area School District", "Oil City Area School District"],
-    "Warren": ["Warren County School District"],
-    "Washington": ["Bentleyville School District", "California Area School District", "Charleroi Area School District", "Fort Cherry School District", "McGuffey School District"],
-    "Wayne": ["Honesdale School District", "Wallenpaupack Area School District"],
-    "Westmoreland": ["Derry Area School District", "Greensburg-Salem School District", "Hempfield Area School District", "Jeannette City School District", "Latrobe Area School District"],
-    "Wyoming": ["Tunkhannock Area School District"],
-    "York": ["Central York School District", "Dallastown Area School District", "Eastern York School District", "Hanover Public School District", "Red Lion Area School District"]
-};
-
-// Ensure the script runs after the DOM is fully loaded
-document.addEventListener('DOMContentLoaded', () => {
-    loadClientData();
-
-    // Add a listener for the county dropdown
-    const countyDropdown = document.getElementById('county');
-    countyDropdown.addEventListener('change', (event) => {
-        const selectedCounty = event.target.value;
-
-        // Reset the school district dropdown to its default state
-        const schoolDistrictDropdown = document.getElementById('schoolDistrict');
-        schoolDistrictDropdown.innerHTML = '<option value="" disabled selected>Select School District</option>';
-        schoolDistrictDropdown.disabled = true;
-
-        // Repopulate the district list based on the selected county
-        populateSchoolDistricts(selectedCounty);
-
-        // Update the client array with the new county
-        updateClientData('county', selectedCounty);
-
-        // Clear the district value in the client array
-        updateClientData('schoolDistrict', '');
-    });
-
-    // Add a listener for the school district dropdown
-    const schoolDistrictDropdown = document.getElementById('schoolDistrict');
-    schoolDistrictDropdown.addEventListener('change', (event) => {
-        const selectedDistrict = event.target.value;
-        updateClientData('schoolDistrict', selectedDistrict); // Update the client array with the new district
-    });
-});
-
-// Function to update the client data
-function updateClientData(key, value) {
-    const clientId = getQueryParam('id'); // Get the client ID from the URL
-
+document.getElementById('generate-pdf-button').addEventListener('click', async () => {
+    const clientId = getQueryParam('id'); // Get clientId from query parameters
     if (!clientId) {
-        console.error('Client ID not found in query parameters.');
+        alert('Client ID not found in query parameters.');
         return;
     }
 
-    const requestBody = {
-        clientId,
-        clientData: { [key]: value }, // Dynamically set the key and value
-    };
+       // Call listFormFields to log all field names in the PDF
+       await listFormFields();
 
-    // Update the client data via REST API
-    fetch(`/update-client`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-    })
-        .then((response) => {
-            if (response.ok) {
-                console.log(`Client ${key} updated to: ${value}`);
-            } else {
-                return response.json().then((error) => {
-                    console.error('Error details:', error);
-                    throw new Error(`Failed to update client data: ${error.message}`);
-                });
-            }
-        })
-        .catch((error) => {
-            console.error('Error updating client data:', error);
-        });
-}
+    const applicantData = await fetchApplicantData(clientId);
+    if (applicantData) {
+        await generatePDF(applicantData);
+    } else {
+        alert('Failed to fetch applicant data.');
+    }
+});
 
 function redirectToHouseholdView() {
     const clientId = getQueryParam('id');
@@ -746,10 +460,12 @@ window.onload = function () {
 };
     </script>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="editnavigation.js"></script>
+<script src="finalize.js"></script>
 <script src="applying.js"></script>
-    <script src="applicant.js"></script>
-    <script src="notes.js"></script>
+<script src="applicant.js"></script>
+<script src="notes.js"></script>
 
 </body>
 </html>

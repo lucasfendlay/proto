@@ -163,6 +163,10 @@
             <span id="streetAddress" class="read-only-field">Loading...</span>
         </div>
         <div class="form-field">
+            <label for="streetAddress2">Address Line 2:</label>
+            <span id="streetAddress2" class="read-only-field">Loading...</span>
+        </div>
+        <div class="form-field">
             <label for="city">City:</label>
             <span id="city" class="read-only-field">Loading...</span>
         </div>
@@ -290,6 +294,7 @@
             document.getElementById('lastName').textContent = client.lastName.toUpperCase() || 'N/A';
             document.getElementById('phoneNumber').textContent = client.phoneNumber.toUpperCase() || 'N/A';
             document.getElementById('streetAddress').textContent = client.streetAddress.toUpperCase() || 'N/A';
+            document.getElementById('streetAddress2').textContent = client.streetAddress2.toUpperCase() || 'N/A';
             document.getElementById('city').textContent = client.city.toUpperCase() || 'N/A';
             document.getElementById('state').textContent = client.state.toUpperCase() || 'N/A';
             document.getElementById('zipCode').textContent = client.zipCode.toUpperCase() || 'N/A';

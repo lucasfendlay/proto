@@ -12,38 +12,6 @@ function getMembersApplyingForBenefits(members) {
     });
 }
 
-async function displayDynamicQuestions() {
-    const members = await loadHouseholdMembers(); // Load all household members
-    const applyingMembers = getMembersApplyingForBenefits(members); // Get members applying for benefits
-
-    const questionContainer = document.getElementById('dynamic-questions-container');
-    questionContainer.innerHTML = ''; // Clear existing questions
-
-    if (applyingMembers.length === 0) {
-        questionContainer.innerHTML = '<p>No members are currently applying for benefits.</p>';
-        return;
-    }
-
-    applyingMembers.forEach(member => {
-        const memberDiv = document.createElement('div');
-        memberDiv.classList.add('applying-member');
-
-        // Display member name
-        memberDiv.innerHTML = `<h3>${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.lastName)}</h3>`;
-
-        // Display questions based on benefits
-        Object.keys(member).forEach(benefit => {
-            if (member[benefit]?.application?.some(app => app.applying === true)) {
-                const question = document.createElement('p');
-                question.textContent = `Question for ${benefit}: Are you sure you want to apply for ${benefit}?`;
-                memberDiv.appendChild(question);
-            }
-        });
-
-        questionContainer.appendChild(memberDiv);
-    });
-}
-
 // Function to save the selection using the `/update-client` handler
 async function saveClientUpdate(clientId, key, value) {
     try {
