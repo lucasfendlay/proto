@@ -26,16 +26,14 @@ const ptrrApplicant = data.householdMembers?.find(
     (member) => member.PTRR?.application?.some((app) => app.applying === true)
 );
 
-// Find the household member with the relationship 'spouse'
+// Find the household member with the `previousSpouseId` matching the applicant's `householdMemberId`
 const spouse = data.householdMembers?.find((member) => {
-    const relationship = member.relationships?.[0]?.relationship?.toLowerCase().trim();
-    const relatedMemberId = member.relationships?.[0]?.relatedMemberId;
+    const isSpouse = member.householdMemberId === ptrrApplicant?.previousSpouseId;
 
     console.log('Checking household member:', member);
-    console.log('Relationship:', relationship, 'Related Member ID:', relatedMemberId);
+    console.log('Is Spouse:', isSpouse);
 
-    // Ensure the relationship is 'spouse' and the relatedMemberId matches the applicant
-    return relationship === 'spouse' && relatedMemberId === ptrrApplicant?.householdMemberId;
+    return isSpouse;
 });
 
 if (!spouse) {

@@ -204,7 +204,69 @@ try {
 
         // Conditional logic for PTRR
 if (member.headOfHousehold === true) {
+    let previousSpouseMeetsConditions = false;
+
+    // Check if the head of household has a previous spouse
+    if (member.previousSpouseId) {
+        try {
+            // Fetch the entire client data
+            const response = await fetch(`/get-client/${clientId}`);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch client data: ${response.statusText}`);
+            }
+    
+            const client = await response.json();
+            console.log('Client Data:', client);
+    
+            // Find the previous spouse in the householdMembers array
+            const previousSpouse = client.householdMembers.find(
+                (m) => m.householdMemberId === member.previousSpouseId
+            );
+    
+            if (!previousSpouse) {
+                console.warn('Previous spouse not found in household members.');
+            } else {
+                console.log('Previous Spouse Data:', previousSpouse);
+            
+                // Parse the age string into numeric years
+                const ageParts = previousSpouse.age
+                    .replace(/Years|Months|Days|,/g, '')
+                    .trim()
+                    .split(/\s+/)
+                    .map(value => parseInt(value.trim()) || 0);
+                const spouseYears = ageParts[0]; // Extract the years part
+            
+                const spouseIsDisabled = previousSpouse.disability === 'yes'; // Check disability status
+                const spouseIsWidowed = previousSpouse.previousMaritalStatus?.toLowerCase() === 'widowed'; // Check marital status
+                const spouseResidenceStatus = previousSpouse.residenceStatus?.toLowerCase() || 'other'; // Check residence status
+            
+                // Log the values being used in the condition
+                console.log('Evaluating Previous Spouse Conditions:', {
+                    spouseYears,
+                    spouseIsDisabled,
+                    spouseIsWidowed,
+                    spouseResidenceStatus
+                });
+            
+                // Apply the conditions for the previous spouse
+                if (
+                    (spouseYears >= 18 && spouseIsDisabled && spouseResidenceStatus !== 'other') ||
+                    (spouseYears >= 50 && spouseIsWidowed && spouseResidenceStatus !== 'other') ||
+                    (spouseYears >= 65) // Age-only condition for seniors
+                ) {
+                    console.log('Previous spouse meets conditions.');
+                    previousSpouseMeetsConditions = true;
+                } else {
+                    console.log('Previous spouse does not meet conditions.');
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching or processing client data:', error);
+        }
+    }
+
     if (
+        previousSpouseMeetsConditions ||
         ((years >= 18 && isDisabled) && residenceStatus !== 'other') ||
         ((years >= 50 && isWidowed) && residenceStatus !== 'other') ||
         (years >= 65 && residenceStatus !== 'other')
@@ -213,7 +275,8 @@ if (member.headOfHousehold === true) {
             years,
             isDisabled,
             isWidowed,
-            residenceStatus
+            residenceStatus,
+            previousSpouseMeetsConditions
         });
 
         try {
@@ -245,7 +308,8 @@ if (member.headOfHousehold === true) {
             years,
             isDisabled,
             isWidowed,
-            residenceStatus
+            residenceStatus,
+            previousSpouseMeetsConditions
         });
         await saveDefaultSelection(clientId, member.householdMemberId, "Has this person already applied for PTRR this year?", "Not Interested");
     }
@@ -272,79 +336,83 @@ if (member.headOfHousehold === true) {
             });
 
             // Modify the event listener for saving selections
-memberDiv.querySelectorAll('.selection-option').forEach(option => {
-    option.addEventListener('click', async function () {
-        const parent = this.parentElement;
-        parent.querySelectorAll('.selection-option').forEach(sibling => sibling.classList.remove('selected'));
-        this.classList.add('selected');
-
-        const question = parent.querySelector('label').innerText.trim();
-        const value = this.dataset.value;
-
-        // Save the selection immediately
-        await fetch('/save-household-member-selection', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                clientId,
-                memberId: member.householdMemberId,
-                question,
-                value
-            })
-        });
-
-        console.log(`Saved: Question = "${question}", Value = "${value}"`);
-
-        // Handle special logic for Pennsylvania residency question
-        if (question === "Has this person lived in Pennsylvania for at least the last 90 consecutive days?") {
-            const paceQuestion = memberDiv.querySelector('.pace-question');
-            if (value === 'yes') {
-                paceQuestion.style.display = 'block';
-                await fetch('/save-household-member-selection', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        clientId,
-                        memberId: member.householdMemberId,
-                        question: "Is this person currently enrolled in PACE?",
-                        value: null
-                    })
+            memberDiv.querySelectorAll('.selection-option').forEach(option => {
+                option.addEventListener('click', async function () {
+                    const parent = this.parentElement;
+                    parent.querySelectorAll('.selection-option').forEach(sibling => sibling.classList.remove('selected'));
+                    this.classList.add('selected');
+            
+                    const question = parent.querySelector('label').innerText.trim();
+                    const value = this.dataset.value;
+            
+                    // Save the selection immediately
+                    await fetch('/save-household-member-selection', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            clientId,
+                            memberId: member.householdMemberId,
+                            question,
+                            value
+                        })
+                    });
+            
+                    console.log(`Saved: Question = "${question}", Value = "${value}"`);
+            
+                    // Handle special logic for Pennsylvania residency question
+                    if (question === "Has this person lived in Pennsylvania for at least the last 90 consecutive days?") {
+                        const paceQuestion = memberDiv.querySelector('.pace-question');
+                        if (value === 'yes') {
+                            paceQuestion.style.display = 'block';
+                            await fetch('/save-household-member-selection', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    clientId,
+                                    memberId: member.householdMemberId,
+                                    question: "Is this person currently enrolled in PACE?",
+                                    value: null
+                                })
+                            });
+                        } else {
+                            paceQuestion.style.display = 'none';
+                            paceQuestion.querySelectorAll('.selection-option').forEach(paceOption => {
+                                paceOption.classList.remove('selected');
+                            });
+                            await fetch('/save-household-member-selection', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    clientId,
+                                    memberId: member.householdMemberId,
+                                    question: "Is this person currently enrolled in PACE?",
+                                    value: "residencynotmet"
+                                })
+                            });
+                        }
+                    }
+            
+                    // Run all eligibility checks after saving
+                    const members = await loadHouseholdMembers(); // Reload household members after saving
+                    await window.eligibilityChecks.PACEEligibilityCheck(members);
+                    await window.eligibilityChecks.LISEligibilityCheck(members);
+                    await window.eligibilityChecks.MSPEligibilityCheck(members);
+                    await window.eligibilityChecks.PTRREligibilityCheck(members);
+                    await window.eligibilityChecks.SNAPEligibilityCheck(members);
+                    await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
+            
+                    // Optionally update the UI
+                    await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
+                    await window.eligibilityChecks.displaySNAPHouseholds();
+                    await window.eligibilityChecks.displayLIHEAPHouseholds();
                 });
-            } else {
-                paceQuestion.style.display = 'none';
-                paceQuestion.querySelectorAll('.selection-option').forEach(paceOption => {
-                    paceOption.classList.remove('selected');
-                });
-                await fetch('/save-household-member-selection', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        clientId,
-                        memberId: member.householdMemberId,
-                        question: "Is this person currently enrolled in PACE?",
-                        value: "residencynotmet"
-                    })
-                });
-            }
-        }
-
-        // Trigger eligibility checks after saving
-        const members = await window.eligibilityChecks.loadHouseholdMembers();
-        await window.eligibilityChecks.PACEEligibilityCheck(members);
-        await window.eligibilityChecks.LISEligibilityCheck(members);
-        await window.eligibilityChecks.MSPEligibilityCheck(members);
-        await window.eligibilityChecks.PTRREligibilityCheck(members);
-
-        // Optionally update the UI
-        await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
-    });
-});
+            });
 
             return true; // Member has questions and was appended
         }
@@ -369,15 +437,22 @@ memberDiv.querySelectorAll('.selection-option').forEach(option => {
                 if (a.headOfHousehold === b.headOfHousehold) return 0;
                 return a.headOfHousehold ? -1 : 1;
             });
-    
-            for (const member of members) {
-                const wasAppended = await addHouseholdMemberToUI(member);
-                if (wasAppended) {
-                    appendedMembers++;
-                }
+
+            
+        // Log the previousSpouseId for the head of household
+        const headOfHousehold = members.find(member => member.headOfHousehold === true);
+        if (headOfHousehold) {
+            console.log('Head of Household Previous Spouse ID:', headOfHousehold.previousSpouseId);
+        }
+
+        for (const member of members) {
+            const wasAppended = await addHouseholdMemberToUI(member);
+            if (wasAppended) {
+                appendedMembers++;
             }
         }
     }
+}
 
     // Helper function to save default selection
     async function saveDefaultSelection(clientId, memberId, question, value) {

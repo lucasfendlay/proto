@@ -202,14 +202,24 @@ if (
     memberDiv.appendChild(addCurrentYearIncomeButton);
 }
     
-                if (member.selections?.['Is this person currently enrolled in PACE?'] === 'no' || member.selections?.['Has this person already applied for PTRR this year?'] === 'no') {
-                    const addPreviousYearIncomeButton = document.createElement('button');
-                    addPreviousYearIncomeButton.classList.add('add-income-button');
-                    addPreviousYearIncomeButton.dataset.memberId = member.householdMemberId;
-                    addPreviousYearIncomeButton.dataset.type = 'Previous';
-                    addPreviousYearIncomeButton.textContent = 'Add Previous Year Income';
-                    memberDiv.appendChild(addPreviousYearIncomeButton);
-                }
+if (
+    member.selections?.['Is this person currently enrolled in PACE?'] === 'no' ||
+    member.selections?.['Has this person already applied for PTRR this year?'] === 'no' ||
+    (member.previousSpouseId && members.some(spouse =>
+        spouse.householdMemberId === member.previousSpouseId &&
+        (
+            spouse.selections?.['Is this person currently enrolled in PACE?'] === 'no' ||
+            spouse.selections?.['Has this person already applied for PTRR this year?'] === 'no'
+        )
+    ))
+) {
+    const addPreviousYearIncomeButton = document.createElement('button');
+    addPreviousYearIncomeButton.classList.add('add-income-button');
+    addPreviousYearIncomeButton.dataset.memberId = member.householdMemberId;
+    addPreviousYearIncomeButton.dataset.type = 'Previous';
+    addPreviousYearIncomeButton.textContent = 'Add Previous Year Income';
+    memberDiv.appendChild(addPreviousYearIncomeButton);
+}
     
                 householdMemberContainer.appendChild(memberDiv);
             });

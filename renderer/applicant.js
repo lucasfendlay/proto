@@ -91,25 +91,51 @@ async function loadSavedData() {
             });
 
             // Collect all members to display, including spouses
-            const membersToDisplay = new Set();
-            applyingMembers.forEach(member => {
-                membersToDisplay.add(member);
+const membersToDisplay = new Set();
+applyingMembers.forEach(member => {
+    membersToDisplay.add(member);
 
-                // Check if the member has a spouse and add them to the display list
-                const spouseId = member.relationships?.find(rel => rel.relationship === 'spouse')?.relatedMemberId;
-                if (spouseId) {
-                    const spouse = clientData.householdMembers.find(m => m.householdMemberId === spouseId);
-                    if (spouse) {
-                        membersToDisplay.add(spouse);
-                    }
-                }
-            });
+    // Check if the member is applying for PACE or PTRR
+    const isApplyingForPACEorPTRR = ['PACE', 'PTRR'].some(benefit =>
+        member[benefit]?.application?.some(app => app.applying === true)
+    );
 
-            // Display the members in the container
-            if (membersToDisplay.size === 0) {
-                householdMemberContainer.innerHTML = '<p>No members are currently applying for benefits.</p>';
-                return;
+    // If applying for PACE or PTRR, check for a valid `previousSpouseId` and add the spouse
+    if (isApplyingForPACEorPTRR && member.previousSpouseId) {
+        const spouse = clientData.householdMembers.find(m => m.householdMemberId === member.previousSpouseId);
+        if (spouse) {
+            console.log(`Found spouse for ${member.firstName} ${member.lastName} (PACE/PTRR): ${spouse.firstName} ${spouse.lastName}`);
+            membersToDisplay.add(spouse);
+        } else {
+            console.warn(`No valid spouse found for ${member.firstName} ${member.lastName} with previousSpouseId: ${member.previousSpouseId}`);
+        }
+    }
+
+    // Check if the member is applying for LIS or MSP
+    const isApplyingForLISorMSP = ['LIS', 'MSP'].some(benefit =>
+        member[benefit]?.application?.some(app => app.applying === true)
+    );
+
+    // If applying for LIS or MSP, check for a spouse in the `relationships` array and add them
+    if (isApplyingForLISorMSP) {
+        const spouseId = member.relationships?.find(rel => rel.relationship === 'spouse')?.relatedMemberId;
+        if (spouseId) {
+            const spouse = clientData.householdMembers.find(m => m.householdMemberId === spouseId);
+            if (spouse) {
+                console.log(`Found spouse for ${member.firstName} ${member.lastName} (LIS/MSP): ${spouse.firstName} ${spouse.lastName}`);
+                membersToDisplay.add(spouse);
+            } else {
+                console.warn(`No valid spouse found for ${member.firstName} ${member.lastName} in relationships array.`);
             }
+        }
+    }
+});
+
+// Display the members in the container
+if (membersToDisplay.size === 0) {
+    householdMemberContainer.innerHTML = '<p>No members are currently applying for benefits.</p>';
+    return;
+}
 
             Array.from(membersToDisplay).forEach(member => {
                 const memberElement = document.createElement('div');

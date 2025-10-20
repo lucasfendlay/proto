@@ -188,7 +188,14 @@ document.getElementById('expense-kind').addEventListener('change', function () {
                         }
                         ${
                             (member.selections?.["Has this person already applied for PTRR this year?"]?.toLowerCase() === "no" ||
-                             member.selections?.["Is this person currently enrolled in PACE?"]?.toLowerCase() === "no")
+                             member.selections?.["Is this person currently enrolled in PACE?"]?.toLowerCase() === "no" ||
+                             (member.previousSpouseId && members.some(spouse =>
+                                spouse.householdMemberId === member.previousSpouseId &&
+                                (
+                                    spouse.selections?.["Has this person already applied for PTRR this year?"]?.toLowerCase() === "no" ||
+                                    spouse.selections?.["Is this person currently enrolled in PACE?"]?.toLowerCase() === "no"
+                                )
+                            )))
                                 ? `<button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Previous Year">Add Previous Year Expense</button>`
                                 : ''
                         }

@@ -683,30 +683,26 @@ async function PACEEligibilityCheck(members) {
         }
     }
 
-    // Step 2: Calculate combined income and eligibility
-    for (const member of members) {
-        try {
-            const spouse = members.find(m => {
-                return (
-                    m.householdMemberId === member.relationships?.find(r => r.relationship === 'spouse')?.relatedMemberId &&
-                    member.relationships?.find(r => r.relatedMemberId === m.householdMemberId)?.relationship === 'spouse'
-                );
-            });
+// Step 2: Calculate combined income and eligibility
+for (const member of members) {
+    try {
+        // Use the previousSpouseId field to find the spouse
+        const spouse = members.find(m => m.householdMemberId === member.previousSpouseId);
 
-            if (spouse) {
-                console.log(`Spouse found: ${spouse.firstName} ${spouse.lastName}`);
+        if (spouse) {
+            console.log(`Spouse found: ${spouse.firstName} ${spouse.lastName}`);
 
-                const memberIncome = Number(member.adjustedIncome) || 0;
-                const spouseIncome = Number(spouse.adjustedIncome) || 0;
+            const memberIncome = Number(member.adjustedIncome) || 0;
+            const spouseIncome = Number(spouse.adjustedIncome) || 0;
 
-                member.combinedIncome = memberIncome + spouseIncome;
-                spouse.combinedIncome = member.combinedIncome;
+            member.combinedIncome = memberIncome + spouseIncome;
+            spouse.combinedIncome = member.combinedIncome;
 
-                console.log(`Combined income for ${member.firstName} ${member.lastName} and ${spouse.firstName} ${spouse.lastName}: $${member.combinedIncome}`);
-            } else {
-                console.log(`No spouse found for ${member.firstName} ${member.lastName}`);
-                member.combinedIncome = member.adjustedIncome;
-            }
+            console.log(`Combined income for ${member.firstName} ${member.lastName} and ${spouse.firstName} ${spouse.lastName}: $${member.combinedIncome}`);
+        } else {
+            console.log(`No spouse found for ${member.firstName} ${member.lastName}`);
+            member.combinedIncome = member.adjustedIncome;
+        }
     
                // Eligibility checks
 const eligibility = [];
@@ -821,167 +817,149 @@ async function PTRREligibilityCheck(members) {
     // Process only head of household members
     for (const member of headOfHouseholdMembers) {
         try {
-                // Step 1: Calculate total gross income for the previous year
-                const incomes = member.income || [];
-                const previousYearIncomes = incomes.filter(income => income.type && income.type.toLowerCase() === "previous");
-    
-                // Calculate total gross income for the previous year
-                const currentYear = new Date().getFullYear();
-                const previousYear = currentYear - 1;
-                const previousYearStart = new Date(`${previousYear}-01-01`);
-                const previousYearEnd = new Date(`${previousYear}-12-31`);
-    
-                let totalGrossIncome = previousYearIncomes.reduce((sum, income) => {
+            // Step 1: Calculate total gross income for the previous year
+            const incomes = member.income || [];
+            const previousYearIncomes = incomes.filter(income => income.type && income.type.toLowerCase() === "previous");
+
+            const currentYear = new Date().getFullYear();
+            const previousYear = currentYear - 1;
+            const previousYearStart = new Date(`${previousYear}-01-01`);
+            const previousYearEnd = new Date(`${previousYear}-12-31`);
+
+            let totalGrossIncome = previousYearIncomes.reduce((sum, income) => {
+                let yearlyAmount = calculateYearlyIncome(
+                    income.amount,
+                    income.frequency,
+                    income.startDate,
+                    income.endDate
+                );
+
+                // If income kind is "Social Security Retirement" or "Railroad Retirement", divide by 2
+                if (
+                    income.kind?.toLowerCase() === "ssa retirement" ||
+                    income.kind?.toLowerCase() === "ssi" ||
+                    income.kind?.toLowerCase() === "ssp" ||
+                    income.kind?.toLowerCase() === "ssdi" ||
+                    income.kind?.toLowerCase() === "railroad retirement tier 1"
+                ) {
+                    yearlyAmount /= 2;
+                }
+
+                // Only include income active during the previous year
+                const incomeStart = new Date(income.startDate);
+                const incomeEnd = income.endDate ? new Date(income.endDate) : new Date();
+
+                if (incomeStart <= previousYearEnd && incomeEnd >= previousYearStart) {
+                    const activeStart = incomeStart < previousYearStart ? previousYearStart : incomeStart;
+                    const activeEnd = incomeEnd > previousYearEnd ? previousYearEnd : incomeEnd;
+
+                    const activeDays = Math.min((activeEnd - activeStart) / (1000 * 60 * 60 * 24) + 1, 365);
+                    const proratedMultiplier = activeDays / 365; // Prorate for the active days in the year
+                    return sum + yearlyAmount * proratedMultiplier;
+                }
+
+                return sum;
+            }, 0);
+
+            // Combine incomes with spouse if applicable
+            const spouse = members.find(m => m.householdMemberId === member.previousSpouseId);
+
+            if (spouse) {
+                const spouseIncomes = spouse.income || [];
+                const spousePreviousYearIncomes = spouseIncomes.filter(income => income.type && income.type.toLowerCase() === "previous");
+
+                let spouseTotalGrossIncome = spousePreviousYearIncomes.reduce((sum, income) => {
                     let yearlyAmount = calculateYearlyIncome(
                         income.amount,
                         income.frequency,
                         income.startDate,
                         income.endDate
                     );
-                
-                    // If income kind is "Social Security Retirement" or "Railroad Retirement", divide by 2
+
                     if (
-                        income.kind?.toLowerCase() === "ssa retirement" || // Case-insensitive comparison
-                        income.kind?.toLowerCase() === "railroad retirement"
+                        income.kind?.toLowerCase() === "ssa retirement" ||
+                        income.kind?.toLowerCase() === "ssi" ||
+                        income.kind?.toLowerCase() === "ssp" ||
+                        income.kind?.toLowerCase() === "ssdi" ||
+                        income.kind?.toLowerCase() === "railroad retirement tier 1"
                     ) {
                         yearlyAmount /= 2;
                     }
-                
-                    // Only include income active during the previous year
+
                     const incomeStart = new Date(income.startDate);
                     const incomeEnd = income.endDate ? new Date(income.endDate) : new Date();
-                
+
                     if (incomeStart <= previousYearEnd && incomeEnd >= previousYearStart) {
                         const activeStart = incomeStart < previousYearStart ? previousYearStart : incomeStart;
                         const activeEnd = incomeEnd > previousYearEnd ? previousYearEnd : incomeEnd;
-                
+
                         const activeDays = Math.min((activeEnd - activeStart) / (1000 * 60 * 60 * 24) + 1, 365);
-                        const proratedMultiplier = activeDays / 365; // Prorate for the active days in the year
+                        const proratedMultiplier = activeDays / 365;
                         return sum + yearlyAmount * proratedMultiplier;
                     }
-                
+
                     return sum;
                 }, 0);
-    
-                // Combine incomes with spouse if applicable
-                const spouse = members.find(m => {
-                    return (
-                        m.householdMemberId === member.relationships?.find(r => r.relationship === 'spouse')?.relatedMemberId &&
-                        member.relationships?.find(r => r.relatedMemberId === m.householdMemberId)?.relationship === 'spouse'
-                    );
-                });
-    
-                if (spouse) {
-                    console.log(`Spouse found: ${spouse.firstName} ${spouse.lastName}`);
-    
-                    const spouseIncomes = spouse.income || [];
-                    const spousePreviousYearIncomes = spouseIncomes.filter(income => income.type && income.type.toLowerCase() === "previous");
-    
-                    let spouseTotalGrossIncome = spousePreviousYearIncomes.reduce((sum, income) => {
-                        const yearlyAmount = calculateYearlyIncome(
-                            income.amount,
-                            income.frequency,
-                            income.startDate,
-                            income.endDate
-                        );
-    
-                        const incomeStart = new Date(income.startDate);
-                        const incomeEnd = income.endDate ? new Date(income.endDate) : new Date();
-    
-                        if (incomeStart <= previousYearEnd && incomeEnd >= previousYearStart) {
-                            const activeStart = incomeStart < previousYearStart ? previousYearStart : incomeStart;
-                            const activeEnd = incomeEnd > previousYearEnd ? previousYearEnd : incomeEnd;
-    
-                            const activeDays = Math.min((activeEnd - activeStart) / (1000 * 60 * 60 * 24) + 1, 365);
-                            const proratedMultiplier = activeDays / 365;
-                            return sum + yearlyAmount * proratedMultiplier;
-                        }
-    
-                        return sum;
-                    }, 0);
-    
-                    totalGrossIncome += spouseTotalGrossIncome;
-                }
-    
-                console.log(`Total gross income for ${member.firstName} ${member.lastName}: $${totalGrossIncome}`);
-    
-                // Step 2: Determine PTRR eligibility
-                const eligibility = [];
-    
-                const applicationStatus = member.selections?.["Has this person already applied for PTRR this year?"]?.toLowerCase();
-                const dob = new Date(member.dob);
-                const today = new Date();
-                let age = today.getFullYear() - dob.getFullYear();
-                const isDisabled = member.disability?.toLowerCase() === "yes";
-                const isWidowed = member.previousMaritalStatus?.toLowerCase() === "widowed";
-    
-                if (
-                    today.getMonth() < dob.getMonth() ||
-                    (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate())
-                ) {
-                    age--;
-                }
-    
-                if (member.residenceStatus?.toLowerCase() === "other") {
-                    eligibility.push("No Formal Lease");
-                    delete member.selections?.["Has this person already applied for PTRR this year?"];
-                } else if (applicationStatus === "yes") {
-                    eligibility.push("Already Applied");
-                } else if (!(age >= 18 && isDisabled) && !(age >= 50 && isWidowed) && !(age >= 65)) {
-    eligibility.push("Age, Disability, or Widow Status Criteria Not Met");
-    member.selections = member.selections || {};
-    member.selections["Has this person already applied for PTRR this year?"] = "agecriterianotmet";
-} else if (!applicationStatus || applicationStatus.toLowerCase().trim() === "n/a" || 
-                applicationStatus.toLowerCase().trim() === "not interested" || 
-                applicationStatus.toLowerCase().trim() === "agecriterianotmet") {
-         eligibility.push("Needs Current Enrollment Status");
-        } else if (applicationStatus === "notinterested") {
-            eligibility.push("Not Interested");
-     } else if (applicationStatus.toLowerCase().trim() === "no" && totalGrossIncome > 46520) {
-                    eligibility.push("Not Likely Eligible for PTRR (Income)");
-                } else {
-                    const relevantExpenses = (member.expenses || []).filter(expense =>
-                        (expense.kind?.trim() === "Property Taxes" || expense.kind?.trim() === "Rent") &&
-                        expense.type?.trim() === "Previous Year"
-                    );
-    
-                    if (applicationStatus.toLowerCase().trim() === "no" && relevantExpenses.length === 0) {
-                        eligibility.push("Not Likely Eligible for PTRR (No Relevant Expenses)");
-                    } else {
-                        eligibility.push("Likely Eligible for PTRR");
-                    }
-                }
-    
-                member.PTRR = {
-                    combinedIncome: totalGrossIncome,
-                    eligibility: eligibility
-                };
-    
-                console.log(`PTRR object for ${member.firstName} ${member.lastName}:`, member.PTRR);
-            } catch (error) {
-                console.error(`Error processing member ${member.firstName} ${member.lastName}:`, error);
-            }
-        }
-    
-        // Save the updated members array using a REST API call
-const clientId = getQueryParameter('id'); // Get the client ID from the query parameter
-try {
-    const response = await fetch(`/save-household-members`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ clientId, householdMembers: members }),
-    });
 
-    if (response.ok) {
-        console.log('Household members saved successfully.');
-    } else {
-        console.error('Failed to save household members:', response.statusText);
+                totalGrossIncome += spouseTotalGrossIncome;
+            }
+
+            console.log(`Total gross income for ${member.firstName} ${member.lastName}: $${totalGrossIncome}`);
+
+            // Step 2: Determine PTRR eligibility
+            const eligibility = [];
+
+            const applicationStatus = member.selections?.["Has this person already applied for PTRR this year?"]?.toLowerCase();
+            const relevantExpenses = (member.expenses || []).filter(expense =>
+                (expense.kind?.trim() === "Property Taxes" || expense.kind?.trim() === "Rent") &&
+                expense.type?.trim() === "Previous Year"
+            );
+
+            if (!applicationStatus || applicationStatus === "n/a") {
+                eligibility.push("Needs Current Enrollment Status");
+            } else if (applicationStatus === "notinterested") {
+                eligibility.push("Not Interested");
+            } else if (applicationStatus === "yes") {
+                eligibility.push("Already Applied");
+            } else if (applicationStatus === "no" && totalGrossIncome > 46520) {
+                eligibility.push("Not Likely Eligible for PTRR (Income)");
+            } else if (applicationStatus === "no" && relevantExpenses.length === 0) {
+                eligibility.push("Not Likely Eligible for PTRR (No Relevant Expenses)");
+            } else {
+                eligibility.push("Likely Eligible for PTRR");
+            }
+
+            member.PTRR = {
+                combinedIncome: totalGrossIncome,
+                eligibility: eligibility
+            };
+
+            console.log(`PTRR object for ${member.firstName} ${member.lastName}:`, member.PTRR);
+        } catch (error) {
+            console.error(`Error processing member ${member.firstName} ${member.lastName}:`, error);
+        }
     }
-} catch (error) {
-    console.error('Error saving household members:', error);
-}}
+
+    // Save the updated members array using a REST API call
+    const clientId = getQueryParameter('id');
+    try {
+        const response = await fetch(`/save-household-members`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ clientId, householdMembers: members }),
+        });
+
+        if (response.ok) {
+            console.log('Household members saved successfully.');
+        } else {
+            console.error('Failed to save household members:', response.statusText);
+        }
+    } catch (error) {
+        console.error('Error saving household members:', error);
+    }
+}
 
     async function LISEligibilityCheck(members) {
         for (const member of members) {

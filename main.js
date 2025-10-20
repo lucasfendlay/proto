@@ -1182,3 +1182,40 @@ app.post('/send-email', upload.single('file'), async (req, res) => {
         res.status(500).json({ success: false, message: 'Failed to send email.' });
     }
 });
+
+app.post('/upload-to-profile', upload.single('file'), async (req, res) => {
+    const { file } = req;
+    const { clientId, note } = req.body;
+
+    if (!file || !clientId) {
+        return res.status(400).json({ success: false, message: 'File or client ID is missing.' });
+    }
+
+    try {
+        // Save the file information and note to the client's notes array in the database
+        const collection = db.collection('clients');
+        const result = await collection.updateOne(
+            { id: clientId }, // Find the client by clientId
+            {
+                $push: {
+                    notes: {
+                        fileName: file.originalname,
+                        filePath: file.path,
+                        note,
+                        uploadedAt: new Date(),
+                    },
+                },
+            },
+            { upsert: false } // Ensure the client must exist (do not create a new client)
+        );
+
+        if (result.modifiedCount > 0) {
+            res.json({ success: true, message: 'File uploaded and associated with the client profile.' });
+        } else {
+            res.status(404).json({ success: false, message: 'Client not found.' });
+        }
+    } catch (error) {
+        console.error('Error uploading file to client profile:', error);
+        res.status(500).json({ success: false, message: 'Failed to upload file to client profile.' });
+    }
+});

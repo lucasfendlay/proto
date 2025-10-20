@@ -254,6 +254,62 @@ document.addEventListener('DOMContentLoaded', async function () {
                     </div>
                 `;
     
+                // Check if the member has previousMaritalStatus: married (living together)
+                if (member.previousMaritalStatus === 'Married (Living Together)') {
+                    const spouseDropdownContainer = document.createElement('div');
+                    spouseDropdownContainer.classList.add('spouse-dropdown-container');
+                    spouseDropdownContainer.innerHTML = `
+                        <label for="spouse-dropdown-${member.householdMemberId}"><strong>Select Previous Year Spouse:</strong></label>
+                        <select id="spouse-dropdown-${member.householdMemberId}" class="spouse-dropdown">
+                            <option value="">Select a household member</option>
+                        </select>
+                    `;
+    
+                    // Populate the dropdown with other household members
+                    const spouseDropdown = spouseDropdownContainer.querySelector('.spouse-dropdown');
+                    members
+                        .filter(otherMember => otherMember.householdMemberId !== member.householdMemberId) // Exclude the HOH
+                        .forEach(otherMember => {
+                            const option = document.createElement('option');
+                            option.value = otherMember.householdMemberId;
+                            option.textContent = `${otherMember.firstName} ${otherMember.middleInitial || ''} ${otherMember.lastName}`;
+                            spouseDropdown.appendChild(option);
+                        });
+    
+                    // Prepopulate the dropdown with the saved previousSpouseId
+                    if (member.previousSpouseId) {
+                        spouseDropdown.value = member.previousSpouseId;
+                    }
+    
+// Add event listener to handle spouse selection
+spouseDropdown.addEventListener('change', async function () {
+    const selectedSpouseId = this.value;
+    if (selectedSpouseId) {
+        console.log(`Selected spouse for HOH (${member.householdMemberId}): ${selectedSpouseId}`);
+        
+        // Save the selected spouse ID into the HOH's previousSpouseId field
+        await savePreviousSpouseId(member.householdMemberId, selectedSpouseId);
+
+        // Run PACE and PTRR eligibility checks
+        const members = await loadHouseholdMembers(); // Reload household members after saving
+        await window.eligibilityChecks.PACEEligibilityCheck(members);
+        await window.eligibilityChecks.LISEligibilityCheck(members);
+        await window.eligibilityChecks.MSPEligibilityCheck(members);
+        await window.eligibilityChecks.PTRREligibilityCheck(members);
+        await window.eligibilityChecks.SNAPEligibilityCheck(members);
+        await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
+
+        // Optionally update the UI
+        await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
+        await window.eligibilityChecks.displaySNAPHouseholds();
+        await window.eligibilityChecks.displayLIHEAPHouseholds();
+        }
+
+});
+    
+                    memberDiv.appendChild(spouseDropdownContainer);
+                }
+    
                 // Add dropdowns for relationships with other members
                 const relationshipsContainer = memberDiv.querySelector('.relationships-container');
                 members
@@ -270,7 +326,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                                 <option value="parent">Parent</option>
                                 <option value="child">Child</option>
                                 <option value="sibling">Sibling</option>
-                                <option value=" half-sibling">Half-Sibling</option>
+                                <option value="half-sibling">Half-Sibling</option>
                                 <option value="grandparent">Grandparent</option>
                                 <option value="grandchild">Grandchild</option>
                                 <option value="step-parent">Step-Parent</option>
@@ -285,7 +341,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                                 <option value="foster child">Foster Child</option>
                                 <option value="guardian">Guardian</option>
                                 <option value="ward">Ward</option>
-                                <option value="other"> Other Relationship</option>
+                                <option value="other">Other Relationship</option>
                                 <option value="unrelated">Unrelated</option>
                             </select>
                         `;
@@ -329,7 +385,6 @@ document.addEventListener('DOMContentLoaded', async function () {
             });
         }
     
-    
         // Add action buttons below the household member containers
         const actionButtonsDiv = document.createElement('div');
         actionButtonsDiv.classList.add('action-buttons');
@@ -343,6 +398,87 @@ document.addEventListener('DOMContentLoaded', async function () {
     // Display household members on page load
     await displayHouseholdMembers();
 });
+
+async function savePreviousSpouseId(memberId, previousSpouseId) {
+    const clientId = getQueryParameter('id'); // Retrieve the client ID from the URL
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
+
+    try {
+        // Update the member being edited
+        const payloadForMember = {
+            clientId,
+            member: {
+                householdMemberId: memberId,
+                previousSpouseId
+            }
+        };
+
+        console.log('Payload for member being edited:', payloadForMember);
+
+        const responseForMember = await fetch(`/update-household-member`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payloadForMember),
+        });
+
+        if (!responseForMember.ok) {
+            throw new Error(`Failed to save previousSpouseId for member: ${responseForMember.statusText}`);
+        }
+
+        console.log(`Successfully updated previousSpouseId for member ${memberId} to ${previousSpouseId}`);
+
+        // Update the selected spouse to point back to the member being edited
+        const payloadForSpouse = {
+            clientId,
+            member: {
+                householdMemberId: previousSpouseId,
+                previousSpouseId: memberId
+            }
+        };
+
+        console.log('Payload for selected spouse:', payloadForSpouse);
+
+        const responseForSpouse = await fetch(`/update-household-member`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payloadForSpouse),
+        });
+
+        if (!responseForSpouse.ok) {
+            throw new Error(`Failed to save previousSpouseId for selected spouse: ${responseForSpouse.statusText}`);
+        }
+
+        console.log(`Successfully updated previousSpouseId for spouse ${previousSpouseId} to ${memberId}`);
+
+        // Update both dropdowns automatically
+        updateSpouseDropdowns(memberId, previousSpouseId);
+    } catch (error) {
+        console.error('Error saving previousSpouseId:', error);
+    }
+}
+
+// Function to update both dropdowns automatically
+function updateSpouseDropdowns(memberId, previousSpouseId) {
+    const memberDropdown = document.querySelector(`#spouse-dropdown-${memberId}`);
+    const spouseDropdown = document.querySelector(`#spouse-dropdown-${previousSpouseId}`);
+
+    if (memberDropdown) {
+        memberDropdown.value = previousSpouseId;
+        console.log(`Updated dropdown for member ${memberId} to show spouse ${previousSpouseId}`);
+    }
+
+    if (spouseDropdown) {
+        spouseDropdown.value = memberId;
+        console.log(`Updated dropdown for spouse ${previousSpouseId} to show member ${memberId}`);
+    }
+}
 
 // Helper function to get query parameters
 function getQueryParameter(name) {

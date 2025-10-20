@@ -1573,16 +1573,22 @@ if (ssnInput.value && /^\d{3}-\d{2}-\d{4}$/.test(ssnInput.value)) { // Check if 
             if (member.headOfHousehold) {
                 previousMaritalStatusContainer.style.display = 'block';
             } else {
-                previousMaritalStatusContainer.style.display = 'none';
+                // Check if the member is within 30 days of their 65th birthday
+                const today = new Date();
+                const dob = new Date(member.dob);
+                const ageInDays = Math.floor((today - dob) / (1000 * 60 * 60 * 24)); // Calculate age in days
+                const daysUntil65 = (65 * 365) - ageInDays;
+        
+                if (daysUntil65 <= 30) {
+                    previousMaritalStatusContainer.style.display = 'block';
+                } else {
+                    previousMaritalStatusContainer.style.display = 'none';
+                }
             }
         } else {
             // Show if there is no head of household
             previousMaritalStatusContainer.style.display = 'block';
-        }
-    } else {
-        console.error('Failed to fetch client data for editing.');
-    }
-
+        }}
     // Step 5: Set up the button for updating the member
     setupAddOrUpdateButton(true, member);
 
@@ -1604,7 +1610,7 @@ async function updateHouseholdMember(memberId) {
         const lastName = document.getElementById('lastName').value.trim();
         const dob = document.getElementById('dob').value;
         const socialSecurityNumber = document.getElementById('socialSecurityNumber').value.trim();
-        const legalSex= document.getElementById('legalSex').value;
+        const legalSex = document.getElementById('legalSex').value;
         const maritalStatus = document.getElementById('maritalStatus').value;
         const previousMaritalStatus = document.getElementById('previousMaritalStatus').value;
         const nonCitizenStatus = document.getElementById('nonCitizenStatus').value;
@@ -1689,6 +1695,45 @@ async function updateHouseholdMember(memberId) {
         if (studentStatus.toLowerCase() === 'ineligible student') {
             updatedMemberData.meals = 'no';
         }
+
+// Check if previousMaritalStatus is not "Married (Living Together)"
+if (previousMaritalStatus !== 'Married (Living Together)') {
+    // Fetch the current household members
+    const response = await fetch(`/get-client/${clientId}`);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch client data: ${response.statusText}`);
+    }
+    const clientData = await response.json();
+
+    if (clientData && clientData.householdMembers) {
+        // Find the current member and their previous spouse
+        const currentMember = clientData.householdMembers.find((m) => m.householdMemberId === memberId);
+        const previousSpouseId = currentMember?.previousSpouseId;
+
+        if (previousSpouseId) {
+            // Find the previous spouse and remove their reference to the current member
+            const previousSpouse = clientData.householdMembers.find((m) => m.householdMemberId === previousSpouseId);
+            if (previousSpouse) {
+                previousSpouse.previousSpouseId = ""; // Clear the previousSpouseId field
+
+                // Update the previous spouse in the backend
+                await fetch(`/update-household-member`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        clientId,
+                        member: previousSpouse,
+                    }),
+                });
+            }
+
+            // Clear the previousSpouseId from the current member
+            updatedMemberData.previousSpouseId = ""; // Set to an empty string
+        }
+    }
+}
 
         // Send the updated data to the backend
         const response = await fetch(`/update-household-member`, {
