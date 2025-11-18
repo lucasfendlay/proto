@@ -6,6 +6,16 @@
     <title>Prototype Build Login</title>
     <style>
         
+.container input {
+        width: calc(100% - 20px); /* Adjust width to fit within the container's padding */
+        padding: 10px;
+        margin: 10px 0;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        text-align: center; /* Center the text inside the input fields */
+        box-sizing: border-box; /* Include padding and border in the element's total width */
+    }
+
     body {
         display: flex;
         justify-content: center;
@@ -101,13 +111,16 @@
 </head>
 <body>
     <div class="container">
-        <h1>Prototype Build Login</h1>
+        <h1>LifeCycle</h1>
+        <h2>Comprehensive Benefits Screening and Application Suite</h2>
+        <h3>Author: Lucas Campbell Bampbelldie</h3>
         <form onsubmit="login(event)">
-            <input type="text" name="username" placeholder="Username" required>
-            <input type="password" name="password" placeholder="Password" required>
-            <button type="submit">Login</button>
+<input type="text" name="username" placeholder="Username" required style="text-align: center;">
+<input type="password" name="password" placeholder="Password" required style="text-align: center;">            
+<button type="submit">Login</button><br><br>
+<button class="create-account" onclick="window.location.href='create-account.html'">Create Account</button>
+
         </form>
-        <button class="create-account" onclick="window.location.href='create-account.html'">Create Account</button>
     </div>
 </body>
 </html>

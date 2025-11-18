@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- Flatpickr CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+</head>
+<body>
+    <h1>Admin Dashboard</h1>
+
+    <div class="container">
+
+        <button onclick="window.location.href='home.html'">Home</button>
+        <button onclick="window.location.href='directory.html'">Directory</button>
+        </div>
+
+    <!-- Filters Section -->
+    <div id="filters">
+        <label for="userSelect">Select User:</label>
+        <select id="userSelect">
+            <option value="">All Users</option>
+            <!-- Dynamically populate user options -->
+        </select>
+
+        <label for="startDate">Start Date:</label>
+        <input type="text" id="startDate" placeholder="Select Start Date">
+
+        <label for="endDate">End Date:</label>
+        <input type="text" id="endDate" placeholder="Select End Date">
+
+        <button id="generateReportButton">Generate Report</button>
+    </div>
+
+<!-- Report Section -->
+<div id="report" style="display: none;">
+    <h2>Report</h2>
+    <table id="reportTable" border="1">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Calls Logged</th>
+                <th>Screenings Initated</th>
+                <th>PACE Applications Completed</th>
+                <th>PTRR Applications Completed</th>
+                <th>LIS Applications Completed</th>
+                <th>MSP Applications Completed</th>
+                <th>SNAP Applications Completed</th>
+                <th>LIHEAP Applications Completed</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Dynamically populate report rows -->
+        </tbody>
+    </table>
+</div>
+
+    <!-- Flatpickr JS -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+    <script>
+        // Initialize Flatpickr for date inputs
+        flatpickr("#startDate", {
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "F j, Y",
+        });
+
+        flatpickr("#endDate", {
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "F j, Y",
+        });
+
+        // Fetch users and populate the user dropdown
+        async function populateUserDropdown() {
+            try {
+                const response = await fetch('/get-users');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const users = await response.json();
+                const userSelect = document.getElementById('userSelect');
+                users.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user.username;
+                    option.textContent = user.username;
+                    userSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error fetching users:', error);
+            }
+        }
+
+        // Call the function to populate the dropdown on page load
+        populateUserDropdown();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('generateReportButton').addEventListener('click', generateReport);
+        });
+
+        async function generateReport() {
+    const user = document.getElementById('userSelect').value;
+    const startDate = new Date(document.getElementById('startDate').value);
+    const endDate = new Date(document.getElementById('endDate').value);
+
+    try {
+        // Fetch all clients
+        const response = await fetch('/get-all-clients');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const { clients } = await response.json();
+
+        // Filter and process data
+        const filteredClients = clients.filter(client => {
+            const hasUser = !user || client.callLogs.some(log => log.agent === user);
+            const hasDateRange = client.callLogs.some(log => {
+                const logDate = new Date(log.timestamp);
+                return logDate >= startDate && logDate <= endDate;
+            });
+            return hasUser && hasDateRange;
+        });
+
+        // Generate report summary
+        const report = filteredClients.map(client => {
+            const callsLogged = client.callLogs.length;
+            const screeningsStarted = client.notes.filter(note =>
+                note.text.includes('New screening initiated.')
+            ).length;
+
+            // Count applications completed for each benefit type
+            const paceApplicationsCompleted = client.notes.filter(note =>
+                note.text.includes('PACE Application completed.')
+            ).length;
+            const ptrrApplicationsCompleted = client.notes.filter(note =>
+                note.text.includes('PTRR Application completed.')
+            ).length;
+            const lisApplicationsCompleted = client.notes.filter(note =>
+                note.text.includes('LIS Application completed.')
+            ).length;
+            const mspApplicationsCompleted = client.notes.filter(note =>
+                note.text.includes('MSP Application completed.')
+            ).length;
+            const snapApplicationsCompleted = client.notes.filter(note =>
+                note.text.includes('SNAP Application completed.')
+            ).length;
+            const liheapApplicationsCompleted = client.notes.filter(note =>
+                note.text.includes('LIHEAP Application completed.')
+            ).length;
+
+            return {
+                user: `${client.firstName} ${client.lastName}`,
+                callsLogged,
+                screeningsStarted,
+                paceApplicationsCompleted,
+                ptrrApplicationsCompleted,
+                lisApplicationsCompleted,
+                mspApplicationsCompleted,
+                snapApplicationsCompleted,
+                liheapApplicationsCompleted
+            };
+        });
+
+        // Render the report in the table
+        const tableBody = document.querySelector('#reportTable tbody');
+        tableBody.innerHTML = ''; // Clear existing rows
+
+        report.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><a href="userProfiles.html?username=${encodeURIComponent(row.user)}">${row.user}</a></td>
+                <td>${row.callsLogged}</td>
+                <td>${row.screeningsStarted}</td>
+                <td>${row.paceApplicationsCompleted}</td>
+                <td>${row.ptrrApplicationsCompleted}</td>
+                <td>${row.lisApplicationsCompleted}</td>
+                <td>${row.mspApplicationsCompleted}</td>
+                <td>${row.snapApplicationsCompleted}</td>
+                <td>${row.liheapApplicationsCompleted}</td>
+            `;
+            tableBody.appendChild(tr);
+        });
+
+        // Make the report section visible
+        document.getElementById('report').style.display = 'block';
+
+        console.log('Generated Report:', report);
+    } catch (error) {
+        console.error('Error generating report:', error);
+    }
+}
+    </script>
+</body>
+</html>

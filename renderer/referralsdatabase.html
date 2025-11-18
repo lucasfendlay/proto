@@ -48,6 +48,7 @@
 
         <button onclick="window.location.href='home.html'">Home</button>
         <button onclick="window.location.href='directory.html'">Directory</button>
+        </div>
 
         <h1>Referrals</h1>
 
@@ -59,25 +60,42 @@
         <button id="addReferralBtn" onclick="redirectToAddEditPage()">Add Referrals</button>
 
         <script>
-            document.addEventListener('DOMContentLoaded', () => {
-        // Retrieve and clean the active user from sessionStorage
-        let activeUser = sessionStorage.getItem('loggedInUser') || ''; // Use the same key as in notes.js
-        activeUser = activeUser.trim().toLowerCase(); // Clean the username (trim whitespace and convert to lowercase)
+document.addEventListener('DOMContentLoaded', () => {
+    // Retrieve the active user from sessionStorage
+    const activeUser = sessionStorage.getItem('loggedInUser') || ''; // Use the same key as in notes.js
 
-        // Debugging: Log the active user to verify
-        console.log('Active User:', activeUser);
+    // Debugging: Log the active user to verify
+    console.log('Active User:', activeUser);
 
-        // Target the "Add Referrals" button
-        const addReferralBtn = document.getElementById('addReferralBtn');
+    // Target the "Add Referrals" button
+    const addReferralBtn = document.getElementById('addReferralBtn');
 
-        // Show the button only if the cleaned active user is "admin"
-        if (activeUser === 'admin') {
-            addReferralBtn.style.display = 'inline-block'; // Ensure the button is visible
-        } else {
-            addReferralBtn.style.display = 'none'; // Hide the button for non-admin users
-        }
-    });
-        </script>
+    if (activeUser) {
+        // Fetch the user's role from the backend
+        fetch(`/get-user-role?username=${encodeURIComponent(activeUser)}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch user role: ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success && data.role === 'admin') {
+                    addReferralBtn.style.display = 'inline-block'; // Show the button for admin users
+                } else {
+                    addReferralBtn.style.display = 'none'; // Hide the button for non-admin users
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching user role:', error);
+                addReferralBtn.style.display = 'none'; // Hide the button in case of an error
+            });
+    } else {
+        console.error('No active user found in sessionStorage');
+        addReferralBtn.style.display = 'none'; // Hide the button if no user is logged in
+    }
+});
+</script>
 
         <input type="text" id="searchInput" placeholder="Search by name, phone, or needs..." class="search-bar">
 <table id="referralTable" class="styled-table">
@@ -254,24 +272,53 @@ function populateReferralsTable() {
                     tableBody.appendChild(detailsRow);
                 });
 
-            // After dynamically adding rows, show or hide the "Edit" buttons
-            const activeUser = sessionStorage.getItem('loggedInUser') || ''; // Use the same key as in notes.js
-            const cleanedActiveUser = activeUser.trim().toLowerCase(); // Clean the username
+// After dynamically adding rows, show or hide the "Edit" buttons
+const activeUser = sessionStorage.getItem('loggedInUser') || ''; // Retrieve the active user from sessionStorage
 
-            const editButtons = document.querySelectorAll('.edit-btn');
-            if (cleanedActiveUser === 'admin') {
+if (activeUser) {
+    // Fetch the user's role from the backend
+    fetch(`/get-user-role?username=${encodeURIComponent(activeUser)}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Failed to fetch user role: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success && data.role === 'admin') {
+                // Show the "Edit" buttons for admin users
+                const editButtons = document.querySelectorAll('.edit-btn');
                 editButtons.forEach(button => {
-                    button.style.display = 'inline-block'; // Show the buttons for admin
+                    button.style.display = 'inline-block';
                 });
             } else {
+                // Hide the "Edit" buttons for non-admin users
+                const editButtons = document.querySelectorAll('.edit-btn');
                 editButtons.forEach(button => {
-                    button.style.display = 'none'; // Hide the buttons for non-admin users
+                    button.style.display = 'none';
                 });
             }
         })
         .catch(error => {
-            console.error('Error fetching referrals:', error);
-            alert('Failed to load referrals.');
+            console.error('Error fetching user role:', error);
+            // Hide the "Edit" buttons in case of an error
+            const editButtons = document.querySelectorAll('.edit-btn');
+            editButtons.forEach(button => {
+                button.style.display = 'none';
+            });
+        });
+} else {
+    console.error('No active user found in sessionStorage');
+    // Hide the "Edit" buttons if no user is logged in
+    const editButtons = document.querySelectorAll('.edit-btn');
+    editButtons.forEach(button => {
+        button.style.display = 'none';
+    });
+}
+        })
+        .catch(error => {
+            console.error('Error populating referrals table:', error);
+            alert('Failed to load referrals. Please contact support.');
         });
 }
 
@@ -445,6 +492,50 @@ window.onload = function () {
     toggleSidebarVisibility();
 };
 </script>
+
+<script>
+    function populateActiveUser() {
+        const activeUser = sessionStorage.getItem('loggedInUser');
+        if (activeUser) {
+            console.log('Active User:', activeUser); // Debugging
+
+            // Fetch the user's role from the backend
+            fetch(`/get-user-role?username=${encodeURIComponent(activeUser)}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        // Display the cleaned username and role in the upper right-hand corner
+                        const userInfoDiv = document.createElement('div');
+                        userInfoDiv.style.position = 'absolute';
+                        userInfoDiv.style.top = '10px';
+                        userInfoDiv.style.right = '10px';
+                        userInfoDiv.style.backgroundColor = '#007bff';
+                        userInfoDiv.style.color = 'white';
+                        userInfoDiv.style.padding = '10px';
+                        userInfoDiv.style.borderRadius = '5px';
+                        userInfoDiv.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
+                        userInfoDiv.textContent = `User: ${activeUser.trim()} | Role: ${data.role}`;
+                        document.body.appendChild(userInfoDiv);
+
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching user role:', error);
+                });
+        } else {
+            console.error('No active user found in sessionStorage');
+        }
+    }
+
+    // Call the function to populate the active user and conditionally add the button
+    populateActiveUser();
+</script>
+
 <script src="estimations.js"></script>
 
 </body>

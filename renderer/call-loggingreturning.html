@@ -34,7 +34,8 @@
         <label for="callerPhoneNumber" class="hidden">Contact Phone Number:</label>
 <input type="text" id="callerPhoneNumber" name="callerPhoneNumber" class="hidden"><br><br>
         <label for="callDirection">Call Direction:</label>
-        <select id="callDirection" name="callDirection" required onchange="toggleReferralSource()">            <option value="" disabled selected>Select Call Direction</option>
+        <select id="callDirection" name="callDirection">            
+            <option value="" disabled selected>Select Call Direction</option>
             <option value="Inbound">Inbound</option>
             <option value="Outbound">Outbound</option>
         </select><br><br>
@@ -89,12 +90,6 @@
         callerLastName = contactDetails.callerLastName;
     }
 
-    const referralSource = document.getElementById('referralSource').value || null; // Save null if not selected
-    const specificReferralContainer = document.getElementById('specificReferralContainer');
-    const specificReferral = specificReferralContainer.style.display !== 'none'
-        ? document.getElementById('specificReferral').value
-        : null;
-
     const callLog = {
         callerFirstName: callerFirstName,
         callerLastName: callerLastName,
@@ -102,8 +97,6 @@
         callerPhoneNumber: document.getElementById('callerPhoneNumber').value.trim(),
         callDirection: document.getElementById('callDirection').value,
         reasonForCall: document.getElementById('reasonForCall').value,
-        referralSource: referralSource, // Optional field
-        specificReferral: specificReferral, // Save the "Specifically, which?" field
         timestamp: new Date().toLocaleString(),
         agent: document.getElementById('Agent').value
     };
@@ -139,35 +132,6 @@
         }
     } catch (error) {
         console.error('Error logging call:', error);
-    }
-}
-
-function toggleReferralSource() {
-            const callDirection = document.getElementById('callDirection').value;
-            const referralSourceContainer = document.getElementById('referralSourceContainer');
-            if (callDirection === 'Outbound') {
-                referralSourceContainer.style.display = 'none';
-                document.getElementById('referralSource').removeAttribute('required');
-            } else {
-                referralSourceContainer.style.display = 'block';
-                document.getElementById('referralSource').setAttribute('required', 'required');
-            }
-        }
-
-function handleReferralSourceChange() {
-    const referralSource = document.getElementById('referralSource').value;
-    const specificReferralContainer = document.getElementById('specificReferralContainer');
-
-    if (
-        referralSource === 'Referral from a Government Agency' ||
-        referralSource === 'Referral from a CBO' ||
-        referralSource === 'Community Referral'
-    ) {
-        specificReferralContainer.style.display = 'block';
-        document.getElementById('specificReferral').setAttribute('required', 'required');
-    } else {
-        specificReferralContainer.style.display = 'none';
-        document.getElementById('specificReferral').removeAttribute('required');
     }
 }
 

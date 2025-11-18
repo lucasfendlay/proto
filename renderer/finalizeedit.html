@@ -90,8 +90,7 @@ body {
         }
     </style>
 
-<button id="generate-pdf-button">Complete PTRR</button>
-
+<button id="generate-pdf-button" style="display: none">Complete PTRR</button>
 
 <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
     <div id="snap-household-container" class="left-sidebar"></div>
@@ -279,6 +278,61 @@ function getQueryParam(name) {
     }
 }
 
+async function fetchClientData(clientId) {
+        try {
+            const response = await fetch(`/get-client/${clientId}`);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch client data: ${response.statusText}`);
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching client data:', error);
+            return null;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+    togglePTRRButtonVisibility();
+    toggleSidebarVisibility(); // Existing function
+});
+
+async function togglePTRRButtonVisibility() {
+    const clientId = getQueryParam('id'); // Get clientId from query parameters
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
+
+    const clientData = await fetchClientData(clientId);
+    if (!clientData) {
+        console.error('Failed to fetch client data.');
+        return;
+    }
+
+    // Debugging: Log the fetched client data
+    console.log('Fetched client data:', clientData);
+
+    // Extract household members
+    const householdMembers = clientData.householdMembers || [];
+    console.log('Household members:', householdMembers); // Debugging
+
+    // Check if any household member has PTRR.application.applying set to true
+    const isApplying = householdMembers.some(member =>
+        member.PTRR?.application?.some(app => app.applying === true)
+    );
+
+    console.log('Is applying:', isApplying); // Debugging
+
+    // Show or hide the button based on the condition
+    const generatePdfButton = document.getElementById('generate-pdf-button');
+    if (generatePdfButton) {
+        generatePdfButton.style.display = isApplying ? 'block' : 'none';
+        console.log('Button visibility set to:', isApplying ? 'block' : 'none');
+    } else {
+        console.error('Generate PDF button not found in the DOM.');
+    }
+}
+
 document.getElementById('generate-pdf-button').addEventListener('click', async () => {
     const clientId = getQueryParam('id'); // Get clientId from query parameters
     if (!clientId) {
@@ -462,7 +516,7 @@ window.onload = function () {
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="editnavigation.js"></script>
-<script src="finalize.js"></script>
+<script src="finalizeptrr.js"></script>
 <script src="applying.js"></script>
 <script src="applicant.js"></script>
 <script src="notes.js"></script>

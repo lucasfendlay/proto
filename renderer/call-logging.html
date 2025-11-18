@@ -34,7 +34,7 @@
         </select><br><br>
 
         <label for="reasonForCall">Reason for Call:</label>
-<select id="reasonForCall" name="reasonForCall" onchange="handleReasonForCallChange()">
+<select id="reasonForCall" name="reasonForCall">
     <option value="" disabled selected>Select Reason for Call</option>
     <option value="To Apply Myself for Public Benefits">To Apply Myself for Public Benefits</option>
     <option value="To Recertify SNAP and/or Medical Assistance">To Recertify SNAP</option>
@@ -105,6 +105,29 @@
     };
 
     try {
+        // Save caller details if reasonForCall is not "Other"
+        if (callLog.reasonForCall !== "Other") {
+            const clientData = {
+                firstName: callLog.callerFirstName,
+                lastName: callLog.callerLastName,
+                phoneNumber: callLog.callerPhoneNumber,
+            };
+
+            const updateClientResponse = await fetch('/update-client', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ clientId, clientData }),
+            });
+
+            const updateClientResult = await updateClientResponse.json();
+            if (!updateClientResponse.ok || !updateClientResult.success) {
+                alert(updateClientResult.message || 'Failed to update client details.');
+                return;
+            }
+        }
+
         // Log the call
         const logCallResponse = await fetch('/log-call', {
             method: 'POST',
@@ -190,7 +213,7 @@
                 callLog.reasonForCall === "Questions about an Existing Case" || 
                 callLog.reasonForCall === "Post-Submission Questions" || 
                 callLog.reasonForCall === "Other") {
-                const url = `profileedit.html?id=${clientId}&callerFirstName=${encodeURIComponent(callLog.callerFirstName)}&callerLastName=${encodeURIComponent(callLog.callerLastName)}&callerPhoneNumber=${encodeURIComponent(callLog.callerPhoneNumber)}`;
+                const url = `profileedit.html?id=${clientId}`;
                 window.location.href = url;
             } else {
                 window.location.href = `profileedit.html?id=${clientId}`;

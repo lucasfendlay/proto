@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profiles</title>
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- Flatpickr CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+</head>
+<body>
+    <h1>User Profiles</h1>
+    <button onclick="window.location.href='admindashboard.html'">Back to Admin Dashboard</button>
+    <br><br>
+
+    <!-- Filters Section -->
+    <div id="filters">
+        <label for="startDate">Start Date:</label>
+        <input type="text" id="startDate" placeholder="Select Start Date">
+
+        <label for="endDate">End Date:</label>
+        <input type="text" id="endDate" placeholder="Select End Date">
+
+        <button id="filterButton">Filter Profiles</button>
+    </div>
+
+    <!-- Profiles Section -->
+    <div id="profiles">
+        <h2>Profiles</h2>
+        <ul id="profileList">
+            <!-- Dynamically populated profiles will appear here -->
+        </ul>
+    </div>
+
+    <!-- Flatpickr JS -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+    <script>
+        // Initialize Flatpickr for date inputs
+        flatpickr("#startDate", {
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "F j, Y",
+        });
+
+        flatpickr("#endDate", {
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "F j, Y",
+        });
+
+        // Fetch and display profiles based on user interactions
+        async function fetchUserProfiles() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const username = urlParams.get('username'); // Get the username from the query string
+            const startDate = new Date(document.getElementById('startDate').value);
+            const endDate = new Date(document.getElementById('endDate').value);
+
+            if (!username) {
+                alert('No username provided.');
+                return;
+            }
+
+            try {
+                // Fetch all clients
+                const response = await fetch('/get-all-clients');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const { clients } = await response.json();
+
+                // Filter clients based on user interactions and date range
+                const filteredClients = clients.filter(client => {
+                    return client.notes?.some(note => {
+                        const noteDate = new Date(note.timestamp);
+                        return (
+                            note.username === username &&
+                            (!isNaN(startDate) ? noteDate >= startDate : true) &&
+                            (!isNaN(endDate) ? noteDate <= endDate : true)
+                        );
+                    });
+                });
+
+                // Render the filtered profiles
+                const profileList = document.getElementById('profileList');
+                profileList.innerHTML = ''; // Clear existing profiles
+
+                if (filteredClients.length === 0) {
+                    const noResultsMessage = document.createElement('li');
+                    noResultsMessage.textContent = 'No profiles found for the selected user and timeframe.';
+                    profileList.appendChild(noResultsMessage);
+                } else {
+                    filteredClients.forEach(client => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `
+                            <a href="profileview.html?id=${client.id}">
+                                <strong>Profile: ${client.id}</strong> | 
+                                ${client.firstName || ''} ${client.lastName || ''} | 
+                                ${client.phoneNumber ? `Phone: ${client.phoneNumber} | ` : ''}
+                                ${client.streetAddress || client.city || client.state || client.zipCode ? `Address: ${[
+                                    client.streetAddress,
+                                    client.city,
+                                    client.state,
+                                    client.zipCode,
+                                    client.county ? `${client.county} County` : ''
+                                ].filter(Boolean).join(', ')} | ` : ''}
+                                <strong>Most Recent Note:</strong> ${client.notes?.[client.notes.length - 1]?.text || 'No notes available'}
+                            </a>`;
+                        profileList.appendChild(li);
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching user profiles:', error);
+            }
+        }
+
+        // Add event listener to the filter button
+        document.getElementById('filterButton').addEventListener('click', fetchUserProfiles);
+
+        // Fetch profiles on page load if username is provided
+        document.addEventListener('DOMContentLoaded', fetchUserProfiles);
+    </script>
+</body>
+</html>

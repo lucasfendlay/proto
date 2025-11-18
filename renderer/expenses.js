@@ -176,14 +176,14 @@ document.getElementById('expense-kind').addEventListener('change', function () {
                                             ? '' // Do not show the button if Utility expenses exist
                                             : `<button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Utility">Add Utility Expense</button>`
                                     }
-                                    <button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Other">Add Other Expense</button>
-                                `
-                                : ''
-                        }
-                        ${
+                                            ${
                             member.meals?.toLowerCase() === "yes" &&
                             (parseInt(member.age?.split('Y')[0]) >= 60 || member.disability?.toLowerCase() === "yes")
                                 ? `<button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Medical">Add Medical Expense</button>`
+                                : ''
+                        }
+                                    <button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Other">Add Other Expense</button>
+                                `
                                 : ''
                         }
                         ${
@@ -219,6 +219,7 @@ document.getElementById('expense-kind').addEventListener('change', function () {
             'MSPEligibilityCheck',
             'PTRREligibilityCheck',
             'SNAPEligibilityCheck',
+            'LIHEAPEligibilityCheck',
             'updateAndDisplayHouseholdMembers',
             'displaySNAPHouseholds'
         ];
@@ -237,11 +238,13 @@ document.getElementById('expense-kind').addEventListener('change', function () {
         await window.eligibilityChecks.MSPEligibilityCheck(membersForEligibility);
         await window.eligibilityChecks.PTRREligibilityCheck(membersForEligibility);
         await window.eligibilityChecks.SNAPEligibilityCheck(membersForEligibility);
+        await window.eligibilityChecks.LIHEAPEligibilityCheck(membersForEligibility);
     
         console.log('Eligibility Checks:', window.eligibilityChecks);
     
         // Update the UI
         await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
+        await window.eligibilityChecks.displayLIHEAPHouseholds();
         await window.eligibilityChecks.displaySNAPHouseholds();
     }
 

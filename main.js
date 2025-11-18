@@ -84,7 +84,9 @@ app.post('/login', async (req, res) => {
 
 // Account creation
 app.post('/create-account', async (req, res) => {
-    const { username, password } = req.body;
+    const { username, password, role } = req.body;
+
+    console.log('Received data:', req.body); // Add this line
 
     try {
         const collection = db.collection('accounts');
@@ -94,14 +96,48 @@ app.post('/create-account', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Username already exists!' });
         }
 
-        // Hash the password before storing it
         const hashedPassword = await bcrypt.hash(password, 10);
-        await collection.insertOne({ username, password: hashedPassword });
+        await collection.insertOne({ username, role, password: hashedPassword });
 
         res.json({ success: true });
     } catch (error) {
         console.error('Error during account creation:', error);
         res.status(500).json({ success: false, message: 'An error occurred. Please try again later.' });
+    }
+});
+
+// Endpoint to fetch all users
+app.get('/get-users', async (req, res) => {
+    try {
+        const users = await db.collection('accounts').find({}, { projection: { username: 1, _id: 0 } }).toArray();
+        res.json(users);
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch users.' });
+    }
+});
+
+// Endpoint to fetch the user's role based on the username
+app.get('/get-user-role', async (req, res) => {
+    const { username } = req.query;
+
+    if (!username) {
+        return res.status(400).json({ success: false, message: 'Username is required.' });
+    }
+
+    try {
+        // Fetch the user from the database
+        const user = await db.collection('accounts').findOne({ username });
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found.' });
+        }
+
+        // Return the user's role
+        res.json({ success: true, role: user.role });
+    } catch (error) {
+        console.error('Error fetching user role:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch user role.' });
     }
 });
 
@@ -1219,3 +1255,4 @@ app.post('/upload-to-profile', upload.single('file'), async (req, res) => {
         res.status(500).json({ success: false, message: 'Failed to upload file to client profile.' });
     }
 });
+

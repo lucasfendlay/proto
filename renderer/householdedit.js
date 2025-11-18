@@ -1177,9 +1177,16 @@ document.getElementById('add-household-member').addEventListener('click', async 
             return;
         }
 
+        // Check if household size is not set or is 0
+        if (!clientData.householdSize || clientData.householdSize === 0) {
+            alert('Household size is not set. Please select a valid household size before adding members.');
+            return; // Prevent the modal from opening
+        }
+
         // Check if the number of household members exceeds the household size
         if (clientData.householdMembers.length >= clientData.householdSize) {
-            return;
+            alert('The number of household members cannot exceed the selected household size.');
+            return; // Prevent the modal from opening
         }
 
         // If validation passes, open the modal in "Add" mode
@@ -1229,10 +1236,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 // Check if the number of household members exceeds the household size
-                if (clientData.householdMembers.length >= clientData.householdSize) {
-                    alert('The number of household members cannot exceed the selected household size.');
-                    return;
-                }
+if (!clientData.householdSize || clientData.householdSize === 0) {
+    return;
+}
+
+if (clientData.householdMembers.length >= clientData.householdSize) {
+    return;
+}
 
                 // Prepare the modal based on saved data
                 await prepareHouseholdMemberModal();
@@ -1876,18 +1886,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const nonCitizenStatus = document.getElementById('nonCitizenStatus');
     const mealsQuestion = document.getElementById('mealsQuestion');
 
-    let citizenshipStatus = null;
+    // Initialize dropdown visibility based on the current citizen value
+    const initializeCitizenStatus = () => {
+        if (citizenYes.classList.contains('selected')) {
+            // If "Yes" is selected for citizen
+            nonCitizenStatusContainer.style.display = 'none';
+            mealsQuestion.style.display = 'block'; // Show the meals question
+        } else if (citizenNo.classList.contains('selected')) {
+            // If "No" is selected for citizen
+            nonCitizenStatusContainer.style.display = 'block';
+        }
+    };
 
+    // Call the initialization function on page load
+    initializeCitizenStatus();
+
+    // Add event listeners for clicks
     citizenYes.addEventListener('click', () => {
-        citizenshipStatus = 'uscitizen';
         nonCitizenStatusContainer.style.display = 'none';
         mealsQuestion.style.display = 'block'; // Show the meals question
-        console.log('Citizenship status saved:', citizenshipStatus);
+        console.log('Citizenship status saved: uscitizen');
     });
 
     citizenNo.addEventListener('click', () => {
-        citizenshipStatus = 'noncitizen';
         nonCitizenStatusContainer.style.display = 'block';
+        console.log('Citizenship status saved: noncitizen');
     });
 
     nonCitizenStatus.addEventListener('change', () => {
@@ -2090,6 +2113,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const clientId = getQueryParam('id');
     if (clientId) {
         handleLiheapEligibility(clientId);
+        saveLiheapSelection(); // Ensure LIHEAP selection is saved on load
     }
 });
 
@@ -2237,4 +2261,47 @@ document.addEventListener('DOMContentLoaded', () => {
             mealsQuestion.style.display = 'block';
         }
     });
+});
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
+    const subsidizedHousingContainer = document.getElementById('subsidizedHousing-container');
+    const heatingCostContainer = document.getElementById('heatingCost-container');
+
+    // Function to apply show/hide logic based on residence status
+    async function applyShowHideLogic() {
+        try {
+            const response = await fetch(`/get-client/${clientId}`);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch client data: ${response.statusText}`);
+            }
+
+            const client = await response.json();
+            const residenceStatusCurrent = client?.residenceStatusCurrent;
+            const subsidizedHousing = client?.subsidizedHousing;
+
+            // Apply logic for residence status
+            if (residenceStatusCurrent === 'owned') {
+                subsidizedHousingContainer.style.display = 'none';
+                heatingCostContainer.style.display = 'none';
+            } else {
+                subsidizedHousingContainer.style.display = 'block';
+                if (subsidizedHousing === 'yes') {
+                    heatingCostContainer.style.display = 'block';
+                } else {
+                    heatingCostContainer.style.display = 'none';
+                }
+            }
+        } catch (error) {
+            console.error('Error applying show/hide logic:', error);
+        }
+    }
+
+    // Call the function to apply the logic on page load
+    if (clientId) {
+        await applyShowHideLogic();
+    }
+
+    // Initialize other event listeners or logic
+    await loadSavedData(); // Load and display saved data
 });

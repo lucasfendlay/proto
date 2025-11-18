@@ -290,16 +290,16 @@
             document.getElementById('profileId').textContent = `Profile: ${client.id || 'N/A'}`;
 
             // Populate fields with client data
-            document.getElementById('firstName').textContent = client.firstName.toUpperCase() || 'N/A';
-            document.getElementById('lastName').textContent = client.lastName.toUpperCase() || 'N/A';
-            document.getElementById('phoneNumber').textContent = client.phoneNumber.toUpperCase() || 'N/A';
-            document.getElementById('streetAddress').textContent = client.streetAddress.toUpperCase() || 'N/A';
-            document.getElementById('streetAddress2').textContent = client.streetAddress2.toUpperCase() || 'N/A';
-            document.getElementById('city').textContent = client.city.toUpperCase() || 'N/A';
-            document.getElementById('state').textContent = client.state.toUpperCase() || 'N/A';
-            document.getElementById('zipCode').textContent = client.zipCode.toUpperCase() || 'N/A';
-            document.getElementById('county').textContent = client.county.toUpperCase() || 'N/A';
-            document.getElementById('speakingLanguage').textContent = client.speakingLanguage.toUpperCase() || 'N/A';
+            document.getElementById('firstName').textContent = client.firstName ? client.firstName.toUpperCase() : 'N/A';
+document.getElementById('lastName').textContent = client.lastName ? client.lastName.toUpperCase() : 'N/A';
+document.getElementById('phoneNumber').textContent = client.phoneNumber ? client.phoneNumber.toUpperCase() : 'N/A';
+document.getElementById('streetAddress').textContent = client.streetAddress ? client.streetAddress.toUpperCase() : 'N/A';
+document.getElementById('streetAddress2').textContent = client.streetAddress2 ? client.streetAddress2.toUpperCase() : 'N/A';
+document.getElementById('city').textContent = client.city ? client.city.toUpperCase() : 'N/A';
+document.getElementById('state').textContent = client.state ? client.state.toUpperCase() : 'N/A';
+document.getElementById('zipCode').textContent = client.zipCode ? client.zipCode.toUpperCase() : 'N/A';
+document.getElementById('county').textContent = client.county ? client.county.toUpperCase() : 'N/A';
+document.getElementById('speakingLanguage').textContent = client.speakingLanguage ? client.speakingLanguage.toUpperCase() : 'N/A';
 
             // Handle interpreter field
             if (client.interpreter === 'yes') {

@@ -5,6 +5,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Account</title>
     <style>
+
+.container input {
+        width: calc(100% - 20px); /* Adjust width to fit within the container's padding */
+        padding: 10px;
+        margin: 10px 0;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        text-align: center; /* Center the text inside the input fields */
+        box-sizing: border-box; /* Include padding and border in the element's total width */
+    }
+
+
+select {
+        width: 100%;
+        padding: 8px;
+        margin-bottom: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background-color: #fff;
+        font-size: 14px;
+        text-align: center; /* Center the text inside the input fields */
+        box-sizing: border-box; /* Include padding and border in the element's total width */
+
+    }
+    select:focus {
+        outline: none;
+        border-color: #28a745;
+        box-shadow: 0 0 5px rgba(40, 167, 69, 0.5);
+    }
         body {
             font-family: Arial, sans-serif;
             background-color: #f4f4f4;
@@ -53,6 +82,7 @@
         event.preventDefault();
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
+        const role = document.getElementById('role').value;
         const confirmPassword = document.getElementById('confirmPassword').value;
         const BACKEND_URL = window.location.origin || "http://localhost:3000";
 
@@ -63,8 +93,7 @@
             return;
         }
 
-        console.log('Sending account creation request:', { username, password });
-
+        console.log('Sending account creation request:', { username, password, role });
         try {
             // Send account creation request to the Express server
             const response = await fetch(`${BACKEND_URL}/create-account`, {
@@ -72,7 +101,7 @@
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ username, password }),
+                body: JSON.stringify({ username, password, role }),
             });
 
             const result = await response.json();
@@ -98,11 +127,18 @@
         <form onsubmit="createAccount(event)">
             <label for="username">Username:</label>
             <input type="text" id="username" name="username" required>
+            <label for="role">Role:</label>
+            <select id="role" name="role" required>
+                <option value selected disabled>Select Role</option>
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+            </select>
             <label for="password">Password:</label>
             <input type="password" id="password" name="password" required>
             <label for="confirmPassword">Confirm Password:</label>
             <input type="password" id="confirmPassword" name="confirmPassword" required>
             <button type="submit">Create Account</button>
+            <button onclick="window.location.href='index.html'" type="button" style="margin-top: 10px; background-color: #007bff;">Back</button>
         </form>
     </div>
 </body>

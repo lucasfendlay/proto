@@ -7,6 +7,28 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="householdedit.css">
     <link rel="stylesheet" href="notes.css">
+
+    <style>
+        /* Highlight effect */
+        .highlight {
+            background-color: #007bff; /* Blue background */
+            color: white; /* White text */
+            border-radius: 5px; /* Optional: Rounded corners */
+            padding: 5px; /* Optional: Add some padding */
+        }
+        </style>
+        <script>
+            // Add event listeners to toggle "highlight" class on heatingCrisis options
+            document.querySelectorAll('#heatingCrisis-yes, #heatingCrisis-no').forEach(option => {
+                option.addEventListener('click', function () {
+                    // Remove the "highlight" class from both options
+                    document.querySelectorAll('#heatingCrisis-yes, #heatingCrisis-no').forEach(el => el.classList.remove('highlight'));
+            
+                    // Add the "highlight" class to the clicked option
+                    this.classList.add('highlight');
+                });
+            });
+            </script>
     <style>
 
 .readonly {
@@ -373,14 +395,61 @@ function getQueryParam(name) {
     return urlParams.get(name);
 }
 
-        function goToRelationshipsEdit() {
-    const clientId = getQueryParameter('id');
-    if (clientId) {
-        window.location.href = `relationshipsedit.html?id=${clientId}`;
-    } else {
+function goToRelationshipsEdit() {
+    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
+    if (!clientId) {
         console.error('Client ID not found in query parameters.');
+        return;
     }
+
+    fetch(`/get-client/${clientId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Failed to fetch client data: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(clientData => {
+            if (!clientData) {
+                console.error('Client data not found.');
+                return;
+            }
+
+            // Debugging: Log the data
+            console.log('Client Data:', clientData);
+            console.log('Household Members Length:', clientData.householdMembers.length);
+            console.log('Household Size:', clientData.householdSize);
+
+            // Ensure householdSize is a number
+            if (clientData.householdMembers.length !== Number(clientData.householdSize)) {
+                alert('The number of household members does not match the selected household size. Please review your entries before continuing.');
+                return; // Prevent navigation
+            }
+
+            // If validation passes, navigate to the relationships edit page
+            window.location.href = `relationshipsedit.html?id=${clientId}`;
+        })
+        .catch(error => {
+            console.error('Error validating household data:', error);
+        });
 }
+
+// Add event listeners to toggle "selected" class on div-based options
+document.querySelectorAll('[id^="disability-"], [id^="medicare-"], [id^="medicaid-"], [id^="citizen-"], [id^="student-"], [id^="snap-"], [id^="liheap-"], [id^="residenceStatusCurrent-"], [id^="residenceStatus-"]').forEach(option => {
+    option.addEventListener('click', function () {
+        // Get the group prefix (e.g., "heatingCrisis")
+        const group = this.id.split('-')[0];
+
+        // Get all elements in the group
+        const groupElements = document.querySelectorAll(`[id^="${group}-"]`);
+
+        // Remove the "selected" class from all elements in the group
+        groupElements.forEach(el => el.classList.remove('selected'));
+
+        // Add the "selected" class to the clicked element
+        this.classList.add('selected');
+    });
+});
 
 async function redirectToHouseholdView() {
     const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
