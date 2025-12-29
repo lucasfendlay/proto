@@ -37,6 +37,7 @@
 <select id="reasonForCall" name="reasonForCall">
     <option value="" disabled selected>Select Reason for Call</option>
     <option value="To Apply Myself for Public Benefits">To Apply Myself for Public Benefits</option>
+    <option value="To Apply Someone Else for Public Benefits">To Apply Someone Else for Public Benefits</option>
     <option value="To Recertify SNAP and/or Medical Assistance">To Recertify SNAP</option>
     <option value="Questions about an Existing Case">Questions about an Existing Case</option>
     <option value="Post-Submission Questions">Post-Submission Questions</option>
@@ -105,28 +106,67 @@
     };
 
     try {
-        // Save caller details if reasonForCall is not "Other"
-        if (callLog.reasonForCall !== "Other") {
-            const clientData = {
-                firstName: callLog.callerFirstName,
-                lastName: callLog.callerLastName,
-                phoneNumber: callLog.callerPhoneNumber,
-            };
+// Save caller details if reasonForCall is not "None"
+if (callLog.reasonForCall !== "None") {
+    const clientData = {
+        firstName: callLog.callerFirstName,
+        lastName: callLog.callerLastName,
+        phoneNumber: callLog.callerPhoneNumber,
+    };
 
-            const updateClientResponse = await fetch('/update-client', {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ clientId, clientData }),
-            });
+    // Save to Contacts only if reasonForCall is "To Apply Someone Else for Public Benefits"
+    if (callLog.reasonForCall === "To Apply Someone Else for Public Benefits") {
+        const addToContactsResponse = await fetch('/add-to-contacts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                clientId,
+                contact: clientData,
+            }),
+        });
 
-            const updateClientResult = await updateClientResponse.json();
-            if (!updateClientResponse.ok || !updateClientResult.success) {
-                alert(updateClientResult.message || 'Failed to update client details.');
-                return;
-            }
+        const addToContactsResult = await addToContactsResponse.json();
+        if (!addToContactsResponse.ok || !addToContactsResult.success) {
+            alert(addToContactsResult.message || 'Failed to save contact details.');
+            return;
         }
+    } else {
+        // Save caller details to the client
+        const updateClientResponse = await fetch('/update-client', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ clientId, clientData }),
+        });
+
+        const updateClientResult = await updateClientResponse.json();
+        if (!updateClientResponse.ok || !updateClientResult.success) {
+            alert(updateClientResult.message || 'Failed to update client details.');
+            return;
+        }
+
+        // Add caller details to the Contacts array
+        const addToContactsResponse = await fetch('/add-to-contacts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                clientId,
+                contact: clientData,
+            }),
+        });
+
+        const addToContactsResult = await addToContactsResponse.json();
+        if (!addToContactsResponse.ok || !addToContactsResult.success) {
+            alert(addToContactsResult.message || 'Failed to save contact details.');
+            return;
+        }
+    }
+}
 
         // Log the call
         const logCallResponse = await fetch('/log-call', {
@@ -208,6 +248,7 @@
 
             // Redirect based on the reason for the call
             if (callLog.reasonForCall === "To Apply Myself for Public Benefits" || 
+                callLog.reasonForCall === "To Apply Someone Else for Public Benefits" ||
                 callLog.reasonForCall === "To Recertify SNAP and/or Medical Assistance" || 
                 callLog.reasonForCall === "CAP Outreach" || 
                 callLog.reasonForCall === "Questions about an Existing Case" || 

@@ -296,6 +296,55 @@ app.delete('/delete-client/:clientId', async (req, res) => {
     }
 });
 
+// Update or add a contact in the client's Contacts array
+app.post('/add-to-contacts', async (req, res) => {
+    const { clientId, contact, index, delete: isDelete } = req.body;
+
+    if (!clientId || (!contact && !isDelete)) {
+        return res.status(400).json({ success: false, message: 'Missing required fields: clientId or contact details.' });
+    }
+
+    try {
+        const collection = db.collection('clients');
+
+        let updateQuery;
+        if (isDelete) {
+            // Delete a contact at the specified index
+            const contactKey = `Contacts.${index}`;
+            updateQuery = { $unset: { [contactKey]: '' } }; // Remove the contact at the index
+        } else if (index !== undefined && index !== null) {
+            // Update an existing contact at the specified index
+            const contactKey = `Contacts.${index}`;
+            updateQuery = { $set: { [contactKey]: contact } };
+        } else {
+            // Add a new contact
+            updateQuery = { $push: { Contacts: contact } };
+        }
+
+        const result = await collection.updateOne(
+            { id: clientId }, // Find the client by clientId
+            updateQuery
+        );
+
+        if (isDelete) {
+            // Remove empty entries from the Contacts array
+            await collection.updateOne(
+                { id: clientId },
+                { $pull: { Contacts: null } }
+            );
+        }
+
+        if (result.modifiedCount > 0) {
+            res.json({ success: true, message: isDelete ? 'Contact deleted successfully.' : 'Contact updated successfully.' });
+        } else {
+            res.status(404).json({ success: false, message: 'Client not found.' });
+        }
+    } catch (error) {
+        console.error('Error updating contact for client:', error);
+        res.status(500).json({ success: false, message: 'Failed to update contact for client.' });
+    }
+});
+
 // Add a note to a client
 app.post('/add-note-to-client', async (req, res) => {
     const { clientId, note } = req.body;
@@ -421,6 +470,30 @@ app.delete('/delete-household-member', async (req, res) => {
     } catch (error) {
         console.error('Error deleting household member:', error);
         res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Fetch household members for a specific client
+app.get('/get-household-members', async (req, res) => {
+    const { clientId } = req.query; // Get the clientId from the query parameters
+
+    if (!clientId) {
+        return res.status(400).json({ success: false, message: 'Client ID is required.' });
+    }
+
+    try {
+        const collection = db.collection('clients');
+        const client = await collection.findOne({ id: clientId });
+
+        if (!client) {
+            return res.status(404).json({ success: false, message: 'Client not found.' });
+        }
+
+        // Return the household members
+        res.json(client.householdMembers || []);
+    } catch (error) {
+        console.error('Error fetching household members:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch household members.' });
     }
 });
 

@@ -135,48 +135,47 @@
     }
 }
 
-
 async function populateCallerSelection() {
-        const callerSelection = document.getElementById('callerSelection');
-        const clientId = getQueryParam('id');
+    const callerSelection = document.getElementById('callerSelection');
+    const clientId = getQueryParam('id');
 
-        // Clear existing options
-        callerSelection.innerHTML = '<option value="">Select Contact</option>';
+    // Clear existing options
+    callerSelection.innerHTML = '<option value="">Select Contact</option>';
 
-        try {
-            // Replace Electron IPC call with an HTTP GET request
-            const response = await fetch(`/get-client/${clientId}`);
-            const client = await response.json();
+    try {
+        // Fetch client data
+        const response = await fetch(`/get-client/${clientId}`);
+        const client = await response.json();
 
-            if (client && client.callLogs) {
-                const uniqueContacts = new Map();
+        if (client && client.Contacts) { // Use the correct case for "Contacts"
+            const uniqueContacts = new Map();
 
-                client.callLogs.forEach(callLog => {
-                    const contactKey = `${callLog.callerFirstName} ${callLog.callerLastName} ${callLog.callerPhoneNumber}`.trim();
-                    if (callLog.callerFirstName && callLog.callerLastName && callLog.callerPhoneNumber && !uniqueContacts.has(contactKey)) {
-                        uniqueContacts.set(contactKey, callLog);
-                        const option = document.createElement('option');
-                        option.value = JSON.stringify({
-                            callerFirstName: callLog.callerFirstName,
-                            callerLastName: callLog.callerLastName,
-                            callerPhoneNumber: callLog.callerPhoneNumber
-                        });
-                        option.textContent = `${callLog.callerFirstName} ${callLog.callerLastName} (${callLog.callerPhoneNumber})`;
-                        callerSelection.appendChild(option);
-                    }
-                });
-            } else {
-                console.log('No call logs found for this client.');
-            }
-
-            const addNewOption = document.createElement('option');
-            addNewOption.value = 'new';
-            addNewOption.textContent = 'Add New Contact';
-            callerSelection.appendChild(addNewOption);
-        } catch (error) {
-            console.error('Error fetching client data:', error);
+            client.Contacts.forEach(contact => {
+                const contactKey = `${contact.firstName} ${contact.lastName} ${contact.phoneNumber}`.trim();
+                if (contact.firstName && contact.lastName && contact.phoneNumber && !uniqueContacts.has(contactKey)) {
+                    uniqueContacts.set(contactKey, contact);
+                    const option = document.createElement('option');
+                    option.value = JSON.stringify({
+                        callerFirstName: contact.firstName,
+                        callerLastName: contact.lastName,
+                    });
+                    option.textContent = `${contact.firstName} ${contact.lastName}`;
+                    callerSelection.appendChild(option);
+                }
+            });
+        } else {
+            console.log('No contacts found for this client.');
         }
+
+        // Add "Add New Contact" option
+        const addNewOption = document.createElement('option');
+        addNewOption.value = 'new';
+        addNewOption.textContent = 'Add New Contact';
+        callerSelection.appendChild(addNewOption);
+    } catch (error) {
+        console.error('Error fetching client data:', error);
     }
+}
 
         document.getElementById('callerSelection').addEventListener('change', function () {
     const selectedValue = this.value;

@@ -125,70 +125,94 @@
             return hasUser && hasDateRange;
         });
 
-        // Generate report summary
-        const report = filteredClients.map(client => {
-            const callsLogged = client.callLogs.length;
-            const screeningsStarted = client.notes.filter(note =>
-                note.text.includes('New screening initiated.')
-            ).length;
+// Generate report summary
+const usersResponse = await fetch('/get-users');
+if (!usersResponse.ok) {
+    throw new Error(`HTTP error! status: ${usersResponse.status}`);
+}
+const users = await usersResponse.json();
 
-            // Count applications completed for each benefit type
-            const paceApplicationsCompleted = client.notes.filter(note =>
-                note.text.includes('PACE Application completed.')
-            ).length;
-            const ptrrApplicationsCompleted = client.notes.filter(note =>
-                note.text.includes('PTRR Application completed.')
-            ).length;
-            const lisApplicationsCompleted = client.notes.filter(note =>
-                note.text.includes('LIS Application completed.')
-            ).length;
-            const mspApplicationsCompleted = client.notes.filter(note =>
-                note.text.includes('MSP Application completed.')
-            ).length;
-            const snapApplicationsCompleted = client.notes.filter(note =>
-                note.text.includes('SNAP Application completed.')
-            ).length;
-            const liheapApplicationsCompleted = client.notes.filter(note =>
-                note.text.includes('LIHEAP Application completed.')
-            ).length;
+const report = filteredClients.reduce((acc, client) => {
+    const user = users.find(u => u.username === client.callLogs[0]?.agent)?.username || 'Unknown User';
+    const callsLogged = client.callLogs.length;
+    const screeningsStarted = client.notes.filter(note =>
+        note.text.includes('New screening initiated.')
+    ).length;
 
-            return {
-                user: `${client.firstName} ${client.lastName}`,
-                callsLogged,
-                screeningsStarted,
-                paceApplicationsCompleted,
-                ptrrApplicationsCompleted,
-                lisApplicationsCompleted,
-                mspApplicationsCompleted,
-                snapApplicationsCompleted,
-                liheapApplicationsCompleted
-            };
+    // Count applications completed for each benefit type
+    const paceApplicationsCompleted = client.notes.filter(note =>
+        note.text.includes('PACE Application completed.')
+    ).length;
+    const ptrrApplicationsCompleted = client.notes.filter(note =>
+        note.text.includes('PTRR Application completed.')
+    ).length;
+    const lisApplicationsCompleted = client.notes.filter(note =>
+        note.text.includes('LIS Application completed.')
+    ).length;
+    const mspApplicationsCompleted = client.notes.filter(note =>
+        note.text.includes('MSP Application completed.')
+    ).length;
+    const snapApplicationsCompleted = client.notes.filter(note =>
+        note.text.includes('SNAP Application completed.')
+    ).length;
+    const liheapApplicationsCompleted = client.notes.filter(note =>
+        note.text.includes('LIHEAP Application completed.')
+    ).length;
+
+    // Check if the user already exists in the accumulator
+    const existingUser = acc.find(row => row.user === user);
+    if (existingUser) {
+        // Aggregate the fields
+        existingUser.callsLogged += callsLogged;
+        existingUser.screeningsStarted += screeningsStarted;
+        existingUser.paceApplicationsCompleted += paceApplicationsCompleted;
+        existingUser.ptrrApplicationsCompleted += ptrrApplicationsCompleted;
+        existingUser.lisApplicationsCompleted += lisApplicationsCompleted;
+        existingUser.mspApplicationsCompleted += mspApplicationsCompleted;
+        existingUser.snapApplicationsCompleted += snapApplicationsCompleted;
+        existingUser.liheapApplicationsCompleted += liheapApplicationsCompleted;
+    } else {
+        // Add a new user entry
+        acc.push({
+            user,
+            callsLogged,
+            screeningsStarted,
+            paceApplicationsCompleted,
+            ptrrApplicationsCompleted,
+            lisApplicationsCompleted,
+            mspApplicationsCompleted,
+            snapApplicationsCompleted,
+            liheapApplicationsCompleted
         });
+    }
 
-        // Render the report in the table
-        const tableBody = document.querySelector('#reportTable tbody');
-        tableBody.innerHTML = ''; // Clear existing rows
+    return acc;
+}, []);
 
-        report.forEach(row => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><a href="userProfiles.html?username=${encodeURIComponent(row.user)}">${row.user}</a></td>
-                <td>${row.callsLogged}</td>
-                <td>${row.screeningsStarted}</td>
-                <td>${row.paceApplicationsCompleted}</td>
-                <td>${row.ptrrApplicationsCompleted}</td>
-                <td>${row.lisApplicationsCompleted}</td>
-                <td>${row.mspApplicationsCompleted}</td>
-                <td>${row.snapApplicationsCompleted}</td>
-                <td>${row.liheapApplicationsCompleted}</td>
-            `;
-            tableBody.appendChild(tr);
-        });
+// Render the report in the table
+const tableBody = document.querySelector('#reportTable tbody');
+tableBody.innerHTML = ''; // Clear existing rows
 
-        // Make the report section visible
-        document.getElementById('report').style.display = 'block';
+report.forEach(row => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td><a href="userProfiles.html?username=${encodeURIComponent(row.user)}">${row.user}</a></td>
+        <td>${row.callsLogged}</td>
+        <td>${row.screeningsStarted}</td>
+        <td>${row.paceApplicationsCompleted}</td>
+        <td>${row.ptrrApplicationsCompleted}</td>
+        <td>${row.lisApplicationsCompleted}</td>
+        <td>${row.mspApplicationsCompleted}</td>
+        <td>${row.snapApplicationsCompleted}</td>
+        <td>${row.liheapApplicationsCompleted}</td>
+    `;
+    tableBody.appendChild(tr);
+});
 
-        console.log('Generated Report:', report);
+// Make the report section visible
+document.getElementById('report').style.display = 'block';
+
+console.log('Generated Report:', report);
     } catch (error) {
         console.error('Error generating report:', error);
     }
