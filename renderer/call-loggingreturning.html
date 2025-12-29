@@ -47,9 +47,9 @@
             <option value="" disabled selected>Select Reason for Call</option>
             <option value="To Apply Myself for Public Benefits">To Apply Myself for Public Benefits</option>
             <option value="To Apply Someone Else for Public Benefits">To Apply Someone Else for Public Benefits</option>
-            <option value="To Recertify SNAP and/or Medical Assistance">To Recertify SNAP </option>
-            <option value="Questions about an Existing Case">Questions about an Existing Case</option>
+            <option value="To Recertify SNAP and/or Medical Assistance">To Recertify SNAP and/or Medical Assistance </option>
             <option value="Post-Submission Questions">Post-Submission Questions</option>
+            <option value="Questions about an Existing Case">Questions about an Existing Case</option>
             <option value="Other">Another Reason</option>
         </select><br><br>
 
@@ -85,70 +85,81 @@
         }
 
         async function logNewCall() {
-        const requiredFields = ['callerFirstName', 'callerLastName', 'callerPhoneNumber', 'callDirection', 'reasonForCall'];
-        for (const field of requiredFields) {
-            const fieldElement = document.getElementById(field);
-            if (fieldElement && fieldElement.classList.contains('hidden')) {
-                continue; // Skip hidden fields
-            }
-            if (!fieldElement.value) {
-                alert('Please fill out all required fields.');
-                return;
-            }
+    const requiredFields = ['callerFirstName', 'callerLastName', 'callerPhoneNumber', 'callDirection', 'reasonForCall'];
+    for (const field of requiredFields) {
+        const fieldElement = document.getElementById(field);
+
+        // Skip hidden fields
+        if (fieldElement && fieldElement.classList.contains('hidden')) {
+            console.log(`Skipping hidden field: ${field}`);
+            continue;
         }
 
-        const selectedContact = document.getElementById('callerSelection').value;
-        let callerFirstName, callerLastName, callerPhoneNumber;
-
-        if (selectedContact === 'new') {
-            callerFirstName = document.getElementById('callerFirstName').value.trim();
-            callerLastName = document.getElementById('callerLastName').value.trim();
-            callerPhoneNumber = document.getElementById('callerPhoneNumber').value.trim();
-        } else {
-            const contactDetails = JSON.parse(selectedContact);
-            callerFirstName = contactDetails.callerFirstName;
-            callerLastName = contactDetails.callerLastName;
-            callerPhoneNumber = contactDetails.callerPhoneNumber;
+        // Skip reasonForCall if callDirection is Outbound
+        if (field === 'reasonForCall' && document.getElementById('callDirection').value === 'Outbound') {
+            console.log('Skipping reasonForCall because callDirection is Outbound');
+            continue;
         }
 
-        const callLog = {
-            callerFirstName: callerFirstName,
-            callerLastName: callerLastName,
-            servicingCenter: document.getElementById('servicingCenter').value,
-            callerPhoneNumber: callerPhoneNumber,
-            callDirection: document.getElementById('callDirection').value,
-            reasonForCall: document.getElementById('reasonForCall').value,
-            referralSource: document.getElementById('referralSource').value,
-            specificReferral: document.getElementById('specificReferral').value,
-            timestamp: new Date().toLocaleString(),
-            agent: document.getElementById('Agent').value
-        };
+        console.log(`Checking field: ${field}, Value: ${fieldElement ? fieldElement.value : 'Field not found'}`);
+        if (!fieldElement || !fieldElement.value) {
+            alert('Please fill out all required fields.');
+            return;
+        }
+    }
 
-        const clientId = getQueryParam('id');
+    const selectedContact = document.getElementById('callerSelection').value;
+    let callerFirstName, callerLastName, callerPhoneNumber;
 
-        try {
-// Save contact details to the Contacts array
-const contactData = {
-    firstName: callerFirstName,
-    lastName: callerLastName,
-    phoneNumber: callerPhoneNumber
-};
+    if (selectedContact === 'new') {
+        callerFirstName = document.getElementById('callerFirstName').value.trim();
+        callerLastName = document.getElementById('callerLastName').value.trim();
+        callerPhoneNumber = document.getElementById('callerPhoneNumber').value.trim();
+    } else {
+        const contactDetails = JSON.parse(selectedContact);
+        callerFirstName = contactDetails.callerFirstName;
+        callerLastName = contactDetails.callerLastName;
+        callerPhoneNumber = contactDetails.callerPhoneNumber || document.getElementById('callerPhoneNumber').value.trim();
+    }
 
-try {
-    // Fetch existing contacts for the client
+    const callLog = {
+        callerFirstName: callerFirstName,
+        callerLastName: callerLastName,
+        servicingCenter: document.getElementById('servicingCenter').value,
+        callerPhoneNumber: callerPhoneNumber,
+        callDirection: document.getElementById('callDirection').value,
+        reasonForCall: document.getElementById('reasonForCall').value,
+        referralSource: document.getElementById('referralSource').value,
+        specificReferral: document.getElementById('specificReferral').value,
+        timestamp: new Date().toLocaleString(),
+        agent: document.getElementById('Agent').value
+    };
+
+    const clientId = getQueryParam('id');
+
+    try {
+    // Save contact details to the Contacts array
+    const contactData = {
+        firstName: callerFirstName,
+        lastName: callerLastName,
+        phoneNumber: callerPhoneNumber
+    };
+
     const existingContactsResponse = await fetch(`/get-client/${clientId}`);
     const clientData = await existingContactsResponse.json();
 
-    if (clientData && Array.isArray(clientData.Contacts)) {
-        const isDuplicate = clientData.Contacts.some(contact =>
-            contact.firstName === contactData.firstName &&
-            contact.lastName === contactData.lastName &&
-            contact.phoneNumber === contactData.phoneNumber
-        );
+    if (clientData) {
+        let isDuplicate = false;
 
-        if (isDuplicate) {
-            console.log('Contact already exists. Skipping save operation.');
-        } else {
+        if (Array.isArray(clientData.Contacts)) {
+            isDuplicate = clientData.Contacts.some(contact =>
+                contact.firstName === contactData.firstName &&
+                contact.lastName === contactData.lastName &&
+                contact.phoneNumber === contactData.phoneNumber
+            );
+        }
+
+        if (!isDuplicate) {
             const addToContactsResponse = await fetch('/add-to-contacts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -161,50 +172,60 @@ try {
                 return;
             }
         }
+
+        // Update client.phoneNumber using the existing /update-client handler
+        const updateClientResponse = await fetch('/update-client', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                clientId,
+                clientData: { phoneNumber: callerPhoneNumber }
+            })
+        });
+
+        const updateClientResult = await updateClientResponse.json();
+        if (!updateClientResponse.ok || !updateClientResult.success) {
+            alert(updateClientResult.message || 'Failed to update client phone number.');
+            return;
+        }
     } else {
-        console.error('Failed to fetch existing contacts or no contacts found.');
+        console.error('Failed to fetch client data.');
+        return;
+    }
+
+    // Log the call
+    const response = await fetch('/log-call', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId, callLog })
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+        const activeUser = sessionStorage.getItem('loggedInUser');
+        const note = {
+            text: `<strong>${callLog.callDirection} call logged.</strong> <br><br> Service Center: <br><br> ${callLog.servicingCenter}.`,
+            timestamp: callLog.timestamp,
+            username: activeUser
+        };
+
+        await fetch('/add-note-to-client', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, note })
+        });
+
+        window.location.href = `profileedit.html?id=${clientId}`;
+    } else {
+        alert(result.message || 'Failed to log call.');
     }
 } catch (error) {
-    console.error('Error checking for duplicate contacts:', error);
+    console.error('Error logging call:', error);
 }
-            const referralSourceContainer = document.getElementById('referralSourceContainer');
-const referralSource = referralSourceContainer.style.display !== 'none'
-    ? document.getElementById('referralSource').value
-    : null;
-
-            // Log the call
-            const response = await fetch('/log-call', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clientId, callLog })
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                const activeUser = sessionStorage.getItem('loggedInUser');
-                const note = {
-                    text: `<strong>${callLog.callDirection} call logged.</strong> <br><br> Service Center: <br><br> ${callLog.servicingCenter}.`,
-                    timestamp: callLog.timestamp,
-                    username: activeUser
-                };
-
-                await fetch('/add-note-to-client', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ clientId, note })
-                });
-
-                window.location.href = `profileedit.html?id=${clientId}`;
-            } else {
-                alert(result.message || 'Failed to log call.');
-            }
-        } catch (error) {
-            console.error('Error logging call:', error);
         }
-    }
 
-    async function populateCallerSelection() {
+async function populateCallerSelection() {
     const callerSelection = document.getElementById('callerSelection');
     const clientId = getQueryParam('id');
 
@@ -233,7 +254,7 @@ const referralSource = referralSourceContainer.style.display !== 'none'
                     callerSelection.appendChild(option);
                 }
             });
-        } else if (client && client.firstName && client.lastName && client.phoneNumber) {
+        } else if (client && client.firstName && client.lastName) {
             // Fallback to client-level information if no contacts are found
             console.log('No contacts found, using client-level information.');
             const option = document.createElement('option');
@@ -246,8 +267,9 @@ const referralSource = referralSourceContainer.style.display !== 'none'
             callerSelection.appendChild(option);
         } else {
             console.log('No contacts or client-level information found.');
+            
         }
-
+    
         const addNewOption = document.createElement('option');
         addNewOption.value = 'new';
         addNewOption.textContent = 'Add New Contact';
@@ -257,11 +279,11 @@ const referralSource = referralSourceContainer.style.display !== 'none'
         alert('Failed to fetch client data. Please try again.');
     }
 }
-        document.getElementById('callerSelection').addEventListener('change', function () {
+document.getElementById('callerSelection').addEventListener('change', async function () {
     const selectedValue = this.value;
 
     if (selectedValue === 'new') {
-        // Show first name, last name, and phone number fields
+        // Show all fields for manual entry
         document.getElementById('callerFirstName').classList.remove('hidden');
         document.getElementById('callerLastName').classList.remove('hidden');
         document.getElementById('callerPhoneNumber').classList.remove('hidden');
@@ -274,22 +296,37 @@ const referralSource = referralSourceContainer.style.display !== 'none'
         document.getElementById('callerLastName').value = '';
         document.getElementById('callerPhoneNumber').value = '';
     } else {
-        // Hide first name, last name, and phone number fields
-        document.getElementById('callerFirstName').classList.add('hidden');
-        document.getElementById('callerLastName').classList.add('hidden');
-        document.getElementById('callerPhoneNumber').classList.add('hidden');
-        document.querySelector('label[for="callerFirstName"]').classList.add('hidden');
-        document.querySelector('label[for="callerLastName"]').classList.add('hidden');
-        document.querySelector('label[for="callerPhoneNumber"]').classList.add('hidden');
-
-        // Populate the fields with the selected contact's details
+        // Parse the selected contact details
         const contactDetails = JSON.parse(selectedValue);
-        document.getElementById('callerFirstName').value = contactDetails.callerFirstName;
-        document.getElementById('callerLastName').value = contactDetails.callerLastName;
-        document.getElementById('callerPhoneNumber').value = contactDetails.callerPhoneNumber;
+
+        // Check if the contact has a phone number
+        if (contactDetails.callerPhoneNumber) {
+            // Hide manual entry fields and populate the fields with the selected contact's details
+            document.getElementById('callerFirstName').classList.add('hidden');
+            document.getElementById('callerLastName').classList.add('hidden');
+            document.getElementById('callerPhoneNumber').classList.add('hidden');
+            document.querySelector('label[for="callerFirstName"]').classList.add('hidden');
+            document.querySelector('label[for="callerLastName"]').classList.add('hidden');
+            document.querySelector('label[for="callerPhoneNumber"]').classList.add('hidden');
+
+            document.getElementById('callerFirstName').value = contactDetails.callerFirstName;
+            document.getElementById('callerLastName').value = contactDetails.callerLastName;
+            document.getElementById('callerPhoneNumber').value = contactDetails.callerPhoneNumber;
+        } else {
+            // Show the phone number field for manual entry
+            document.getElementById('callerFirstName').classList.add('hidden');
+            document.getElementById('callerLastName').classList.add('hidden');
+            document.getElementById('callerPhoneNumber').classList.remove('hidden');
+            document.querySelector('label[for="callerFirstName"]').classList.add('hidden');
+            document.querySelector('label[for="callerLastName"]').classList.add('hidden');
+            document.querySelector('label[for="callerPhoneNumber"]').classList.remove('hidden');
+
+            document.getElementById('callerFirstName').value = contactDetails.callerFirstName;
+            document.getElementById('callerLastName').value = contactDetails.callerLastName;
+            document.getElementById('callerPhoneNumber').value = ''; // Clear the phone number field for manual entry
+        }
     }
 });
-
 
 function toggleReferralSource() {
     const callDirection = document.getElementById('callDirection').value;
@@ -357,16 +394,21 @@ function populateActiveUser() {
     const reasonForCallLabel = document.querySelector('label[for="reasonForCall"]');
     const reasonForCallSelect = document.getElementById('reasonForCall');
 
+    console.log(`Call Direction: ${callDirection}`); // Log the current call direction
+
     if (callDirection === 'Outbound') {
+        console.log('Hiding Reason for Call and removing requirement');
         reasonForCallLabel.style.display = 'none';
         reasonForCallSelect.style.display = 'none';
-        reasonForCallSelect.removeAttribute('required');
+        reasonForCallSelect.removeAttribute('required'); // Remove the required attribute
     } else {
+        console.log('Showing Reason for Call and adding requirement');
         reasonForCallLabel.style.display = 'inline-block';
         reasonForCallSelect.style.display = 'inline-block';
-        reasonForCallSelect.setAttribute('required', 'required');
+        reasonForCallSelect.setAttribute('required', 'required'); // Add the required attribute
     }
 }
+
 document.getElementById('callDirection').addEventListener('change', toggleReasonForCall);
 
     window.onload = function() {

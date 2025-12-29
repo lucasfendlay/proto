@@ -40,9 +40,9 @@
     <option value="" disabled selected>Select Reason for Call</option>
     <option value="To Apply Myself for Public Benefits">To Apply Myself for Public Benefits</option>
     <option value="To Apply Someone Else for Public Benefits">To Apply Someone Else for Public Benefits</option>
-    <option value="To Recertify SNAP and/or Medical Assistance">To Recertify SNAP</option>
-    <option value="Questions about an Existing Case">Questions about an Existing Case</option>
+    <option value="To Recertify SNAP and/or Medical Assistance">To Recertify SNAP and/or Medical Assistance </option>
     <option value="Post-Submission Questions">Post-Submission Questions</option>
+    <option value="Questions about an Existing Case">Questions about an Existing Case</option>
     <option value="Other">Another Reason</option>
 </select><br><br>
 
@@ -74,9 +74,24 @@
         }
 
         async function logNewCall() {
-    const requiredFields = ['callerFirstName', 'callerLastName', 'servicingCenter', 'callerPhoneNumber', 'callDirection', 'reasonForCall'];
+    const requiredFields = ['callerFirstName', 'callerLastName', 'callerPhoneNumber', 'callDirection', 'reasonForCall'];
     for (const field of requiredFields) {
-        if (!document.getElementById(field).value) {
+        const fieldElement = document.getElementById(field);
+
+        // Skip hidden fields
+        if (fieldElement && fieldElement.classList.contains('hidden')) {
+            console.log(`Skipping hidden field: ${field}`);
+            continue;
+        }
+
+        // Skip reasonForCall if callDirection is Outbound
+        if (field === 'reasonForCall' && document.getElementById('callDirection').value === 'Outbound') {
+            console.log('Skipping reasonForCall because callDirection is Outbound');
+            continue;
+        }
+
+        console.log(`Checking field: ${field}, Value: ${fieldElement ? fieldElement.value : 'Field not found'}`);
+        if (!fieldElement || !fieldElement.value) {
             alert('Please fill out all required fields.');
             return;
         }
