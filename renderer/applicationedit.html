@@ -7,7 +7,14 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="householdedit.css">
     <link rel="stylesheet" href="notes.css">
+    <script src="userInfo.js"></script>
+
     <style>
+
+#editSSNButton {
+        position: relative; /* Ensures the button stays in the same flow */
+        margin-top: 10px; /* Adds spacing below the field */
+    }
 
 select:disabled {
     cursor: default; /* Ensures the cursor remains the default arrow */
@@ -241,7 +248,10 @@ body {
         maxlength="11" 
         oninput="formatSSN(this)" 
     >
+    <button type="button" id="confirmSSNButton" onclick="confirmSSN()" style="display: none;">Confirm</button>
+    <button type="button" id="editSSNButton" onclick="editSSN()" style="display: none;">Edit SSN</button>
 </div>
+
 <div class="selection-box">
     <label for="maritalStatus">Current Marital Status:</label>
     <select id="maritalStatus" name="maritalStatus" class="selection-box-input" disabled>
@@ -725,14 +735,54 @@ function formatSSN(input) {
 function validateConfirmSSN() {
     const ssnInput = document.getElementById('socialSecurityNumber');
     const confirmSSNInput = document.getElementById('confirmSocialSecurityNumber');
+    const confirmButton = document.getElementById('confirmSSNButton');
+    const editSSNButton = document.getElementById('editSSNButton');
 
     // Check if the confirm SSN field has 11 characters
     if (confirmSSNInput.value.length === 11) {
         if (confirmSSNInput.value !== ssnInput.value) {
             alert('The Social Security Numbers entered do not match. Please try again.');
             resetSSNFields(); // Reset both fields
+        } else {
+            // Enable the "Confirm" button
+            confirmButton.style.display = 'inline-block';
         }
+    } else {
+        // Hide the "Confirm" button if the input is incomplete
+        confirmButton.style.display = 'none';
     }
+}
+
+function confirmSSN() {
+    const ssnInput = document.getElementById('socialSecurityNumber');
+    const confirmSSNInput = document.getElementById('confirmSocialSecurityNumber');
+    const confirmButton = document.getElementById('confirmSSNButton');
+    const editSSNButton = document.getElementById('editSSNButton');
+
+    // Make the SSN fields read-only
+    ssnInput.readOnly = true;
+    confirmSSNInput.readOnly = true;
+
+    // Hide the "Confirm" button and show the "Edit SSN" button
+    confirmButton.style.display = 'none';
+    editSSNButton.style.display = 'inline-block';
+}
+
+function editSSN() {
+    const ssnInput = document.getElementById('socialSecurityNumber');
+    const confirmSSNInput = document.getElementById('confirmSocialSecurityNumber');
+    const confirmButton = document.getElementById('confirmSSNButton');
+    const editSSNButton = document.getElementById('editSSNButton');
+
+    // Make the SSN fields editable
+    ssnInput.readOnly = false;
+    confirmSSNInput.readOnly = false;
+
+    // Reset the fields
+    resetSSNFields();
+
+    // Hide the "Edit SSN" button
+    editSSNButton.style.display = 'none';
 }
 
 // Add an event listener to the confirm SSN field

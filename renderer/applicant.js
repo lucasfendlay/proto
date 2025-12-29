@@ -976,12 +976,13 @@ if (ssnInput.value && /^\d{3}-\d{2}-\d{4}$/.test(ssnInput.value)) { // Check if 
         editSSNButton.style.borderColor = '#000000';
     });
 
-    // Add a click event listener to trigger the resetSSN function
-    editSSNButton.addEventListener('click', (event) => {
-        event.preventDefault(); // Prevent the default button behavior
-        resetSSNFields(); // Call the resetSSN function
-        editSSNButton.style.display = 'none'; // Hide the "Edit SSN" button
-    });
+// Add a click event listener to trigger the resetSSN function
+editSSNButton.addEventListener('click', (event) => {
+    event.preventDefault(); // Prevent the default button behavior
+    resetSSNFields(); // Call the resetSSN function
+    ssnInput.readOnly = false; // Re-enable the SSN input field
+    editSSNButton.style.display = 'none'; // Hide the "Edit SSN" button
+});
 
     // Insert the "Edit SSN" button after the SSN input field
     ssnInput.parentNode.insertBefore(editSSNButton, ssnInput.nextSibling);

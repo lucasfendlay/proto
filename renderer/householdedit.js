@@ -77,22 +77,22 @@ async function checkAndAddSelfButton(clientData) {
         addSelfButton.textContent = 'Add Primary Client as Household Member';
         addSelfButton.style.marginBottom = '10px';
         addSelfButton.style.border = '1px solid black'; // Add a solid black border
-addSelfButton.style.transition = 'background-color 0.3s ease, color 0.3s ease'; // Smooth transition for hover effects
-
-// Add hover effect using JavaScript
-addSelfButton.addEventListener('mouseover', () => {
-    addSelfButton.style.backgroundColor = '#0056b3'; // Light gray background on hover
-    addSelfButton.style.color = 'white'; // Ensure text color is black
-});
-
-addSelfButton.addEventListener('mouseout', () => {
-    addSelfButton.style.backgroundColor = ''; // Reset background color
-    addSelfButton.style.color = ''; // Reset text color
-});
-
+        addSelfButton.style.transition = 'background-color 0.3s ease, color 0.3s ease'; // Smooth transition for hover effects
+    
+        // Add hover effect using JavaScript
+        addSelfButton.addEventListener('mouseover', () => {
+            addSelfButton.style.backgroundColor = '#0056b3'; // Light gray background on hover
+            addSelfButton.style.color = 'white'; // Ensure text color is black
+        });
+    
+        addSelfButton.addEventListener('mouseout', () => {
+            addSelfButton.style.backgroundColor = ''; // Reset background color
+            addSelfButton.style.color = ''; // Reset text color
+        });
+    
         // Add the button above the householdMemberContainer
         householdMemberContainer.parentNode.insertBefore(addSelfButton, householdMemberContainer);
-
+    
         // Add click event listener to the button
         addSelfButton.addEventListener('click', async () => {
             const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
@@ -100,7 +100,7 @@ addSelfButton.addEventListener('mouseout', () => {
                 console.error('Client ID not found in query parameters.');
                 return;
             }
-        
+    
             try {
                 // Fetch the client data to check household size
                 const response = await fetch(`/get-client/${clientId}`);
@@ -108,30 +108,37 @@ addSelfButton.addEventListener('mouseout', () => {
                     throw new Error(`Failed to fetch client data: ${response.statusText}`);
                 }
                 const clientData = await response.json();
-        
+    
                 if (!clientData) {
                     console.error('Client data not found.');
                     return;
                 }
-        
+    
+                // Check if household size is not set or is 0
+                if (!clientData.householdSize || clientData.householdSize === 0) {
+                    alert('Household size is not set. Please select a valid household size before adding members.');
+                    return; // Prevent further actions
+                }
+    
                 // Check if the number of household members exceeds the household size
                 if (clientData.householdMembers.length >= clientData.householdSize) {
-                    return;
+                    alert('The number of household members cannot exceed the selected household size.');
+                    return; // Prevent further actions
                 }
-        
+    
                 // Set the modal to "Add" mode
                 setModalHeader('add');
-        
+    
                 // Prepare the modal
                 await prepareHouseholdMemberModal();
-        
+    
                 // Autofill first and last name
                 document.getElementById('firstName').value = clientData.firstName;
                 document.getElementById('lastName').value = clientData.lastName;
-        
+    
                 // Set up the button for adding a new member
                 setupAddOrUpdateButton(false);
-        
+    
                 // Show the modal
                 document.getElementById('householdMemberModal').style.display = 'block';
             } catch (error) {
@@ -140,7 +147,7 @@ addSelfButton.addEventListener('mouseout', () => {
         });
     }
 }
-
+    
 // Modify the loadSavedData function to call checkAndAddSelfButton
 async function loadSavedData() {
     const clientId = getQueryParam('id'); // Retrieve the client ID from the URL

@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Call Logging</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="userInfo.js"></script>
+
 </head>
 <body>
     <h1>Add New Contact</h1>
@@ -303,9 +305,33 @@ if (callLog.reasonForCall !== "None") {
     }
 }
 
+function toggleReasonForCall() {
+    const callDirection = document.getElementById('callDirection').value;
+    const reasonForCallLabel = document.querySelector('label[for="reasonForCall"]');
+    const reasonForCallSelect = document.getElementById('reasonForCall');
+    const referralSourceContainer = document.getElementById('referralSourceContainer');
+
+     // Also toggle referral source based on call direction
+
+    if (callDirection === 'Outbound') {
+        reasonForCallLabel.style.display = 'none';
+        reasonForCallSelect.style.display = 'none';
+        reasonForCallSelect.removeAttribute('required');
+        referralSourceContainer.style.display = 'none';
+        document.getElementById('referralSource').removeAttribute('required');
+    } else {
+        reasonForCallLabel.style.display = 'inline-block';
+        reasonForCallSelect.style.display = 'inline-block';
+        reasonForCallSelect.setAttribute('required', 'required');
+        referralSourceContainer.style.display = 'block';
+        document.getElementById('referralSource').setAttribute('required', 'required');
+    }
+}
+document.getElementById('callDirection').addEventListener('change', toggleReasonForCall);
+
         window.onload = function() {
             populateActiveUser();
-            document.getElementById('callDirection').addEventListener('change', toggleReferralSource);
+            toggleReasonForCall(); // Ensure the correct state on page load
         };
     </script>
 </body>
