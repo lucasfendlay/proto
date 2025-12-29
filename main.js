@@ -251,7 +251,6 @@ app.get('/get-client/:clientId', async (req, res) => {
     }
 });
 
-// Update a client
 app.put('/update-client', async (req, res) => {
     console.log('Request body received at /update-client:', req.body);
 
@@ -264,12 +263,11 @@ app.put('/update-client', async (req, res) => {
             { $set: clientData }
         );
 
-        if (result.modifiedCount > 0) {
-            res.json({ success: true });
-        } else if (result.matchedCount === 0) {
-            res.status(404).json({ success: false, message: `No client found with ID ${clientId}.` });
+        if (result.matchedCount > 0) {
+            // Treat both modified and unmodified cases as success
+            res.json({ success: true, message: 'Client updated successfully (or no changes were necessary).' });
         } else {
-            res.status(400).json({ success: false, message: 'No changes were made to the client data.' });
+            res.status(404).json({ success: false, message: `No client found with ID ${clientId}.` });
         }
     } catch (error) {
         console.error('Error updating client:', error);
