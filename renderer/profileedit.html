@@ -560,6 +560,9 @@
             }
 
             try {
+                            // Set checkedOut to false
+            await setCheckedOutStatus(clientId, false);
+
                 // Save client data
                 await saveClient();
 
@@ -1392,7 +1395,23 @@ function updateCountyDropdown(counties, backendCounty = null) {
         // Otherwise, default to "Select County"
         countyDropdown.value = "";
     }
+
+    // If "Select County" is selected, set county to null in the database
+    if (countyDropdown.value === "") {
+        updateClientData('county', null);
+    }
 }
+
+// Add event listener for the county dropdown
+document.getElementById("county").addEventListener("change", function () {
+    const selectedValue = this.value;
+
+    if (selectedValue === "") {
+        // If "Select County" is selected, set county to null in the database
+        updateClientData('county', null);
+    }
+});
+
 // Add event listener for zip code input
 function setupZipCodeListener() {
     const zipCodeInput = document.getElementById("zipCode");
@@ -1413,6 +1432,38 @@ function setupZipCodeListener() {
             await updateClientData('county', null);
         }
     });
+}
+
+async function setCheckedOutStatus(clientId, status) {
+    try {
+        const response = await fetch('/update-client', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                clientId, 
+                clientData: { 
+                    checkedOut: [
+                        {
+                            status: status, // Set status to false
+                            timestamp: status ? new Date().toISOString() : null, // Clear timestamp if status is false
+                            user: status ? sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User' : null // Clear user if status is false
+                        }
+                    ] 
+                } 
+            }),
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            console.error(`Failed to update checkedOut status to ${status}:`, result.message);
+        } else {
+            console.log(`Successfully updated checkedOut status to ${status}.`);
+        }
+    } catch (error) {
+        console.error(`Error updating checkedOut status to ${status}:`, error);
+    }
 }
 
     // Ensure all initialization functions are executed

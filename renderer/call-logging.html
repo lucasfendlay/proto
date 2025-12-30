@@ -130,67 +130,67 @@
     };
 
     try {
-// Save caller details if reasonForCall is not "None"
-if (callLog.reasonForCall !== "None") {
-    const clientData = {
-        firstName: callLog.callerFirstName,
-        lastName: callLog.callerLastName,
-        phoneNumber: callLog.callerPhoneNumber,
-    };
+        // Save caller details if reasonForCall is not "None"
+        if (callLog.reasonForCall !== "None") {
+            const clientData = {
+                firstName: callLog.callerFirstName,
+                lastName: callLog.callerLastName,
+                phoneNumber: callLog.callerPhoneNumber,
+            };
 
-    // Save to Contacts only if reasonForCall is "To Apply Someone Else for Public Benefits"
-    if (callLog.reasonForCall === "To Apply Someone Else for Public Benefits") {
-        const addToContactsResponse = await fetch('/add-to-contacts', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                clientId,
-                contact: clientData,
-            }),
-        });
+            // Save to Contacts only if reasonForCall is "To Apply Someone Else for Public Benefits"
+            if (callLog.reasonForCall === "To Apply Someone Else for Public Benefits") {
+                const addToContactsResponse = await fetch('/add-to-contacts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        clientId,
+                        contact: clientData,
+                    }),
+                });
 
-        const addToContactsResult = await addToContactsResponse.json();
-        if (!addToContactsResponse.ok || !addToContactsResult.success) {
-            alert(addToContactsResult.message || 'Failed to save contact details.');
-            return;
+                const addToContactsResult = await addToContactsResponse.json();
+                if (!addToContactsResponse.ok || !addToContactsResult.success) {
+                    alert(addToContactsResult.message || 'Failed to save contact details.');
+                    return;
+                }
+            } else {
+                // Save caller details to the client
+                const updateClientResponse = await fetch('/update-client', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ clientId, clientData }),
+                });
+
+                const updateClientResult = await updateClientResponse.json();
+                if (!updateClientResponse.ok || !updateClientResult.success) {
+                    alert(updateClientResult.message || 'Failed to update client details.');
+                    return;
+                }
+
+                // Add caller details to the Contacts array
+                const addToContactsResponse = await fetch('/add-to-contacts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        clientId,
+                        contact: clientData,
+                    }),
+                });
+
+                const addToContactsResult = await addToContactsResponse.json();
+                if (!addToContactsResponse.ok || !addToContactsResult.success) {
+                    alert(addToContactsResult.message || 'Failed to save contact details.');
+                    return;
+                }
+            }
         }
-    } else {
-        // Save caller details to the client
-        const updateClientResponse = await fetch('/update-client', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ clientId, clientData }),
-        });
-
-        const updateClientResult = await updateClientResponse.json();
-        if (!updateClientResponse.ok || !updateClientResult.success) {
-            alert(updateClientResult.message || 'Failed to update client details.');
-            return;
-        }
-
-        // Add caller details to the Contacts array
-        const addToContactsResponse = await fetch('/add-to-contacts', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                clientId,
-                contact: clientData,
-            }),
-        });
-
-        const addToContactsResult = await addToContactsResponse.json();
-        if (!addToContactsResponse.ok || !addToContactsResult.success) {
-            alert(addToContactsResult.message || 'Failed to save contact details.');
-            return;
-        }
-    }
-}
 
         // Log the call
         const logCallResponse = await fetch('/log-call', {
@@ -248,41 +248,29 @@ if (callLog.reasonForCall !== "None") {
                 return;
             }
 
-            // Add the notes to the notes container in the UI
-            const notesContainer = document.getElementById('notesContainer');
-            if (notesContainer) {
-                const profileNoteElement = document.createElement('div');
-                profileNoteElement.classList.add('note');
-                profileNoteElement.innerHTML = `
-                    <p><strong>${profileCreationNote.timestamp}</strong></p>
-                    <p>${profileCreationNote.text}</p>
-                    <p><em>Logged by: ${profileCreationNote.username}</em></p>
-                `;
-                notesContainer.appendChild(profileNoteElement);
-
-                const callNoteElement = document.createElement('div');
-                callNoteElement.classList.add('note');
-                callNoteElement.innerHTML = `
-                    <p><strong>${callNote.timestamp}</strong></p>
-                    <p>${callNote.text}</p>
-                    <p><em>Logged by: ${callNote.username}</em></p>
-                `;
-                notesContainer.appendChild(callNoteElement);
-            }
+            // Update the client with checkedOut: true after redirecting
+            await fetch('/update-client', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ 
+        clientId, 
+        clientData: { 
+            checkedOut: [
+                {
+                    status: true,
+                    timestamp: new Date().toISOString(),
+                    user: sessionStorage.getItem('loggedInUser') 
+                        ? sessionStorage.getItem('loggedInUser').trim() 
+                        : 'Unknown User'
+                }
+            ] 
+        } 
+    }),
+});
 
             // Redirect based on the reason for the call
-            if (callLog.reasonForCall === "To Apply Myself for Public Benefits" || 
-                callLog.reasonForCall === "To Apply Someone Else for Public Benefits" ||
-                callLog.reasonForCall === "To Recertify SNAP and/or Medical Assistance" || 
-                callLog.reasonForCall === "CAP Outreach" || 
-                callLog.reasonForCall === "Questions about an Existing Case" || 
-                callLog.reasonForCall === "Post-Submission Questions" || 
-                callLog.reasonForCall === "Other") {
-                const url = `profileedit.html?id=${clientId}`;
-                window.location.href = url;
-            } else {
-                window.location.href = `profileedit.html?id=${clientId}`;
-            }
+            const url = `profileedit.html?id=${clientId}`;
+            window.location.href = url;
         } else {
             alert(logCallResult.message || 'Failed to log call.');
         }
@@ -290,7 +278,6 @@ if (callLog.reasonForCall !== "None") {
         console.error('Error logging call:', error);
     }
 }
-
         function populateActiveUser() {
             const activeUser = sessionStorage.getItem('loggedInUser');
             if (activeUser) {

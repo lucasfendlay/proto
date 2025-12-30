@@ -198,6 +198,9 @@ details > summary {
     }
 
     try {
+
+        await setCheckedOutStatus(clientId, false);
+
         // Save current enrollments data (if applicable)
         await saveCurrentEnrollmentsData();
 
@@ -318,6 +321,39 @@ window.addEventListener('load', checkScreeningStatus);
         console.error('Error during navigation to income page:', error);
     }
 }
+
+async function setCheckedOutStatus(clientId, status) {
+    try {
+        const response = await fetch('/update-client', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                clientId, 
+                clientData: { 
+                    checkedOut: [
+                        {
+                            status: status, // Set status to false
+                            timestamp: status ? new Date().toISOString() : null, // Clear timestamp if status is false
+                            user: status ? sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User' : null // Clear user if status is false
+                        }
+                    ] 
+                } 
+            }),
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            console.error(`Failed to update checkedOut status to ${status}:`, result.message);
+        } else {
+            console.log(`Successfully updated checkedOut status to ${status}.`);
+        }
+    } catch (error) {
+        console.error(`Error updating checkedOut status to ${status}:`, error);
+    }
+}
+
     </script>
     <script src="notes.js"></script>
     <script src="editnavigation.js"></script>

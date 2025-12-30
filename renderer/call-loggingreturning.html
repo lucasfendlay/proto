@@ -145,92 +145,111 @@
     const clientId = getQueryParam('id');
 
     try {
-    // Save contact details to the Contacts array
-    const contactData = {
-        firstName: callerFirstName,
-        lastName: callerLastName,
-        phoneNumber: callerPhoneNumber
-    };
-
-    const existingContactsResponse = await fetch(`/get-client/${clientId}`);
-    const clientData = await existingContactsResponse.json();
-
-    if (clientData) {
-        let isDuplicate = false;
-
-        if (Array.isArray(clientData.Contacts)) {
-            isDuplicate = clientData.Contacts.some(contact =>
-                contact.firstName === contactData.firstName &&
-                contact.lastName === contactData.lastName &&
-                contact.phoneNumber === contactData.phoneNumber
-            );
-        }
-
-        if (!isDuplicate) {
-            const addToContactsResponse = await fetch('/add-to-contacts', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clientId, contact: contactData })
-            });
-
-            const addToContactsResult = await addToContactsResponse.json();
-            if (!addToContactsResponse.ok || !addToContactsResult.success) {
-                alert(addToContactsResult.message || 'Failed to save contact details.');
-                return;
-            }
-        }
-
-        // Update client.phoneNumber using the existing /update-client handler
-        const updateClientResponse = await fetch('/update-client', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                clientId,
-                clientData: { phoneNumber: callerPhoneNumber }
-            })
-        });
-
-        const updateClientResult = await updateClientResponse.json();
-        if (!updateClientResponse.ok || !updateClientResult.success) {
-            alert(updateClientResult.message || 'Failed to update client phone number.');
-            return;
-        }
-    } else {
-        console.error('Failed to fetch client data.');
-        return;
-    }
-
-    // Log the call
-    const response = await fetch('/log-call', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId, callLog })
-    });
-
-    const result = await response.json();
-
-    if (result.success) {
-        const activeUser = sessionStorage.getItem('loggedInUser');
-        const note = {
-            text: `<strong>${callLog.callDirection} call logged.</strong> <br><br> Service Center: <br><br> ${callLog.servicingCenter}.`,
-            timestamp: callLog.timestamp,
-            username: activeUser
+        // Save contact details to the Contacts array
+        const contactData = {
+            firstName: callerFirstName,
+            lastName: callerLastName,
+            phoneNumber: callerPhoneNumber
         };
 
-        await fetch('/add-note-to-client', {
+        const existingContactsResponse = await fetch(`/get-client/${clientId}`);
+        const clientData = await existingContactsResponse.json();
+
+        if (clientData) {
+            let isDuplicate = false;
+
+            if (Array.isArray(clientData.Contacts)) {
+                isDuplicate = clientData.Contacts.some(contact =>
+                    contact.firstName === contactData.firstName &&
+                    contact.lastName === contactData.lastName &&
+                    contact.phoneNumber === contactData.phoneNumber
+                );
+            }
+
+            if (!isDuplicate) {
+                const addToContactsResponse = await fetch('/add-to-contacts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientId, contact: contactData })
+                });
+
+                const addToContactsResult = await addToContactsResponse.json();
+                if (!addToContactsResponse.ok || !addToContactsResult.success) {
+                    alert(addToContactsResult.message || 'Failed to save contact details.');
+                    return;
+                }
+            }
+
+            // Update client.phoneNumber using the existing /update-client handler
+            const updateClientResponse = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId,
+                    clientData: { phoneNumber: callerPhoneNumber }
+                })
+            });
+
+            const updateClientResult = await updateClientResponse.json();
+            if (!updateClientResponse.ok || !updateClientResult.success) {
+                alert(updateClientResult.message || 'Failed to update client phone number.');
+                return;
+            }
+        } else {
+            console.error('Failed to fetch client data.');
+            return;
+        }
+
+        // Log the call
+        const response = await fetch('/log-call', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clientId, note })
+            body: JSON.stringify({ clientId, callLog })
         });
 
-        window.location.href = `profileedit.html?id=${clientId}`;
-    } else {
-        alert(result.message || 'Failed to log call.');
-    }
-} catch (error) {
-    console.error('Error logging call:', error);
-}
+        const result = await response.json();
+
+        if (result.success) {
+            const activeUser = sessionStorage.getItem('loggedInUser');
+            const note = {
+                text: `<strong>${callLog.callDirection} call logged.</strong> <br><br> Service Center: <br><br> ${callLog.servicingCenter}.`,
+                timestamp: callLog.timestamp,
+                username: activeUser
+            };
+
+            await fetch('/add-note-to-client', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, note })
+            });
+
+            // Update the client with checkedOut: true after redirecting
+            await fetch('/update-client', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ 
+        clientId, 
+        clientData: { 
+            checkedOut: [
+                {
+                    status: true,
+                    timestamp: new Date().toISOString(),
+                    user: sessionStorage.getItem('loggedInUser') 
+                        ? sessionStorage.getItem('loggedInUser').trim() 
+                        : 'Unknown User'
+                }
+            ] 
+        } 
+    }),
+});
+            window.location.href = `profileedit.html?id=${clientId}`;
+        } else {
+            alert(result.message || 'Failed to log call.');
         }
+    } catch (error) {
+        console.error('Error logging call:', error);
+    }
+}
 
 async function populateCallerSelection() {
     const callerSelection = document.getElementById('callerSelection');
@@ -377,46 +396,94 @@ function populateActiveUser() {
     }
 
     async function checkCallLogsAndToggleFields() {
-        const clientId = getQueryParam('id');
-        try {
-            const response = await fetch(`/get-client/${clientId}`);
-            const client = await response.json();
+    const clientId = getQueryParam('id');
+    try {
+        const response = await fetch(`/get-client/${clientId}`);
+        const client = await response.json();
 
-            if (client && Array.isArray(client.callLogs) && client.callLogs.length > 0) {
-                // Hide referralSourceContainer and specificReferralContainer
-                document.getElementById('referralSourceContainer').style.display = 'none';
+        if (client && Array.isArray(client.callLogs) && client.callLogs.length > 0) {
+            console.log('Past call logs found. Hiding referralSourceContainer permanently.');
+            // Always hide the Referral Source field if there are past call logs
+            document.getElementById('referralSourceContainer').style.display = 'none';
+            document.getElementById('referralSource').removeAttribute('required');
+        } else {
+            const callDirection = document.getElementById('callDirection').value;
+
+            // Toggle fields based on call direction if no past call logs exist
+            if (callDirection === 'Outbound') {
+                console.log('Hiding specificReferralContainer due to Outbound direction');
                 document.getElementById('specificReferralContainer').style.display = 'none';
-
-                // Remove required attributes
-                document.getElementById('referralSource').removeAttribute('required');
+            } else if (callDirection === 'Inbound') {
+                console.log('Showing specificReferralContainer due to Inbound direction');
+                document.getElementById('specificReferralContainer').style.display = 'block';
+                document.getElementById('specificReferral').setAttribute('required', 'required');
+            } else {
+                console.log('No call direction selected. Keeping fields visible.');
+                document.getElementById('specificReferralContainer').style.display = 'block';
                 document.getElementById('specificReferral').removeAttribute('required');
             }
-        } catch (error) {
-            console.error('Error checking call logs:', error);
         }
-    }
-
-    function toggleReasonForCall() {
-    const callDirection = document.getElementById('callDirection').value;
-    const reasonForCallLabel = document.querySelector('label[for="reasonForCall"]');
-    const reasonForCallSelect = document.getElementById('reasonForCall');
-
-    console.log(`Call Direction: ${callDirection}`); // Log the current call direction
-
-    if (callDirection === 'Outbound') {
-        console.log('Hiding Reason for Call and removing requirement');
-        reasonForCallLabel.style.display = 'none';
-        reasonForCallSelect.style.display = 'none';
-        reasonForCallSelect.removeAttribute('required'); // Remove the required attribute
-    } else {
-        console.log('Showing Reason for Call and adding requirement');
-        reasonForCallLabel.style.display = 'inline-block';
-        reasonForCallSelect.style.display = 'inline-block';
-        reasonForCallSelect.setAttribute('required', 'required'); // Add the required attribute
+    } catch (error) {
+        console.error('Error checking call logs:', error);
     }
 }
 
-document.getElementById('callDirection').addEventListener('change', toggleReasonForCall);
+
+function toggleReasonForCall() {
+    const callDirection = document.getElementById('callDirection').value;
+    const reasonForCallLabel = document.querySelector('label[for="reasonForCall"]');
+    const reasonForCallSelect = document.getElementById('reasonForCall');
+    const referralSourceContainer = document.getElementById('referralSourceContainer');
+    const referralSource = document.getElementById('referralSource');
+
+    console.log(`Call Direction: ${callDirection}`); // Log the current call direction
+
+    // If no direction is selected, ensure fields are visible and required
+    if (!callDirection) {
+        console.log('No call direction selected. Keeping fields visible.');
+        reasonForCallLabel.style.display = 'inline-block';
+        reasonForCallSelect.style.display = 'inline-block';
+        reasonForCallSelect.setAttribute('required', 'required');
+
+        // Only show Referral Source if checkCallLogsAndToggleFields hasn't hidden it
+        if (referralSourceContainer.style.display !== 'none') {
+            referralSourceContainer.style.display = 'block';
+            referralSource.setAttribute('required', 'required');
+        }
+        return;
+    }
+
+    // Handle "Outbound" direction
+    if (callDirection === 'Outbound') {
+        console.log('Hiding Reason for Call, Referral Source, and removing requirements');
+        reasonForCallLabel.style.display = 'none';
+        reasonForCallSelect.style.display = 'none';
+        reasonForCallSelect.removeAttribute('required');
+
+        // Only hide Referral Source if checkCallLogsAndToggleFields hasn't already hidden it
+        if (referralSourceContainer.style.display !== 'none') {
+            referralSourceContainer.style.display = 'none';
+            referralSource.removeAttribute('required');
+        }
+    } else {
+        console.log('Showing Reason for Call, Referral Source, and adding requirements');
+        reasonForCallLabel.style.display = 'inline-block';
+        reasonForCallSelect.style.display = 'inline-block';
+        reasonForCallSelect.setAttribute('required', 'required');
+
+        // Only show Referral Source if checkCallLogsAndToggleFields hasn't hidden it
+        if (referralSourceContainer.style.display !== 'none') {
+            referralSourceContainer.style.display = 'block';
+            referralSource.setAttribute('required', 'required');
+        }
+    }
+}
+
+// Ensure the fields are visible by default on page load
+document.addEventListener('DOMContentLoaded', () => {
+    toggleReasonForCall();
+    document.getElementById('callDirection').addEventListener('change', toggleReasonForCall);
+});
 
     window.onload = function() {
         populateCallerSelection();

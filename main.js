@@ -174,8 +174,11 @@ app.post('/add-client-batch', async (req, res) => {
     }
 });
 
-// Delete invalid documents (missing fields or matching specific invalid values)
-app.delete('/delete-invalid-documents', async (req, res) => {
+const cron = require('node-cron');
+
+// Schedule the task to run every Sunday at midnight
+cron.schedule('0 0 * * 0', async () => {
+    console.log('Running weekly cleanup for invalid documents...');
     try {
         const collection = db.collection('clients');
         const result = await collection.deleteMany({
@@ -190,10 +193,9 @@ app.delete('/delete-invalid-documents', async (req, res) => {
             ],
         });
 
-        res.json({ success: true, deletedCount: result.deletedCount });
+        console.log(`Weekly cleanup completed. Deleted ${result.deletedCount} invalid documents.`);
     } catch (error) {
-        console.error('Error deleting invalid documents:', error);
-        res.status(500).json({ success: false, message: 'Failed to delete invalid documents.' });
+        console.error('Error during weekly cleanup:', error);
     }
 });
 
@@ -256,15 +258,23 @@ app.put('/update-client', async (req, res) => {
 
     const { clientId, clientData } = req.body;
 
+    if (!clientId || !clientData) {
+        return res.status(400).json({ success: false, message: 'Missing clientId or clientData in the request body.' });
+    }
+
     try {
         const collection = db.collection('clients');
+        console.log('Filter:', { id: clientId });
+        console.log('Update data:', clientData);
+
         const result = await collection.updateOne(
             { id: clientId },
             { $set: clientData }
         );
 
+        console.log('Update result:', result);
+
         if (result.matchedCount > 0) {
-            // Treat both modified and unmodified cases as success
             res.json({ success: true, message: 'Client updated successfully (or no changes were necessary).' });
         } else {
             res.status(404).json({ success: false, message: `No client found with ID ${clientId}.` });

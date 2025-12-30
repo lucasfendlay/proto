@@ -195,6 +195,9 @@ async function redirectToEstimationsView() {
     }
 
     try {
+
+        await setCheckedOutStatus(clientId, false);
+
         // Perform any necessary save operations here
         console.log("Saving profile and redirecting...");
 
@@ -341,6 +344,39 @@ console.log("Note added:", noteContent);
         window.location.href = `applicationedit.html?id=${clientId}`;
     }
 }
+
+async function setCheckedOutStatus(clientId, status) {
+    try {
+        const response = await fetch('/update-client', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                clientId, 
+                clientData: { 
+                    checkedOut: [
+                        {
+                            status: status, // Set status to false
+                            timestamp: status ? new Date().toISOString() : null, // Clear timestamp if status is false
+                            user: status ? sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User' : null // Clear user if status is false
+                        }
+                    ] 
+                } 
+            }),
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            console.error(`Failed to update checkedOut status to ${status}:`, result.message);
+        } else {
+            console.log(`Successfully updated checkedOut status to ${status}.`);
+        }
+    } catch (error) {
+        console.error(`Error updating checkedOut status to ${status}:`, error);
+    }
+}
+
 </script>
 </html>
     <script src="estimationsstep.js" defer></script>

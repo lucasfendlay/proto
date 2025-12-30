@@ -100,146 +100,156 @@
     }
 
     async function searchClients() {
-        const searchInputs = {
-            id: document.getElementById('searchId').value.trim(),
-            firstName: document.getElementById('searchFirstName').value.trim(),
-            lastName: document.getElementById('searchLastName').value.trim(),
-            phoneNumber: document.getElementById('searchPhoneNumber').value.trim(),
-            streetAddress: document.getElementById('searchStreetAddress').value.trim(),
-            city: document.getElementById('searchCity').value.trim(),
-            county: document.getElementById('searchCounty').value.trim(),
-        };
+    const searchInputs = {
+        id: document.getElementById('searchId').value.trim(),
+        firstName: document.getElementById('searchFirstName').value.trim(),
+        lastName: document.getElementById('searchLastName').value.trim(),
+        phoneNumber: document.getElementById('searchPhoneNumber').value.trim(),
+        streetAddress: document.getElementById('searchStreetAddress').value.trim(),
+        city: document.getElementById('searchCity').value.trim(),
+        county: document.getElementById('searchCounty').value.trim(),
+    };
 
-        // Check if all search fields are empty
-        const allFieldsEmpty = Object.values(searchInputs).every(value => value === '');
-        if (allFieldsEmpty) {
-            await loadClients(); // Repopulate the client list with all clients
-            return;
-        }
+    // Check if all search fields are empty
+    const allFieldsEmpty = Object.values(searchInputs).every(value => value === '');
+    if (allFieldsEmpty) {
+        await loadClients(); // Repopulate the client list with all clients
+        return;
+    }
 
-        const clients = await fetchClients();
+    const clients = await fetchClients();
+    const activeUser = sessionStorage.getItem('loggedInUser')?.trim();
 
-        // Prepare Fuse.js options
-        const fuseOptions = {
-            includeScore: true,
-            threshold: 0.4, // Adjust for fuzziness tolerance
-        };
+    // Prepare Fuse.js options for fuzzy searching
+    const fuseOptions = {
+        includeScore: true,
+        threshold: 0.4, // Adjust for fuzziness tolerance
+    };
 
-        // Perform field-specific searches
-        const fieldResults = {};
-        for (const [field, query] of Object.entries(searchInputs)) {
-            if (query) {
-                const fuse = new Fuse(clients, { ...fuseOptions, keys: [field] });
-                fieldResults[field] = fuse.search(query);
-            }
-        }
-
-        // Aggregate scores for each client
-        const clientScores = {};
-        for (const [field, results] of Object.entries(fieldResults)) {
-            results.forEach(({ item, score }) => {
-                if (!clientScores[item.id]) {
-                    clientScores[item.id] = { client: item, totalScore: 0 };
-                }
-                clientScores[item.id].totalScore += (1 - score); // Higher score = more relevant
-            });
-        }
-
-        // Convert aggregated scores to a sorted array
-        const sortedResults = Object.values(clientScores).sort((a, b) => {
-            if (b.totalScore === a.totalScore) {
-                // Sort by most recent note timestamp if scores are equal
-                const aLastNote = a.client.notes?.[a.client.notes.length - 1]?.timestamp || 0;
-                const bLastNote = b.client.notes?.[b.client.notes.length - 1]?.timestamp || 0;
-                return new Date(bLastNote) - new Date(aLastNote);
-            }
-            return b.totalScore - a.totalScore; // Higher total score first
-        });
-
-        // Render the results
-        const clientList = document.getElementById('clientList');
-        clientList.innerHTML = '';
-
-        if (sortedResults.length === 0) {
-            const noResultsMessage = document.createElement('li');
-            noResultsMessage.textContent = 'No clients found.';
-            clientList.appendChild(noResultsMessage);
-        } else {
-            sortedResults.forEach(({ client }) => {
-                if (!client.firstName || !client.lastName || !client.phoneNumber) {
-                    return;
-                }
-
-                // Get the most recent note timestamp
-                const mostRecentNote = client.notes?.[client.notes.length - 1];
-                const mostRecentActivity = mostRecentNote ? mostRecentNote.timestamp : '<strong>No recent activity</strong>';
-
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    <a href="profileview.html?id=${client.id}">
-                        <strong>Profile: ${client.id}</strong> | 
-                        ${client.firstName || ''} ${client.lastName || ''} | 
-                        ${client.phoneNumber ? `Phone: ${client.phoneNumber} | ` : ''}
-                        ${client.streetAddress || client.city || client.state || client.zipCode ? `Address: ${[
-                            client.streetAddress,
-                            client.city,
-                            client.state,
-                            client.zipCode,
-                            client.county ? `${client.county} County` : ''
-                        ].filter(Boolean).join(', ')} | ` : ''}
-                        <strong>Most Recent Activity:</strong> ${mostRecentActivity}
-                    </a>`;
-                clientList.appendChild(li);
-            });
+    // Perform field-specific searches
+    const fieldResults = {};
+    for (const [field, query] of Object.entries(searchInputs)) {
+        if (query) {
+            const fuse = new Fuse(clients, { ...fuseOptions, keys: [field] });
+            fieldResults[field] = fuse.search(query);
         }
     }
 
-    async function loadClients() {
-        const clients = await fetchClients();
-
-        // Sort clients by the most recent note timestamp
-        clients.sort((a, b) => {
-            const aLastNote = a.notes?.[a.notes.length - 1]?.timestamp || 0;
-            const bLastNote = b.notes?.[b.notes.length - 1]?.timestamp || 0;
-            return new Date(bLastNote) - new Date(aLastNote);
+    // Aggregate scores for each client
+    const clientScores = {};
+    for (const [field, results] of Object.entries(fieldResults)) {
+        results.forEach(({ item, score }) => {
+            if (!clientScores[item.id]) {
+                clientScores[item.id] = { client: item, totalScore: 0 };
+            }
+            clientScores[item.id].totalScore += (1 - score); // Higher score = more relevant
         });
+    }
 
-        const clientList = document.getElementById('clientList');
-        clientList.innerHTML = '';
+    // Convert aggregated scores to a sorted array
+    const sortedResults = Object.values(clientScores).sort((a, b) => {
+        if (b.totalScore === a.totalScore) {
+            // Sort by most recent note timestamp if scores are equal
+            const aLastNote = a.client.notes?.[a.client.notes.length - 1]?.timestamp || 0;
+            const bLastNote = b.client.notes?.[b.client.notes.length - 1]?.timestamp || 0;
+            return new Date(bLastNote) - new Date(aLastNote);
+        }
+        return b.totalScore - a.totalScore; // Higher total score first
+    });
 
-        if (clients.length === 0) {
-            const noResultsMessage = document.createElement('li');
-            noResultsMessage.textContent = 'No clients found.';
-            clientList.appendChild(noResultsMessage);
-        } else {
-            clients.forEach((client) => {
-                if (!client.firstName || !client.lastName) {
-                    return;
-                }
+    // Render the results
+    const clientList = document.getElementById('clientList');
+    clientList.innerHTML = '';
 
-                // Get the most recent note timestamp
+    if (sortedResults.length === 0) {
+        const noResultsMessage = document.createElement('li');
+        noResultsMessage.textContent = 'No clients found.';
+        clientList.appendChild(noResultsMessage);
+    } else {
+        sortedResults.forEach(({ client }) => {
+            if (!client.firstName || !client.lastName) {
+                return;
+            }
+
+            // Determine if the profile is checked out by the active user
+            const checkedOutInfo = client.checkedOut?.find(entry => entry.status === true);
+            const isCheckedOutByUser = checkedOutInfo && checkedOutInfo.user === activeUser;
+
+            // Get the most recent note timestamp
             const mostRecentNote = client.notes?.[client.notes.length - 1];
             const mostRecentActivity = mostRecentNote ? mostRecentNote.timestamp : 'No recent activity';
 
             const li = document.createElement('li');
             li.innerHTML = `
-    <a href="profileview.html?id=${client.id}">
-        <strong>Profile: ${client.id} </strong> | 
-        ${client.firstName || ''} ${client.lastName || ''} | 
-        ${client.phoneNumber ? `Phone: ${client.phoneNumber} | ` : ''}
-        ${client.streetAddress || client.city || client.state || client.zipCode ? `Address: ${[
-            client.streetAddress,
-            client.city,
-            client.state,
-            client.zipCode,
-            client.county ? `${client.county} County` : ''
-        ].filter(Boolean).join(', ')} | ` : ''}
-        <strong>Most Recent Activity:</strong> ${mostRecentActivity}
-    </a>`;
+                <a href="${isCheckedOutByUser ? `profileedit.html?id=${client.id}` : `profileview.html?id=${client.id}`}">
+                    <strong>Profile: ${client.id}</strong> | 
+                    ${client.firstName || ''} ${client.lastName || ''} | 
+                    ${client.phoneNumber ? `Phone: ${client.phoneNumber} | ` : ''}
+                    ${client.streetAddress || client.city || client.state || client.zipCode ? `Address: ${[
+                        client.streetAddress,
+                        client.city,
+                        client.state,
+                        client.zipCode,
+                        client.county ? `${client.county} County` : ''
+                    ].filter(Boolean).join(', ')} | ` : ''}
+                    <strong>Most Recent Activity:</strong> ${mostRecentActivity}
+                </a>`;
             clientList.appendChild(li);
         });
     }
+}
+
+    async function loadClients() {
+    const clients = await fetchClients();
+    const activeUser = sessionStorage.getItem('loggedInUser')?.trim();
+
+    // Sort clients by the most recent note timestamp
+    clients.sort((a, b) => {
+        const aLastNote = a.notes?.[a.notes.length - 1]?.timestamp || 0;
+        const bLastNote = b.notes?.[b.notes.length - 1]?.timestamp || 0;
+        return new Date(bLastNote) - new Date(aLastNote);
+    });
+
+    const clientList = document.getElementById('clientList');
+    clientList.innerHTML = '';
+
+    if (clients.length === 0) {
+        const noResultsMessage = document.createElement('li');
+        noResultsMessage.textContent = 'No clients found.';
+        clientList.appendChild(noResultsMessage);
+    } else {
+        clients.forEach((client) => {
+            if (!client.firstName || !client.lastName) {
+                return;
+            }
+
+            // Determine if the profile is checked out by the active user
+            const checkedOutInfo = client.checkedOut?.find(entry => entry.status === true);
+            const isCheckedOutByUser = checkedOutInfo && checkedOutInfo.user === activeUser;
+
+            // Get the most recent note timestamp
+            const mostRecentNote = client.notes?.[client.notes.length - 1];
+            const mostRecentActivity = mostRecentNote ? mostRecentNote.timestamp : 'No recent activity';
+
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <a href="${isCheckedOutByUser ? `profileedit.html?id=${client.id}` : `profileview.html?id=${client.id}`}">
+                    <strong>Profile: ${client.id}</strong> | 
+                    ${client.firstName || ''} ${client.lastName || ''} | 
+                    ${client.phoneNumber ? `Phone: ${client.phoneNumber} | ` : ''}
+                    ${client.streetAddress || client.city || client.state || client.zipCode ? `Address: ${[
+                        client.streetAddress,
+                        client.city,
+                        client.state,
+                        client.zipCode,
+                        client.county ? `${client.county} County` : ''
+                    ].filter(Boolean).join(', ')} | ` : ''}
+                    <strong>Most Recent Activity:</strong> ${mostRecentActivity}
+                </a>`;
+            clientList.appendChild(li);
+        });
     }
+}
 
         async function saveClientAndLogCall() {
             const client = {

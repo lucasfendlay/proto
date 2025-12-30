@@ -122,31 +122,6 @@
         const randomSixDigits = Math.floor(100000 + Math.random() * 900000); // Generate a random 6-digit number
         return `ID${randomSixDigits}`;
     }
-
-    async function deleteInvalidDocuments() {
-        try {
-            const response = await fetch('/delete-invalid-documents', {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            const result = await response.json();
-            console.log('Cleanup response:', result);
-
-            if (result.success) {
-                console.log('Invalid documents deleted successfully.');
-            } else {
-                console.error('Failed to delete invalid documents:', result.message);
-            }
-        } catch (error) {
-            console.error('Error during cleanup:', error);
-        }
-    }
-
-    // Call the cleanup function when the page loads
-    deleteInvalidDocuments();
     </script>
 
 <script>

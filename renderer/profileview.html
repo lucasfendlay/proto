@@ -295,8 +295,8 @@
 
 
     <div class="button-container">
-        <!-- ...existing buttons... -->
-        <button id="profile-edit-button" class="interactive" onclick="if(confirm('Are you sure you want to check out this profile?')) { GoToProfileEditChecked(); }">Check Out Profile</button>    </div>
+        <button id="profile-edit-button" class="interactive" onclick="if(confirm('Are you sure you want to check out this profile?')) { GoToProfileEditChecked(); }">Check Out Profile</button>    
+    </div>
 
         <h2>Interaction Tracker</h2>
     <ul id="interactionList">
@@ -360,6 +360,16 @@ async function loadClientData() {
             if (client.terminated) {
                 const terminationStatus = document.getElementById('terminationStatus');
                 terminationStatus.style.display = 'block'; // Show the termination status
+            }
+
+            // Check if the profile is checked out by a different user
+            const activeUser = sessionStorage.getItem('loggedInUser')?.trim();
+            const checkedOutInfo = client.checkedOut?.find(entry => entry.status === true);
+
+            if (checkedOutInfo && checkedOutInfo.user !== activeUser) {
+                // Hide the "Log New Call" and "Check Out Profile" buttons
+                document.getElementById('call-logging-button').style.display = 'none';
+                document.getElementById('profile-edit-button').style.display = 'none';
             }
 
             // Populate interaction tracker
@@ -608,16 +618,6 @@ function formatPhoneNumber(phone) {
         const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/); // Match the phone number pattern
         return match ? `(${match[1]})-${match[2]}-${match[3]}` : phone; // Format if valid, else return original
     }
-
-// Navigation functions for Release button
-function GoToProfileEditChecked() {
-    const clientId = getQueryParam('id');
-    if (clientId) {
-        window.location.href = `profileedit.html?id=${clientId}`;
-    } else {
-        console.error('Client ID not found in query parameters.');
-    }
-}
 
         function GoToCallLogging() {
             const clientId = getQueryParam('id');

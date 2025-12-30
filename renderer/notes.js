@@ -172,12 +172,17 @@ window.editNote = async function (clientId, index) {
 };
 
 window.GoToProfileEditChecked = async function () {
+    console.log('GoToProfileEditChecked function called'); // Debugging log
+
     const clientId = getClientId();
+    console.log('Client ID:', clientId); // Debugging log
+
     if (!clientId) {
         console.error('Client ID not found in query parameters.');
         return;
     }
 
+    const activeUser = sessionStorage.getItem('loggedInUser')?.trim();
     if (!activeUser) {
         console.error('No active user found in sessionStorage');
         return;
@@ -185,29 +190,43 @@ window.GoToProfileEditChecked = async function () {
 
     try {
         // Save a note with a timestamp
-        const timestamp = new Date().toLocaleString();
+        const timestamp = new Date().toISOString();
         const noteText = `<strong>Profile checked out.</strong>`;
         const note = {
             text: noteText,
-            timestamp: timestamp,
-            username: activeUser, // Ensure the username is passed correctly
+            timestamp: new Date().toLocaleString(),
+            username: activeUser,
         };
 
-        // Save the note and update the client with checkedOut status
-        const response = await fetch('/add-note-to-client', {
-            method: 'POST',
+        console.log('Saving note:', note); // Debugging log
+
+        // Update the checkedOut array
+        const updatedCheckedOut = [
+            {
+                status: true,
+                timestamp: timestamp,
+                user: activeUser,
+            },
+        ];
+
+        // Send the update request to the server
+        const response = await fetch('/update-client', {
+            method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ 
-                clientId, 
-                note,
-                checkedOut: true, // Add checkedOut status
-                activeUser // Include the active user
+            body: JSON.stringify({
+                clientId,
+                clientData: {
+                    checkedOut: updatedCheckedOut,
+                },
             }),
         });
 
+        console.log('Fetch response received'); // Debugging log
         const result = await response.json();
+        console.log('Fetch result:', result); // Debugging log
+
         if (!response.ok || !result.success) {
             console.error('Failed to save note or update client:', result.message);
             alert('Failed to save note or update client.');
@@ -217,7 +236,9 @@ window.GoToProfileEditChecked = async function () {
         console.log('Note and client status updated successfully:', result);
 
         // Redirect to the profile edit page
-        window.location.href = `profileedit.html?id=${clientId}`;
+        const redirectUrl = `profileedit.html?id=${clientId}`;
+        console.log('Redirecting to:', redirectUrl); // Debugging log
+        window.location.href = redirectUrl;
     } catch (error) {
         console.error('Error saving note or updating client status:', error);
     }
