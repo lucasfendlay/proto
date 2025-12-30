@@ -68,7 +68,7 @@ const wss = new WebSocket.Server({ server }); // Attach WebSocket to the same HT
 const userConnections = {}; // Store user connections as arrays
 
 wss.on('connection', (ws, req) => {
-    const params = new URLSearchParams(req.url.replace(/^.*\?/, '')); // Handle potential proxy modifications
+    const params = new URLSearchParams(req.url.replace(/^.*\?/, ''));
     const username = params.get('username');
 
     if (username) {

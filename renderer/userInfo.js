@@ -82,8 +82,7 @@ if (clientId) {
 const loggedInUser = sessionStorage.getItem('loggedInUser');
 
 if (loggedInUser) {
-    const ws = new WebSocket(`ws://localhost:8080?username=${loggedInUser}`);
-
+    const ws = new WebSocket(`wss://${window.location.host}/?username=${loggedInUser}`);
     ws.onopen = () => {
         console.log('WebSocket connection established for:', loggedInUser);
 
