@@ -1339,18 +1339,21 @@ app.post('/upload-to-profile', upload.single('file'), async (req, res) => {
 
 const WebSocket = require('ws');
 
-const wss = new WebSocket.Server({ port: 8080 }); // WebSocket server on port 8080
-const userConnections = {}; // Store user connections as arrays
+const server = app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
+
+const wss = new WebSocket.Server({ server }); // Attach WebSocket to the same serverconst userConnections = {}; // Store user connections as arrays
 
 wss.on('connection', (ws, req) => {
-    const params = new URLSearchParams(req.url.replace('/?', ''));
+    const params = new URLSearchParams(req.url.replace(/^.*\?/, '')); // Handle potential proxy modifications
     const username = params.get('username');
 
     if (username) {
         if (!userConnections[username]) {
             userConnections[username] = [];
         }
-        userConnections[username].push(ws); // Add the WebSocket connection to the array
+        userConnections[username].push(ws);
         console.log(`WebSocket connection established for user: ${username}`);
     } else {
         console.log('WebSocket connection attempted without a username.');
