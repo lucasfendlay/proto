@@ -47,8 +47,60 @@ app.use((req, res, next) => {
 
 // Start the server
 const PORT = process.env.PORT || 3000; // Use the PORT environment variable or default to 3000
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+});
+
+// Handle port conflicts gracefully
+server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+        console.error(`Port ${PORT} is already in use. Please use a different port.`);
+        process.exit(1);
+    } else {
+        console.error('Server error:', err);
+    }
+});
+
+// Initialize WebSocket server
+const WebSocket = require('ws');
+const wss = new WebSocket.Server({ server }); // Attach WebSocket to the same HTTP server
+
+const userConnections = {}; // Store user connections as arrays
+
+wss.on('connection', (ws, req) => {
+    const params = new URLSearchParams(req.url.replace(/^.*\?/, '')); // Handle potential proxy modifications
+    const username = params.get('username');
+
+    if (username) {
+        if (!userConnections[username]) {
+            userConnections[username] = [];
+        }
+        userConnections[username].push(ws);
+        console.log(`WebSocket connection established for user: ${username}`);
+    } else {
+        console.log('WebSocket connection attempted without a username.');
+    }
+
+    ws.on('message', (message) => {
+        try {
+            const data = JSON.parse(message);
+            if (data.type === 'ping') {
+                console.log(`Received heartbeat from user: ${username}`);
+            }
+        } catch (error) {
+            console.error('Error parsing WebSocket message:', error);
+        }
+    });
+
+    ws.on('close', () => {
+        if (username) {
+            userConnections[username] = userConnections[username].filter(conn => conn !== ws);
+            if (userConnections[username].length === 0) {
+                delete userConnections[username];
+            }
+            console.log(`WebSocket connection closed for user: ${username}`);
+        }
+    });
 });
 
 app.post('/login', async (req, res) => {
@@ -1335,50 +1387,6 @@ app.post('/upload-to-profile', upload.single('file'), async (req, res) => {
         console.error('Error uploading file to client profile:', error);
         res.status(500).json({ success: false, message: 'Failed to upload file to client profile.' });
     }
-});
-
-const WebSocket = require('ws');
-
-const server = app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
-
-const wss = new WebSocket.Server({ server }); // Attach WebSocket to the same serverconst userConnections = {}; // Store user connections as arrays
-
-wss.on('connection', (ws, req) => {
-    const params = new URLSearchParams(req.url.replace(/^.*\?/, '')); // Handle potential proxy modifications
-    const username = params.get('username');
-
-    if (username) {
-        if (!userConnections[username]) {
-            userConnections[username] = [];
-        }
-        userConnections[username].push(ws);
-        console.log(`WebSocket connection established for user: ${username}`);
-    } else {
-        console.log('WebSocket connection attempted without a username.');
-    }
-
-    ws.on('message', (message) => {
-        try {
-            const data = JSON.parse(message);
-            if (data.type === 'ping') {
-                console.log(`Received heartbeat from user: ${username}`);
-            }
-        } catch (error) {
-            console.error('Error parsing WebSocket message:', error);
-        }
-    });
-
-    ws.on('close', () => {
-        if (username) {
-            userConnections[username] = userConnections[username].filter(conn => conn !== ws);
-            if (userConnections[username].length === 0) {
-                delete userConnections[username];
-            }
-            console.log(`WebSocket connection closed for user: ${username}`);
-        }
-    });
 });
 
 app.post('/notify-user', (req, res) => {
