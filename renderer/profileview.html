@@ -239,6 +239,9 @@
 </div>
 
     <h2 id="profileId">Profile: Loading...</h2> <!-- New header for Profile ID -->
+    <div class="button-container">
+        <button id="release-profile-button" class="interactive" style="display: none;" onclick="releaseProfile()">Release Profile</button>
+    </div><br>
     <p id="terminationStatus" style="color: red; display: none;"><strong>PROFILE TERMINATED</strong></p> <!-- Termination status -->
 
 
@@ -641,8 +644,149 @@ function formatPhoneNumber(phone) {
     }
 }
 
-// Load client data on page load
-window.onload = loadClientData;
+// Function to release the profile
+async function releaseProfile() {
+    if (!confirm("Are you sure you want to release this profile?")) {
+        return; // Exit if the user cancels
+    }
+
+    try {
+        // Identify the previous active user with status: true
+        const previousActiveUser = client.checkedOut?.find(entry => entry.status === true)?.user;
+
+        if (!previousActiveUser) {
+            console.error("No active user found in the checkedOut array.");
+            alert("No active user found to notify.");
+            return;
+        }
+
+        console.log(`Previous active user identified: ${previousActiveUser}`);
+
+        // Update the checkedOut status to false for all entries
+        const updatedCheckedOut = client.checkedOut.map(entry => ({
+            ...entry,
+            status: false,
+        }));
+
+        const response = await fetch('/update-client', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                clientId: client.id,
+                clientData: { checkedOut: updatedCheckedOut },
+            }),
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            alert('Profile released successfully.');
+
+            // Notify the previous active user to redirect
+            await fetch('/notify-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: previousActiveUser,
+                    redirectUrl: `profileview.html?id=${client.id}`,
+                }),
+            });
+
+            console.log(`Notification sent to previous active user: ${previousActiveUser}`);
+
+            // Refresh the page for the current user
+            window.location.reload();
+        } else {
+            alert(`Error: ${result.message}`);
+        }
+    } catch (error) {
+        console.error('Error releasing profile:', error);
+        alert('An error occurred while releasing the profile. Please try again.');
+    }
+}
+
+const ws = new WebSocket(`ws://localhost:8080?username=${sessionStorage.getItem('loggedInUser')}`);
+
+ws.onopen = () => {
+    console.log('WebSocket connection established for:', sessionStorage.getItem('loggedInUser'));
+
+    // Start sending heartbeat messages every 30 seconds
+    window.heartbeatInterval = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'ping' }));
+            console.log('Heartbeat sent to server.');
+        }
+    }, 30000); // 30 seconds
+};
+
+ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    if (data.redirectUrl) {
+        console.log('Redirecting to:', data.redirectUrl);
+        alert('You have been redirected because the profile was released by another user.');
+        window.location.href = data.redirectUrl; // Force redirect to the specified URL
+    }
+};
+
+ws.onclose = () => {
+    console.log('WebSocket connection closed.');
+    clearInterval(window.heartbeatInterval); // Stop the heartbeat
+};
+
+ws.onerror = (error) => {
+    console.error('WebSocket error:', error);
+};
+
+window.onload = async function () {
+    await loadClientData(); // Load client data first
+    console.log('Logged-in user:', sessionStorage.getItem('loggedInUser'));
+
+    const activeUser = sessionStorage.getItem('loggedInUser');
+    if (activeUser) {
+        console.log('Active User:', activeUser); // Debugging
+
+        // Fetch the user's role from the backend
+        fetch(`/get-user-role?username=${encodeURIComponent(activeUser)}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Set the user role in sessionStorage
+                    sessionStorage.setItem('userRole', data.role);
+
+                    // Check if the user is an admin
+                    if (data.role === 'admin') {
+                        console.log('Admin role detected.');
+
+                        // Check if the profile is currently checked out
+                        const isCheckedOut = client.checkedOut?.some(entry => entry.status === true);
+                        if (isCheckedOut) {
+                            console.log('Profile is checked out. Displaying the Release Profile button.');
+                            document.getElementById('release-profile-button').style.display = 'block';
+                        } else {
+                            console.log('Profile is not checked out. Hiding the Release Profile button.');
+                        }
+                    } else {
+                        console.log('User is not an admin. Button will not be displayed.');
+                    }
+                } else {
+                    console.error('Failed to fetch user role:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching user role:', error);
+            });
+    } else {
+        console.error('No active user found in sessionStorage');
+    }
+};
     </script>
     <script src="notes.js"></script>
     <script src="userInfo.js"></script>

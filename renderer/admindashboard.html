@@ -45,6 +45,72 @@
         <button id="generateReportButton">Generate Report</button>
     </div>
 
+    <!-- Add the button and the section to display the checked-out clients -->
+<div id="checkedOutClientsSection">
+    <button id="viewCheckedOutClientsButton">View Checked-Out Clients</button>
+    <div id="checkedOutClientsList" style="display: none;">
+        <h2>Checked-Out Clients</h2>
+        <ul id="checkedOutClients"></ul>
+    </div>
+</div>
+
+<script>
+document.getElementById('viewCheckedOutClientsButton').addEventListener('click', async () => {
+    try {
+        // Fetch all clients
+        const response = await fetch('/get-all-clients');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const { clients } = await response.json();
+
+        // Filter clients with checkedOut status: true
+        const checkedOutClients = clients.flatMap(client => 
+            client.checkedOut?.filter(item => item.status === true).map(item => ({
+                clientName: client.name,
+                clientId: client.id,
+                checkedOutBy: item.user
+            })) || [] // If checkedOut is undefined, return an empty array
+        );
+
+        // Populate the list
+        const checkedOutClientsList = document.getElementById('checkedOutClients');
+        checkedOutClientsList.innerHTML = ''; // Clear existing list
+
+        checkedOutClients.forEach(async (client) => {
+    try {
+        console.log('Fetching details for client ID:', client.clientId);
+
+        // Use the /get-client/:clientId endpoint
+        const response = await fetch(`/get-client/${client.clientId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client details for ID: ${client.clientId}`);
+        }
+        const clientDetails = await response.json();
+
+        // Populate the list item with fetched details
+        const li = document.createElement('li');
+        li.innerHTML = `
+            <a href="profileview.html?id=${client.clientId}">
+                <strong>Profile: ${client.clientId}</strong> | 
+                Name: ${clientDetails.firstName?.toUpperCase() || 'N/A'} ${clientDetails.lastName?.toUpperCase() || 'N/A'} | 
+                Phone: ${clientDetails.phoneNumber || 'N/A'} | 
+                Checked out by: ${client.checkedOutBy || 'Unknown User'}
+            </a>`;
+        checkedOutClientsList.appendChild(li);
+    } catch (error) {
+        console.error(`Error fetching details for client ID ${client.clientId}:`, error);
+    }
+});
+
+        // Show the list section
+        document.getElementById('checkedOutClientsList').style.display = 'block';
+    } catch (error) {
+        console.error('Error fetching checked-out clients:', error);
+    }
+});
+</script>
+
 <!-- Report Section -->
 <div id="report" style="display: none;">
     <h2>Report</h2>

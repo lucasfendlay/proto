@@ -79,6 +79,44 @@ if (clientId) {
     }
 }
 
+const loggedInUser = sessionStorage.getItem('loggedInUser');
+
+if (loggedInUser) {
+    const ws = new WebSocket(`ws://localhost:8080?username=${loggedInUser}`);
+
+    ws.onopen = () => {
+        console.log('WebSocket connection established for:', loggedInUser);
+
+        // Start sending heartbeat messages every 30 seconds
+        window.heartbeatInterval = setInterval(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'ping' }));
+                console.log('Heartbeat sent to server.');
+            }
+        }, 30000); // 30 seconds
+    };
+
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.redirectUrl) {
+            console.log('Redirecting to:', data.redirectUrl);
+            alert('You have been redirected because the profile was released by another user.');
+            window.location.href = data.redirectUrl; // Force redirect to the specified URL
+        }
+    };
+
+    ws.onclose = () => {
+        console.log('WebSocket connection closed.');
+        clearInterval(window.heartbeatInterval); // Stop the heartbeat
+    };
+
+    ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+    };
+} else {
+    console.error('No logged-in user found in sessionStorage. WebSocket connection not established.');
+}
+
 // Utility function to get query parameter by name
 function getQueryParam(name) {
     const urlParams = new URLSearchParams(window.location.search);

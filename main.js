@@ -1337,3 +1337,58 @@ app.post('/upload-to-profile', upload.single('file'), async (req, res) => {
     }
 });
 
+const WebSocket = require('ws');
+
+const wss = new WebSocket.Server({ port: 8080 }); // WebSocket server on port 8080
+const userConnections = {}; // Store user connections as arrays
+
+wss.on('connection', (ws, req) => {
+    const params = new URLSearchParams(req.url.replace('/?', ''));
+    const username = params.get('username');
+
+    if (username) {
+        if (!userConnections[username]) {
+            userConnections[username] = [];
+        }
+        userConnections[username].push(ws); // Add the WebSocket connection to the array
+        console.log(`WebSocket connection established for user: ${username}`);
+    } else {
+        console.log('WebSocket connection attempted without a username.');
+    }
+
+    ws.on('message', (message) => {
+        try {
+            const data = JSON.parse(message);
+            if (data.type === 'ping') {
+                console.log(`Received heartbeat from user: ${username}`);
+            }
+        } catch (error) {
+            console.error('Error parsing WebSocket message:', error);
+        }
+    });
+
+    ws.on('close', () => {
+        if (username) {
+            userConnections[username] = userConnections[username].filter(conn => conn !== ws);
+            if (userConnections[username].length === 0) {
+                delete userConnections[username];
+            }
+            console.log(`WebSocket connection closed for user: ${username}`);
+        }
+    });
+});
+
+app.post('/notify-user', (req, res) => {
+    const { username, redirectUrl } = req.body;
+
+    if (userConnections[username] && userConnections[username].length > 0) {
+        userConnections[username].forEach(conn => {
+            conn.send(JSON.stringify({ redirectUrl }));
+        });
+        console.log(`Redirect message sent to all connections for user: ${username}`);
+        res.json({ success: true, message: `User ${username} notified.` });
+    } else {
+        console.log(`User ${username} is not connected.`);
+        res.status(404).json({ success: false, message: `User ${username} is not connected.` });
+    }
+});
