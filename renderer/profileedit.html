@@ -233,6 +233,11 @@
     text-align: left;
 }    
 
+.error {
+        border: 2px solid red;
+        background-color: #ffe6e6; /* Light red background */
+    }
+
 </style>
 
     <script src="editnavigation.js"></script>
@@ -618,6 +623,21 @@ async function loadClientData() {
         if (client) {
             console.log('Client data loaded:', client);
 
+            // Populate form fields with client data
+            document.getElementById('zipCode').value = client.zipCode || ''; // Populate zip code
+            const countyDropdown = document.getElementById('county');
+            const backendZipCode = client.zipCode || '';
+            const backendCounty = client.county || null;
+
+            // Populate the county dropdown based on the zip code
+            if (backendZipCode.length === 5 && zipToCountyMap[backendZipCode]) {
+                updateCountyDropdown(zipToCountyMap[backendZipCode], backendCounty);
+            } else {
+                // If the zip code is invalid or blank, reset the dropdown to "Select County"
+                countyDropdown.innerHTML = '<option value="" disabled selected>Select County</option>';
+                console.log("Invalid, null, or empty zip code. Defaulting to 'Select County'.");
+            }
+
             // Hide the "Start Screening" button if a screening is in progress
             const startScreeningButton = document.getElementById('call-logging-button');
             startScreeningButton.style.display = client.screeningInProgress ? 'none' : 'block';
@@ -636,7 +656,7 @@ async function loadClientData() {
                 terminateButton.style.display = 'inline-block';
             }
 
-            // Populate form fields with client data
+            // Populate other form fields with client data
             document.getElementById('firstName').value = (client.firstName || '').toUpperCase();
             document.getElementById('lastName').value = (client.lastName || '').toUpperCase();
             document.getElementById('phoneNumber').value = formatPhoneNumber(client.phoneNumber || '');
@@ -644,8 +664,6 @@ async function loadClientData() {
             document.getElementById('streetAddress2').value = (client.streetAddress2 || '').toUpperCase();
             document.getElementById('city').value = (client.city || '').toUpperCase();
             document.getElementById('state').value = (client.state || 'PA').toUpperCase(); // Default to "PA"
-            document.getElementById('zipCode').value = (client.zipCode || '').toUpperCase();
-            document.getElementById('county').value = client.county || '';
             document.getElementById('speakingLanguage').value = client.speakingLanguage || '';
 
             // Highlight the selected homelessness button
@@ -993,7 +1011,6 @@ function updateInterpreter(value) {
     updateClientData('interpreter', value);
 }
 
-// Function to update client data
 async function updateClientData(field, value) {
     const clientId = getQueryParam('id'); // Ensure clientId is retrieved from the URL
 
@@ -1003,7 +1020,15 @@ async function updateClientData(field, value) {
         return;
     }
 
-    const clientData = { [field]: value }; // Dynamically create the data object with the updated field
+    // Prepare the data to be updated
+    const clientData = { [field]: value };
+
+    // If the zipCode is being updated, also include the county value
+    if (field === 'zipCode') {
+        const countyDropdown = document.getElementById('county');
+        const selectedCounty = countyDropdown.value;
+        clientData.county = selectedCounty || ''; // Include the county value (empty if none selected)
+    }
 
     try {
         const response = await fetch('/update-client', {
@@ -1290,5 +1315,113 @@ window.onload = function () {
     </script>
         <script src="estimations.js"></script>
 <script src="notes.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+<script>
+    let zipToCountyMap = {};
+
+    // Load and parse the CSV file
+    function loadZipCountyData() {
+    Papa.parse('./uszips.csv', {
+        download: true,
+        header: true,
+        complete: function (results) {
+            results.data.forEach(row => {
+                const zip = row.zip;
+                const counties = row.county_names_all; // Use the county_names_all column
+                if (zip && counties) {
+                    if (!zipToCountyMap[zip]) {
+                        zipToCountyMap[zip] = [];
+                    }
+                    // Split counties by "|" and add them to the map
+                    counties.split('|').forEach(county => {
+                        if (!zipToCountyMap[zip].includes(county.trim())) {
+                            zipToCountyMap[zip].push(county.trim());
+                        }
+                    });
+                }
+            });
+            console.log('Zip-to-county data loaded:', zipToCountyMap);
+
+            // Filter the county dropdown on page load
+            filterCountyDropdownOnPageLoad();
+        },
+        error: function (error) {
+            console.error('Error loading CSV file:', error);
+        }
+    });
+}
+
+// Filter the county dropdown based on the zip code on page load
+function filterCountyDropdownOnPageLoad() {
+    const zipCodeInput = document.getElementById("zipCode");
+    const countyDropdown = document.getElementById("county");
+    const zipCode = zipCodeInput.value.trim();
+
+    if (zipCode.length === 5 && zipToCountyMap[zipCode]) {
+        // Populate the county dropdown based on the zip code
+        updateCountyDropdown(zipToCountyMap[zipCode]);
+    } else {
+        // If the zip code is invalid or blank, reset the dropdown to "Select County"
+        countyDropdown.innerHTML = '<option value="" disabled selected>Select County</option>';
+        console.log("Invalid or empty zip code on page load. Defaulting to 'Select County'.");
+    }
+}
+
+// Update the county dropdown based on the zip code
+function updateCountyDropdown(counties, backendCounty = null) {
+    const countyDropdown = document.getElementById("county");
+
+    // Clear existing options
+    countyDropdown.innerHTML = '<option value="" disabled selected>Select County</option>';
+
+    counties.forEach(county => {
+        const option = document.createElement("option");
+        option.value = county;
+        option.textContent = county;
+        countyDropdown.appendChild(option);
+    });
+
+    // Auto-select logic
+    if (counties.length === 1) {
+        // If there's only one county, auto-select it
+        countyDropdown.value = counties[0];
+    } else if (backendCounty && counties.includes(backendCounty)) {
+        // If a backend county exists and matches one of the counties, select it
+        countyDropdown.value = backendCounty;
+    } else {
+        // Otherwise, default to "Select County"
+        countyDropdown.value = "";
+    }
+}
+// Add event listener for zip code input
+function setupZipCodeListener() {
+    const zipCodeInput = document.getElementById("zipCode");
+    const countyDropdown = document.getElementById("county");
+
+    zipCodeInput.addEventListener("blur", async function () {
+        const zipCode = this.value.trim();
+
+        if (zipCode.length === 5 && zipToCountyMap[zipCode]) {
+            // Populate the county dropdown based on the zip code
+            updateCountyDropdown(zipToCountyMap[zipCode]);
+        } else {
+            // Reset the dropdown to "Select County" if the zip code is invalid, null, or blank
+            countyDropdown.innerHTML = '<option value="" disabled selected>Select County</option>';
+            console.log("Invalid, null, or empty zip code entered. Defaulting to 'Select County'.");
+
+            // Set the county data to null in the backend
+            await updateClientData('county', null);
+        }
+    });
+}
+
+    // Ensure all initialization functions are executed
+    document.addEventListener('DOMContentLoaded', function () {
+        loadZipCountyData(); // Load the CSV data
+        setupZipCodeListener(); // Set up the zip code input listener
+        loadClientData(); // Load client data
+        updateTerminateButton(); // Update the terminate button
+    });
+</script>
 </body>
 </html>
