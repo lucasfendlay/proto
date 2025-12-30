@@ -52,69 +52,96 @@
 
         // Fetch and display profiles based on user interactions
         async function fetchUserProfiles() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const username = urlParams.get('username'); // Get the username from the query string
-            const startDate = new Date(document.getElementById('startDate').value);
-            const endDate = new Date(document.getElementById('endDate').value);
+    const urlParams = new URLSearchParams(window.location.search);
+    const username = urlParams.get('username'); // Get the username from the query string
+    const metric = urlParams.get('metric'); // Get the metric from the query string
+    const startDate = new Date(document.getElementById('startDate').value);
+    const endDate = new Date(document.getElementById('endDate').value);
 
-            if (!username) {
-                alert('No username provided.');
-                return;
-            }
-
-            try {
-                // Fetch all clients
-                const response = await fetch('/get-all-clients');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const { clients } = await response.json();
-
-                // Filter clients based on user interactions and date range
-                const filteredClients = clients.filter(client => {
-                    return client.notes?.some(note => {
-                        const noteDate = new Date(note.timestamp);
-                        return (
-                            note.username === username &&
-                            (!isNaN(startDate) ? noteDate >= startDate : true) &&
-                            (!isNaN(endDate) ? noteDate <= endDate : true)
-                        );
-                    });
-                });
-
-                // Render the filtered profiles
-                const profileList = document.getElementById('profileList');
-                profileList.innerHTML = ''; // Clear existing profiles
-
-                if (filteredClients.length === 0) {
-                    const noResultsMessage = document.createElement('li');
-                    noResultsMessage.textContent = 'No profiles found for the selected user and timeframe.';
-                    profileList.appendChild(noResultsMessage);
-                } else {
-                    filteredClients.forEach(client => {
-                        const li = document.createElement('li');
-                        li.innerHTML = `
-                            <a href="profileview.html?id=${client.id}">
-                                <strong>Profile: ${client.id}</strong> | 
-                                ${client.firstName || ''} ${client.lastName || ''} | 
-                                ${client.phoneNumber ? `Phone: ${client.phoneNumber} | ` : ''}
-                                ${client.streetAddress || client.city || client.state || client.zipCode ? `Address: ${[
-                                    client.streetAddress,
-                                    client.city,
-                                    client.state,
-                                    client.zipCode,
-                                    client.county ? `${client.county} County` : ''
-                                ].filter(Boolean).join(', ')} | ` : ''}
-                                <strong>Most Recent Note:</strong> ${client.notes?.[client.notes.length - 1]?.text || 'No notes available'}
-                            </a>`;
-                        profileList.appendChild(li);
-                    });
-                }
-            } catch (error) {
-                console.error('Error fetching user profiles:', error);
-            }
+    try {
+        // Fetch all clients
+        const response = await fetch('/get-all-clients');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
+        const { clients } = await response.json();
+        console.log('Username:', username);
+        console.log('Clients:', clients);
 
+        // Filter clients based on the username, metric, and date range
+        const filteredClients = clients.filter(client => {
+            let hasMetric = true;
+
+            // Handle different metrics
+            if (metric === 'callsLogged') {
+                hasMetric = client.callLogs && client.callLogs.length > 0;
+            } else if (metric === 'screeningsStarted') {
+                hasMetric = client.notes?.some(note => note.text.includes('New screening initiated.'));
+            } else if (metric) {
+                hasMetric = client.notes?.some(note => note.text.includes(`${metric.replace(/([A-Z])/g, ' $1')} completed.`));
+            }
+
+            // Check if the user has interacted with the client in any way
+            const hasUserInteraction = username
+                ? (
+                    client.callLogs?.some(log => log.agent && log.agent.toLowerCase() === username.toLowerCase()) || // Check callLogs for the username
+                    client.notes?.some(note => 
+                        (note.username && note.username.toLowerCase() === username.toLowerCase()) || // Check notes for the username
+                        (note.text && note.text.toLowerCase().includes(username.toLowerCase())) // Check if username is in the text
+                    )
+                )
+                : true;
+
+            // Check if the interaction falls within the date range
+            const hasDateRange = client.callLogs?.some(log => {
+                const logDate = new Date(log.timestamp);
+                return (
+                    (!isNaN(startDate) ? logDate >= startDate : true) &&
+                    (!isNaN(endDate) ? logDate <= endDate : true)
+                );
+            }) || client.notes?.some(note => {
+                const noteDate = new Date(note.timestamp);
+                return (
+                    (!isNaN(startDate) ? noteDate >= startDate : true) &&
+                    (!isNaN(endDate) ? noteDate <= endDate : true)
+                );
+            });
+
+            return hasMetric && hasUserInteraction && hasDateRange;
+        });
+
+        // Render the filtered profiles
+        const profileList = document.getElementById('profileList');
+        profileList.innerHTML = ''; // Clear existing profiles
+
+        if (filteredClients.length === 0) {
+            const noResultsMessage = document.createElement('li');
+            noResultsMessage.textContent = 'No profiles found for the selected filters.';
+            profileList.appendChild(noResultsMessage);
+        } else {
+            filteredClients.forEach(client => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <a href="profileview.html?id=${client.id}">
+                        <strong>Profile: ${client.id}</strong> | 
+                        ${client.firstName || ''} ${client.lastName || ''} | 
+                        ${client.phoneNumber ? `Phone: ${client.phoneNumber} | ` : ''}
+                        ${client.streetAddress || client.city || client.state || client.zipCode ? `Address: ${[
+                            client.streetAddress,
+                            client.city,
+                            client.state,
+                            client.zipCode,
+                            client.county ? `${client.county} County` : ''
+                        ].filter(Boolean).join(', ')} | ` : ''}
+                        <strong>Most Recent Note:</strong> ${client.notes?.[client.notes.length - 1]?.text || 'No notes available'}
+                    </a>`;
+                profileList.appendChild(li);
+            });
+        }
+    } catch (error) {
+        console.error('Error fetching user profiles:', error);
+    }
+}
         // Add event listener to the filter button
         document.getElementById('filterButton').addEventListener('click', fetchUserProfiles);
 

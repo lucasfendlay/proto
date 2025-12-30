@@ -8,12 +8,16 @@
 </head>
 <body>
     <h1>LifeCycle</h1>
+    <h2>Comprehensive Benefits Screening and Application Suite</h2>
+
     <button onclick="window.location.href='directory.html'">Directory</button>
     <br>
     <button onclick="saveClientAndLogCall()">Add New Client</button>
     <button id="clearClientsButton">Clear Clients</button>
     <button onclick="window.location.href='referralsdatabase.html'">Referrals Database</button>
-    <button id="adminDashboardButton" style="display: none;" onclick="window.location.href='admindashboard.html'">Admin Dashboard</button>    <br><br>
+    <button id="adminDashboardButton" style="display: none;" onclick="window.location.href='admindashboard.html'">Admin Dashboard</button><br>
+    <button class="create-account" onclick="window.location.href='create-account.html'">Create Account</button>
+    <br><br>
     <button onclick="confirmLogout()">Logout</button>
 
     <script>
@@ -179,8 +183,12 @@
                 .then(data => {
                     if (data.role === 'admin') {
                         document.getElementById('adminDashboardButton').style.display = 'inline-block';
+                        document.getElementById('clearClientsButton').style.display = 'inline-block'; // Show Clear Clients button for admins
+                        document.querySelector('.create-account').style.display = 'inline-block'; // Show Create Account button for admins
                     } else {
                         console.log('User is not an admin.');
+                        document.getElementById('clearClientsButton').style.display = 'none'; // Hide Clear Clients button for non-admins
+                        document.querySelector('.create-account').style.display = 'none'; // Hide Create Account button for non-admins
                     }
                 })
                 .catch(error => {
@@ -191,7 +199,7 @@
         }
     }
 
-    // Call the function to conditionally show the button
+    // Call the function to conditionally show the buttons
     showAdminDashboardButton();
 </script>
 </body>

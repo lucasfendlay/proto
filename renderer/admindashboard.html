@@ -7,6 +7,14 @@
     <link rel="stylesheet" href="styles.css">
     <script src="userInfo.js"></script>
 
+    <style>
+        td[onclick] {
+            color: blue;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+    </style>
+
 
     <!-- Flatpickr CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -119,13 +127,13 @@
 
         // Filter and process data
         const filteredClients = clients.filter(client => {
-            const hasUser = !user || client.callLogs.some(log => log.agent === user);
-            const hasDateRange = client.callLogs.some(log => {
-                const logDate = new Date(log.timestamp);
-                return logDate >= startDate && logDate <= endDate;
-            });
-            return hasUser && hasDateRange;
-        });
+    const hasUser = !user || (client.callLogs && client.callLogs.some(log => log.agent === user));
+    const hasDateRange = client.callLogs && client.callLogs.some(log => {
+        const logDate = new Date(log.timestamp);
+        return logDate >= startDate && logDate <= endDate;
+    });
+    return hasUser && hasDateRange;
+});
 
 // Generate report summary
 const usersResponse = await fetch('/get-users');
@@ -198,15 +206,15 @@ tableBody.innerHTML = ''; // Clear existing rows
 report.forEach(row => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-        <td><a href="userProfiles.html?username=${encodeURIComponent(row.user)}">${row.user}</a></td>
-        <td>${row.callsLogged}</td>
-        <td>${row.screeningsStarted}</td>
-        <td>${row.paceApplicationsCompleted}</td>
-        <td>${row.ptrrApplicationsCompleted}</td>
-        <td>${row.lisApplicationsCompleted}</td>
-        <td>${row.mspApplicationsCompleted}</td>
-        <td>${row.snapApplicationsCompleted}</td>
-        <td>${row.liheapApplicationsCompleted}</td>
+        <td>${row.user}</td>
+        <td onclick="redirectToUserProfiles('callsLogged', '${row.user}')">${row.callsLogged}</td>
+        <td onclick="redirectToUserProfiles('screeningsStarted', '${row.user}')">${row.screeningsStarted}</td>
+        <td onclick="redirectToUserProfiles('paceApplicationsCompleted', '${row.user}')">${row.paceApplicationsCompleted}</td>
+        <td onclick="redirectToUserProfiles('ptrrApplicationsCompleted', '${row.user}')">${row.ptrrApplicationsCompleted}</td>
+        <td onclick="redirectToUserProfiles('lisApplicationsCompleted', '${row.user}')">${row.lisApplicationsCompleted}</td>
+        <td onclick="redirectToUserProfiles('mspApplicationsCompleted', '${row.user}')">${row.mspApplicationsCompleted}</td>
+        <td onclick="redirectToUserProfiles('snapApplicationsCompleted', '${row.user}')">${row.snapApplicationsCompleted}</td>
+        <td onclick="redirectToUserProfiles('liheapApplicationsCompleted', '${row.user}')">${row.liheapApplicationsCompleted}</td>
     `;
     tableBody.appendChild(tr);
 });
@@ -219,6 +227,16 @@ console.log('Generated Report:', report);
         console.error('Error generating report:', error);
     }
 }
+
+function redirectToUserProfiles(metric, user) {
+    const queryParams = new URLSearchParams();
+    queryParams.append('metric', metric);
+    if (user) {
+        queryParams.append('username', user);
+    }
+    window.location.href = `userProfiles.html?${queryParams.toString()}`;
+}
+
     </script>
 </body>
 </html>
