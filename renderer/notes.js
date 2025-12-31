@@ -73,10 +73,11 @@ if (cleanedUsername !== activeUser) {
 const isReferralNote = noteText.includes('Referral provided.');
 
 // Adjust button visibility for "Referral provided" notes
-if (isReferralNote) {
-    shouldShowButtons = false; // Disable the default buttons
+if (cleanedUsername !== activeUser) {
+    shouldShowButtons = false; // Ensure buttons are never shown for other users' notes
+} else if (isReferralNote) {
+    shouldShowButtons = false; // Disable the default buttons for "Referral provided" notes
 }
-
 // Apply strong formatting to specific notes
 const strongFormattedNotes = [
     'New screening initiated.',
@@ -95,7 +96,7 @@ noteDiv.innerHTML = `
     <p>${formattedNoteText}</p>
     <small>${note.timestamp} by ${cleanedUsername}</small>
     ${
-        isReferralNote
+        isReferralNote && cleanedUsername === activeUser
             ? ` <br>
                 <button 
                     class="interactive" 
