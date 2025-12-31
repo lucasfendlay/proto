@@ -262,6 +262,13 @@ body {
         </div>
         </div>
 
+        <div class="form-field">
+            <label for="bestContactNumber">Best Contact Phone Number:</label>
+            <select id="bestContactNumber" name="bestContactNumber">
+                <option value="" disabled selected>Select Best Contact</option>
+            </select>
+        </div>        
+
 <!-- Address Fields -->
 <div class="form-field">
     <label id="addressLabel" for="streetAddress">Street Address:</label>
@@ -589,7 +596,32 @@ body {
                     <option value="FEMALE">FEMALE</option>
                     </select><br><br>
             </div>
-            <label for="socialSecurityNumber">Social Security Number:</label>
+
+
+<div class="selection-box">
+    <label for="maritalStatus">Current Marital Status:</label>
+    <select id="maritalStatus" name="maritalStatus" class="selection-box-input">
+        <option value="" disabled selected>Select Marital Status</option>
+        <option value="Single">Single</option>
+        <option value="Married (Living Together)">Married (Living Together)</option>
+        <option value="Married (Living Separately)">Married (Living Separately)</option>
+        <option value="Divorced">Divorced</option>
+        <option value="Widowed">Widowed</option>
+    </select><br><br>
+</div>
+<div class="selection-box" id="previousMaritalStatusContainer" style="display: none;">
+    <label for="previousMaritalStatus">Previous Year Marital Status:</label>
+    <select id="previousMaritalStatus" name="previousMaritalStatus" class="selection-box-input" disabled>
+        <option value="" disabled selected>Select Previous Year Marital Status</option>
+        <option value="Single">Single</option>
+        <option value="Married (Living Together)">Married (Living Together)</option>
+        <option value="Married (Living Separately)">Married (Living Separately)</option>
+        <option value="Divorced">Divorced</option>
+        <option value="Widowed">Widowed</option>
+    </select><br><br>
+</div>
+
+<label for="socialSecurityNumber">Social Security Number:</label>
 <input 
     type="text" 
     id="socialSecurityNumber" 
@@ -614,28 +646,9 @@ body {
     <button type="button" id="editSSNButton" onclick="editSSN()" style="display: none;">Edit SSN</button>
 </div>
 
-<div class="selection-box">
-    <label for="maritalStatus">Current Marital Status:</label>
-    <select id="maritalStatus" name="maritalStatus" class="selection-box-input">
-        <option value="" disabled selected>Select Marital Status</option>
-        <option value="Single">Single</option>
-        <option value="Married (Living Together)">Married (Living Together)</option>
-        <option value="Married (Living Separately)">Married (Living Separately)</option>
-        <option value="Divorced">Divorced</option>
-        <option value="Widowed">Widowed</option>
-    </select><br><br>
-</div>
-<div class="selection-box" id="previousMaritalStatusContainer" style="display: none;">
-    <label for="previousMaritalStatus">Previous Year Marital Status:</label>
-    <select id="previousMaritalStatus" name="previousMaritalStatus" class="selection-box-input" disabled>
-        <option value="" disabled selected>Select Previous Year Marital Status</option>
-        <option value="Single">Single</option>
-        <option value="Married (Living Together)">Married (Living Together)</option>
-        <option value="Married (Living Separately)">Married (Living Separately)</option>
-        <option value="Divorced">Divorced</option>
-        <option value="Widowed">Widowed</option>
-    </select><br><br>
-</div>
+<label for="driversLicenseNumber">Driver's License Number:</label>
+<input type="text" id="driversLicenseNumber" name="driversLicenseNumber" placeholder="Enter Driver's License Number">
+
 <div id="disabilityQuestion" class="selection-box">
     <label>Is this person receiving disability benefits?</label>
     <div id="modal-disability-yes" data-value="yes" style="pointer-events: none; opacity: 0.5;">Yes</div>
@@ -702,11 +715,13 @@ body {
         <option value="TANF Recipient">TANF Recipient</option>
         <option value="Ineligible Student">Ineligible Student</option>
     </select></div>
-<div id="mealsQuestion" class="selection-box">
-    <label>Is this person included in the SNAP household?</label>
-    <div id="modal-meals-yes" data-value="yes" style="pointer-events: none; opacity: 0.5;">Yes</div>
-    <div id="modal-meals-no" data-value="no" style="pointer-events: none; opacity: 0.5;">No</div>
-</div>
+
+    <div id="mealsQuestion" class="selection-box">
+        <label>Is this person included in the SNAP household?</label>
+        <div id="modal-meals-yes" data-value="yes">Yes</div>
+        <div id="modal-meals-no" data-value="no">No</div>
+    </div>
+
             <button type="button" id="add-member" class="submit-button">Add Member</button>
 
         </form>
@@ -1154,7 +1169,7 @@ function confirmSSN() {
     const editSSNButton = document.getElementById('editSSNButton');
 
     // Make the SSN fields read-only
-    ssnInput.readOnly = true;
+    ssnInput.classList.add('override-readonly');
     confirmSSNInput.readOnly = true;
 
     // Hide the "Confirm" button and show the "Edit SSN" button
@@ -1169,8 +1184,7 @@ function editSSN() {
     const editSSNButton = document.getElementById('editSSNButton');
 
     // Make the SSN fields editable
-    ssnInput.readOnly = false;
-    confirmSSNInput.readOnly = false;
+    ssnInput.classList.remove('override-readonly');    confirmSSNInput.readOnly = false;
 
     // Reset the fields
     resetSSNFields();
@@ -1429,6 +1443,99 @@ async function saveHouseholdMember() {
     }
 }
 
+// Populate the Best Contact Phone Number dropdown
+function populateBestContactDropdown() {
+    const dropdown = document.getElementById('bestContactNumber');
+    const currentSelectedValue = dropdown.value; // Store the currently selected value
+
+    dropdown.innerHTML = '<option value="" disabled selected>Select Best Contact</option>'; // Reset options
+
+    if (client.Contacts && client.Contacts.length > 0) {
+        client.Contacts.forEach((contact) => {
+            const option = document.createElement('option');
+            option.value = contact.phoneNumber;
+            option.textContent = `${contact.firstName} ${contact.lastName} - ${formatPhoneNumber(contact.phoneNumber)}`;
+            dropdown.appendChild(option);
+        });
+
+        // Restore the previously selected value if it exists in the new options
+        const options = Array.from(dropdown.options);
+        const matchingOption = options.find(option => option.value === currentSelectedValue);
+        if (matchingOption) {
+            dropdown.value = currentSelectedValue;
+        } else {
+            // Reset to default if the selected value no longer exists
+            dropdown.value = '';
+            updateBestContactInBackend(null); // Set value to null in the backend
+        }
+    } else {
+        // If no contacts are available, ensure the dropdown is reset
+        dropdown.value = '';
+        updateBestContactInBackend(null); // Set value to null in the backend
+    }
+
+    // Ensure the dropdown displays "Select Best Contact" if no value is selected
+    if (!dropdown.value) {
+        dropdown.value = '';
+    }
+}
+
+// Function to update the backend with the best contact value
+function updateBestContactInBackend(value) {
+    const clientId = getQueryParam('id');
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
+
+    const requestBody = {
+        clientId,
+        clientData: { bestContactNumber: value },
+    };
+
+    fetch(`/update-client`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+    })
+        .then((response) => {
+            if (response.ok) {
+                console.log(`Best contact updated to: ${value}`);
+            } else {
+                return response.json().then((error) => {
+                    console.error('Error details:', error);
+                    throw new Error(`Failed to update best contact: ${error.message}`);
+                });
+            }
+        })
+        .catch((error) => console.error('Error updating best contact:', error));
+}
+
+// Save the selected Best Contact Phone Number
+function saveBestContactNumber() {
+    const dropdown = document.getElementById('bestContactNumber');
+    const selectedOption = dropdown.options[dropdown.selectedIndex];
+
+    if (!selectedOption || !selectedOption.value) {
+        alert('Please select a contact.');
+        return;
+    }
+
+    const selectedValue = selectedOption.value; // Phone number
+    const selectedText = selectedOption.textContent; // Full name and phone number (e.g., "FirstName LastName - (123) 456-7890")
+
+    // Save the full name and phone number in the format "FirstName LastName Number"
+    client.bestContactNumber = selectedText;
+
+    // Save to the backend
+    saveToDatabase('bestContactNumber', selectedText);
+}
+
+// Ensure the dropdown is populated on page load
+document.addEventListener('DOMContentLoaded', () => {
+    populateBestContactDropdown();
+});
+
 // Redirect to the household view
 function redirectToHouseholdView() {
     const clientId = getQueryParam('id');
@@ -1487,6 +1594,7 @@ function renderContacts() {
     } else {
         contactsContainer.innerHTML = '<p>No contacts available.</p>';
     }
+    populateBestContactDropdown()
 }
 
 // Open the modal for adding or editing a contact
@@ -1718,6 +1826,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Populate the form fields and render contacts
         populateFormFields(client);
         renderContacts();
+        populateBestContactDropdown();
     } catch (error) {
         console.error('Error loading client data:', error);
     }

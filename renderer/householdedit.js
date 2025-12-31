@@ -218,13 +218,14 @@ async function loadSavedData() {
                         <p class="household-member-info"><strong>DOB:</strong> ${member.dob}</p>
                         <p class="household-member-info"><strong>Age:</strong> ${member.age}</p>
                         <p class="household-member-info"><strong>Legal Sex:</strong> ${capitalizeFirstLetter(member.legalSex)}</p>
-                        <p class="household-member-info"><strong>SSN:</strong> ${member.socialSecurityNumber ? member.socialSecurityNumber : 'N/A'}</p>
                         <p class="household-member-info"><strong>Marital Status:</strong> ${capitalizeFirstLetter(member.maritalStatus)}</p>
                         ${
                             member.previousMaritalStatus && typeof member.previousMaritalStatus === 'string' && member.previousMaritalStatus.toLowerCase() !== 'n/a'
                                 ? `<p class="household-member-info"><strong>Previous Marital Status:</strong> ${capitalizeFirstLetter(member.previousMaritalStatus)}</p>`
                                 : ''
                         }
+                        <p class="household-member-info"><strong>SSN:</strong> ${member.socialSecurityNumber ? member.socialSecurityNumber : 'N/A'}</p>
+
                         <p class="household-member-info"><strong>Disability:</strong> ${capitalizeFirstLetter(member.disability)}</p>
                         <p class="household-member-info"><strong>Medicare:</strong> ${capitalizeFirstLetter(member.medicare)}</p>
                         <p class="household-member-info"><strong>Medicaid:</strong> ${capitalizeFirstLetter(member.medicaid)}</p>
@@ -1723,44 +1724,46 @@ async function updateHouseholdMember(memberId) {
             updatedMemberData.meals = 'no';
         }
 
-// Check if previousMaritalStatus is not "Married (Living Together)"
-if (previousMaritalStatus !== 'Married (Living Together)') {
-    // Fetch the current household members
-    const response = await fetch(`/get-client/${clientId}`);
-    if (!response.ok) {
-        throw new Error(`Failed to fetch client data: ${response.statusText}`);
-    }
-    const clientData = await response.json();
-
-    if (clientData && clientData.householdMembers) {
-        // Find the current member and their previous spouse
-        const currentMember = clientData.householdMembers.find((m) => m.householdMemberId === memberId);
-        const previousSpouseId = currentMember?.previousSpouseId;
-
-        if (previousSpouseId) {
-            // Find the previous spouse and remove their reference to the current member
-            const previousSpouse = clientData.householdMembers.find((m) => m.householdMemberId === previousSpouseId);
-            if (previousSpouse) {
-                previousSpouse.previousSpouseId = ""; // Clear the previousSpouseId field
-
-                // Update the previous spouse in the backend
-                await fetch(`/update-household-member`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        clientId,
-                        member: previousSpouse,
-                    }),
-                });
+        // Check if marital status is changed to anything other than "Married (Living Together)"
+        if (maritalStatus !== 'Married (Living Together)') {
+            // Fetch the current household members
+            const response = await fetch(`/get-client/${clientId}`);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch client data: ${response.statusText}`);
             }
+            const clientData = await response.json();
 
-            // Clear the previousSpouseId from the current member
-            updatedMemberData.previousSpouseId = ""; // Set to an empty string
+            if (clientData && clientData.householdMembers) {
+                // Find the current member
+                const currentMember = clientData.householdMembers.find((m) => m.householdMemberId === memberId);
+
+                if (currentMember) {
+                    // Overwrite the relationships field to null
+                    updatedMemberData.relationships = null;
+
+                    // If the member has a spouse, clear the spouse's reference as well
+                    const spouseId = currentMember.relationships?.spouse;
+                    if (spouseId) {
+                        const spouse = clientData.householdMembers.find((m) => m.householdMemberId === spouseId);
+                        if (spouse) {
+                            spouse.relationships = null;
+
+                            // Update the spouse in the backend
+                            await fetch(`/update-household-member`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    clientId,
+                                    member: spouse,
+                                }),
+                            });
+                        }
+                    }
+                }
+            }
         }
-    }
-}
 
         // Send the updated data to the backend
         const response = await fetch(`/update-household-member`, {

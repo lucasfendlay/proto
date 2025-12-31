@@ -300,32 +300,7 @@ body {
                     <option value="FEMALE">FEMALE</option>
                     </select><br><br>
             </div>
-            <label for="socialSecurityNumber">Social Security Number:</label>
-<input 
-    type="text" 
-    id="socialSecurityNumber" 
-    name="socialSecurityNumber" 
-    placeholder="xxx-xx-xxxx" 
-    maxlength="11" 
-    oninput="formatSSN(this)" 
-    readonly
-    class="readonly"
->
-<button type="button" id="nextSSNButton" onclick="showConfirmSSN()" style="display: none;">Next</button><br><br>
 
-<div id="confirmSSNContainer" style="display: none;">
-    <label for="confirmSocialSecurityNumber">Confirm Social Security Number:</label>
-    <input 
-        type="text" 
-        id="confirmSocialSecurityNumber" 
-        name="confirmSocialSecurityNumber" 
-        placeholder="xxx-xx-xxxx" 
-        maxlength="11" 
-        oninput="formatSSN(this)" 
-        readonly
-        class="readonly"
-    >
-</div>
             <div class="selection-box">
                 <label for="maritalStatus">Current Marital Status:</label>
                 <select id="maritalStatus" name="maritalStatus" class="selection-box-input">
@@ -347,6 +322,31 @@ body {
                     <option value="Divorced">Divorced</option>
                     <option value="Widowed">Widowed</option>
                 </select><br><br>
+            </div>
+            <label for="socialSecurityNumber">Social Security Number:</label>
+            <input type="text" 
+                id="socialSecurityNumber" 
+                name="socialSecurityNumber" 
+                placeholder="xxx-xx-xxxx" 
+                maxlength="11" 
+                oninput="formatSSN(this)" 
+                readonly
+                class="readonly"
+            >
+            <button type="button" id="nextSSNButton" onclick="showConfirmSSN()" style="display: none;">Next</button><br><br>
+            
+            <div id="confirmSSNContainer" style="display: none;">
+                <label for="confirmSocialSecurityNumber">Confirm Social Security Number:</label>
+                <input 
+                    type="text" 
+                    id="confirmSocialSecurityNumber" 
+                    name="confirmSocialSecurityNumber" 
+                    placeholder="xxx-xx-xxxx" 
+                    maxlength="11" 
+                    oninput="formatSSN(this)" 
+                    readonly
+                    class="readonly"
+                >
             </div>
             <div id="disabilityQuestion" class="selection-box">
                 <label>Is this person receiving disability benefits?</label>

@@ -124,13 +124,14 @@ async function loadSavedData() {
                         <p class="household-member-info"><strong>DOB:</strong> ${member.dob}</p>
                         <p class="household-member-info"><strong>Age:</strong> ${member.age}</p>
                         <p class="household-member-info"><strong>Legal Sex:</strong> ${capitalizeFirstLetter(member.legalSex)}</p>
-                        <p class="household-member-info"><strong>SSN:</strong> ${member.socialSecurityNumber ? member.socialSecurityNumber : 'N/A'}</p>
                         <p class="household-member-info"><strong>Marital Status:</strong> ${capitalizeFirstLetter(member.maritalStatus)}</p>
                         ${
                             member.previousMaritalStatus && typeof member.previousMaritalStatus === 'string' && member.previousMaritalStatus.toLowerCase() !== 'n/a'
                                 ? `<p class="household-member-info"><strong>Previous Marital Status:</strong> ${capitalizeFirstLetter(member.previousMaritalStatus)}</p>`
                                 : ''
                         }
+                        <p class="household-member-info"><strong>SSN:</strong> ${member.socialSecurityNumber ? member.socialSecurityNumber : 'N/A'}</p>
+
                         <p class="household-member-info"><strong>Disability:</strong> ${capitalizeFirstLetter(member.disability)}</p>
                         <p class="household-member-info"><strong>Medicare:</strong> ${capitalizeFirstLetter(member.medicare)}</p>
                         <p class="household-member-info"><strong>Medicaid:</strong> ${capitalizeFirstLetter(member.medicaid)}</p>

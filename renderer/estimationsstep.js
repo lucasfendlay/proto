@@ -224,20 +224,22 @@ document.addEventListener('DOMContentLoaded', async function () {
             return;
         }
     
-        // Ensure the Applications structure exists
-        member.Applications = member.Applications || {};
-        member.Applications[benefit] = member.Applications[benefit] || [];
+        // Ensure the benefit structure exists
+        member[benefit] = member[benefit] || {};
+        member[benefit].application = member[benefit].application || [];
     
         // Update the application state
         if (newApplyingState) {
-            // Add a new application object if applying
-            member.Applications[benefit].push({ applying: true });
+            // If applying, ensure there is an object with `applying: true`
+            if (!member[benefit].application.some(app => app.applying)) {
+                member[benefit].application.push({ applying: true });
+            }
         } else {
-            // Remove all application objects if stopping
-            member.Applications[benefit] = member.Applications[benefit].filter(app => !app.applying);
+            // If stopping, remove all objects with `applying: true`
+            member[benefit].application = member[benefit].application.filter(app => !app.applying);
         }
     
-        console.log(`Updated Applications for ${member.firstName} ${member.lastName}:`, member.Applications[benefit]);
+        console.log(`Updated Applications for ${member.firstName} ${member.lastName}:`, member[benefit].application);
     
         // Save the updated members to the backend
         const clientId = getQueryParameter('id');

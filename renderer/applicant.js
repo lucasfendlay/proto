@@ -96,15 +96,15 @@ applyingMembers.forEach(member => {
     membersToDisplay.add(member);
 
     // Check if the member is applying for PACE or PTRR
-    const isApplyingForPACEorPTRR = ['PACE', 'PTRR'].some(benefit =>
+    const isApplyingForPTRR = ['PTRR'].some(benefit =>
         member[benefit]?.application?.some(app => app.applying === true)
     );
 
     // If applying for PACE or PTRR, check for a valid `previousSpouseId` and add the spouse
-    if (isApplyingForPACEorPTRR && member.previousSpouseId) {
+    if (isApplyingForPTRR && member.previousSpouseId) {
         const spouse = clientData.householdMembers.find(m => m.householdMemberId === member.previousSpouseId);
         if (spouse) {
-            console.log(`Found spouse for ${member.firstName} ${member.lastName} (PACE/PTRR): ${spouse.firstName} ${spouse.lastName}`);
+            console.log(`Found spouse for ${member.firstName} ${member.lastName} (PTRR): ${spouse.firstName} ${spouse.lastName}`);
             membersToDisplay.add(spouse);
         } else {
             console.warn(`No valid spouse found for ${member.firstName} ${member.lastName} with previousSpouseId: ${member.previousSpouseId}`);
@@ -112,12 +112,12 @@ applyingMembers.forEach(member => {
     }
 
     // Check if the member is applying for LIS or MSP
-    const isApplyingForLISorMSP = ['LIS', 'MSP'].some(benefit =>
+    const isApplyingForPACELISorMSP = ['LIS', 'MSP', 'PACE'].some(benefit =>
         member[benefit]?.application?.some(app => app.applying === true)
     );
 
     // If applying for LIS or MSP, check for a spouse in the `relationships` array and add them
-    if (isApplyingForLISorMSP) {
+    if (isApplyingForPACELISorMSP) {
         const spouseId = member.relationships?.find(rel => rel.relationship === 'spouse')?.relatedMemberId;
         if (spouseId) {
             const spouse = clientData.householdMembers.find(m => m.householdMemberId === spouseId);
@@ -444,7 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-async function prepareHouseholdMemberModal() {
+async function prepareHouseholdMemberModal(householdMemberId = null) {
     const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
     if (!clientId) {
         console.error('Client ID not found in query parameters.');
@@ -452,6 +452,12 @@ async function prepareHouseholdMemberModal() {
     }
 
     try {
+        // Set the householdMemberId in the hidden input field
+        const householdMemberIdInput = document.getElementById('householdMemberId');
+        if (householdMemberIdInput) {
+            householdMemberIdInput.value = householdMemberId || ''; // Set the ID or clear it for a new member
+        }
+
         // Clear all modal data
         const modalFields = [
             'firstName',
@@ -466,13 +472,11 @@ async function prepareHouseholdMemberModal() {
             'nonCitizenStatus'
         ];
 
-            // Make SSN field editable and hide the "Edit SSN" button
-    const ssnInput = document.getElementById('socialSecurityNumber');
-    const editSSNButton = document.getElementById('editSSNButton');
-    ssnInput.readOnly = false; // Make the SSN field editable
-    if (editSSNButton) {
-        editSSNButton.style.display = 'none'; // Hide the "Edit SSN" button
-    }
+        // Make SSN field editable and hide the "Edit SSN" button
+        const ssnInput = document.getElementById('socialSecurityNumber');
+        const editSSNButton = document.getElementById('editSSNButton');
+        if (ssnInput) ssnInput.readOnly = false; // Make the SSN field editable
+        if (editSSNButton) editSSNButton.style.display = 'none'; // Hide the "Edit SSN" button
 
         resetSSNFields();
 
@@ -480,14 +484,16 @@ async function prepareHouseholdMemberModal() {
             const field = document.getElementById(fieldId);
             if (field) {
                 field.value = ''; // Clear the input field
+            } else {
+                console.warn(`Field with ID "${fieldId}" not found.`);
             }
         });
 
-                // Hide the "Next" button initially
-                const nextButton = document.getElementById('nextSSNButton');
-                if (nextButton) {
-                    nextButton.style.display = 'none';
-                }
+        // Hide the "Next" button initially
+        const nextButton = document.getElementById('nextSSNButton');
+        if (nextButton) {
+            nextButton.style.display = 'none';
+        }
 
         // Reset visibility of all modal questions
         const modalQuestions = [
@@ -502,6 +508,8 @@ async function prepareHouseholdMemberModal() {
             const question = document.getElementById(questionId);
             if (question) {
                 question.style.display = 'block'; // Reset to visible by default
+            } else {
+                console.warn(`Question with ID "${questionId}" not found.`);
             }
         });
 
@@ -524,6 +532,8 @@ async function prepareHouseholdMemberModal() {
             const option = document.getElementById(optionId);
             if (option) {
                 option.classList.remove('selected'); // Remove the 'selected' class
+            } else {
+                console.warn(`Option with ID "${optionId}" not found.`);
             }
         });
 
@@ -551,83 +561,104 @@ async function prepareHouseholdMemberModal() {
             const medicaidQuestion = document.getElementById('medicaidQuestion');
             const studentQuestion = document.getElementById('studentQuestion');
             const mealsQuestion = document.getElementById('mealsQuestion');
-            const previousMaritalStatusContainer = document.getElementById('previousMaritalStatus').parentNode; // Get the container
+            const previousMaritalStatusContainer = document.getElementById('previousMaritalStatus')?.parentNode; // Get the container
 
-            // Hide or show the previousMaritalStatus dropdown based on headOfHousehold status
-const hasHeadOfHousehold = clientData.householdMembers?.some(member => member.headOfHousehold);
-
-if (hasHeadOfHousehold) {
-    // Hide for members who are not the head of household
-    if (!clientData.headOfHousehold) {
-        previousMaritalStatusContainer.style.display = 'none'; // Hide the dropdown
-    } else {
-        previousMaritalStatusContainer.style.display = 'block'; // Show the dropdown for the head of household
-    }
-} else {
-    // Show if there is no head of household
-    previousMaritalStatusContainer.style.display = 'block';
-}
-
-            if (clientData.disability === 'yes') {
-                disabilityQuestion.style.display = 'block';
-            } else {
-                disabilityQuestion.style.display = 'none';
+            if (previousMaritalStatusContainer) {
+                const hasHeadOfHousehold = clientData.householdMembers?.some(member => member.headOfHousehold);
+                if (hasHeadOfHousehold) {
+                    previousMaritalStatusContainer.style.display = 'block';
+                } else {
+                    previousMaritalStatusContainer.style.display = 'none';
+                }
             }
 
-            if (clientData.medicare === 'yes') {
-                medicareQuestion.style.display = 'block';
-            } else {
-                medicareQuestion.style.display = 'none';
-            }
-
-            if (clientData.medicaid === 'yes') {
-                medicaidQuestion.style.display = 'block';
-            } else {
-                medicaidQuestion.style.display = 'none';
-            }
-
-            if (clientData.citizen === 'no') {
-                citizenQuestion.style.display = 'block';
-            } else {
-                citizenQuestion.style.display = 'none';
-            }
-
-            if (clientData.student === 'yes') {
-                studentQuestion.style.display = 'block';
-            } else {
-                studentQuestion.style.display = 'none';
-            }
-
-            if (clientData.snap === 'yes' || clientData.snap === 'notinterested') {
-                mealsQuestion.style.display = 'none';
-            } else {
-                mealsQuestion.style.display = 'block';
-            }
-
-            // Add listeners to highlight the selected options
-            const modalQuestions = [
-                { id: 'disability', elements: ['modal-disability-yes', 'modal-disability-no'] },
-                { id: 'medicare', elements: ['modal-medicare-yes', 'modal-medicare-no'] },
-                { id: 'medicaid', elements: ['modal-medicaid-yes', 'modal-medicaid-no'] },
-                { id: 'student', elements: ['modal-student-yes', 'modal-student-no'] },
-                { id: 'meals', elements: ['modal-meals-yes', 'modal-meals-no'] },
-                { id: 'citizen', elements: ['modal-citizen-yes', 'modal-citizen-no'] }
-            ];
-
-            modalQuestions.forEach((question) => {
-                question.elements.forEach((elementId) => {
-                    const element = document.getElementById(elementId);
-                    if (element) {
-                        element.addEventListener('click', () => {
-                            highlightSelection(question.elements, element); // Highlight the selected option
-                        });
-                    }
-                });
-            });
+            if (disabilityQuestion) disabilityQuestion.style.display = clientData.disability === 'yes' ? 'block' : 'none';
+            if (medicareQuestion) medicareQuestion.style.display = clientData.medicare === 'yes' ? 'block' : 'none';
+            if (medicaidQuestion) medicaidQuestion.style.display = clientData.medicaid === 'yes' ? 'block' : 'none';
+            if (studentQuestion) studentQuestion.style.display = clientData.student === 'yes' ? 'block' : 'none';
+            if (mealsQuestion) mealsQuestion.style.display = clientData.snap === 'yes' || clientData.snap === 'notinterested' ? 'none' : 'block';
         }
     } catch (error) {
         console.error('Error fetching client data:', error);
     }
+}
+
+function showConfirmSSN() {
+    console.log('showConfirmSSN function executed');
+    const confirmSSNContainer = document.getElementById('confirmSSNContainer');
+    const ssnInput = document.getElementById('socialSecurityNumber');
+    const ssnLabel = document.querySelector('label[for="socialSecurityNumber"]'); // Get the label for the SSN field
+    const nextButton = document.getElementById('nextSSNButton');
+    const confirmButton = document.getElementById('confirmSSNButton'); // Add a confirm button for SSN confirmation
+    const householdMemberId = document.getElementById('householdMemberId').value; // Retrieve the householdMemberId
+
+    if (confirmSSNContainer && ssnInput && nextButton && confirmButton) {
+        // Hide the first SSN field and its label
+        ssnInput.style.display = 'none';
+        ssnLabel.style.display = 'none';
+
+        // Show the confirm SSN container
+        confirmSSNContainer.style.display = 'block';
+
+        // Hide the "Next" button
+        nextButton.style.display = 'none';
+
+        // Add an event listener to the confirm button
+        confirmButton.addEventListener('click', () => {
+            resetModalToInitialState(householdMemberId); // Pass the householdMemberId
+        });
+    } else {
+        console.error('One or more elements for SSN confirmation are missing.');
+    }
+}
+
+async function resetModalToInitialState(householdMemberId) {
+    console.log('Resetting modal to its initial state');
+    console.log('Household Member ID:', householdMemberId); // Debugging log
+
+    const confirmSSNContainer = document.getElementById('confirmSSNContainer');
+    const ssnInput = document.getElementById('socialSecurityNumber');
+    const ssnLabel = document.querySelector('label[for="socialSecurityNumber"]'); // Get the label for the SSN field
+    const nextButton = document.getElementById('nextSSNButton');
+    const confirmSSNInput = document.getElementById('confirmSocialSecurityNumber');
+
+    // Overwrite the original SSN field with the value from the "Confirm SSN" field
+    if (confirmSSNInput && ssnInput) {
+        const newSSN = confirmSSNInput.value.trim();
+        if (newSSN) {
+            ssnInput.value = newSSN; // Update the original SSN field
+            console.log('SSN updated to:', newSSN);
+
+            // Save the updated SSN to the household member in the database
+            const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
+
+            if (clientId && householdMemberId) {
+                try {
+                    await saveHouseholdMemberUpdate(clientId, householdMemberId, 'socialSecurityNumber', newSSN);
+                    console.log(`SSN successfully saved for household member ${householdMemberId}.`);
+                } catch (error) {
+                    console.error(`Failed to save SSN for household member ${householdMemberId}:`, error);
+                }
+            } else {
+                console.error('Client ID or Household Member ID not found.');
+            }
+        } else {
+            console.warn('Confirm SSN field is empty. SSN not updated.');
+        }
+    }
+
+    // Reset the visibility of the first SSN field and its label
+    if (ssnInput) ssnInput.style.display = 'block';
+    if (ssnLabel) ssnLabel.style.display = 'block';
+
+    // Hide the confirm SSN container
+    if (confirmSSNContainer) confirmSSNContainer.style.display = 'none';
+
+    // Hide the "Next" button
+    if (nextButton) nextButton.style.display = 'none';
+
+    // Clear the confirm SSN input field
+    if (confirmSSNInput) confirmSSNInput.value = '';
 }
 
 document.getElementById('add-household-member').addEventListener('click', async () => {
@@ -1080,7 +1111,8 @@ async function updateHouseholdMember(memberId) {
         const suffix = document.getElementById('suffix').value.trim();
         const dob = document.getElementById('dob').value;
         const socialSecurityNumber = document.getElementById('socialSecurityNumber').value.trim();
-        const legalSex= document.getElementById('legalSex').value;
+        const driversLicenseNumber = document.getElementById('driversLicenseNumber').value.trim();
+        const legalSex = document.getElementById('legalSex').value;
         const maritalStatus = document.getElementById('maritalStatus').value;
         const previousMaritalStatus = document.getElementById('previousMaritalStatus').value;
         const nonCitizenStatus = document.getElementById('nonCitizenStatus').value;
@@ -1149,6 +1181,7 @@ async function updateHouseholdMember(memberId) {
             suffix,
             dob,
             socialSecurityNumber,
+            driversLicenseNumber,
             legalSex,
             age: `${age.years} Years, ${age.months} Months, ${age.days} Days`,
             maritalStatus,
@@ -1166,6 +1199,47 @@ async function updateHouseholdMember(memberId) {
         // If studentStatus is "ineligible student", set meals to "no"
         if (studentStatus.toLowerCase() === 'ineligible student') {
             updatedMemberData.meals = 'no';
+        }
+
+        // Check if marital status is changed to anything other than "Married (Living Together)"
+        if (maritalStatus !== 'Married (Living Together)') {
+            // Fetch the current household members
+            const response = await fetch(`/get-client/${clientId}`);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch client data: ${response.statusText}`);
+            }
+            const clientData = await response.json();
+
+            if (clientData && clientData.householdMembers) {
+                // Find the current member
+                const currentMember = clientData.householdMembers.find((m) => m.householdMemberId === memberId);
+
+                if (currentMember) {
+                    // Overwrite the relationships field to null
+                    updatedMemberData.relationships = null;
+
+                    // If the member has a spouse, clear the spouse's reference as well
+                    const spouseId = currentMember.relationships?.spouse;
+                    if (spouseId) {
+                        const spouse = clientData.householdMembers.find((m) => m.householdMemberId === spouseId);
+                        if (spouse) {
+                            spouse.relationships = null;
+
+                            // Update the spouse in the backend
+                            await fetch(`/update-household-member`, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    clientId,
+                                    member: spouse,
+                                }),
+                            });
+                        }
+                    }
+                }
+            }
         }
 
         // Send the updated data to the backend
