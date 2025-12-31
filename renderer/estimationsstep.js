@@ -167,7 +167,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                             }<br>
                             <button class="benefit-apply-button" data-benefit="PTRR" data-member-id="${member.householdMemberId}" 
                                 style="display: ${
-                                    member.PTRR?.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('already'))
+                                    member.PTRR?.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('no') || e.toLowerCase().includes('already'))
                                         ? 'none'
                                         : 'block'
                                 }; margin: 0 auto">
@@ -186,33 +186,77 @@ document.addEventListener('DOMContentLoaded', async function () {
     
             // Add event listeners to the benefit buttons
             const benefitButtons = document.querySelectorAll('.benefit-apply-button');
-benefitButtons.forEach(button => {
-    button.addEventListener('click', async (event) => {
-        const benefit = event.target.dataset.benefit; // Get the benefit type (e.g., "PACE", "LIS", "SNAP", "LIHEAP")
-        const memberId = event.target.dataset.memberId || null; // Get the member ID (if applicable)
-        const buttonLabel = event.target.textContent.trim(); // Get the current button label
-        const newApplyingState = buttonLabel.startsWith('Apply'); // Determine the new state
-
-        console.log(`Benefit: ${benefit}, Member ID: ${memberId}, New Applying State: ${newApplyingState}`);
-
-        const members = await loadHouseholdMembers(); // Reload members
-
-        // Call the function to update the benefit
-        await updateMemberBenefits(members, benefit, newApplyingState, memberId);
-
-        // Refresh the display after updating
-        if (benefit === 'SNAP') {
-            await displaySNAPHouseholds();
-        } else if (benefit === 'LIHEAP') {
-            await displayLIHEAPHouseholds();
-        } else {
-            await displayHouseholdMembers(); // Refresh the display for individual benefits
+            benefitButtons.forEach(button => {
+                button.addEventListener('click', async (event) => {
+                    const benefit = event.target.dataset.benefit; // Get the benefit type
+                    const memberId = event.target.dataset.memberId || null; // Get the member ID
+                    const buttonLabel = event.target.textContent.trim(); // Get the current button label
+                    const newApplyingState = buttonLabel.startsWith('Apply'); // Determine the new state
+            
+                    console.log(`Benefit: ${benefit}, Member ID: ${memberId}, New Applying State: ${newApplyingState}`);
+            
+                    const members = await loadHouseholdMembers(); // Reload members
+            
+                    // Use the handler to toggle the application state
+                    await handleBenefitApplicationToggle(members, benefit, memberId, newApplyingState);
+            
+                    // Refresh the display after updating
+                    if (benefit === 'SNAP') {
+                        await displaySNAPHouseholds();
+                    } else if (benefit === 'LIHEAP') {
+                        await displayLIHEAPHouseholds();
+                    } else {
+                        await displayHouseholdMembers(); // Refresh the display for individual benefits
+                    }
+            
+                    // Update the visibility of the save/continue button
+                    await updateSaveContinueButtonVisibility();
+                });
+            });
         }
+    }
 
-        // Update the visibility of the save/continue button
-        await updateSaveContinueButtonVisibility();
-    });
-});
+    async function handleBenefitApplicationToggle(members, benefit, memberId, newApplyingState) {
+        // Find the member by ID
+        const member = members.find(m => m.householdMemberId === memberId);
+        if (!member) {
+            console.error(`Member with ID ${memberId} not found.`);
+            return;
+        }
+    
+        // Ensure the Applications structure exists
+        member.Applications = member.Applications || {};
+        member.Applications[benefit] = member.Applications[benefit] || [];
+    
+        // Update the application state
+        if (newApplyingState) {
+            // Add a new application object if applying
+            member.Applications[benefit].push({ applying: true });
+        } else {
+            // Remove all application objects if stopping
+            member.Applications[benefit] = member.Applications[benefit].filter(app => !app.applying);
+        }
+    
+        console.log(`Updated Applications for ${member.firstName} ${member.lastName}:`, member.Applications[benefit]);
+    
+        // Save the updated members to the backend
+        const clientId = getQueryParameter('id');
+        try {
+            const response = await fetch(`/save-household-members`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ clientId, householdMembers: members }),
+            });
+    
+            if (response.ok) {
+                console.log(`Benefit ${benefit} updated successfully for ${member.firstName} ${member.lastName}.`);
+            } else {
+                console.error(`Failed to update benefit ${benefit} for ${member.firstName} ${member.lastName}:`, response.statusText);
+            }
+        } catch (error) {
+            console.error(`Error saving benefit ${benefit} for ${member.firstName} ${member.lastName}:`, error);
         }
     }
 

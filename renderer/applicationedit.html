@@ -9,7 +9,132 @@
     <link rel="stylesheet" href="notes.css">
     <script src="userInfo.js"></script>
 
+    <style>/* Button container styling */
+        .button-container {
+    display: flex;
+    justify-content: center; /* Center the button horizontally */
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+.button-container button {
+flex: 1;
+padding: 10px 15px !important; /* Override global padding */
+font-size: 1rem;
+cursor: pointer;
+border: none; /* Remove global border */
+margin: 0; /* Remove global margin */
+}
+
+/* Selection box styling */
+.selection-box div.selected {
+    background-color: #007bff;
+    color: white;
+    border: 1px solid #0056b3;
+    border-radius: 5px;
+    padding: 5px;
+}
+
+/* Sidebar header styling */
+.sidebar-header {
+    display: fixed;
+    justify-items: center; /* Center content horizontally */
+    text-align: center; /* Center text */
+    margin-bottom: 20px; /* Add spacing below the header */
+    width: 300px; /* Match the width of .left-sidebar */
+    margin: 0 auto; /* Center the header horizontally */
+}
+
+.sidebar-header .button-container {
+    display: flex;
+    justify-content: center; /* Center the button horizontally */
+    width: 100%; /* Ensure the button container spans the full width */
+}
+
+/* Contacts list container */
+#contacts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Adds spacing between items */
+    width: 300px; /* Match the width of .left-sidebar */
+    margin: 0 auto; /* Center the header horizontally */
+    max-height: 500px; /* Match the height of householdedit containers */
+    overflow-y: auto; /* Add scroll if content overflows */
+    background-color: #f4f4f4; /* Light gray background */
+    border: 1px solid #ddd; /* Border around the container */
+    border-radius: 8px; /* Rounded corners */
+    padding: 15px; /* Padding inside the container */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+}
+
+/* Individual sidebar items */
+.left-sidebar {
+    background-color: #fff; /* White background for each item */
+    border: 1px solid #ccc; /* Border around each item */
+    border-radius: 5px; /* Rounded corners for each item */
+    padding: 10px; /* Padding inside each item */
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Subtle shadow for each item */
+    margin: 0 auto; /* Center the sidebar items horizontally */
+    width: 280px; /* Adjust width as needed */
+    transform: translateX(-8px); /* Shift the sidebar 10px to the left */
+
+}
+
+
+.left-sidebar strong {
+    font-weight: bold; /* Bold labels */
+}
+
+        /* Modal styling */
+        .contactmodal {
+display: none;
+position: fixed; /* Position relative to the viewport */
+top: 0;
+left: 0;
+width: 100vw; /* Full viewport width */
+height: 100vh; /* Full viewport height */
+background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+z-index: 1000; /* Ensure it appears above other elements */
+display: flex; /* Use flexbox for centering */
+justify-content: center; /* Center horizontally */
+align-items: center; /* Center vertically */
+overflow: hidden; /* Prevent scrolling */
+}
+
+.contactmodal-content {
+background-color: transparent;
+border-radius: px;
+width: 90%; /* Adjust width for responsiveness */
+max-width: 500px; /* Limit the modal width */
+padding: 0px;
+position: absolute; /* Position relative to the modal container */
+top: 50%; /* Center vertically */
+left: 46.8%; /* Center horizontally */
+transform: translate(-50%, -50%); /* Adjust for the modal's own dimensions */
+text-align: left;
+}    
+
+.error {
+border: 2px solid red;
+background-color: #ffe6e6; /* Light red background */
+}
+
+</style>
+
     <style>
+
+        /* Highlight the selected option */
+#mailingAddressQuestion .selection-box div.selected {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: #007bff;
+    color: white;
+    align-self: flex-end;
+    margin-top: 10px;
+}
 
 #editSSNButton {
         position: relative; /* Ensures the button stays in the same flow */
@@ -90,19 +215,46 @@ body {
 
     <h1>Applicant</h1>
 
-    <style>
-        #household-size {
-            text-align: center; /* Center the text */
-            text-align-last: center; /* Center the selected option in modern browsers */
-        }
-    </style>
+     <!-- Add this container where you want the contacts to appear -->
+     <div class="left-sidebar-container" id="contactsSidebarContainer">
+        <div class="sidebar-header">
+            <h2>Contacts</h2>
+            <div class="button-container">
+                <button id="add-contact-button" onclick="openContactModal()">Add New Contact</button>
+            </div>
+        </div>
+        <div id="contacts-list" class="left-sidebar"></div>
+    </div>
 
-<div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
-    <div id="snap-household-container" class="left-sidebar"></div>
-    <div id="liheap-household-container" class="left-sidebar"></div>
-    <div id="household-members-container" class="left-sidebar"></div>
+<!-- Modal for Adding/Editing Contacts -->
+<div id="contactModal" class="contactmodal" style="display: none;">
+    <div class="modal-content">
+        <form id="contactForm">
+            <h2 id="modal-title">Add Contact</h2>
+            <label for="contactFirstName">First Name:</label>
+            <input type="text" id="contactFirstName" required>
+
+            <label for="contactLastName">Last Name:</label>
+            <input type="text" id="contactLastName" required>
+
+            <label for="contactPhoneNumber">Phone Number:</label>
+            <input type="text" id="contactPhoneNumber" required>
+
+            <label for="authorizedRepresentative">Authorized Representative:</label>
+            <select id="authorizedRepresentative">
+                <option value="N/A" selected>N/A</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+            </select>
+
+            <div class="button-container">
+                <button type="button" onclick="saveContact()">Save</button>
+                <button type="button" onclick="closeContactModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
 </div>
-
+    
 <div id="notes-container">
     <textarea id="note-input" placeholder="Add Note..."></textarea>
     <button id="save-note">Save Note</button>
@@ -110,7 +262,86 @@ body {
         </div>
         </div>
 
-    <div id="householdMemberContainer" class="household-member-container"></div>
+<!-- Address Fields -->
+<div class="form-field">
+    <label id="addressLabel" for="streetAddress">Street Address:</label>
+    <input type="text" id="streetAddress" name="streetAddress" placeholder="Enter Street Address">
+</div>
+
+<div class="form-field">
+    <label for="streetAddress2">Address Line 2:</label>
+    <input type="text" id="streetAddress2" name="streetAddress2" placeholder="Enter Address Line 2">
+</div>
+
+<div class="form-field">
+    <label for="city">City:</label>
+    <input type="text" id="city" name="city" placeholder="Enter City">
+</div>
+
+<div class="form-field">
+    <label for="state">State:</label>
+    <select id="state" name="state">
+        <option value="" disabled selected>Select State</option>
+        <option value="PA">PA</option>
+        <option value="AL">AL</option>
+        <option value="AK">AK</option>
+        <option value="AZ">AZ</option>
+        <option value="AR">AR</option>
+        <option value="CA">CA</option>
+        <option value="CO">CO</option>
+        <option value="CT">CT</option>
+        <option value="DE">DE</option>
+        <option value="FL">FL</option>
+        <option value="GA">GA</option>
+        <option value="HI">HI</option>
+        <option value="ID">ID</option>
+        <option value="IL">IL</option>
+        <option value="IN">IN</option>
+        <option value="IA">IA</option>
+        <option value="KS">KS</option>
+        <option value="KY">KY</option>
+        <option value="LA">LA</option>
+        <option value="ME">ME</option>
+        <option value="MD">MD</option>
+        <option value="MA">MA</option>
+        <option value="MI">MI</option>
+        <option value="MN">MN</option>
+        <option value="MS">MS</option>
+        <option value="MO">MO</option>
+        <option value="MT">MT</option>
+        <option value="NE">NE</option>
+        <option value="NV">NV</option>
+        <option value="NH">NH</option>
+        <option value="NJ">NJ</option>
+        <option value="NM">NM</option>
+        <option value="NY">NY</option>
+        <option value="NC">NC</option>
+        <option value="ND">ND</option>
+        <option value="OH">OH</option>
+        <option value="OK">OK</option>
+        <option value="OR">OR</option>
+        <option value="RI">RI</option>
+        <option value="SC">SC</option>
+        <option value="SD">SD</option>
+        <option value="TN">TN</option>
+        <option value="TX">TX</option>
+        <option value="UT">UT</option>
+        <option value="VT">VT</option>
+        <option value="VA">VA</option>
+        <option value="WA">WA</option>
+        <option value="WV">WV</option>
+        <option value="WI">WI</option>
+        <option value="WY">WY</option>
+        <option value="DC">DC</option>
+        <option value="PR">Puerto Rico</option>
+        <option value="GU">Guam</option>
+    </select>
+</div>
+
+<div class="form-field">
+    <label for="zipCode">ZIP Code:</label>
+    <input type="text" id="zipCode" name="zipCode" placeholder="Enter ZIP Code" maxlength="10">
+</div>
 
     <div class="form-field">
         <label for="county">County:</label>
@@ -184,14 +415,110 @@ body {
         </select>
     </div>
 
-    <div class="form-field">
+    <div class="form-field" style="display: none;">
         <label for="schoolDistrict">School District:</label>
         <select id="schoolDistrict" name="schoolDistrict" disabled>
             <option value="" disabled selected>Select School District</option>
         </select>
     </div>
 
+<!-- Mailing Address Selection -->
+<div class="form-field" id="mailingAddressQuestion" style="display: none;">
+    <label>Is this also your best mailing address?</label>
+    <div class="selection-box">
+        <div data-value="yes" onclick="toggleMailingAddress('yes')">Yes</div>
+        <div data-value="no" onclick="toggleMailingAddress('no')">No</div>
+    </div>
+</div>
 
+<!-- Mailing Address Fields -->
+<div id="mailingAddressFields" style="display: none;">
+    <div class="form-field">
+        <label for="mailingStreetAddress">Mailing Address:</label>
+        <input type="text" id="mailingStreetAddress" name="mailingStreetAddress" placeholder="Enter Mailing Address">
+    </div>
+
+    <div class="form-field">
+        <label for="mailingStreetAddress2">Mailing Address Line 2:</label>
+        <input type="text" id="mailingStreetAddress2" name="mailingStreetAddress2" placeholder="Enter Mailing Address Line 2">
+    </div>
+
+    <div class="form-field">
+        <label for="mailingCity">Mailing City:</label>
+        <input type="text" id="mailingCity" name="mailingCity" placeholder="Enter Mailing City">
+    </div>
+
+    <div class="form-field">
+        <label for="mailingState">Mailing State:</label>
+        <select id="mailingState" name="mailingState">
+            <option value="" disabled selected>Select State</option>
+            <option value="PA">PA</option>
+            <option value="AL">AL</option>
+            <option value="AK">AK</option>
+            <option value="AZ">AZ</option>
+            <option value="AR">AR</option>
+            <option value="CA">CA</option>
+            <option value="CO">CO</option>
+            <option value="CT">CT</option>
+            <option value="DE">DE</option>
+            <option value="FL">FL</option>
+            <option value="GA">GA</option>
+            <option value="HI">HI</option>
+            <option value="ID">ID</option>
+            <option value="IL">IL</option>
+            <option value="IN">IN</option>
+            <option value="IA">IA</option>
+            <option value="KS">KS</option>
+            <option value="KY">KY</option>
+            <option value="LA">LA</option>
+            <option value="ME">ME</option>
+            <option value="MD">MD</option>
+            <option value="MA">MA</option>
+            <option value="MI">MI</option>
+            <option value="MN">MN</option>
+            <option value="MS">MS</option>
+            <option value="MO">MO</option>
+            <option value="MT">MT</option>
+            <option value="NE">NE</option>
+            <option value="NV">NV</option>
+            <option value="NH">NH</option>
+            <option value="NJ">NJ</option>
+            <option value="NM">NM</option>
+            <option value="NY">NY</option>
+            <option value="NC">NC</option>
+            <option value="ND">ND</option>
+            <option value="OH">OH</option>
+            <option value="OK">OK</option>
+            <option value="OR">OR</option>
+            <option value="RI">RI</option>
+            <option value="SC">SC</option>
+            <option value="SD">SD</option>
+            <option value="TN">TN</option>
+            <option value="TX">TX</option>
+            <option value="UT">UT</option>
+            <option value="VT">VT</option>
+            <option value="VA">VA</option>
+            <option value="WA">WA</option>
+            <option value="WV">WV</option>
+            <option value="WI">WI</option>
+            <option value="WY">WY</option>
+            <option value="DC">DC</option>
+            <option value="PR">Puerto Rico</option>
+            <option value="GU">Guam</option>
+        </select>
+    </div>
+
+    <div class="form-field">
+        <label for="mailingZipCode">Mailing ZIP Code:</label>
+        <input type="text" id="mailingZipCode" name="mailingZipCode" placeholder="Enter Mailing ZIP Code" maxlength="10">
+    </div>
+</div>
+
+<div class="form-field">
+    <label for="emailAddress">Do you have an email address?</label>
+    <input type="email" id="emailAddress" name="emailAddress" placeholder="Enter Email Address">
+
+    <div id="householdMemberContainer" class="household-member-container"></div>
 
     <div class="button-container">
         <button id="add-household-member" style="display: none;">Add Household Member</button>
@@ -208,13 +535,48 @@ body {
 
             <h2 id="modal-header">Add Household Member</h2>
 
+
             <input type="hidden" id="householdMemberId">
-            <label for="firstName">First Name:</label>
-            <input type="text" id="firstName" name="firstName"><br><br>
-            <label for="middleInitial">Middle Initial:</label>
-            <input type="text" id="middleInitial" name="middleInitial"><br><br>
-            <label for="lastName">Last Name:</label>
-            <input type="text" id="lastName" name="lastName"><br><br>
+<!-- Prefix Dropdown -->
+<label for="prefix">Prefix:</label>
+<select id="prefix" name="prefix">
+    <option value="" disabled selected>Select Prefix</option>
+    <option value="">NONE</option>
+    <option value="BR">BR</option>
+    <option value="FTHR">FATHR</option>
+    <option value="MTHR">MTHR</option>
+    <option value="REB">REB</option>
+    <option value="REV">REV</option>
+    <option value="SR">SR</option>
+</select><br><br>
+
+<!-- First Name -->
+<label for="firstName">First Name:</label>
+<input type="text" id="firstName" name="firstName"><br><br>
+
+<!-- Middle Initial -->
+<label for="middleInitial">Middle Initial:</label>
+<input type="text" id="middleInitial" name="middleInitial"><br><br>
+
+<!-- Last Name -->
+<label for="lastName">Last Name:</label>
+<input type="text" id="lastName" name="lastName"><br><br>
+
+<!-- Suffix Dropdown -->
+<label for="suffix">Suffix:</label>
+<select id="suffix" name="suffix">
+    <option value="" disabled selected>Select Suffix</option>
+    <option value="">NONE</option>
+    <option value="JR">JR</option>
+    <option value="SR">SR</option>
+    <option value="I">I</option>
+    <option value="II">II</option>
+    <option value="III">III</option>
+    <option value="IV">IV</option>
+    <option value="V">V</option>
+    <option value="VI">VI</option>
+    <option value="VII">VII</option>
+</select><br><br>
             <div class="selection-box">
                 <label for="dob">Date of Birth:</label>
                 <input type="date" id="dob" name="dob" class="selection-box-input"><br><br>
@@ -254,7 +616,7 @@ body {
 
 <div class="selection-box">
     <label for="maritalStatus">Current Marital Status:</label>
-    <select id="maritalStatus" name="maritalStatus" class="selection-box-input" disabled>
+    <select id="maritalStatus" name="maritalStatus" class="selection-box-input">
         <option value="" disabled selected>Select Marital Status</option>
         <option value="Single">Single</option>
         <option value="Married (Living Together)">Married (Living Together)</option>
@@ -263,7 +625,7 @@ body {
         <option value="Widowed">Widowed</option>
     </select><br><br>
 </div>
-<div class="selection-box">
+<div class="selection-box" id="previousMaritalStatusContainer" style="display: none;">
     <label for="previousMaritalStatus">Previous Year Marital Status:</label>
     <select id="previousMaritalStatus" name="previousMaritalStatus" class="selection-box-input" disabled>
         <option value="" disabled selected>Select Previous Year Marital Status</option>
@@ -616,6 +978,7 @@ function redirectToHouseholdView() {
                 .then((response) => {
                     if (response.ok) {
                         console.log('screeningInProgress set to false for client:', clientId);
+                        
                     } else {
                         return response.json().then((error) => {
                             console.error('Error details:', error);
@@ -644,49 +1007,80 @@ function redirectToHouseholdView() {
     }
 }
 
-async function toggleSidebarVisibility() {
-    const clientId = getQueryParam('id');
+document.addEventListener('DOMContentLoaded', async () => {
+    const schoolDistrictField = document.querySelector('.form-field select#schoolDistrict').parentElement;
+
+    // Function to check PTRR application state and toggle the school district field
+    async function toggleSchoolDistrictField() {
+        const clientId = getQueryParam('id'); // Get the client ID from the URL
+        try {
+            const response = await fetch(`/get-client/${clientId}`);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch client data: ${response.statusText}`);
+            }
+            const client = await response.json();
+
+            // Check if PTRR is applying
+            const isPTRRApplying = client.Applications?.PTRR?.some(app => app.applying);
+
+            if (isPTRRApplying) {
+                // Show and enable the school district field
+                schoolDistrictField.style.display = 'block';
+                const schoolDistrictDropdown = document.getElementById('schoolDistrict');
+                schoolDistrictDropdown.disabled = false;
+                schoolDistrictDropdown.required = true;
+            } else {
+                // Hide and disable the school district field
+                schoolDistrictField.style.display = 'none';
+                const schoolDistrictDropdown = document.getElementById('schoolDistrict');
+                schoolDistrictDropdown.disabled = true;
+                schoolDistrictDropdown.required = false;
+            }
+        } catch (error) {
+            console.error('Error toggling school district field:', error);
+        }
+    }
+
+    // Call the function on page load
+    await toggleSchoolDistrictField();
+});
+
+// Function to toggle the visibility of the "Previous Year Marital Status" dropdown
+async function togglePreviousMaritalStatusDropdown() {
+    const clientId = getQueryParam('id'); // Get the client ID from the URL
+
     try {
-        // Fetch client data via REST API
-        const response = await fetch(`/get-client/${clientId}`);
+        const response = await fetch(`/get-client/${clientId}`); // Fetch client data
         if (!response.ok) {
             throw new Error(`Failed to fetch client data: ${response.statusText}`);
         }
-        const client = await response.json();
-        console.log('Client data:', client); // Debugging
-        console.log('screeningInProgress:', client?.screeningInProgress); // Debugging
 
-        if (client && client.screeningInProgress) {
-            document.getElementById('leftSidebarContainer').style.display = 'block';
-            console.log('Sidebar is now visible'); // Debugging
+        const client = await response.json(); // Parse the client data
+        const members = client.householdMembers || []; // Get household members
+
+        // Check if any member has PTRR - application - applying: true
+        const hasPTRRApplying = members.some(member =>
+            member.PTRR?.application?.some(app => app.applying === true)
+        );
+
+        // Get the dropdown container
+        const previousMaritalStatusContainer = document.getElementById('previousMaritalStatusContainer');
+
+        // Show or hide the dropdown based on the `applying` status
+        if (hasPTRRApplying) {
+            previousMaritalStatusContainer.style.display = 'block'; // Show the dropdown
         } else {
-            document.getElementById('leftSidebarContainer').style.display = 'none';
-            console.log('Sidebar is now hidden'); // Debugging
+            previousMaritalStatusContainer.style.display = 'none'; // Hide the dropdown
         }
     } catch (error) {
-        console.error('Error toggling sidebar visibility:', error);
+        console.error('Error toggling Previous Year Marital Status dropdown:', error);
     }
 }
 
-function showConfirmSSN() {
-    const ssnLabel = document.querySelector('label[for="socialSecurityNumber"]');
-    const ssnInput = document.getElementById('socialSecurityNumber');
-    const nextButton = document.getElementById('nextSSNButton');
-    const confirmSSNContainer = document.getElementById('confirmSSNContainer');
-
-    // Check if the SSN field is filled
-    if (ssnInput.value.length === 11) {
-        // Hide the SSN label, input, and button
-        ssnLabel.style.display = 'none';
-        ssnInput.style.display = 'none';
-        nextButton.style.display = 'none';
-
-        // Show the Confirm SSN input
-        confirmSSNContainer.style.display = 'block';
-    } else {
-        alert('Please enter a valid Social Security Number before proceeding.');
-    }
-}
+// Ensure the script runs after the DOM is fully loaded
+document.addEventListener('DOMContentLoaded', () => {
+    togglePreviousMaritalStatusDropdown(); // Check and toggle the dropdown visibility
+});
 
 function resetSSNFields() {
     const ssnLabel = document.querySelector('label[for="socialSecurityNumber"]');
@@ -785,15 +1179,556 @@ function editSSN() {
     editSSNButton.style.display = 'none';
 }
 
+document.addEventListener('DOMContentLoaded', async () => {
+    const clientId = getQueryParam('id'); // Get the client ID from the URL
+
+    try {
+        const response = await fetch(`/get-client/${clientId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client data: ${response.statusText}`);
+        }
+
+        const client = await response.json();
+
+        // Populate the address fields with pre-existing data
+        document.getElementById('streetAddress').value = client.streetAddress || '';
+        document.getElementById('streetAddress2').value = client.streetAddress2 || '';
+        document.getElementById('city').value = client.city || '';
+        document.getElementById('state').value = client.state || '';
+        document.getElementById('zipCode').value = client.zipCode || '';
+    } catch (error) {
+        console.error('Error loading client data:', error);
+    }
+});
+
+// Utility function to get query parameters
+function getQueryParam(name) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name);
+}
+
 // Add an event listener to the confirm SSN field
 document.getElementById('confirmSocialSecurityNumber').addEventListener('input', function () {
     validateConfirmSSN();
 });
 
-// Call the function after the page loads
-window.onload = function () {
-    toggleSidebarVisibility();
-};
+// Utility function to get query parameters
+function getQueryParam(name) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name);
+}
+
+// Save data to the database
+function saveToDatabase(field, value) {
+    const clientId = getQueryParam('id');
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
+
+    const requestBody = {
+        clientId,
+        clientData: { [field]: value },
+    };
+
+    fetch(`/update-client`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+    })
+        .then((response) => {
+            if (response.ok) {
+                console.log(`Client ${field} updated to: ${value}`);
+            } else {
+                return response.json().then((error) => {
+                    console.error('Error details:', error);
+                    throw new Error(`Failed to update client data: ${error.message}`);
+                });
+            }
+        })
+        .catch((error) => console.error('Error updating client data:', error));
+}
+
+// Populate form fields with client data
+function populateFormFields(client) {
+    Object.entries(client).forEach(([key, value]) => {
+        const field = document.getElementById(key);
+        if (field) {
+            if (field.tagName === 'SELECT' || field.tagName === 'INPUT') {
+                field.value = value || '';
+            }
+        }
+    });
+}
+
+// Load client data on page load
+async function loadClientData() {
+    const clientId = getQueryParam('id');
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/get-client/${clientId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client data: ${response.statusText}`);
+        }
+
+        const client = await response.json();
+        populateFormFields(client);
+        handleHomelessness(client.homelessness);
+        console.log('Loaded client data:', client);
+    } catch (error) {
+        console.error('Error loading client data:', error);
+    }
+}
+
+// Handle homelessness logic
+function handleHomelessness(isHomeless) {
+    const addressLabel = document.getElementById('addressLabel');
+    const mailingAddressQuestion = document.getElementById('mailingAddressQuestion');
+
+    if (isHomeless === 'yes') {
+        addressLabel.textContent = 'Mailing Address:';
+        mailingAddressQuestion.style.display = 'none';
+    } else {
+        addressLabel.textContent = 'Street Address:';
+        mailingAddressQuestion.style.display = 'block';
+    }
+}
+
+// Toggle mailing address fields and save the selection to the backend
+function toggleMailingAddress(value) {
+    const mailingAddressFields = document.getElementById('mailingAddressFields');
+    const mailingAddressYes = document.querySelector('#mailingAddressQuestion [data-value="yes"]');
+    const mailingAddressNo = document.querySelector('#mailingAddressQuestion [data-value="no"]');
+
+    // Update the UI based on the selected value
+    if (value === 'yes') {
+        mailingAddressFields.style.display = 'none';
+        mailingAddressYes.classList.add('selected');
+        mailingAddressNo.classList.remove('selected');
+
+                // Clear the fields in the UI
+                document.getElementById('mailingStreetAddress').value = '';
+        document.getElementById('mailingStreetAddress2').value = '';
+        document.getElementById('mailingCity').value = '';
+                document.getElementById('mailingZipCode').value = '';
+
+
+        // Set all mailing address details to null in the backend
+        saveToDatabase('mailingStreetAddress', null);
+        saveToDatabase('mailingStreetAddress2', null);
+        saveToDatabase('mailingCity', null);
+        saveToDatabase('mailingState', null);
+        saveToDatabase('mailingZipCode', null);
+    } else {
+        mailingAddressFields.style.display = 'block';
+        mailingAddressYes.classList.remove('selected');
+        mailingAddressNo.classList.add('selected');
+    }
+
+    // Save the selection to the backend
+    saveToDatabase('mailingAddressSameAsResidential', value);
+}
+
+// Restore the selected mailing address option on page load
+async function restoreMailingAddressSelection() {
+    const clientId = getQueryParam('id');
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/get-client/${clientId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client data: ${response.statusText}`);
+        }
+
+        const client = await response.json();
+        const savedValue = client.mailingAddressSameAsResidential;
+
+        // Restore the UI based on the saved value
+        if (savedValue) {
+            toggleMailingAddress(savedValue);
+        }
+    } catch (error) {
+        console.error('Error restoring mailing address selection:', error);
+    }
+}
+
+// Initialize the page
+document.addEventListener('DOMContentLoaded', () => {
+    restoreMailingAddressSelection(); // Restore the selection on page load
+});
+
+// Add event listeners to form fields
+function addFieldListeners() {
+    const fields = document.querySelectorAll('input, select, textarea');
+    fields.forEach((field) => {
+        // Exclude fields inside modals
+        if (!field.closest('.contactmodal') && !field.closest('.modal')) {
+            field.addEventListener('change', (event) => {
+                saveToDatabase(event.target.id, event.target.value);
+            });
+        }
+    });
+}
+
+async function saveHouseholdMember() {
+    const householdMemberId = document.getElementById('householdMemberId').value;
+    const prefix = document.getElementById('prefix').value;
+    const firstName = document.getElementById('firstName').value.trim();
+    const middleInitial = document.getElementById('middleInitial').value.trim();
+    const lastName = document.getElementById('lastName').value.trim();
+    const suffix = document.getElementById('suffix').value;
+    const dob = document.getElementById('dob').value;
+    const legalSex = document.getElementById('legalSex').value;
+
+    if (!firstName || !lastName || !dob || !legalSex) {
+        alert('Please fill in all required fields.');
+        return;
+    }
+
+    const newMember = {
+        id: householdMemberId || Date.now().toString(), // Generate a unique ID if not provided
+        prefix,
+        firstName,
+        middleInitial,
+        lastName,
+        suffix,
+        dob,
+        legalSex,
+    };
+
+    const clientId = getQueryParam('id');
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
+
+    try {
+        // Update the household member in the backend
+        const response = await fetch(`/update-household-member`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, householdMember: newMember }),
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to save household member.');
+        }
+
+        // Reload the household members list
+        loadHouseholdMembers();
+        closeHouseholdMemberModal();
+    } catch (error) {
+        console.error('Error saving household member:', error);
+    }
+}
+
+// Redirect to the household view
+function redirectToHouseholdView() {
+    const clientId = getQueryParam('id');
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
+
+    const userConfirmed = confirm('Are you sure you want to save and release the profile?');
+    if (userConfirmed) {
+        const requestBody = {
+            clientId,
+            clientData: { screeningInProgress: false },
+        };
+
+        fetch(`/update-client`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody),
+        })
+            .then((response) => {
+                if (!response.ok) {
+                    return response.json().then((error) => {
+                        if (error.message !== 'No changes were made to the client data.') {
+                            throw new Error(`Failed to update client data: ${error.message}`);
+                        }
+                    });
+                }
+            })
+            .catch((error) => console.error('Error updating client data:', error))
+            .finally(() => {
+                window.location.href = `householdview.html?id=${clientId}`;
+            });
+    }
+}
+
+let editingContactIndex = null; // Track the index of the contact being edited
+
+// Render contacts dynamically
+function renderContacts() {
+    const contactsContainer = document.getElementById('contacts-list');
+    contactsContainer.innerHTML = ''; // Clear existing contacts
+
+    if (client.Contacts && client.Contacts.length > 0) {
+        client.Contacts.forEach((contact, index) => {
+            const contactDiv = document.createElement('div');
+            contactDiv.classList.add('left-sidebar');
+            contactDiv.innerHTML = `
+                <p><strong>Name:</strong><br> ${contact.firstName?.toUpperCase() || 'N/A'} ${contact.lastName?.toUpperCase() || 'N/A'}</p>
+                <p><strong>Phone:</strong><br> ${formatPhoneNumber(contact.phoneNumber) || 'N/A'}</p>
+                <p><strong>Authorized Representative:</strong><br> ${contact.authorizedRepresentative?.toUpperCase() || 'N/A'}</p>
+                <button onclick="openContactModalByIndex(${index})">Edit Contact</button>
+            `;
+            contactsContainer.appendChild(contactDiv);
+        });
+    } else {
+        contactsContainer.innerHTML = '<p>No contacts available.</p>';
+    }
+}
+
+// Open the modal for adding or editing a contact
+function openContactModal(contact = null, index = null) {
+    const modal = document.getElementById('contactModal');
+    const modalTitle = document.getElementById('modal-title');
+    const firstNameInput = document.getElementById('contactFirstName');
+    const lastNameInput = document.getElementById('contactLastName');
+    const phoneNumberInput = document.getElementById('contactPhoneNumber');
+    const authorizedRepSelect = document.getElementById('authorizedRepresentative');
+    const buttonContainer = modal.querySelector('.button-container');
+
+    // Clear existing buttons to avoid duplicates
+    buttonContainer.innerHTML = `
+        <button type="button" onclick="saveContact()">Save</button>
+        <button type="button" onclick="closeContactModal()">Cancel</button>
+    `;
+
+    if (contact) {
+        // Populate fields for editing
+        modalTitle.textContent = 'Edit Contact';
+        firstNameInput.value = contact.firstName || '';
+        lastNameInput.value = contact.lastName || '';
+        phoneNumberInput.value = contact.phoneNumber || '';
+        authorizedRepSelect.value = contact.authorizedRepresentative || 'N/A';
+        editingContactIndex = index;
+
+        // Add a "Delete" button for editing
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = 'Delete';
+        deleteButton.type = 'button';
+        deleteButton.style.backgroundColor = 'red';
+        deleteButton.onmouseover = () => deleteButton.style.backgroundColor = 'darkred';
+        deleteButton.onmouseout = () => deleteButton.style.backgroundColor = 'red';
+        deleteButton.style.color = 'white';
+        deleteButton.onclick = () => deleteContact(index);
+        buttonContainer.appendChild(deleteButton);
+    } else {
+        // Clear fields for adding
+        modalTitle.textContent = 'Add Contact';
+        firstNameInput.value = '';
+        lastNameInput.value = '';
+        phoneNumberInput.value = '';
+        authorizedRepSelect.value = 'N/A';
+        editingContactIndex = null;
+    }
+
+    modal.style.display = 'block';
+}
+
+// Save the contact (add or edit)
+async function saveContact() {
+    const firstName = document.getElementById('contactFirstName').value.trim();
+    const lastName = document.getElementById('contactLastName').value.trim();
+    const phoneNumber = document.getElementById('contactPhoneNumber').value.trim();
+    const authorizedRepresentative = document.getElementById('authorizedRepresentative').value;
+    const clientId = getQueryParam('id'); // Ensure clientId is retrieved from the URL
+
+    // Validate required fields
+    if (!clientId || !firstName || !lastName || !phoneNumber) {
+        alert('Please fill in all required fields.');
+        console.error('Missing required fields:', { clientId, firstName, lastName, phoneNumber });
+        return;
+    }
+
+    const newContact = {
+        firstName,
+        lastName,
+        phoneNumber,
+        authorizedRepresentative,
+    };
+
+    // Ensure the Contacts array exists locally
+    if (!client.Contacts) {
+        client.Contacts = []; // Initialize the Contacts array if it doesn't exist
+    }
+
+    try {
+        let response;
+        if (editingContactIndex !== null) {
+            // Edit existing contact
+            client.Contacts[editingContactIndex] = newContact;
+
+            // Send update request to the backend
+            response = await fetch('/add-to-contacts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    clientId, // Pass the client ID
+                    contact: newContact, // Pass the updated contact
+                    index: editingContactIndex, // Pass the index of the contact to update
+                }),
+            });
+        } else {
+            // Add new contact
+            client.Contacts.push(newContact);
+
+            // Send add request to the backend
+            response = await fetch('/add-to-contacts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    clientId, // Pass the client ID
+                    contact: newContact, // Pass the new contact
+                }),
+            });
+        }
+
+        const result = await response.json();
+        if (response.ok && result.success) {
+            console.log('Contact saved successfully:', result.message);
+        } else {
+            console.error('Failed to save contact:', result.message);
+            alert(`Error: ${result.message}`);
+        }
+    } catch (error) {
+        console.error('Error while saving contact to the database:', error);
+        alert('An error occurred while saving the contact. Please try again.');
+    }
+
+    // Re-render contacts and close modal
+    renderContacts();
+    closeContactModal();
+}
+
+// Delete a contact
+async function deleteContact(index) {
+    if (!confirm('Are you sure you want to delete this contact?')) {
+        return; // Exit if the user cancels
+    }
+
+    try {
+        // Remove the contact locally
+        const deletedContact = client.Contacts.splice(index, 1)[0];
+
+        // Send delete request to the backend
+        const response = await fetch('/add-to-contacts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                clientId: client.id, // Pass the client ID
+                contact: deletedContact, // Pass the deleted contact
+                index, // Pass the index of the contact to delete
+                delete: true, // Indicate this is a delete operation
+            }),
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            console.log('Contact deleted successfully:', result.message);
+        } else {
+            console.error('Failed to delete contact:', result.message);
+            alert(`Error: ${result.message}`);
+        }
+    } catch (error) {
+        console.error('Error while deleting contact from the database:', error);
+        alert('An error occurred while deleting the contact. Please try again.');
+    }
+
+    // Re-render contacts and close modal
+    renderContacts();
+    closeContactModal();
+}
+
+// Close the modal
+function closeContactModal() {
+    const modal = document.getElementById('contactModal');
+    modal.style.display = 'none';
+}
+
+// Close the modal when clicking outside of it
+window.addEventListener('click', (event) => {
+    const modal = document.getElementById('contactModal');
+    const modalContent = modal.querySelector('.modal-content');
+    if (event.target === modal && !modalContent.contains(event.target)) {
+        closeContactModal();
+    }
+});
+
+
+// Open the modal for editing a contact by index
+function openContactModalByIndex(index) {
+    const contact = client.Contacts[index]; // Get the contact by index
+    openContactModal(contact, index); // Call the existing openContactModal function
+}
+
+// Utility function to format phone numbers
+function formatPhoneNumber(phone) {
+    if (!phone) return '';
+    const cleaned = phone.replace(/\D/g, ''); // Remove all non-numeric characters
+    const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/); // Match the phone number pattern
+    return match ? `(${match[1]})-${match[2]}-${match[3]}` : phone; // Format if valid, else return original
+}
+
+function formatPhoneNumber(phone) {
+    if (!phone) return '';
+    const cleaned = phone.replace(/\D/g, ''); // Remove all non-numeric characters
+    const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/); // Match the phone number pattern
+    return match ? `(${match[1]})-${match[2]}-${match[3]}` : phone; // Format if valid, else return original
+}
+
+function getQueryParam(name) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name);
+}
+
+// Declare client as a global variable
+let client = null;
+
+// Ensure the script runs after the DOM is fully loaded
+document.addEventListener('DOMContentLoaded', async () => {
+    const clientId = getQueryParam('id'); // Get the client ID from the URL
+
+    try {
+        const response = await fetch(`/get-client/${clientId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client data: ${response.statusText}`);
+        }
+
+        // Assign the fetched client data to the global client variable
+        client = await response.json();
+
+        // Populate the form fields and render contacts
+        populateFormFields(client);
+        renderContacts();
+    } catch (error) {
+        console.error('Error loading client data:', error);
+    }
+});
+
+// Initialize the page
+document.addEventListener('DOMContentLoaded', () => {
+    loadClientData();
+    addFieldListeners();
+    renderContacts();
+});
     </script>
 
 <script src="editnavigation.js"></script>

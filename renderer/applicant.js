@@ -141,7 +141,7 @@ if (membersToDisplay.size === 0) {
                 const memberElement = document.createElement('div');
                 memberElement.classList.add('household-member'); // Add a class for styling
                 memberElement.innerHTML = `
-                    <p class="household-member-info"><strong>Name:</strong> ${capitalizeFirstLetter(member.firstName || '')} ${member.middleInitial ? capitalizeFirstLetter(member.middleInitial || '') : ''} ${capitalizeFirstLetter(member.lastName || '')}</p>
+                    <p class="household-member-info"><strong>Name:</strong> ${member.prefix || ''} ${capitalizeFirstLetter(member.firstName || '')} ${member.middleInitial ? capitalizeFirstLetter(member.middleInitial || '') : ''} ${capitalizeFirstLetter(member.lastName || '') } ${member.suffix || ''}</p>
                     <p class="household-member-info"><strong>DOB:</strong> ${member.dob}</p>
                     <p class="household-member-info"><strong>Age:</strong> ${member.age}</p>
                     <p class="household-member-info"><strong>Legal Sex:</strong> ${capitalizeFirstLetter(member.legalSex)}</p>
@@ -752,9 +752,11 @@ async function addHouseholdMember() {
 
     try {
         // Gather data from the modal
+        const prefix = document.getElementById('prefix').value.trim();
         const ssnInput = document.getElementById('socialSecurityNumber');
         const firstName = document.getElementById('firstName').value.trim();
         const lastName = document.getElementById('lastName').value.trim();
+        const suffix = document.getElementById('suffix').value.trim();
         const socialSecurityNumber = ssnInput.value.trim();
         const middleInitial = document.getElementById('middleInitial').value.trim();
         const dob = document.getElementById('dob').value;
@@ -838,9 +840,11 @@ async function addHouseholdMember() {
         // Prepare the data to save
         const householdMemberData = {
             householdMemberId: crypto.randomUUID(), // Generate a unique ID
+            prefix,
             firstName,
             middleInitial,
             lastName,
+            suffix,
             dob,
             legalSex,
             socialSecurityNumber,
@@ -931,9 +935,11 @@ async function openEditModal(member) {
     await prepareHouseholdMemberModal();
 
     // Step 2: Autofill the modal with the member's data
+    document.getElementById('prefix').value = member.prefix || '';
     document.getElementById('firstName').value = member.firstName || '';
     document.getElementById('middleInitial').value = member.middleInitial || '';
     document.getElementById('lastName').value = member.lastName || '';
+    document.getElementById('suffix').value = member.suffix || '';
     document.getElementById('dob').value = member.dob || '';
     document.getElementById('socialSecurityNumber').value = member.socialSecurityNumber || '';
     document.getElementById('legalSex').value = member.legalSex || '';
@@ -1042,20 +1048,14 @@ editSSNButton.addEventListener('click', (event) => {
         const clientData = await response.json();
         const hasHeadOfHousehold = clientData.householdMembers?.some(m => m.headOfHousehold);
 
-        if (hasHeadOfHousehold) {
-            // Show only for the head of household
-            if (member.headOfHousehold) {
-                previousMaritalStatusContainer.style.display = 'block';
-            } else {
-                previousMaritalStatusContainer.style.display = 'none';
-            }
+        if (member.PTRR?.application?.some(app => app.applying === true)) {
+            previousMaritalStatusContainer.style.display = 'block'; // Show the dropdown
+            document.getElementById('previousMaritalStatus').disabled = false; // Enable the dropdown
         } else {
-            // Show if there is no head of household
-            previousMaritalStatusContainer.style.display = 'block';
+            previousMaritalStatusContainer.style.display = 'none'; // Hide the dropdown
+            document.getElementById('previousMaritalStatus').disabled = false; // Keep it enabled even if hidden
         }
-    } else {
-        console.error('Failed to fetch client data for editing.');
-    }
+        }
 
     // Step 5: Set up the button for updating the member
     setupAddOrUpdateButton(true, member);
@@ -1073,9 +1073,11 @@ async function updateHouseholdMember(memberId) {
 
     try {
         // Gather updated data from the modal
+        const prefix = document.getElementById('prefix').value.trim();
         const firstName = document.getElementById('firstName').value.trim();
         const middleInitial = document.getElementById('middleInitial').value.trim();
         const lastName = document.getElementById('lastName').value.trim();
+        const suffix = document.getElementById('suffix').value.trim();
         const dob = document.getElementById('dob').value;
         const socialSecurityNumber = document.getElementById('socialSecurityNumber').value.trim();
         const legalSex= document.getElementById('legalSex').value;
@@ -1140,9 +1142,11 @@ async function updateHouseholdMember(memberId) {
         // Prepare the updated data
         const updatedMemberData = {
             householdMemberId: memberId,
+            prefix,
             firstName,
             middleInitial,
             lastName,
+            suffix,
             dob,
             socialSecurityNumber,
             legalSex,
@@ -1297,6 +1301,72 @@ async function updateAllMembers(questionId, value) {
         console.error(`Error updating all members for ${questionId}:`, error);
     }
 }
+
+// Save the email address to the database
+async function saveEmailAddressToDatabase() {
+    const emailInput = document.getElementById('emailAddress');
+    const email = emailInput.value.trim();
+    const clientId = getQueryParam('id'); // Get the client ID from the URL
+
+    if (!clientId || !email) {
+        console.error('Client ID or email address is missing.');
+        return;
+    }
+
+    try {
+        const response = await fetch('/update-client', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                clientId,
+                clientData: { emailAddress: email },
+            }),
+        });
+
+        if (response.ok) {
+            console.log('Email address saved successfully.');
+        } else {
+            const error = await response.json();
+            console.error('Failed to save email address:', error.message);
+        }
+    } catch (error) {
+        console.error('Error saving email address:', error);
+    }
+}
+
+// Recall the email address on page load
+async function recallEmailAddressFromDatabase() {
+    const clientId = getQueryParam('id'); // Get the client ID from the URL
+
+    if (!clientId) {
+        console.error('Client ID is missing.');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/get-client/${clientId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client data: ${response.statusText}`);
+        }
+
+        const client = await response.json();
+        const email = client.emailAddress || '';
+        document.getElementById('emailAddress').value = email;
+    } catch (error) {
+        console.error('Error recalling email address:', error);
+    }
+}
+
+// Utility function to get query parameters
+function getQueryParam(name) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(name);
+}
+
+// Initialize the page
+document.addEventListener('DOMContentLoaded', () => {
+    recallEmailAddressFromDatabase();
+});
 
 document.addEventListener('DOMContentLoaded', () => {
     const citizenYes = document.getElementById('modal-citizen-yes');

@@ -120,7 +120,7 @@ async function loadSavedData() {
                     const memberElement = document.createElement('div');
                     memberElement.classList.add('household-member'); // Add a class for styling
                     memberElement.innerHTML = `
-                        <p class="household-member-info"><strong>Name:</strong> ${capitalizeFirstLetter(member.firstName || '')} ${member.middleInitial ? capitalizeFirstLetter(member.middleInitial || '') : ''} ${capitalizeFirstLetter(member.lastName || '')}</p>
+                    <p class="household-member-info"><strong>Name:</strong> ${member.prefix || ''} ${capitalizeFirstLetter(member.firstName || '')} ${member.middleInitial ? capitalizeFirstLetter(member.middleInitial || '') : ''} ${capitalizeFirstLetter(member.lastName || '') } ${member.suffix || ''}</p>
                         <p class="household-member-info"><strong>DOB:</strong> ${member.dob}</p>
                         <p class="household-member-info"><strong>Age:</strong> ${member.age}</p>
                         <p class="household-member-info"><strong>Legal Sex:</strong> ${capitalizeFirstLetter(member.legalSex)}</p>

@@ -190,17 +190,11 @@ window.GoToProfileEditChecked = async function () {
 
     try {
         // Save a note with a timestamp
-        const timestamp = new Date().toISOString();
         const noteText = `<strong>Profile checked out.</strong>`;
-        const note = {
-            text: noteText,
-            timestamp: new Date().toLocaleString(),
-            username: activeUser,
-        };
-
-        console.log('Saving note:', note); // Debugging log
+        await saveNote(noteText); // Call saveNote with the predefined note text
 
         // Update the checkedOut array
+        const timestamp = new Date().toISOString();
         const updatedCheckedOut = [
             {
                 status: true,
@@ -244,14 +238,14 @@ window.GoToProfileEditChecked = async function () {
     }
 };
 
-async function saveNote() {
+async function saveNote(noteText = null) {
     console.log('Save button clicked'); // Debugging
     const clientId = getClientId();
-    const noteText = noteInput.value.trim();
+    const text = noteText || noteInput.value.trim(); // Use provided noteText or input value
     console.log('Client ID:', clientId); // Debugging
-    console.log('Note Text:', noteText); // Debugging
+    console.log('Note Text:', text); // Debugging
 
-    if (!noteText) {
+    if (!text) {
         console.log('Note text is empty, aborting save'); // Debugging
         return;
     }
@@ -264,7 +258,7 @@ async function saveNote() {
     const timestamp = new Date().toLocaleString();
     const note = {
         id: crypto.randomUUID(), // Generate a unique ID for the note
-        text: noteText,
+        text: text,
         timestamp: timestamp,
         username: activeUser, // Ensure the username is passed correctly
     };
@@ -286,7 +280,7 @@ async function saveNote() {
         }
 
         console.log('Note saved successfully:', result);
-        noteInput.value = '';
+        if (!noteText) noteInput.value = ''; // Clear input only if manually entered
         renderNotes(clientId);
     } catch (error) {
         console.error('Error saving note:', error);

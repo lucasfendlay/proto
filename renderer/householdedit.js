@@ -147,7 +147,7 @@ async function checkAndAddSelfButton(clientData) {
         });
     }
 }
-    
+
 // Modify the loadSavedData function to call checkAndAddSelfButton
 async function loadSavedData() {
     const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
@@ -214,7 +214,7 @@ async function loadSavedData() {
                     const memberElement = document.createElement('div');
                     memberElement.classList.add('household-member'); // Add a class for styling
                     memberElement.innerHTML = `
-                        <p class="household-member-info"><strong>Name:</strong> ${capitalizeFirstLetter(member.firstName || '')} ${member.middleInitial ? capitalizeFirstLetter(member.middleInitial || '') : ''} ${capitalizeFirstLetter(member.lastName || '')}</p>
+                    <p class="household-member-info"><strong>Name:</strong> ${member.prefix || ''} ${capitalizeFirstLetter(member.firstName || '')} ${member.middleInitial ? capitalizeFirstLetter(member.middleInitial || '') : ''} ${capitalizeFirstLetter(member.lastName || '') } ${member.suffix || ''}</p>
                         <p class="household-member-info"><strong>DOB:</strong> ${member.dob}</p>
                         <p class="household-member-info"><strong>Age:</strong> ${member.age}</p>
                         <p class="household-member-info"><strong>Legal Sex:</strong> ${capitalizeFirstLetter(member.legalSex)}</p>
@@ -1297,8 +1297,10 @@ async function addHouseholdMember() {
     try {
         // Gather data from the modal
         const ssnInput = document.getElementById('socialSecurityNumber');
+        const prefix = document.getElementById('prefix').value.trim();
         const firstName = document.getElementById('firstName').value.trim();
         const lastName = document.getElementById('lastName').value.trim();
+        const suffix = document.getElementById('suffix').value.trim();
         const socialSecurityNumber = ssnInput.value.trim();
         const middleInitial = document.getElementById('middleInitial').value.trim();
         const dob = document.getElementById('dob').value;
@@ -1382,9 +1384,11 @@ async function addHouseholdMember() {
         // Prepare the data to save
         const householdMemberData = {
             householdMemberId: crypto.randomUUID(), // Generate a unique ID
+            prefix,
             firstName,
             middleInitial,
             lastName,
+            suffix,
             dob,
             legalSex,
             socialSecurityNumber,
@@ -1475,9 +1479,11 @@ async function openEditModal(member) {
     await prepareHouseholdMemberModal();
 
     // Step 2: Autofill the modal with the member's data
+    document.getElementById('prefix').value = member.prefix || '';
     document.getElementById('firstName').value = member.firstName || '';
     document.getElementById('middleInitial').value = member.middleInitial || '';
     document.getElementById('lastName').value = member.lastName || '';
+    document.getElementById('suffix').value = member.suffix || '';
     document.getElementById('dob').value = member.dob || '';
     document.getElementById('socialSecurityNumber').value = member.socialSecurityNumber || '';
     document.getElementById('legalSex').value = member.legalSex || '';
@@ -1622,9 +1628,11 @@ async function updateHouseholdMember(memberId) {
 
     try {
         // Gather updated data from the modal
+        const prefix = document.getElementById('prefix').value.trim();
         const firstName = document.getElementById('firstName').value.trim();
         const middleInitial = document.getElementById('middleInitial').value.trim();
         const lastName = document.getElementById('lastName').value.trim();
+        const suffix = document.getElementById('suffix').value.trim();
         const dob = document.getElementById('dob').value;
         const socialSecurityNumber = document.getElementById('socialSecurityNumber').value.trim();
         const legalSex = document.getElementById('legalSex').value;
@@ -1689,9 +1697,11 @@ async function updateHouseholdMember(memberId) {
         // Prepare the updated data
         const updatedMemberData = {
             householdMemberId: memberId,
+            prefix,
             firstName,
             middleInitial,
             lastName,
+            suffix,
             dob,
             socialSecurityNumber,
             legalSex,

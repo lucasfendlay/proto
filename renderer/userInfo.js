@@ -99,7 +99,7 @@ if (loggedInUser) {
         const data = JSON.parse(event.data);
         if (data.redirectUrl) {
             console.log('Redirecting to:', data.redirectUrl);
-            alert('You have been redirected because the profile was released by another user.');
+            alert('You are being redirected because this profile was released by an administrator.');
             window.location.href = data.redirectUrl; // Force redirect to the specified URL
         }
     };
