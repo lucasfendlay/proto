@@ -359,17 +359,22 @@ fetch('/add-note-to-client', {
         noteDiv.className = 'note';
         noteDiv.innerHTML = `
             <p>${note.text}</p>
-            <small>${note.timestamp} by ${note.username}</small>
+<small>${note.timestamp} by ${note.username}</small>
             ${
-                note.text.startsWith('Referral provided.')
-                    ? `<br>
-                       <button class="interactive" onclick="deleteNote('${clientId}', 0)">Delete</button>`
-                    : `<br>
-                       <button class="interactive" onclick="editNote('${clientId}', 0)">Edit</button>
-                       <button class="interactive" onclick="deleteNote('${clientId}', 0)">Delete</button>`
+                note.username === cleanedActiveUser
+                    ? note.text.startsWith('Referral provided.')
+                        ? `<br>
+                            <button class="interactive" 
+                                style="background: red; transition: background-color 0.3s;" 
+                                onmouseover="this.style.backgroundColor='darkred'" 
+                                onmouseout="this.style.backgroundColor='red'" 
+                                onclick="window.deleteNote('${clientId}', 0)">Delete</button>`
+                        : `<br>
+                            <button class="interactive" onclick="editNote('${clientId}', 0)">Edit</button>
+                            <button class="interactive" onclick="deleteNote('${clientId}', 0)">Delete</button>`
+                    : ''
             }
         `;
-
         // Prepend the new note to the list
         notesList.insertBefore(noteDiv, notesList.firstChild);
     })

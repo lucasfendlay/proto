@@ -1023,42 +1023,47 @@ function redirectToHouseholdView() {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const schoolDistrictField = document.querySelector('.form-field select#schoolDistrict').parentElement;
-
-    // Function to check PTRR application state and toggle the school district field
-    async function toggleSchoolDistrictField() {
-        const clientId = getQueryParam('id'); // Get the client ID from the URL
-        try {
-            const response = await fetch(`/get-client/${clientId}`);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch client data: ${response.statusText}`);
-            }
-            const client = await response.json();
-
-            // Check if PTRR is applying
-            const isPTRRApplying = client.Applications?.PTRR?.some(app => app.applying);
-
-            if (isPTRRApplying) {
-                // Show and enable the school district field
-                schoolDistrictField.style.display = 'block';
-                const schoolDistrictDropdown = document.getElementById('schoolDistrict');
-                schoolDistrictDropdown.disabled = false;
-                schoolDistrictDropdown.required = true;
-            } else {
-                // Hide and disable the school district field
-                schoolDistrictField.style.display = 'none';
-                const schoolDistrictDropdown = document.getElementById('schoolDistrict');
-                schoolDistrictDropdown.disabled = true;
-                schoolDistrictDropdown.required = false;
-            }
-        } catch (error) {
-            console.error('Error toggling school district field:', error);
-        }
-    }
-
-    // Call the function on page load
+    console.log('DOMContentLoaded event fired'); // Debugging log
     await toggleSchoolDistrictField();
 });
+
+// Function to check PTRR application state and toggle the school district field
+async function toggleSchoolDistrictField() {
+    console.log('toggleSchoolDistrictField function called'); // Debugging log
+    const schoolDistrictField = document.querySelector('.form-field select#schoolDistrict').parentElement;
+
+    const clientId = getQueryParam('id'); // Get the client ID from the URL
+    try {
+        const response = await fetch(`/get-client/${clientId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client data: ${response.statusText}`);
+        }
+        const client = await response.json();
+        console.log('Client data:', client); // Debugging log
+
+        // Check if PTRR is applying
+        const isPTRRApplying = client.householdMembers?.some(member =>
+            member.PTRR?.application?.some(app => app.applying === true)
+        );
+        console.log('isPTRRApplying:', isPTRRApplying); // Debugging log
+
+        if (isPTRRApplying) {
+            // Show and enable the school district field
+            schoolDistrictField.style.display = 'block';
+            const schoolDistrictDropdown = document.getElementById('schoolDistrict');
+            schoolDistrictDropdown.disabled = false;
+            schoolDistrictDropdown.required = true;
+        } else {
+            // Hide and disable the school district field
+            schoolDistrictField.style.display = 'none';
+            const schoolDistrictDropdown = document.getElementById('schoolDistrict');
+            schoolDistrictDropdown.disabled = true;
+            schoolDistrictDropdown.required = false;
+        }
+    } catch (error) {
+        console.error('Error toggling school district field:', error);
+    }
+}
 
 // Function to toggle the visibility of the "Previous Year Marital Status" dropdown
 async function togglePreviousMaritalStatusDropdown() {

@@ -45,51 +45,83 @@ document.addEventListener('DOMContentLoaded', function () {
         // Use activeUser for comparison
         const cleanedUsername = note.username || 'Automated Import';
 
-        // Check if the buttons should be displayed
-        const shouldShowButtons =
-    note.text !== 'New screening initiated.' &&
-    !note.text.includes('Inbound call logged') &&
-    !note.text.includes('Outbound call logged') &&
-    note.text !== 'Profile checked out.' &&
-    note.text !== 'Profile released.' &&
-    note.text !== 'Profile terminated.' &&
-    note.text !== 'Profile termination undone.' &&
-    note.text !== 'Profile created.' &&
-    (!note.text.startsWith('Referral provided.') || cleanedUsername === activeUser) &&
-    note.text.startsWith('Applying') &&
-    cleanedUsername === activeUser;
+        // Ensure note.text is a string before performing checks
+        const noteText = typeof note.text === 'string' ? note.text : '';
 
-    // Apply strong formatting to specific notes
-    const strongFormattedNotes = [
-        'New screening initiated.',
-        'Profile checked out.',
-        'Profile released.',
-        'Profile terminated.',
-        'Profile termination undone.',
-        'Profile created.',
-    ];
+// Check if the buttons should be displayed
+const isCustomNote = ![
+    'New screening initiated.',
+    'Profile checked out.',
+    'Profile released.',
+    'Profile terminated.',
+    'Profile termination undone.',
+    'Profile created.',
+].some(keyword => noteText.includes(keyword)) && 
+!noteText.includes('Inbound call logged') && 
+!noteText.includes('Applying') && 
+!noteText.includes('Referral provided');
 
-    const noteText = strongFormattedNotes.includes(note.text)
-            ? `<strong>${note.text}</strong>`
-            : note.text;
+// Determine if buttons should be shown
+let shouldShowButtons = isCustomNote && cleanedUsername === activeUser;
 
-            noteDiv.innerHTML = `
-            <p>${noteText}</p>
-            <small>${note.timestamp} by ${cleanedUsername}</small>
-            ${
-                shouldShowButtons
-                    ? ` <br>
+// Ensure buttons are never shown for notes not created by the active user
+if (cleanedUsername !== activeUser) {
+    shouldShowButtons = false;
+}
+
+// Check if the note contains "Referral provided"
+const isReferralNote = noteText.includes('Referral provided.');
+
+// Adjust button visibility for "Referral provided" notes
+if (isReferralNote) {
+    shouldShowButtons = false; // Disable the default buttons
+}
+
+// Apply strong formatting to specific notes
+const strongFormattedNotes = [
+    'New screening initiated.',
+    'Profile checked out.',
+    'Profile released.',
+    'Profile terminated.',
+    'Profile termination undone.',
+    'Profile created.',
+];
+
+const formattedNoteText = strongFormattedNotes.includes(noteText)
+    ? `<strong>${noteText}</strong>`
+    : noteText;
+
+noteDiv.innerHTML = `
+    <p>${formattedNoteText}</p>
+    <small>${note.timestamp} by ${cleanedUsername}</small>
+    ${
+        isReferralNote
+            ? ` <br>
+                <button 
+                    class="interactive" 
+                    style="background: red; transition: background-color 0.3s;" 
+                    onmouseover="this.style.backgroundColor='darkred'" 
+                    onmouseout="this.style.backgroundColor='red'" 
+                    onclick="window.deleteNote('${clientId}', ${notes.length - 1 - index})"
+                >
+                    Delete
+                </button>`
+            : shouldShowButtons
+                ? ` <br>
                     <button class="interactive" onclick="window.editNote('${clientId}', ${notes.length - 1 - index})">Edit</button>
-                    <button class="interactive" onclick="window.deleteNote('${clientId}', ${notes.length - 1 - index})">Delete</button>
-                `
-                    : note.text.startsWith('Referral provided.')
-                    ? ` <br>
-                    <button class="interactive" onclick="window.deleteNote('${clientId}', ${notes.length - 1 - index})">Delete</button>
-                `
-                    : ''
-            }
-        `;
-        notesList.appendChild(noteDiv);
+                    <button 
+                        class="interactive" 
+                        style="background: red; transition: background-color 0.3s;" 
+                        onmouseover="this.style.backgroundColor='darkred'" 
+                        onmouseout="this.style.backgroundColor='red'" 
+                        onclick="window.deleteNote('${clientId}', ${notes.length - 1 - index})"
+                    >
+                        Delete
+                    </button>`
+                : ''
+    }
+`;
+notesList.appendChild(noteDiv);
     });
 }
 
@@ -241,7 +273,9 @@ window.GoToProfileEditChecked = async function () {
 async function saveNote(noteText = null) {
     console.log('Save button clicked'); // Debugging
     const clientId = getClientId();
-    const text = noteText || noteInput.value.trim(); // Use provided noteText or input value
+    
+    // Ensure the text is properly retrieved
+    const text = typeof noteText === 'string' ? noteText : noteInput.value.trim();
     console.log('Client ID:', clientId); // Debugging
     console.log('Note Text:', text); // Debugging
 
@@ -258,7 +292,7 @@ async function saveNote(noteText = null) {
     const timestamp = new Date().toLocaleString();
     const note = {
         id: crypto.randomUUID(), // Generate a unique ID for the note
-        text: text,
+        text: text, // Ensure this is a string
         timestamp: timestamp,
         username: activeUser, // Ensure the username is passed correctly
     };
@@ -280,8 +314,8 @@ async function saveNote(noteText = null) {
         }
 
         console.log('Note saved successfully:', result);
-        if (!noteText) noteInput.value = ''; // Clear input only if manually entered
-        renderNotes(clientId);
+        noteInput.value = ''; // Clear the input field after saving
+        renderNotes(clientId); // Re-render the notes
     } catch (error) {
         console.error('Error saving note:', error);
     }

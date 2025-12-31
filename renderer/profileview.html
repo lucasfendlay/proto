@@ -644,14 +644,13 @@ function formatPhoneNumber(phone) {
     }
 }
 
-// Function to release the profile
 async function releaseProfile() {
     if (!confirm("Are you sure you want to release this profile?")) {
         return; // Exit if the user cancels
     }
 
     try {
-        // Identify the previous active user with status: true
+        const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
         const previousActiveUser = client.checkedOut?.find(entry => entry.status === true)?.user;
 
         if (!previousActiveUser) {
@@ -696,6 +695,38 @@ async function releaseProfile() {
             });
 
             console.log(`Notification sent to previous active user: ${previousActiveUser}`);
+
+            // Add a note about the profile release
+            const noteContent = "Profile released.";
+            const timestamp = new Date().toLocaleString();
+            const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
+
+            const note = {
+                text: noteContent,
+                timestamp: timestamp,
+                username: activeUser,
+            };
+
+            try {
+                const noteResponse = await fetch('/add-note-to-client', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ clientId, note }),
+                });
+
+                const noteResult = await noteResponse.json();
+                if (!noteResponse.ok || !noteResult.success) {
+                    console.error('Failed to add note to client:', noteResult.message);
+                    alert('Failed to add note to client.');
+                } else {
+                    console.log('Note successfully added to client.');
+                }
+            } catch (error) {
+                console.error('Error adding note to client:', error);
+                alert('An error occurred while adding the note.');
+            }
 
             // Refresh the page for the current user
             window.location.reload();
