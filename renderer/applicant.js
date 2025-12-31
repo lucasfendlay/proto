@@ -145,7 +145,6 @@ if (membersToDisplay.size === 0) {
                     <p class="household-member-info"><strong>DOB:</strong> ${member.dob}</p>
                     <p class="household-member-info"><strong>Age:</strong> ${member.age}</p>
                     <p class="household-member-info"><strong>Legal Sex:</strong> ${capitalizeFirstLetter(member.legalSex)}</p>
-                    <p class="household-member-info"><strong>SSN:</strong> ${member.socialSecurityNumber ? member.socialSecurityNumber : 'N/A'}</p>
                     <p class="household-member-info"><strong>Marital Status:</strong> ${capitalizeFirstLetter(member.maritalStatus)}</p>
                     ${
                         member.relationships?.find(rel => rel.relationship === 'spouse') 
@@ -163,6 +162,8 @@ if (membersToDisplay.size === 0) {
                         ? `<p class="household-member-info"><strong>Previous Marital Status:</strong> ${capitalizeFirstLetter(member.previousMaritalStatus)}</p>`
                         : ''
                     }
+                    <p class="household-member-info"><strong>SSN:</strong> ${member.socialSecurityNumber ? member.socialSecurityNumber : 'N/A'}</p>
+                    <p class="household-member-info"><strong>Driver's License Number:</strong> ${member.driversLicenseNumber ? member.driversLicenseNumber : 'N/A'}</p>
                     <p class="household-member-info"><strong>Disability:</strong> ${capitalizeFirstLetter(member.disability)}</p>
                     <p class="household-member-info"><strong>Medicare:</strong> ${capitalizeFirstLetter(member.medicare)}</p>
                     <p class="household-member-info"><strong>Medicaid:</strong> ${capitalizeFirstLetter(member.medicaid)}</p>
@@ -465,6 +466,7 @@ async function prepareHouseholdMemberModal(householdMemberId = null) {
             'lastName',
             'dob',
             'socialSecurityNumber',
+            'driversLicenseNumber',
             'legalSex',
             'maritalStatus',
             'previousMaritalStatus',
@@ -973,6 +975,7 @@ async function openEditModal(member) {
     document.getElementById('suffix').value = member.suffix || '';
     document.getElementById('dob').value = member.dob || '';
     document.getElementById('socialSecurityNumber').value = member.socialSecurityNumber || '';
+    document.getElementById('driversLicenseNumber').value = member.driversLicenseNumber || '';
     document.getElementById('legalSex').value = member.legalSex || '';
     document.getElementById('maritalStatus').value = member.maritalStatus || '';
     document.getElementById('previousMaritalStatus').value = member.previousMaritalStatus || '';
