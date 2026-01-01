@@ -59,7 +59,7 @@ margin: 0; /* Remove global margin */
     gap: 15px; /* Adds spacing between items */
     width: 300px; /* Match the width of .left-sidebar */
     margin: 0 auto; /* Center the header horizontally */
-    max-height: 500px; /* Match the height of householdedit containers */
+    max-height: 1000px; /* Match the height of householdedit containers */
     overflow-y: auto; /* Add scroll if content overflows */
     background-color: #f4f4f4; /* Light gray background */
     border: 1px solid #ddd; /* Border around the container */
@@ -430,7 +430,7 @@ body {
     </div>
 
 <!-- Mailing Address Selection -->
-<div class="form-field" id="mailingAddressQuestion" style="display: none;">
+<div class="form-field" id="mailingAddressQuestion" style="display: block;">
     <label>Is this also your best mailing address?</label>
     <div class="selection-box">
         <div data-value="yes" onclick="toggleMailingAddress('yes')">Yes</div>
@@ -754,45 +754,23 @@ async function loadClientData() {
         const client = await response.json(); // Parse the client data
         if (client && client.county) {
             console.log('Client data loaded:', client);
-            console.log('Client county:', client.county);
 
-            // Autofill the county dropdown
+            // Populate the county dropdown with the preexisting value
             const countyDropdown = document.getElementById('county');
-            const countyOptions = Array.from(countyDropdown.options);
+            countyDropdown.value = client.county; // Set the dropdown value
+            console.log(`County dropdown set to: ${client.county}`);
 
-            console.log('Dropdown options:', countyOptions.map(option => option.value)); // Log all dropdown options
+            // Populate the school district dropdown based on the preexisting county
+            populateSchoolDistricts(client.county);
 
-            // Find the matching option (case-insensitive)
-            const matchingCountyOption = countyOptions.find(
-                (option) => option.value.toLowerCase() === client.county.toLowerCase()
-            );
-
-            if (matchingCountyOption) {
-                countyDropdown.value = matchingCountyOption.value; // Set the dropdown value
-                console.log(`County dropdown set to: ${matchingCountyOption.value}`);
-
-                // Populate the school district dropdown based on the selected county
-                populateSchoolDistricts(matchingCountyOption.value);
-
-                // Autofill the school district dropdown if it exists in the client data
+            // Wait for the school district dropdown to populate, then set its value
+            setTimeout(() => {
                 if (client.schoolDistrict) {
                     const schoolDistrictDropdown = document.getElementById('schoolDistrict');
-                    const districtOptions = Array.from(schoolDistrictDropdown.options);
-
-                    const matchingDistrictOption = districtOptions.find(
-                        (option) => option.value.toLowerCase() === client.schoolDistrict.toLowerCase()
-                    );
-
-                    if (matchingDistrictOption) {
-                        schoolDistrictDropdown.value = matchingDistrictOption.value;
-                        console.log(`School district dropdown set to: ${matchingDistrictOption.value}`);
-                    } else {
-                        console.warn(`No matching school district found for: ${client.schoolDistrict}`);
-                    }
+                    schoolDistrictDropdown.value = client.schoolDistrict;
+                    console.log(`School district dropdown set to: ${client.schoolDistrict}`);
                 }
-            } else {
-                console.warn(`No matching county found for: ${client.county}`);
-            }
+            }, 0); // Use a short delay to ensure the dropdown is populated
         } else {
             console.error('Client data is missing or county is not defined.');
         }
@@ -910,15 +888,10 @@ document.addEventListener('DOMContentLoaded', () => {
     countyDropdown.addEventListener('change', (event) => {
         const selectedCounty = event.target.value;
 
-        // Reset the school district dropdown to its default state
-        const schoolDistrictDropdown = document.getElementById('schoolDistrict');
-        schoolDistrictDropdown.innerHTML = '<option value="" disabled selected>Select School District</option>';
-        schoolDistrictDropdown.disabled = true;
-
         // Repopulate the district list based on the selected county
         populateSchoolDistricts(selectedCounty);
 
-        // Update the client array with the new county
+        // Save the selected county to the backend
         updateClientData('county', selectedCounty);
 
         // Clear the district value in the client array
@@ -929,7 +902,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const schoolDistrictDropdown = document.getElementById('schoolDistrict');
     schoolDistrictDropdown.addEventListener('change', (event) => {
         const selectedDistrict = event.target.value;
-        updateClientData('schoolDistrict', selectedDistrict); // Update the client array with the new district
+
+        // Save the selected school district to the backend
+        updateClientData('schoolDistrict', selectedDistrict);
     });
 });
 
@@ -1280,29 +1255,6 @@ function populateFormFields(client) {
     });
 }
 
-// Load client data on page load
-async function loadClientData() {
-    const clientId = getQueryParam('id');
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
-    try {
-        const response = await fetch(`/get-client/${clientId}`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client data: ${response.statusText}`);
-        }
-
-        const client = await response.json();
-        populateFormFields(client);
-        handleHomelessness(client.homelessness);
-        console.log('Loaded client data:', client);
-    } catch (error) {
-        console.error('Error loading client data:', error);
-    }
-}
-
 // Handle homelessness logic
 function handleHomelessness(isHomeless) {
     const addressLabel = document.getElementById('addressLabel');
@@ -1451,11 +1403,10 @@ async function saveHouseholdMember() {
 // Populate the Best Contact Phone Number dropdown
 function populateBestContactDropdown() {
     const dropdown = document.getElementById('bestContactNumber');
-    const currentSelectedValue = dropdown.value; // Store the currently selected value
+    dropdown.innerHTML = '<option value="" disabled>Select Best Contact</option>'; // Reset options
 
-    dropdown.innerHTML = '<option value="" disabled selected>Select Best Contact</option>'; // Reset options
-
-    if (client.Contacts && client.Contacts.length > 0) {
+    if (client && client.Contacts && client.Contacts.length > 0) {
+        console.log('Contacts:', client.Contacts); // Debugging log
         client.Contacts.forEach((contact) => {
             const option = document.createElement('option');
             option.value = contact.phoneNumber;
@@ -1463,25 +1414,17 @@ function populateBestContactDropdown() {
             dropdown.appendChild(option);
         });
 
-        // Restore the previously selected value if it exists in the new options
-        const options = Array.from(dropdown.options);
-        const matchingOption = options.find(option => option.value === currentSelectedValue);
-        if (matchingOption) {
-            dropdown.value = currentSelectedValue;
+        // Restore the previously selected value if it exists
+        if (client.bestContactNumber) {
+            dropdown.value = client.bestContactNumber; // Set the value directly
+            console.log(`Dropdown value set to: ${client.bestContactNumber}`);
         } else {
-            // Reset to default if the selected value no longer exists
-            dropdown.value = '';
-            updateBestContactInBackend(null); // Set value to null in the backend
+            dropdown.value = ''; // Default to no selection
+            console.warn('No best contact number found in client data.');
         }
     } else {
-        // If no contacts are available, ensure the dropdown is reset
-        dropdown.value = '';
-        updateBestContactInBackend(null); // Set value to null in the backend
-    }
-
-    // Ensure the dropdown displays "Select Best Contact" if no value is selected
-    if (!dropdown.value) {
-        dropdown.value = '';
+        console.warn('No contacts available or client data is missing.');
+        dropdown.innerHTML = '<option value="" disabled selected>No Contacts Available</option>';
     }
 }
 
@@ -1526,14 +1469,38 @@ function saveBestContactNumber() {
         return;
     }
 
-    const selectedValue = selectedOption.value; // Phone number
-    const selectedText = selectedOption.textContent; // Full name and phone number (e.g., "FirstName LastName - (123) 456-7890")
+    const selectedValue = selectedOption.textContent; // Save the full string
+    const clientId = getQueryParam('id'); // Get the client ID from the URL
 
-    // Save the full name and phone number in the format "FirstName LastName Number"
-    client.bestContactNumber = selectedText;
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return;
+    }
 
-    // Save to the backend
-    saveToDatabase('bestContactNumber', selectedText);
+    const requestBody = {
+        clientId,
+        clientData: { bestContactNumber: selectedValue }, // Save the full string
+    };
+
+    // Make a backend call to save the best contact number
+    fetch('/update-client', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+    })
+        .then((response) => {
+            if (response.ok) {
+                console.log(`Best contact number updated to: ${selectedValue}`);
+            } else {
+                return response.json().then((error) => {
+                    console.error('Error details:', error);
+                    throw new Error(`Failed to update best contact number: ${error.message}`);
+                });
+            }
+        })
+        .catch((error) => {
+            console.error('Error updating best contact number:', error);
+        });
 }
 
 // Ensure the dropdown is populated on page load
@@ -1584,22 +1551,23 @@ function renderContacts() {
     const contactsContainer = document.getElementById('contacts-list');
     contactsContainer.innerHTML = ''; // Clear existing contacts
 
-    if (client.Contacts && client.Contacts.length > 0) {
-        client.Contacts.forEach((contact, index) => {
-            const contactDiv = document.createElement('div');
-            contactDiv.classList.add('left-sidebar');
-            contactDiv.innerHTML = `
-                <p><strong>Name:</strong><br> ${contact.firstName?.toUpperCase() || 'N/A'} ${contact.lastName?.toUpperCase() || 'N/A'}</p>
-                <p><strong>Phone:</strong><br> ${formatPhoneNumber(contact.phoneNumber) || 'N/A'}</p>
-                <p><strong>Authorized Representative:</strong><br> ${contact.authorizedRepresentative?.toUpperCase() || 'N/A'}</p>
-                <button onclick="openContactModalByIndex(${index})">Edit Contact</button>
-            `;
-            contactsContainer.appendChild(contactDiv);
-        });
-    } else {
+    // Ensure client.Contacts exists
+    if (!client || !client.Contacts || client.Contacts.length === 0) {
         contactsContainer.innerHTML = '<p>No contacts available.</p>';
+        return;
     }
-    populateBestContactDropdown()
+
+    client.Contacts.forEach((contact, index) => {
+        const contactDiv = document.createElement('div');
+        contactDiv.classList.add('left-sidebar');
+        contactDiv.innerHTML = `
+            <p><strong>Name:</strong><br> ${contact.firstName?.toUpperCase() || 'N/A'} ${contact.lastName?.toUpperCase() || 'N/A'}</p>
+            <p><strong>Phone:</strong><br> ${formatPhoneNumber(contact.phoneNumber) || 'N/A'}</p>
+            <p><strong>Authorized Representative:</strong><br> ${contact.authorizedRepresentative?.toUpperCase() || 'N/A'}</p>
+            <button onclick="openContactModalByIndex(${index})">Edit Contact</button>
+        `;
+        contactsContainer.appendChild(contactDiv);
+    });
 }
 
 // Open the modal for adding or editing a contact
@@ -1849,6 +1817,166 @@ document.addEventListener('DOMContentLoaded', () => {
 <script src="applying.js"></script>
     <script src="applicant.js"></script>
     <script src="notes.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+<script>
+    let zipToCountyMap = {}; // Global object to store ZIP-to-county mappings
+
+    // Load and parse the CSV file
+    function loadZipCountyData() {
+        Papa.parse('./uszips.csv', {
+            download: true,
+            header: true,
+            complete: function (results) {
+                results.data.forEach(row => {
+                    const zip = row.zip;
+                    const counties = row.county_names_all; // Use the county_names_all column
+                    if (zip && counties) {
+                        if (!zipToCountyMap[zip]) {
+                            zipToCountyMap[zip] = [];
+                        }
+                        // Split counties by "|" and add them to the map
+                        counties.split('|').forEach(county => {
+                            if (!zipToCountyMap[zip].includes(county.trim())) {
+                                zipToCountyMap[zip].push(county.trim());
+                            }
+                        });
+                    }
+                });
+                console.log('Zip-to-county data loaded:', zipToCountyMap);
+
+                // Filter the county dropdown on page load
+                filterCountyDropdownOnPageLoad();
+            },
+            error: function (error) {
+                console.error('Error loading CSV file:', error);
+            }
+        });
+    }
+
+    // Filter the county dropdown based on the ZIP code on page load
+    function filterCountyDropdownOnPageLoad() {
+        const zipCodeInput = document.getElementById("zipCode");
+        const countyDropdown = document.getElementById("county");
+        const zipCode = zipCodeInput.value.trim();
+
+        if (zipCode.length === 5 && zipToCountyMap[zipCode]) {
+            // Populate the county dropdown based on the ZIP code
+            const backendCounty = countyDropdown.value; // Preserve the preexisting county value
+            updateCountyDropdown(zipToCountyMap[zipCode], backendCounty);
+        } else {
+            // If the ZIP code is invalid or blank, do not overwrite the dropdown
+            console.log("Invalid or empty ZIP code on page load. Preserving existing county selection.");
+        }
+    }
+
+// Update the county dropdown based on the ZIP code
+function updateCountyDropdown(counties, backendCounty = null) {
+    const countyDropdown = document.getElementById("county");
+
+    // Clear existing options
+    countyDropdown.innerHTML = '<option value="" disabled>Select County</option>';
+
+    counties.forEach(county => {
+        const option = document.createElement("option");
+        option.value = county;
+        option.textContent = county;
+        countyDropdown.appendChild(option);
+    });
+
+    // Auto-select logic
+    if (backendCounty && counties.includes(backendCounty)) {
+        // If a backend county exists and matches one of the counties, select it
+        countyDropdown.value = backendCounty;
+    } else if (counties.length === 1) {
+        // If there's only one county, auto-select it
+        countyDropdown.value = counties[0];
+
+        // Dispatch a change event to trigger the school district population
+        const event = new Event('change', { bubbles: true });
+        countyDropdown.dispatchEvent(event);
+    } else {
+        // Otherwise, leave the dropdown unselected
+        countyDropdown.value = "";
+    }
+}
+
+    // Add event listener for the ZIP code input
+    function setupZipCodeListener() {
+        const zipCodeInput = document.getElementById("zipCode");
+        const countyDropdown = document.getElementById("county");
+
+        zipCodeInput.addEventListener("blur", async function () {
+            const zipCode = this.value.trim();
+
+            if (zipCode.length === 5 && zipToCountyMap[zipCode]) {
+                // Populate the county dropdown based on the ZIP code
+                updateCountyDropdown(zipToCountyMap[zipCode]);
+            } else {
+                // Reset the dropdown to "Select County" if the ZIP code is invalid, null, or blank
+                countyDropdown.innerHTML = '<option value="" disabled selected>Select County</option>';
+                console.log("Invalid, null, or empty ZIP code entered. Defaulting to 'Select County'.");
+
+                // Set the county data to null in the backend
+                await updateClientData('county', null);
+            }
+        });
+    }
+
+    // Add event listener for the county dropdown
+    document.getElementById("county").addEventListener("change", function () {
+        const selectedValue = this.value;
+
+        if (selectedValue === "") {
+            // If "Select County" is selected, set county to null in the database
+            updateClientData('county', null);
+        }
+    });
+
+    // Function to update client data in the backend
+    async function updateClientData(field, value) {
+        const clientId = getQueryParam('id'); // Get the client ID from the URL
+
+        if (!clientId) {
+            console.error('Client ID not found in query parameters.');
+            return;
+        }
+
+        const requestBody = {
+            clientId,
+            clientData: { [field]: value },
+        };
+
+        try {
+            const response = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                console.error(`Failed to update ${field}:`, error.message);
+            } else {
+                console.log(`Successfully updated ${field} to ${value}`);
+            }
+        } catch (error) {
+            console.error(`Error updating ${field}:`, error);
+        }
+    }
+
+    // Utility function to get query parameters
+    function getQueryParam(name) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(name);
+    }
+
+    // Initialize the page
+    document.addEventListener('DOMContentLoaded', () => {
+        loadZipCountyData(); // Load the CSV data
+        setupZipCodeListener(); // Set up the ZIP code input listener
+    });
+</script>
 
 </body>
 </html>

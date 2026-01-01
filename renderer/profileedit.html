@@ -177,7 +177,7 @@
             gap: 15px; /* Adds spacing between items */
             width: 300px; /* Match the width of .left-sidebar */
             margin: 0 auto; /* Center the header horizontally */
-            max-height: 500px; /* Match the height of householdedit containers */
+            max-height: 1000px; /* Match the height of householdedit containers */
             overflow-y: auto; /* Add scroll if content overflows */
             background-color: #f4f4f4; /* Light gray background */
             border: 1px solid #ddd; /* Border around the container */
@@ -1355,6 +1355,7 @@ window.onload = function () {
 }
 
 // Filter the county dropdown based on the zip code on page load
+// Filter the county dropdown based on the zip code on page load
 function filterCountyDropdownOnPageLoad() {
     const zipCodeInput = document.getElementById("zipCode");
     const countyDropdown = document.getElementById("county");
@@ -1362,11 +1363,11 @@ function filterCountyDropdownOnPageLoad() {
 
     if (zipCode.length === 5 && zipToCountyMap[zipCode]) {
         // Populate the county dropdown based on the zip code
-        updateCountyDropdown(zipToCountyMap[zipCode]);
+        const backendCounty = countyDropdown.value; // Preserve the preexisting county value
+        updateCountyDropdown(zipToCountyMap[zipCode], backendCounty);
     } else {
-        // If the zip code is invalid or blank, reset the dropdown to "Select County"
-        countyDropdown.innerHTML = '<option value="" disabled selected>Select County</option>';
-        console.log("Invalid or empty zip code on page load. Defaulting to 'Select County'.");
+        // If the zip code is invalid or blank, do not overwrite the dropdown
+        console.log("Invalid or empty zip code on page load. Preserving existing county selection.");
     }
 }
 
@@ -1375,7 +1376,7 @@ function updateCountyDropdown(counties, backendCounty = null) {
     const countyDropdown = document.getElementById("county");
 
     // Clear existing options
-    countyDropdown.innerHTML = '<option value="" disabled selected>Select County</option>';
+    countyDropdown.innerHTML = '<option value="" disabled>Select County</option>';
 
     counties.forEach(county => {
         const option = document.createElement("option");
@@ -1385,20 +1386,15 @@ function updateCountyDropdown(counties, backendCounty = null) {
     });
 
     // Auto-select logic
-    if (counties.length === 1) {
-        // If there's only one county, auto-select it
-        countyDropdown.value = counties[0];
-    } else if (backendCounty && counties.includes(backendCounty)) {
+    if (backendCounty && counties.includes(backendCounty)) {
         // If a backend county exists and matches one of the counties, select it
         countyDropdown.value = backendCounty;
+    } else if (counties.length === 1) {
+        // If there's only one county, auto-select it
+        countyDropdown.value = counties[0];
     } else {
-        // Otherwise, default to "Select County"
+        // Otherwise, leave the dropdown unselected
         countyDropdown.value = "";
-    }
-
-    // If "Select County" is selected, set county to null in the database
-    if (countyDropdown.value === "") {
-        updateClientData('county', null);
     }
 }
 
