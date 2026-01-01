@@ -33,11 +33,11 @@ document.getElementById('expense-kind').addEventListener('change', function () {
 
     if (expenseType === 'Medical' && selectedValue === 'Medicare Part B Premium') {
         // Autofill for Medical -> Medicare Part B Premium
-        amountInput.value = '185';
+        amountInput.value = '202.90';
         frequencyInput.value = 'Monthly';
     } else if (expenseType === 'Previous Year' && selectedValue === 'Medicare Part B Premium') {
         // Autofill for Previous Year -> Medicare Part B Premium
-        amountInput.value = '174.70';
+        amountInput.value = '185';
         frequencyInput.value = 'Monthly';
     } else {
         // Clear autofilled fields if a different dropdown is selected
@@ -577,11 +577,11 @@ document.addEventListener('click', (event) => {
             const startDateInput = document.getElementById('expense-start-date');
             const endDateInput = document.getElementById('expense-end-date');
             if (expenseType === 'Previous Year') {
-                startDateInput.value = '2024-01-01';
-                endDateInput.value = '2024-12-31';
-            } else {
                 startDateInput.value = '2025-01-01';
                 endDateInput.value = '2025-12-31';
+            } else {
+                startDateInput.value = '2026-01-01';
+                endDateInput.value = '2026-12-31';
             }
 
             // Show the general modal
@@ -648,13 +648,13 @@ async function saveExpense() {
 
     const expenseType = modalTitle.textContent.includes('Previous Year') ? 'Previous Year' : modalTitle.textContent.split(' ')[1];
 
-    if (expenseType === 'Previous Year' && (startYear !== 2024 || endYear !== 2024)) {
-        alert(`For ${expenseType} Expenses, both Start Date and End Date must be in 2024.`);
+    if (expenseType === 'Previous Year' && (startYear !== 2025 || endYear !== 2025)) {
+        alert(`For ${expenseType} Expenses, both Start Date and End Date must be in 2025.`);
         return;
     }
 
-    if (expenseType !== 'Previous Year' && (startYear !== 2025 || endYear !== 2025)) {
-        alert(`For ${expenseType} Expenses, both Start Date and End Date must be in 2025.`);
+    if (expenseType !== 'Previous Year' && (startYear !== 2026 || endYear !== 2026)) {
+        alert(`For ${expenseType} Expenses, both Start Date and End Date must be in 2026.`);
         return;
     }
 
@@ -762,13 +762,13 @@ async function overwriteExpense() {
 
     const expenseType = modalTitle.textContent.includes('Previous Year') ? 'Previous Year' : modalTitle.textContent.split(' ')[1];
 
-    if (expenseType === 'Previous Year' && (startYear !== 2024 || endYear !== 2024)) {
-        alert(`For ${expenseType} Expenses, both Start Date and End Date must be in 2024.`);
+    if (expenseType === 'Previous Year' && (startYear !== 2025 || endYear !== 2025)) {
+        alert(`For ${expenseType} Expenses, both Start Date and End Date must be in 2025.`);
         return;
     }
 
-    if (expenseType !== 'Previous Year' && (startYear !== 2025 || endYear !== 2025)) {
-        alert(`For ${expenseType} Expenses, both Start Date and End Date must be in 2025.`);
+    if (expenseType !== 'Previous Year' && (startYear !== 2026 || endYear !== 2026)) {
+        alert(`For ${expenseType} Expenses, both Start Date and End Date must be in 2026.`);
         return;
     }
 

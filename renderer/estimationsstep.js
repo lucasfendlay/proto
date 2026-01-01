@@ -435,7 +435,7 @@ ${
     isLikelyEligible && benefitAmount >= 0
         ? `
         <p><strong>Estimated Benefit Amount:</strong> ${
-            benefitAmount < 23 ? "Up to $23.00" : `Up to $23.00 - $${benefitAmount.toFixed(2)}`
+            benefitAmount < 24 ? "Up to $24.00" : `Up to $24.00 - $${benefitAmount.toFixed(2)}`
         }</p>
         <p><strong>Expedited Eligibility:</strong> ${
             capitalizeFirstLetter(household[0]?.SNAP?.expeditedEligibility || 'N/A')
@@ -1176,7 +1176,7 @@ let lisEligibility;
 if (spouse) {
     if (combinedIncome > 31725) {
         lisEligibility = ["Not Likely Eligible for LIS (Income)"];
-    } else if (combinedAssets > 35130) {
+    } else if (combinedAssets > 36100) {
         lisEligibility = ["Not Likely Eligible for LIS (Assets)"];
     } else {
         lisEligibility = ["Likely Eligible for LIS"];
@@ -1184,7 +1184,7 @@ if (spouse) {
 } else {
     if (combinedIncome > 23475) {
         lisEligibility = ["Not Likely Eligible for LIS (Income)"];
-    } else if (combinedAssets > 17600) {
+    } else if (combinedAssets > 18090) {
         lisEligibility = ["Not Likely Eligible for LIS (Assets)"];
     } else {
         lisEligibility = ["Likely Eligible for LIS"];
@@ -1363,32 +1363,32 @@ try {
                 }
     
                 // Step 4: Determine MSP eligibility
-let mspEligibility;
-if (spouse) {
-    if (combinedIncome > 2400) {
-        mspEligibility = ["Not Likely Eligible for MSP (Income)"];
-    } else if (combinedAssets > 14470) {
-        mspEligibility = ["Not Likely Eligible for MSP (Assets)"];
-    } else if (combinedIncome <= 1783) {
-        mspEligibility = ["Likely Eligible for MSP (QMB)"];
-    } else if (combinedIncome <= 2135) {
-        mspEligibility = ["Likely Eligible for MSP (SLMB)"];
-    } else {
-        mspEligibility = ["Likely Eligible for MSP (QI)"];
-    }
-} else {
-    if (combinedIncome > 1781) {
-        mspEligibility = ["Not Likely Eligible for MSP (Income)"];
-    } else if (combinedAssets > 9660) {
-        mspEligibility = ["Not Likely Eligible for MSP (Assets)"];
-    } else if (combinedIncome <= 1325) {
-        mspEligibility = ["Likely Eligible for MSP (QMB)"];
-    } else if (combinedIncome <= 1585) {
-        mspEligibility = ["Likely Eligible for MSP (SLMB)"];
-    } else {
-        mspEligibility = ["Likely Eligible for MSP (QI)"];
-    }
-}
+                let mspEligibility;
+                if (spouse) {
+                    if (combinedIncome > 2400) {
+                        mspEligibility = ["Not Likely Eligible for MSP (Income)"];
+                    } else if (combinedAssets > 14910) {
+                        mspEligibility = ["Not Likely Eligible for MSP (Assets)"];
+                    } else if (combinedIncome <= 1783) {
+                        mspEligibility = ["Likely Eligible for MSP (QMB)"];
+                    } else if (combinedIncome <= 2135) {
+                        mspEligibility = ["Likely Eligible for MSP (SLMB)"];
+                    } else {
+                        mspEligibility = ["Likely Eligible for MSP (QI)"];
+                    }
+                } else {
+                    if (combinedIncome > 1781) {
+                        mspEligibility = ["Not Likely Eligible for MSP (Income)"];
+                    } else if (combinedAssets > 9950) {
+                        mspEligibility = ["Not Likely Eligible for MSP (Assets)"];
+                    } else if (combinedIncome <= 1325) {
+                        mspEligibility = ["Likely Eligible for MSP (QMB)"];
+                    } else if (combinedIncome <= 1585) {
+                        mspEligibility = ["Likely Eligible for MSP (SLMB)"];
+                    } else {
+                        mspEligibility = ["Likely Eligible for MSP (QI)"];
+                    }
+                }
     
                 // Step 5: Assign MSP object to member and spouse (if applicable)
                 const mspObject = {
@@ -1433,7 +1433,7 @@ try {
     // Add the calculateSNAPBenefit function
 function calculateSNAPBenefit(finalNetIncome, householdSize, eligibilityStatus) {
     const maxAllotments = [
-        0, 292, 536, 768, 975, 1158, 1390, 1536, 1756, 1976, 2196, 2416, 2636, 2856, 3076, 3296
+        0, 298, 546, 785, 994, 1183, 1421, 1571, 1789, 1789 + 218, 1789 + 218 * 2, 1789 + 218 * 3, 1789 + 218 * 4, 1789 + 218 * 5, 1789 + 218 * 6, 1789 + 218 * 7
     ];
     const maxAllotment = maxAllotments[householdSize] || 0;
 
@@ -1449,10 +1449,10 @@ function calculateSNAPBenefit(finalNetIncome, householdSize, eligibilityStatus) 
     let benefitAmount = Math.max(0, maxAllotment - incomeContribution);
     console.log(`Calculated Benefit Amount Before Adjustment: $${benefitAmount}`);
 
-    // If the benefit amount is less than $23 and the household is "Likely Eligible for SNAP", set it to $23
-    if (benefitAmount < 23 && eligibilityStatus === "Likely Eligible for SNAP") {
-        benefitAmount = 23;
-        console.log("Benefit adjusted to $23 due to eligibility.");
+    // If the benefit amount is less than $24 and the household is "Likely Eligible for SNAP", set it to $24
+    if (benefitAmount < 24 && eligibilityStatus === "Likely Eligible for SNAP") {
+        benefitAmount = 24;
+        console.log("Benefit adjusted to $24 due to eligibility.");
     }
 
     // Always return the benefit amount with two decimal places
@@ -1531,7 +1531,9 @@ for (const household of snapHouseholds) {
             "Water": 72,
             "Sewage": 72,
             "Trash": 72,
-            "Phone": 34
+            "Phone": 34,
+            "Homeless": 190
+
         };
 
         // Combine incomes, assets, and calculate deductions for all members in the household
@@ -1563,32 +1565,36 @@ for (const household of snapHouseholds) {
             combinedAssets += totalAssets;
             totalNetIncome += netIncome;
 
-            // Calculate utility allowance (only once for the household)
-            if (totalUtilityAllowance === 0) {
+// Update the utility allowance calculation
+if (totalUtilityAllowance === 0) {
+    let memberUtilityAllowance = 0;
 
-                let memberUtilityAllowance = 0;
+    // Check if the client is homeless
+    if (client.homelessness === 'yes') {
+        memberUtilityAllowance = utilityAllowances["Homeless"];
+    } else {
+        const utilityKinds = (member.expenses || [])
+            .filter(expense => expense.type?.toLowerCase() === "utility")
+            .map(expense => expense.kind);
 
-                const utilityKinds = (member.expenses || [])
-    .filter(expense => expense.type?.toLowerCase() === "utility")
-    .map(expense => expense.kind);
+        const basicUtilityKinds = ["Electric", "Gas", "Oil", "Propane", "Wood", "Coal", "Kerosene", "Water", "Sewage", "Trash", "Phone"];
+        const qualifyingUtilities = utilityKinds.filter(kind => basicUtilityKinds.includes(kind));
 
-const basicUtilityKinds = ["Electric", "Gas", "Oil", "Propane", "Wood", "Coal", "Kerosene", "Water", "Sewage", "Trash", "Phone"];
-const qualifyingUtilities = utilityKinds.filter(kind => basicUtilityKinds.includes(kind));
+        if (utilityKinds.includes("Heating and/or Cooling")) {
+            memberUtilityAllowance = utilityAllowances["Heating and/or Cooling"];
+        } else if (qualifyingUtilities.length >= 2) {
+            memberUtilityAllowance = utilityAllowances["Basic Limited Allowance"];
+        } else {
+            qualifyingUtilities.forEach(kind => {
+                memberUtilityAllowance += utilityAllowances[kind] || 0;
+            });
+        }
+    }
 
-if (utilityKinds.includes("Heating and/or Cooling")) {
-    memberUtilityAllowance = utilityAllowances["Heating and/or Cooling"];
-} else if (qualifyingUtilities.length >= 2) {
-    memberUtilityAllowance = utilityAllowances["Basic Limited Allowance"];
-} else {
-    qualifyingUtilities.forEach(kind => {
-        memberUtilityAllowance += utilityAllowances[kind] || 0;
-    });
+    totalUtilityAllowance = memberUtilityAllowance; // Assign the calculated utility allowance to the household
 }
 
-                totalUtilityAllowance = memberUtilityAllowance; // Assign the calculated utility allowance to the household
-            }
-
-            // Log the calculated utility allowance for debugging
+// Log the calculated utility allowance for debugging
 console.log(`Utility Allowance for household: $${totalUtilityAllowance}`);
 
             // Calculate shelter expenses (only once for the household)
@@ -1647,7 +1653,7 @@ const combinedMonthlyIncome = combinedYearlyIncome / 12;
 
 // Apply standard deduction
 const standardDeductions = [
-    0, 204, 204, 204, 217, 254, 291, 291, 291, 291, 291, 291, 291, 291, 291, 291
+    0, 209, 209, 209, 223, 261, 299, 299, 299, 299, 299, 299, 299, 299, 299, 299
 ];
 const standardDeduction = standardDeductions[mealsYesCount] || 0;
 
@@ -1713,7 +1719,7 @@ console.log(`Is Elderly: ${isElderly}`);
         });
 
         if (!hasElderlyOrDisabled) {
-            excessShelterCost = Math.min(excessShelterCost, 712); // Cap shelter deduction at $672
+            excessShelterCost = Math.min(excessShelterCost, 744); // Cap shelter deduction at $744
         }
 
         // Subtract excess shelter cost
@@ -1721,8 +1727,8 @@ console.log(`Is Elderly: ${isElderly}`);
 
         // Determine gross income limit
         const grossIncomeLimits = [
-            0, 2510, 3408, 4304, 5200, 6098, 6994, 7890, 8788, 9686, 10584,
-            11482, 12380, 13278, 14176, 15074
+            0, 2610, 3526, 4442, 5360, 6276, 7192, 8110, 9026, 9944, 10862,
+            11780, 12698, 13616, 14534, 15452
         ];
         const grossIncomeLimit = grossIncomeLimits[mealsYesCount] || 0;
 
@@ -1732,8 +1738,8 @@ console.log(`Is Elderly: ${isElderly}`);
             snapEligibility = ["Likely Eligible for SNAP"];
         } else if (hasElderlyOrDisabled) {
             const netIncomeLimits = [
-                0, 1255, 1704, 2152, 2600, 3049, 3497, 3945, 4394, 4843, 5292,
-                5741, 6190, 6639, 7088, 7537
+                0, 1305, 1763, 2221, 2680, 3138, 3596, 4055, 4513, 4972, 5431, 5890,
+                6349, 6808, 7267, 7726, 8185
             ];
             const netIncomeLimit = netIncomeLimits[mealsYesCount] || 0;
             

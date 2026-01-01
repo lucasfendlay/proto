@@ -1724,6 +1724,11 @@ async function updateHouseholdMember(memberId) {
             updatedMemberData.meals = 'no';
         }
 
+                // Check if previousMaritalStatus is not "Married (Living Together)"
+                if (previousMaritalStatus !== 'Married (Living Together)') {
+                    updatedMemberData.previousSpouseId = null; // Set previousSpouseId to null
+                }
+
         // Check if marital status is changed to anything other than "Married (Living Together)"
         if (maritalStatus !== 'Married (Living Together)') {
             // Fetch the current household members

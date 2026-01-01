@@ -9,7 +9,14 @@
     <link rel="stylesheet" href="notes.css">
     <script src="userInfo.js"></script>
 
-    <style>/* Button container styling */
+    <style>
+    
+    select[readonly] {
+    pointer-events: none;
+    background-color: #e9ecef; /* Optional: Gray background to indicate it's readonly */
+}
+
+    /* Button container styling */
         .button-container {
     display: flex;
     justify-content: center; /* Center the button horizontally */
@@ -586,11 +593,10 @@ body {
 </select><br><br>
             <div class="selection-box">
                 <label for="dob">Date of Birth:</label>
-                <input type="date" id="dob" name="dob" class="selection-box-input"><br><br>
-            </div>
+                <input type="date" id="dob" name="dob" class="selection-box-input" style="pointer-events: none; background-color: #e9ecef;"><br><br>            </div>
             <div class="selection-box">
                 <label for="legalSex">Legal Sex:</label>
-                <select id="legalSex" name="legalSex" class="selection-box-input">
+                <select id="legalSex" name="legalSex" class="selection-box-input" readonly>
                     <option value="" disabled selected>Select Legal Sex</option>
                     <option value="MALE">MALE</option>
                     <option value="FEMALE">FEMALE</option>
@@ -598,28 +604,28 @@ body {
             </div>
 
 
-<div class="selection-box">
-    <label for="maritalStatus">Current Marital Status:</label>
-    <select id="maritalStatus" name="maritalStatus" class="selection-box-input">
-        <option value="" disabled selected>Select Marital Status</option>
-        <option value="Single">Single</option>
-        <option value="Married (Living Together)">Married (Living Together)</option>
-        <option value="Married (Living Separately)">Married (Living Separately)</option>
-        <option value="Divorced">Divorced</option>
-        <option value="Widowed">Widowed</option>
-    </select><br><br>
-</div>
-<div class="selection-box" id="previousMaritalStatusContainer" style="display: none;">
-    <label for="previousMaritalStatus">Previous Year Marital Status:</label>
-    <select id="previousMaritalStatus" name="previousMaritalStatus" class="selection-box-input" disabled>
-        <option value="" disabled selected>Select Previous Year Marital Status</option>
-        <option value="Single">Single</option>
-        <option value="Married (Living Together)">Married (Living Together)</option>
-        <option value="Married (Living Separately)">Married (Living Separately)</option>
-        <option value="Divorced">Divorced</option>
-        <option value="Widowed">Widowed</option>
-    </select><br><br>
-</div>
+            <div class="selection-box">
+                <label for="maritalStatus">Current Marital Status:</label>
+                <select id="maritalStatus" name="maritalStatus" class="selection-box-input" readonly>
+                    <option value="" disabled selected>Select Marital Status</option>
+                    <option value="Single">Single</option>
+                    <option value="Married (Living Together)">Married (Living Together)</option>
+                    <option value="Married (Living Separately)">Married (Living Separately)</option>
+                    <option value="Divorced">Divorced</option>
+                    <option value="Widowed">Widowed</option>
+                </select><br><br>
+            </div>
+            <div class="selection-box" id="previousMaritalStatusContainer" style="display: none;">
+                <label for="previousMaritalStatus">Previous Year Marital Status:</label>
+                <select id="previousMaritalStatus" name="previousMaritalStatus" class="selection-box-input" readonly>
+                    <option value="" disabled selected>Select Previous Year Marital Status</option>
+                    <option value="Single">Single</option>
+                    <option value="Married (Living Together)">Married (Living Together)</option>
+                    <option value="Married (Living Separately)">Married (Living Separately)</option>
+                    <option value="Divorced">Divorced</option>
+                    <option value="Widowed">Widowed</option>
+                </select><br><br>
+            </div>
 
 <label for="socialSecurityNumber">Social Security Number:</label>
 <input 

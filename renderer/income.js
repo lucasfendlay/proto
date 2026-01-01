@@ -291,13 +291,13 @@ document.getElementById('household-member-container').addEventListener('click', 
 
         // Set default start and end dates based on income type
         const startDate = currentIncomeType === 'Current'
-            ? '2025-01-01' // 1st of January 2025
-            : '2024-01-01'; // 1st of January 2024
+            ? '2026-01-01' // 1st of January 2026
+            : '2025-01-01'; // 1st of January 2025
         document.getElementById('income-start-date').value = startDate;
 
         const endDate = currentIncomeType === 'Current'
-            ? '2025-12-31' // 31st of December 2025
-            : '2024-12-31'; // 31st of December 2024
+            ? '2026-12-31' // 31st of December 2026
+            : '2025-12-31'; // 31st of December 2025
         document.getElementById('income-end-date').value = endDate;
 
         // Show the modal
@@ -338,13 +338,13 @@ const endDate = new Date(`${income.endDate}T00:00:00Z`); // Parse end date into 
 const startYear = startDate.getUTCFullYear(); // Extract the year from the start date (UTC)
 const endYear = endDate.getUTCFullYear(); // Extract the year from the end date (UTC)
 
-if (income.type === 'Current' && (startYear !== 2025 || endYear !== 2025)) {
-    alert('For Current Year Income, both Start Date and End Date must be in 2025.');
+if (income.type === 'Current' && (startYear !== 2026 || endYear !== 2026)) {
+    alert('For Current Year Income, both Start Date and End Date must be in 2026.');
     return;
 }
 
-if (income.type === 'Previous' && (startYear !== 2024 || endYear !== 2024)) {
-    alert('For Previous Year Income, both Start Date and End Date must be in 2024.');
+if (income.type === 'Previous' && (startYear !== 2025 || endYear !== 2025)) {
+    alert('For Previous Year Income, both Start Date and End Date must be in 2025.');
     return;
 }
 

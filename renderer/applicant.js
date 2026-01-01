@@ -1174,6 +1174,11 @@ async function updateHouseholdMember(memberId) {
             answers.studentStatus = 'notstudent';
         }
 
+                // Check if previousMaritalStatus is not "Married (Living Together)"
+                if (previousMaritalStatus !== 'Married (Living Together)') {
+                    updatedMemberData.previousSpouseId = null; // Set previousSpouseId to null
+                }
+
         // Prepare the updated data
         const updatedMemberData = {
             householdMemberId: memberId,

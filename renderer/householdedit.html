@@ -292,6 +292,16 @@ body {
                 <label for="dob">Date of Birth:</label>
                 <input type="date" id="dob" name="dob" class="selection-box-input"><br><br>
             </div>
+
+            <script>
+                // Initialize Flatpickr for the Start Date field
+                flatpickr("#dob", {
+                    dateFormat: "Y-m-d", // Format: 2026-01-01
+                    altInput: true,      // Show a user-friendly date format
+                    altFormat: "F j, Y", // Format: January 1, 2026
+                });
+            </script>
+
             <div class="selection-box">
                 <label for="legalSex">Legal Sex:</label>
                 <select id="legalSex" name="legalSex" class="selection-box-input">
