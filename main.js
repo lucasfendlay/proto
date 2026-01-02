@@ -356,7 +356,6 @@ app.delete('/delete-client/:clientId', async (req, res) => {
     }
 });
 
-// Update or add a contact in the client's Contacts array
 app.post('/add-to-contacts', async (req, res) => {
     const { clientId, contact, index, delete: isDelete } = req.body;
 
@@ -367,37 +366,57 @@ app.post('/add-to-contacts', async (req, res) => {
     try {
         const collection = db.collection('clients');
 
-        let updateQuery;
         if (isDelete) {
             // Delete a contact at the specified index
             const contactKey = `Contacts.${index}`;
-            updateQuery = { $unset: { [contactKey]: '' } }; // Remove the contact at the index
-        } else if (index !== undefined && index !== null) {
-            // Update an existing contact at the specified index
+            const updateQuery = { $unset: { [contactKey]: '' } };
+
+            const result = await collection.updateOne({ id: clientId }, updateQuery);
+
+            // Remove empty entries from the Contacts array
+            if (result.modifiedCount > 0) {
+                await collection.updateOne({ id: clientId }, { $pull: { Contacts: null } });
+            }
+
+            return res.json({ success: true, message: 'Contact deleted successfully.' });
+        }
+
+        const client = await collection.findOne({ id: clientId });
+
+        if (!client) {
+            return res.status(404).json({ success: false, message: 'Client not found.' });
+        }
+
+        if (index !== undefined && index !== null) {
+            // Update an existing contact
+            const existingContact = client.Contacts[index];
+
+            // Check if the new contact data is identical to the existing data
+            if (JSON.stringify(existingContact) === JSON.stringify(contact)) {
+                return res.json({ success: true, message: 'No changes detected. Contact not updated.' });
+            }
+
             const contactKey = `Contacts.${index}`;
-            updateQuery = { $set: { [contactKey]: contact } };
+            const updateQuery = { $set: { [contactKey]: contact } };
+
+            const result = await collection.updateOne({ id: clientId }, updateQuery);
+
+            if (result.modifiedCount > 0) {
+                return res.json({ success: true, message: 'Contact updated successfully.' });
+            } else {
+                return res.status(500).json({ success: false, message: 'Failed to update contact.' });
+            }
         } else {
             // Add a new contact
-            updateQuery = { $push: { Contacts: contact } };
-        }
+            const updateQuery = { $push: { Contacts: contact } };
 
-        const result = await collection.updateOne(
-            { id: clientId }, // Find the client by clientId
-            updateQuery
-        );
+            const result = await collection.updateOne({ id: clientId }, updateQuery);
 
-        if (isDelete) {
-            // Remove empty entries from the Contacts array
-            await collection.updateOne(
-                { id: clientId },
-                { $pull: { Contacts: null } }
-            );
-        }
-
-        if (result.modifiedCount > 0) {
-            res.json({ success: true, message: isDelete ? 'Contact deleted successfully.' : 'Contact updated successfully.' });
-        } else {
-            res.status(404).json({ success: false, message: 'Client not found.' });
+            if (result.modifiedCount > 0) {
+                return res.json({ success: true, message: 'Contact added successfully.' });
+            } else {
+                return res.status(500).json({ success: false, message: 'Failed to add contact.' });
+            }
         }
     } catch (error) {
         console.error('Error updating contact for client:', error);

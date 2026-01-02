@@ -321,7 +321,23 @@ body {
             <select id="bestContactNumber" name="bestContactNumber">
                 <option value="" disabled selected>Select Best Contact</option>
             </select>
-        </div>        
+        </div>  
+        
+        <style>
+            /* Ensure the dropdown does not flex in width */
+            #bestContactNumber {
+                width: 300px; /* Set a fixed width */
+                max-width: 100%; /* Ensure it doesn't exceed the container width */
+                box-sizing: border-box; /* Include padding and border in the width */
+            }
+
+            #emailAddress {
+                width: 300px; /* Set a fixed width */
+                max-width: 100%; /* Ensure it doesn't exceed the container width */
+                box-sizing: border-box; /* Include padding and border in the width */
+            }
+
+            </style>
 
         <div class="form-field">
             <label for="emailAddress">Do you have an email address?</label>
@@ -1738,11 +1754,23 @@ async function saveContact() {
     const phoneNumber = document.getElementById('contactPhoneNumber').value.trim();
     const authorizedRepresentative = document.getElementById('authorizedRepresentative').value;
     const clientId = getQueryParam('id'); // Ensure clientId is retrieved from the URL
-
+    const phoneNumberInput = document.getElementById('contactPhoneNumber');
+    phoneNumberInput.classList.remove('error'); // Remove error class initially
     // Validate required fields
     if (!clientId || !firstName || !lastName || !phoneNumber) {
         alert('Please fill in all required fields.');
         console.error('Missing required fields:', { clientId, firstName, lastName, phoneNumber });
+        return;
+    }
+
+    // Validate phone number format (exactly 10 digits, no formatting)
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(phoneNumber)) {
+        alert('Please enter a valid phone number with exactly 10 digits (no formatting).');
+        console.error('Invalid phone number:', phoneNumber);
+
+        // Add error class to the input field
+        phoneNumberInput.classList.add('error');
         return;
     }
 

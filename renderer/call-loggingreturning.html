@@ -6,6 +6,10 @@
     <title>Call Logging</title>
     <link rel="stylesheet" href="styles.css">
     <script src="userInfo.js"></script>
+    <style>.error {
+        border: 2px solid red;
+        background-color: #ffe6e6;
+    }  </style>
 
 </head>
 <body>
@@ -92,12 +96,38 @@
         }
 
         async function logNewCall() {
-    const requiredFields = ['callerFirstName', 'callerLastName', 'callerPhoneNumber', 'callDirection', 'reasonForCall'];
+    const requiredFields = ['servicingCenter', 'callerFirstName', 'callerLastName', 'callerPhoneNumber', 'callDirection', 'reasonForCall', 'referralSource', 'specificReferral'];
+    let invalidFields = []; // Array to collect invalid fields
+
+    // Clear previous error classes
+    requiredFields.forEach(field => {
+        const fieldElement = document.getElementById(field);
+        if (fieldElement) {
+            fieldElement.classList.remove('error');
+        }
+    });
+
+    // Validate selectedContact
+    const selectedContact = document.getElementById('callerSelection').value;
+    if (!selectedContact) {
+        const callerSelectionElement = document.getElementById('callerSelection');
+        invalidFields.push(callerSelectionElement);
+        callerSelectionElement.classList.add('error');
+
+        // Add an event listener to remove the error class when the field is updated
+        callerSelectionElement.addEventListener('change', function removeError() {
+            if (callerSelectionElement.value.trim() !== '') {
+                callerSelectionElement.classList.remove('error');
+                callerSelectionElement.removeEventListener('change', removeError);
+            }
+        });
+    }
+
     for (const field of requiredFields) {
         const fieldElement = document.getElementById(field);
 
-        // Skip hidden fields
-        if (fieldElement && fieldElement.classList.contains('hidden')) {
+        // Skip validation for hidden fields
+        if (fieldElement && (fieldElement.classList.contains('hidden') || fieldElement.style.display === 'none')) {
             console.log(`Skipping hidden field: ${field}`);
             continue;
         }
@@ -108,14 +138,63 @@
             continue;
         }
 
-        console.log(`Checking field: ${field}, Value: ${fieldElement ? fieldElement.value : 'Field not found'}`);
-        if (!fieldElement || !fieldElement.value) {
-            alert('Please fill out all required fields.');
-            return;
+        if (field === 'referralSource' && document.getElementById('callDirection').value === 'Outbound') {
+            console.log('Skipping referralSource because callDirection is Outbound');
+            continue;
+        }
+
+        if (field === 'referralSource') {
+            const referralSourceContainer = document.getElementById('referralSourceContainer');
+            if (referralSourceContainer.style.display === 'none') {
+                console.log('Skipping referralSource because its container is hidden');
+                continue;
+            }
+        }
+
+        if (field === 'specificReferral') {
+            const specificReferralContainer = document.getElementById('specificReferralContainer');
+            if (specificReferralContainer.style.display === 'none') {
+                console.log('Skipping specificReferral because its container is hidden');
+                continue;
+            }
+        }
+
+        if (!fieldElement || !fieldElement.value.trim()) {
+            invalidFields.push(fieldElement); // Add invalid field to the array
         }
     }
 
-    const selectedContact = document.getElementById('callerSelection').value;
+    // Validate phone number (10 digits)
+    const phoneNumber = document.getElementById('callerPhoneNumber').value;
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(phoneNumber)) {
+        invalidFields.push(document.getElementById('callerPhoneNumber')); // Add phone number field to the array
+        alert('Phone number must be exactly 10 digits.');
+    }
+
+    // Highlight all invalid fields and add listeners to remove the error class
+    if (invalidFields.length > 0) {
+        invalidFields.forEach(field => {
+            if (field) {
+                field.classList.add('error'); // Add error class to each invalid field
+
+                // Add an event listener to remove the error class when the field is updated
+                field.addEventListener('input', function removeError() {
+                    if (field.value.trim() !== '') {
+                        field.classList.remove('error');
+                        field.removeEventListener('input', removeError); // Remove the listener after the error is cleared
+                    }
+                });
+            }
+        });
+
+        // Show a generic alert for other invalid fields
+        if (!invalidFields.includes(document.getElementById('callerPhoneNumber'))) {
+            alert('Please fill out all required fields.');
+        }
+        return;
+    }
+
     let callerFirstName, callerLastName, callerPhoneNumber, contactId;
 
     if (selectedContact === 'new') {
@@ -368,21 +447,33 @@ function toggleReferralSource() {
 }
 
 function handleReferralSourceChange() {
-    const referralSource = document.getElementById('referralSource').value;
-    const specificReferralContainer = document.getElementById('specificReferralContainer');
+        const referralSource = document.getElementById('referralSource').value;
+        const specificReferralContainer = document.getElementById('specificReferralContainer');
 
-    if (
-        referralSource === 'Referral from a Government Agency' ||
-        referralSource === 'Referral from a CBO' ||
-        referralSource === 'Community Referral'
-    ) {
-        specificReferralContainer.style.display = 'block';
-        document.getElementById('specificReferral').setAttribute('required', 'required');
-    } else {
-        specificReferralContainer.style.display = 'none';
-        document.getElementById('specificReferral').removeAttribute('required');
+        if (!referralSource || referralSource === "Select Referral Source") {
+            specificReferralContainer.style.display = 'none';
+            document.getElementById('specificReferral').removeAttribute('required');
+            return;
+        }
+
+        if (
+            referralSource === 'Referral from a Government Agency' ||
+            referralSource === 'Referral from a CBO' ||
+            referralSource === 'Community Referral'
+        ) {
+            specificReferralContainer.style.display = 'block';
+            document.getElementById('specificReferral').setAttribute('required', 'required');
+        } else {
+            specificReferralContainer.style.display = 'none';
+            document.getElementById('specificReferral').removeAttribute('required');
+        }
     }
-}
+
+    // Ensure the specificReferralContainer is hidden by default on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('specificReferralContainer').style.display = 'none';
+    });
+
 
 function populateActiveUser() {
         const activeUser = sessionStorage.getItem('loggedInUser');
@@ -420,7 +511,7 @@ function populateActiveUser() {
                 document.getElementById('specificReferral').setAttribute('required', 'required');
             } else {
                 console.log('No call direction selected. Keeping fields visible.');
-                document.getElementById('specificReferralContainer').style.display = 'block';
+                document.getElementById('specificReferralContainer').style.display = 'none';
                 document.getElementById('specificReferral').removeAttribute('required');
             }
         }

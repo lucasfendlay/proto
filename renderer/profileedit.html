@@ -810,13 +810,26 @@ async function saveContact() {
     const phoneNumber = document.getElementById('contactPhoneNumber').value.trim();
     const authorizedRepresentative = document.getElementById('authorizedRepresentative').value;
     const clientId = getQueryParam('id'); // Ensure clientId is retrieved from the URL
-
+    const phoneNumberInput = document.getElementById('contactPhoneNumber');
+    phoneNumberInput.classList.remove('error'); // Remove error class initially
     // Validate required fields
     if (!clientId || !firstName || !lastName || !phoneNumber) {
         alert('Please fill in all required fields.');
         console.error('Missing required fields:', { clientId, firstName, lastName, phoneNumber });
         return;
     }
+
+    // Validate phone number format (exactly 10 digits, no formatting)
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(phoneNumber)) {
+        alert('Please enter a valid phone number with exactly 10 digits (no formatting).');
+        console.error('Invalid phone number:', phoneNumber);
+
+        // Add error class to the input field
+        phoneNumberInput.classList.add('error');
+        return;
+    }
+
 
     // Generate a unique contactId for new contacts
     const generateContactId = () => `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
