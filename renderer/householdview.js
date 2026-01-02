@@ -192,6 +192,40 @@ async function loadSavedData() {
             // Check and add the "Add Self" button
             await checkAndAddSelfButton(clientData);
 
+                                    // Handle LIHEAP-specific logic
+                                    const liheapEnrollment = clientData.liheapEnrollment;
+                                    const heatingCrisis = clientData.heatingCrisis;
+                                    const residenceStatusContainer = document.getElementById('residenceStatusCurrent-container');
+                                    const heatingCrisisContainer = document.getElementById('heatingCrisis-container');
+                                    const subsidizedHousingContainer = document.getElementById('subsidizedHousing-container');
+                                    const heatingCostContainer = document.getElementById('heatingCost-container');
+                        
+                                    if (liheapEnrollment === 'notinterested') {
+                                        residenceStatusContainer.style.display = 'none';
+                                        heatingCrisisContainer.style.display = 'none';
+                                        subsidizedHousingContainer.style.display = 'none';
+                                        heatingCostContainer.style.display = 'none';
+                                    } else if (liheapEnrollment === 'yes' && heatingCrisis === 'no') {
+                                        residenceStatusContainer.style.display = 'none';
+                                        subsidizedHousingContainer.style.display = 'none';
+                                        heatingCostContainer.style.display = 'none';
+                                    } else {
+                                        residenceStatusContainer.style.display = 'block';
+                                        heatingCrisisContainer.style.display = 'block';
+                        
+                                        if (clientData.residenceStatusCurrent === 'owned') {
+                                            subsidizedHousingContainer.style.display = 'none';
+                                            heatingCostContainer.style.display = 'none';
+                                        } else {
+                                            subsidizedHousingContainer.style.display = 'block';
+                                            if (clientData.subsidizedHousing === 'yes') {
+                                                heatingCostContainer.style.display = 'block';
+                                            } else {
+                                                heatingCostContainer.style.display = 'none';
+                                            }
+                                        }
+                                    }
+
             // Load household members before running eligibility checks
         const members = await loadHouseholdMembers();
 

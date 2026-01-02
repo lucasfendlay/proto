@@ -9,8 +9,39 @@
     <link rel="stylesheet" href="notes.css">
     <script src="userInfo.js"></script>
 
-    <style>
-    
+    <style> 
+
+/* Container for the two sections */
+.address-container {
+    display: flex;
+    width: 1000px; /* Set a fixed width for the container */
+    justify-content: space-between;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+/* Placeholder for hidden sections */
+.address-container .address-section.hidden {
+    visibility: hidden; /* Make the section invisible */
+    flex: 1; /* Maintain the layout space */
+}
+
+/* Each section (left and right) */
+.address-section {
+    flex: 1;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+}
+
+/* Ensure form fields take up the full width */
+.address-section .form-field input,
+.address-section .form-field select {
+    width: 100%;
+    box-sizing: border-box;
+}
+
     select[readonly] {
     pointer-events: none;
     background-color: #e9ecef; /* Optional: Gray background to indicate it's readonly */
@@ -215,10 +246,26 @@ body {
         margin: 0 auto; /* Center the content horizontally */
         margin-top: 60px; /* Adjust this value to match the height of the navigation container */
     }
-        
+
+    .form-field input,
+.form-field select,
+.form-field textarea {
+    width: 100%; /* Make the fields take up the full width of the parent */
+    max-width: 800px; /* Set a maximum width to make fields wider */
+    box-sizing: border-box; /* Include padding and border in the element's width */
+    padding: 12px; /* Add padding for better usability */
+    font-size: 1rem; /* Ensure consistent font size */
+    border: 1px solid #ccc; /* Add a border for better visibility */
+    border-radius: 5px; /* Add rounded corners */
+}
+
+.hidden {
+    visibility: hidden;
+}
+
             </style>
 </head>
-<body class="narrow-body">
+<body class="narrow-body hidden">
 
     <h1>Applicant</h1>
 
@@ -276,11 +323,20 @@ body {
             </select>
         </div>        
 
-<!-- Address Fields -->
-<div class="form-field">
-    <label id="addressLabel" for="streetAddress">Street Address:</label>
-    <input type="text" id="streetAddress" name="streetAddress" placeholder="Enter Street Address">
-</div>
+        <div class="form-field">
+            <label for="emailAddress">Do you have an email address?</label>
+            <input type="email" id="emailAddress" name="emailAddress" placeholder="Enter Email Address">
+        </div>
+
+<!-- Add a container to hold the two sections -->
+<div class="address-container">
+    <!-- Left Section: Street Address -->
+    <div class="address-section">
+        <h2>Residential Address</h2>
+        <div class="form-field">
+            <label id="addressLabel" for="streetAddress">Street Address:</label>
+            <input type="text" id="streetAddress" name="streetAddress" placeholder="Enter Street Address">
+        </div>
 
 <div class="form-field">
     <label for="streetAddress2">Address Line 2:</label>
@@ -436,6 +492,7 @@ body {
         </select>
     </div>
 
+
 <!-- Mailing Address Selection -->
 <div class="form-field" id="mailingAddressQuestion" style="display: block;">
     <label>Is this also your best mailing address?</label>
@@ -444,13 +501,17 @@ body {
         <div data-value="no" onclick="toggleMailingAddress('no')">No</div>
     </div>
 </div>
+</div>
 
-<!-- Mailing Address Fields -->
-<div id="mailingAddressFields" style="display: none;">
-    <div class="form-field">
-        <label for="mailingStreetAddress">Mailing Address:</label>
-        <input type="text" id="mailingStreetAddress" name="mailingStreetAddress" placeholder="Enter Mailing Address">
-    </div>
+
+    <!-- Right Section: Mailing Address -->
+    <div class="address-section">
+        <h2>Mailing Address</h2>
+        <div class="form-field">
+            <label for="mailingStreetAddress">Mailing Address:</label>
+            <input type="text" id="mailingStreetAddress" name="mailingStreetAddress" placeholder="Enter Mailing Address">
+        </div>
+
 
     <div class="form-field">
         <label for="mailingStreetAddress2">Mailing Address Line 2:</label>
@@ -527,10 +588,7 @@ body {
         <input type="text" id="mailingZipCode" name="mailingZipCode" placeholder="Enter Mailing ZIP Code" maxlength="10">
     </div>
 </div>
-
-<div class="form-field">
-    <label for="emailAddress">Do you have an email address?</label>
-    <input type="email" id="emailAddress" name="emailAddress" placeholder="Enter Email Address">
+</div>
 
     <div id="householdMemberContainer" class="household-member-container"></div>
 
@@ -1207,6 +1265,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('city').value = client.city || '';
         document.getElementById('state').value = client.state || '';
         document.getElementById('zipCode').value = client.zipCode || '';
+        document.getElementById('mailingStreetAddress').value = client.mailingStreetAddress || '';
+        document.getElementById('mailingStreetAddress2').value = client.mailingStreetAddress2 || '';
+        document.getElementById('mailingCity').value = client.mailingCity || '';
+        document.getElementById('mailingState').value = client.mailingState || '';
+        document.getElementById('mailingZipCode').value = client.mailingZipCode || '';
+        document.getElementById('county').value = client.county || '';
+        document.getElementById('schoolDistrict').value = client.schoolDistrict || '';
     } catch (error) {
         console.error('Error loading client data:', error);
     }
@@ -1286,32 +1351,47 @@ function handleHomelessness(isHomeless) {
     }
 }
 
-// Toggle mailing address fields and save the selection to the backend
+document.addEventListener('DOMContentLoaded', () => {
+    // Hide the mailing address section by default
+    const mailingAddressFields = document.querySelector('.address-section:nth-of-type(2)');
+    if (mailingAddressFields) {
+        mailingAddressFields.style.display = 'none';
+    }
+
+    // Restore the mailing address selection if it exists
+    restoreMailingAddressSelection();
+});
+
+// Update the toggleMailingAddress function
 function toggleMailingAddress(value) {
-    const mailingAddressFields = document.getElementById('mailingAddressFields');
+    const residentialAddressFields = document.querySelector('.address-section:nth-of-type(1)');
+    const mailingAddressFields = document.querySelector('.address-section:nth-of-type(2)');
     const mailingAddressYes = document.querySelector('#mailingAddressQuestion [data-value="yes"]');
     const mailingAddressNo = document.querySelector('#mailingAddressQuestion [data-value="no"]');
 
-    // Update the UI based on the selected value
+    if (!residentialAddressFields || !mailingAddressFields) {
+        console.error('Address sections not found.');
+        return;
+    }
+
     if (value === 'yes') {
+        // Hide the mailing address section
         mailingAddressFields.style.display = 'none';
         mailingAddressYes.classList.add('selected');
         mailingAddressNo.classList.remove('selected');
 
-                // Clear the fields in the UI
-                document.getElementById('mailingStreetAddress').value = '';
+        // Clear mailing address fields and save null values to the backend
+        document.getElementById('mailingStreetAddress').value = '';
         document.getElementById('mailingStreetAddress2').value = '';
         document.getElementById('mailingCity').value = '';
-                document.getElementById('mailingZipCode').value = '';
-
-
-        // Set all mailing address details to null in the backend
+        document.getElementById('mailingZipCode').value = '';
         saveToDatabase('mailingStreetAddress', null);
         saveToDatabase('mailingStreetAddress2', null);
         saveToDatabase('mailingCity', null);
         saveToDatabase('mailingState', null);
         saveToDatabase('mailingZipCode', null);
-    } else {
+    } else if (value === 'no') {
+        // Show the mailing address section
         mailingAddressFields.style.display = 'block';
         mailingAddressYes.classList.remove('selected');
         mailingAddressNo.classList.add('selected');
@@ -2015,6 +2095,13 @@ function updateCountyDropdown(counties, backendCounty = null) {
         loadZipCountyData(); // Load the CSV data
         setupZipCodeListener(); // Set up the ZIP code input listener
     });
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+await loadClientData(); // Load and display saved data
+document.body.classList.remove('hidden'); // Show the body after processing
+});
 </script>
 
 </body>
