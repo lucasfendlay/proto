@@ -859,10 +859,21 @@ async function PTRREligibilityCheck(members) {
      } else if (applicationStatus.toLowerCase().trim() === "no" && totalGrossIncome > 46520) {
                     eligibility.push("Not Likely Eligible for PTRR (Income)");
                 } else {
-                    const relevantExpenses = (member.expenses || []).filter(expense =>
-                        (expense.kind?.trim() === "Property Taxes" || expense.kind?.trim() === "Rent") &&
-                        expense.type?.trim() === "Previous Year"
-                    );
+                    const relevantExpenses = (member.expenses || []).filter(expense => {
+                        const residenceStatus = client.residenceStatus?.toLowerCase();
+                        const isPropertyTax = expense.kind?.trim() === "Property Taxes";
+                        const isRent = expense.kind?.trim() === "Rent";
+                        const isPreviousYear = expense.type?.trim() === "Previous Year";
+                    
+                        if (residenceStatus === "owned") {
+                            return isPropertyTax && isPreviousYear;
+                        } else if (residenceStatus === "rented") {
+                            return isRent && isPreviousYear;
+                        } else if (residenceStatus === "rentedowned") {
+                            return (isPropertyTax || isRent) && isPreviousYear;
+                        }
+                        return false;
+                    });
     
                     if (applicationStatus.toLowerCase().trim() === "no" && relevantExpenses.length === 0) {
                         eligibility.push("Not Likely Eligible for PTRR (No Relevant Expenses)");

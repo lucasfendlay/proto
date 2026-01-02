@@ -713,6 +713,15 @@ const selectedSchoolDistrict = data.schoolDistrict; // e.g., "Bethlehem Area Sch
 const schoolDistrictCode = schoolDistrictCodes[selectedCounty]?.[selectedSchoolDistrict] || '';
 form.getTextField('Enter the five-digit school district code from the list on pages 16 and 17').setText(schoolDistrictCode);
 
+// Add the country code to the PDF form
+const countryCodeField = form.getTextField('Enter the two-character country code');
+if (countryCodeField) {
+    countryCodeField.setText('US');
+    console.log('Country code set to: US');
+} else {
+    console.error('Field "Enter the two-character country code" not found in the form.');
+}
+
 console.log(`County Code: ${countyCode}`);
 console.log(`School District Code: ${schoolDistrictCode}`);
 

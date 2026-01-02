@@ -319,9 +319,9 @@
 
         <div class="form-field">
             <label>Are you currently experiencing homelessness?</label>
-            <div class="selection-box">
-                <div data-value="homelessnessyes" onclick="updateHomelessness('yes')">Yes</div>
-                <div data-value="homelessnessno" onclick="updateHomelessness('no')">No</div>
+            <div class="selection-box homelessness-container">
+                <div data-value="yes" onclick="updateHomelessness('yes')">Yes</div>
+                <div data-value="no" onclick="updateHomelessness('no')">No</div>
             </div>
         </div>
         
@@ -524,12 +524,12 @@
         </div>
         <div class="form-field">
             <label>Interpreter Used:</label>
-            <div class="selection-box">
-                <div data-value="interpreteryes" onclick="updateInterpreter('yes')">Yes</div>
-                <div data-value="interpreterno" onclick="updateInterpreter('no')">No</div>
+            <div class="selection-box interpreter-container">
+                <div data-value="yes" onclick="updateInterpreter('yes')">Yes</div>
+                <div data-value="no" onclick="updateInterpreter('no')">No</div>
             </div>
         </div>
-    </form>
+        </form>
 
     <button id="call-logging-button" class="interactive" onclick="confirmAndRedirect()">Start Screening</button>
     <button id="save-button" class="interactive" onclick="confirmSaveAndRelease(); window.saveAndReleaseProfile();">Save and Release Profile</button>
@@ -670,18 +670,26 @@ async function loadClientData() {
             document.getElementById('speakingLanguage').value = client.speakingLanguage || '';
 
             // Highlight the selected homelessness button
-            document.querySelectorAll('.selection-box div[data-value^="homelessness"]').forEach(div => div.classList.remove('selected'));
-            const selectedHomelessness = document.querySelector(`.selection-box div[data-value="homelessness${client.homelessness}"]`);
+            document.querySelectorAll('.homelessness-container div[data-value]').forEach(div => div.classList.remove('selected'));
+            const selectedHomelessness = document.querySelector(`.homelessness-container div[data-value="${client.homelessness}"]`);
             if (selectedHomelessness) {
                 selectedHomelessness.classList.add('selected');
             }
 
-            // Highlight the selected interpreter button
-            document.querySelectorAll('.selection-box div[data-value^="interpreter"]').forEach(div => div.classList.remove('selected'));
-            const selectedInterpreter = document.querySelector(`.selection-box div[data-value="interpreter${client.interpreter}"]`);
-            if (selectedInterpreter) {
-                selectedInterpreter.classList.add('selected');
+            // Update the label for Street Address based on homelessness status
+            const streetAddressLabel = document.querySelector('label[for="streetAddress"]');
+            if (client.homelessness === 'yes') {
+                streetAddressLabel.textContent = 'Mailing Address:';
+            } else {
+                streetAddressLabel.textContent = 'Street Address:';
             }
+
+// Highlight the selected interpreter button
+document.querySelectorAll('.interpreter-container div[data-value]').forEach(div => div.classList.remove('selected'));
+const selectedInterpreter = document.querySelector(`.interpreter-container div[data-value="${client.interpreter}"]`);
+if (selectedInterpreter) {
+    selectedInterpreter.classList.add('selected');
+}
 
             // Populate interaction tracker
             const interactionList = document.getElementById('interactionList');
@@ -810,11 +818,15 @@ async function saveContact() {
         return;
     }
 
+    // Generate a unique contactId for new contacts
+    const generateContactId = () => `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
     const newContact = {
         firstName,
         lastName,
         phoneNumber,
         authorizedRepresentative,
+        contactId: editingContactIndex !== null ? client.Contacts[editingContactIndex].contactId : generateContactId(), // Reuse existing contactId if editing
     };
 
     // Ensure the Contacts array exists locally
@@ -983,9 +995,15 @@ async function saveClient() {
 }
 
 function updateHomelessness(value) {
+    const container = document.querySelector('.homelessness-container');
+    if (!container) {
+        console.error('Error: .homelessness-container element not found.');
+        return;
+    }
+
     // Clear selection for homelessness buttons only
-    document.querySelectorAll('.selection-box div[data-value^="homelessness"]').forEach(div => div.classList.remove('selected'));
-    const selectedButton = document.querySelector(`.selection-box div[data-value="homelessness${value}"]`);
+    container.querySelectorAll('div[data-value]').forEach(div => div.classList.remove('selected'));
+    const selectedButton = container.querySelector(`div[data-value="${value}"]`);
     if (selectedButton) {
         selectedButton.classList.add('selected');
     }
@@ -1003,9 +1021,15 @@ function updateHomelessness(value) {
 }
 
 function updateInterpreter(value) {
+    const container = document.querySelector('.interpreter-container');
+    if (!container) {
+        console.error('Error: .interpreter-container element not found.');
+        return;
+    }
+
     // Clear selection for interpreter buttons only
-    document.querySelectorAll('.selection-box div[data-value^="interpreter"]').forEach(div => div.classList.remove('selected'));
-    const selectedButton = document.querySelector(`.selection-box div[data-value="interpreter${value}"]`);
+    container.querySelectorAll('div[data-value]').forEach(div => div.classList.remove('selected'));
+    const selectedButton = container.querySelector(`div[data-value="${value}"]`);
     if (selectedButton) {
         selectedButton.classList.add('selected');
     }
@@ -1354,7 +1378,6 @@ window.onload = function () {
     });
 }
 
-// Filter the county dropdown based on the zip code on page load
 // Filter the county dropdown based on the zip code on page load
 function filterCountyDropdownOnPageLoad() {
     const zipCodeInput = document.getElementById("zipCode");

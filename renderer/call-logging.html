@@ -132,10 +132,12 @@
     try {
         // Save caller details if reasonForCall is not "None"
         if (callLog.reasonForCall !== "None") {
+            const generateContactId = () => `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
             const clientData = {
                 firstName: callLog.callerFirstName,
                 lastName: callLog.callerLastName,
                 phoneNumber: callLog.callerPhoneNumber,
+                contactId: generateContactId(), // Generate a unique contactId
             };
 
             // Save to Contacts only if reasonForCall is "To Apply Someone Else for Public Benefits"
@@ -248,26 +250,6 @@
                 return;
             }
 
-            // Update the client with checkedOut: true after redirecting
-            await fetch('/update-client', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ 
-        clientId, 
-        clientData: { 
-            checkedOut: [
-                {
-                    status: true,
-                    timestamp: new Date().toISOString(),
-                    user: sessionStorage.getItem('loggedInUser') 
-                        ? sessionStorage.getItem('loggedInUser').trim() 
-                        : 'Unknown User'
-                }
-            ] 
-        } 
-    }),
-});
-
             // Redirect based on the reason for the call
             const url = `profileedit.html?id=${clientId}`;
             window.location.href = url;
@@ -278,6 +260,7 @@
         console.error('Error logging call:', error);
     }
 }
+
         function populateActiveUser() {
             const activeUser = sessionStorage.getItem('loggedInUser');
             if (activeUser) {

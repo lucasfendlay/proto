@@ -270,7 +270,7 @@ body {
         </div>
 
         <div class="form-field">
-            <label for="bestContactNumber">Best Contact Phone Number:</label>
+            <label for="bestContactNumber">Best Contact Person:</label>
             <select id="bestContactNumber" name="bestContactNumber">
                 <option value="" disabled selected>Select Best Contact</option>
             </select>
@@ -777,6 +777,17 @@ async function loadClientData() {
                     console.log(`School district dropdown set to: ${client.schoolDistrict}`);
                 }
             }, 0); // Use a short delay to ensure the dropdown is populated
+
+            // Update the label for Street Address based on homelessness status
+            const addressLabel = document.getElementById('addressLabel');
+            const mailingAddressQuestion = document.getElementById('mailingAddressQuestion');
+            if (client.homelessness === 'yes') {
+                addressLabel.textContent = 'Mailing Address:';
+                mailingAddressQuestion.style.display = 'none';
+            } else {
+                addressLabel.textContent = 'Street Address:';
+                mailingAddressQuestion.style.display = 'block';
+            }
         } else {
             console.error('Client data is missing or county is not defined.');
         }
@@ -1409,21 +1420,37 @@ async function saveHouseholdMember() {
 // Populate the Best Contact Phone Number dropdown
 function populateBestContactDropdown() {
     const dropdown = document.getElementById('bestContactNumber');
+    const currentSelection = dropdown.value; // Save the currently selected contactId
     dropdown.innerHTML = '<option value="" disabled>Select Best Contact</option>'; // Reset options
 
     if (client && client.Contacts && client.Contacts.length > 0) {
         console.log('Contacts:', client.Contacts); // Debugging log
         client.Contacts.forEach((contact) => {
             const option = document.createElement('option');
-            option.value = contact.phoneNumber;
-            option.textContent = `${contact.firstName} ${contact.lastName} - ${formatPhoneNumber(contact.phoneNumber)}`;
+            option.value = contact.contactId; // Use contactId as the value
+            option.textContent = `${contact.firstName} ${contact.lastName} - ${formatPhoneNumber(contact.phoneNumber)}`; // Display name and phone number
             dropdown.appendChild(option);
         });
 
         // Restore the previously selected value if it exists
-        if (client.bestContactNumber) {
-            dropdown.value = client.bestContactNumber; // Set the value directly
-            console.log(`Dropdown value set to: ${client.bestContactNumber}`);
+        if (currentSelection) {
+            const selectedContact = client.Contacts.find(contact => contact.contactId === currentSelection);
+            if (selectedContact) {
+                dropdown.value = currentSelection; // Set the value directly
+                console.log(`Dropdown value set to: ${currentSelection}`);
+            } else {
+                dropdown.value = ''; // Default to no selection
+                console.warn('No matching contactId found in client data.');
+            }
+        } else if (client.bestContactNumber) {
+            const selectedContact = client.Contacts.find(contact => contact.contactId === client.bestContactNumber);
+            if (selectedContact) {
+                dropdown.value = client.bestContactNumber; // Set the value directly
+                console.log(`Dropdown value set to: ${client.bestContactNumber}`);
+            } else {
+                dropdown.value = ''; // Default to no selection
+                console.warn('No matching contactId found in client data.');
+            }
         } else {
             dropdown.value = ''; // Default to no selection
             console.warn('No best contact number found in client data.');
@@ -1444,7 +1471,7 @@ function updateBestContactInBackend(value) {
 
     const requestBody = {
         clientId,
-        clientData: { bestContactNumber: value },
+        clientData: { bestContactNumber: value }, // Save the contactId
     };
 
     fetch(`/update-client`, {
@@ -1454,7 +1481,7 @@ function updateBestContactInBackend(value) {
     })
         .then((response) => {
             if (response.ok) {
-                console.log(`Best contact updated to: ${value}`);
+                console.log(`Best contact updated to contactId: ${value}`);
             } else {
                 return response.json().then((error) => {
                     console.error('Error details:', error);
@@ -1475,7 +1502,7 @@ function saveBestContactNumber() {
         return;
     }
 
-    const selectedValue = selectedOption.textContent; // Save the full string
+    const selectedContactId = selectedOption.value; // Use contactId as the value
     const clientId = getQueryParam('id'); // Get the client ID from the URL
 
     if (!clientId) {
@@ -1485,7 +1512,7 @@ function saveBestContactNumber() {
 
     const requestBody = {
         clientId,
-        clientData: { bestContactNumber: selectedValue }, // Save the full string
+        clientData: { bestContactNumber: selectedContactId }, // Save the contactId
     };
 
     // Make a backend call to save the best contact number
@@ -1496,7 +1523,7 @@ function saveBestContactNumber() {
     })
         .then((response) => {
             if (response.ok) {
-                console.log(`Best contact number updated to: ${selectedValue}`);
+                console.log(`Best contact number updated to contactId: ${selectedContactId}`);
             } else {
                 return response.json().then((error) => {
                     console.error('Error details:', error);
@@ -1639,11 +1666,15 @@ async function saveContact() {
         return;
     }
 
+    // Generate a unique contactId for new contacts
+    const generateContactId = () => `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
     const newContact = {
         firstName,
         lastName,
         phoneNumber,
         authorizedRepresentative,
+        contactId: editingContactIndex !== null ? client.Contacts[editingContactIndex].contactId : generateContactId(), // Reuse existing contactId if editing
     };
 
     // Ensure the Contacts array exists locally
@@ -1698,8 +1729,9 @@ async function saveContact() {
         alert('An error occurred while saving the contact. Please try again.');
     }
 
-    // Re-render contacts and close modal
+    // Re-render contacts and dropdown, then close modal
     renderContacts();
+    populateBestContactDropdown(); // Re-render the dropdown
     closeContactModal();
 }
 
@@ -1739,8 +1771,9 @@ async function deleteContact(index) {
         alert('An error occurred while deleting the contact. Please try again.');
     }
 
-    // Re-render contacts and close modal
+    // Re-render contacts and dropdown
     renderContacts();
+    populateBestContactDropdown(); // Re-render the dropdown
     closeContactModal();
 }
 

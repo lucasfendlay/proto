@@ -116,17 +116,19 @@
     }
 
     const selectedContact = document.getElementById('callerSelection').value;
-    let callerFirstName, callerLastName, callerPhoneNumber;
+    let callerFirstName, callerLastName, callerPhoneNumber, contactId;
 
     if (selectedContact === 'new') {
         callerFirstName = document.getElementById('callerFirstName').value.trim();
         callerLastName = document.getElementById('callerLastName').value.trim();
         callerPhoneNumber = document.getElementById('callerPhoneNumber').value.trim();
+        contactId = `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`; // Generate a unique contactId for new contacts
     } else {
         const contactDetails = JSON.parse(selectedContact);
         callerFirstName = contactDetails.callerFirstName;
         callerLastName = contactDetails.callerLastName;
         callerPhoneNumber = contactDetails.callerPhoneNumber || document.getElementById('callerPhoneNumber').value.trim();
+        contactId = contactDetails.contactId || `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`; // Use existing contactId or generate a new one
     }
 
     const callLog = {
@@ -149,7 +151,8 @@
         const contactData = {
             firstName: callerFirstName,
             lastName: callerLastName,
-            phoneNumber: callerPhoneNumber
+            phoneNumber: callerPhoneNumber,
+            contactId: contactId, // Include the unique contactId
         };
 
         const existingContactsResponse = await fetch(`/get-client/${clientId}`);
@@ -160,9 +163,7 @@
 
             if (Array.isArray(clientData.Contacts)) {
                 isDuplicate = clientData.Contacts.some(contact =>
-                    contact.firstName === contactData.firstName &&
-                    contact.lastName === contactData.lastName &&
-                    contact.phoneNumber === contactData.phoneNumber
+                    contact.contactId === contactData.contactId // Check for duplicates using contactId
                 );
             }
 
@@ -225,23 +226,23 @@
 
             // Update the client with checkedOut: true after redirecting
             await fetch('/update-client', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ 
-        clientId, 
-        clientData: { 
-            checkedOut: [
-                {
-                    status: true,
-                    timestamp: new Date().toISOString(),
-                    user: sessionStorage.getItem('loggedInUser') 
-                        ? sessionStorage.getItem('loggedInUser').trim() 
-                        : 'Unknown User'
-                }
-            ] 
-        } 
-    }),
-});
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    clientId, 
+                    clientData: { 
+                        checkedOut: [
+                            {
+                                status: true,
+                                timestamp: new Date().toISOString(),
+                                user: sessionStorage.getItem('loggedInUser') 
+                                    ? sessionStorage.getItem('loggedInUser').trim() 
+                                    : 'Unknown User'
+                            }
+                        ] 
+                    } 
+                }),
+            });
             window.location.href = `profileedit.html?id=${clientId}`;
         } else {
             alert(result.message || 'Failed to log call.');

@@ -11,6 +11,10 @@
 
 
     <style>
+
+.hidden {
+    visibility: hidden;
+}
         /* Highlight effect */
         .highlight {
             background-color: #007bff; /* Blue background */
@@ -106,7 +110,14 @@ body {
         
             </style>
 </head>
-<body class="narrow-body">
+<body class="narrow-body hidden">
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+    await loadSavedData(); // Load and display saved data
+    document.body.classList.remove('hidden'); // Show the body after processing
+});
+    </script>
 
     <h1>Household</h1>
 
