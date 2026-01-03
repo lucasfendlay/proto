@@ -85,12 +85,18 @@ function formatMetricName(metric) {
     return metricMapping[metric] || metric; // Default to the original name if no mapping exists
 }
 
+function formatDate(dateString) {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(date);
+}
+
 async function populateProfiles() {
     const params = new URLSearchParams(window.location.search);
     const metric = params.get('metric');
     const user = params.get('user');
-    const startDate = params.get('startDate');
-    const endDate = params.get('endDate');
+    const startDate = formatDate(params.get('startDate'));
+    const endDate = formatDate(params.get('endDate'));
 
     // Format the metric name
     const formattedMetric = formatMetricName(metric);
@@ -131,31 +137,33 @@ async function populateProfiles() {
 
         profileLinksDiv.innerHTML = ``;
         uniqueProfiles.forEach(profile => {
-    const mostRecentNote = profile.notes?.[profile.notes.length - 1];
-    const mostRecentActivity = mostRecentNote ? mostRecentNote.timestamp : 'No recent activity';
+            const mostRecentNote = profile.notes?.[profile.notes.length - 1];
+            const mostRecentActivity = mostRecentNote ? (mostRecentNote.timestamp) : 'No recent activity';
 
-    const li = document.createElement('li');
-    li.innerHTML = `
-        <a href="profileview.html?id=${profile.id}">
-            <strong>Profile: ${profile.id}</strong> | 
-            ${profile.name || ''} | 
-            ${profile.phoneNumber ? `Phone: ${profile.phoneNumber} | ` : ''}
-            ${profile.streetAddress || profile.city || profile.state || profile.zipCode ? `Address: ${[
-                profile.streetAddress,
-                profile.city,
-                profile.state,
-                profile.zipCode,
-                profile.county ? `${profile.county} County` : ''
-            ].filter(Boolean).join(', ')} | ` : ''}
-            <strong>Most Recent Activity:</strong> ${mostRecentActivity}
-        </a>`;
-    profileLinksDiv.appendChild(li);
-});
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <a href="profileview.html?id=${profile.id}">
+                    <strong>Profile: ${profile.id}</strong> | 
+                    ${profile.name || ''} | 
+                    ${profile.phoneNumber ? `Phone: ${profile.phoneNumber} | ` : ''}
+                    ${profile.streetAddress || profile.city || profile.state || profile.zipCode ? `Address: ${[
+                        profile.streetAddress,
+                        profile.city,
+                        profile.state,
+                        profile.zipCode,
+                        profile.county ? `${profile.county} County` : ''
+                    ].filter(Boolean).join(', ')} | ` : ''}
+                    <strong>Most Recent Activity:</strong> ${mostRecentActivity}
+                </a>`;
+            profileLinksDiv.appendChild(li);
+        });
     } catch (error) {
         console.error('Error fetching profiles:', error);
     }
 }
-        document.addEventListener('DOMContentLoaded', populateProfiles);    </script>
+document.addEventListener('DOMContentLoaded', populateProfiles);
+
+    </script>
 </body>
 
 </html>
