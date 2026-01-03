@@ -166,8 +166,7 @@
 
     // Validate phone number (10 digits)
     const phoneNumber = document.getElementById('callerPhoneNumber').value;
-    const phoneRegex = /^\d{10}$/;
-    if (!phoneRegex.test(phoneNumber)) {
+    const phoneRegex = /^(\d{10}|\(\d{3}\)\s?\d{3}-\d{4}|\(\d{3}\)-\d{3}-\d{4})$/;    if (!phoneRegex.test(phoneNumber)) {
         invalidFields.push(document.getElementById('callerPhoneNumber')); // Add phone number field to the array
         alert('Phone number must be exactly 10 digits.');
     }
@@ -226,59 +225,63 @@
     const clientId = getQueryParam('id');
 
     try {
-        // Save contact details to the Contacts array
-        const contactData = {
-            firstName: callerFirstName,
-            lastName: callerLastName,
-            phoneNumber: callerPhoneNumber,
-            contactId: contactId, // Include the unique contactId
-        };
+    // Save contact details to the Contacts array
+    const contactData = {
+        firstName: callerFirstName,
+        lastName: callerLastName,
+        phoneNumber: callerPhoneNumber,
+        contactId: contactId, // Include the unique contactId
+    };
 
-        const existingContactsResponse = await fetch(`/get-client/${clientId}`);
-        const clientData = await existingContactsResponse.json();
+    const existingContactsResponse = await fetch(`/get-client/${clientId}`);
+    const clientData = await existingContactsResponse.json();
 
-        if (clientData) {
-            let isDuplicate = false;
+    if (clientData) {
+        let isDuplicate = false;
 
-            if (Array.isArray(clientData.Contacts)) {
-                isDuplicate = clientData.Contacts.some(contact =>
-                    contact.contactId === contactData.contactId // Check for duplicates using contactId
-                );
-            }
+        if (Array.isArray(clientData.Contacts)) {
+            isDuplicate = clientData.Contacts.some(contact =>
+                contact.firstName === contactData.firstName &&
+                contact.lastName === contactData.lastName &&
+                contact.phoneNumber === contactData.phoneNumber
+            );
+        }
 
-            if (!isDuplicate) {
-                const addToContactsResponse = await fetch('/add-to-contacts', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ clientId, contact: contactData })
-                });
-
-                const addToContactsResult = await addToContactsResponse.json();
-                if (!addToContactsResponse.ok || !addToContactsResult.success) {
-                    alert(addToContactsResult.message || 'Failed to save contact details.');
-                    return;
-                }
-            }
-
-            // Update client.phoneNumber using the existing /update-client handler
-            const updateClientResponse = await fetch('/update-client', {
-                method: 'PUT',
+        if (isDuplicate) {
+            console.log('Duplicate contact found. Skipping save.');
+        } else {
+            const addToContactsResponse = await fetch('/add-to-contacts', {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    clientId,
-                    clientData: { phoneNumber: callerPhoneNumber }
-                })
+                body: JSON.stringify({ clientId, contact: contactData })
             });
 
-            const updateClientResult = await updateClientResponse.json();
-            if (!updateClientResponse.ok || !updateClientResult.success) {
-                alert(updateClientResult.message || 'Failed to update client phone number.');
+            const addToContactsResult = await addToContactsResponse.json();
+            if (!addToContactsResponse.ok || !addToContactsResult.success) {
+                alert(addToContactsResult.message || 'Failed to save contact details.');
                 return;
             }
-        } else {
-            console.error('Failed to fetch client data.');
+        }
+
+        // Update client.phoneNumber using the existing /update-client handler
+        const updateClientResponse = await fetch('/update-client', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                clientId,
+                clientData: { phoneNumber: callerPhoneNumber }
+            })
+        });
+
+        const updateClientResult = await updateClientResponse.json();
+        if (!updateClientResponse.ok || !updateClientResult.success) {
+            alert(updateClientResult.message || 'Failed to update client phone number.');
             return;
         }
+    } else {
+        console.error('Failed to fetch client data.');
+        return;
+    }
 
         // Log the call
         const response = await fetch('/log-call', {
@@ -350,32 +353,39 @@ async function populateCallerSelection() {
                 const contactKey = `${contact.firstName} ${contact.lastName} ${contact.phoneNumber}`.trim();
                 if (contact.firstName && contact.lastName && contact.phoneNumber && !uniqueContacts.has(contactKey)) {
                     uniqueContacts.set(contactKey, contact);
+
+                    // Format the phone number
+                    const formattedPhoneNumber = formatPhoneNumber(contact.phoneNumber);
+
                     const option = document.createElement('option');
                     option.value = JSON.stringify({
                         callerFirstName: contact.firstName,
                         callerLastName: contact.lastName,
                         callerPhoneNumber: contact.phoneNumber
                     });
-                    option.textContent = `${contact.firstName} ${contact.lastName} (${contact.phoneNumber})`;
+                    option.textContent = `${contact.firstName} ${contact.lastName} - ${formattedPhoneNumber}`;
                     callerSelection.appendChild(option);
                 }
             });
         } else if (client && client.firstName && client.lastName) {
             // Fallback to client-level information if no contacts are found
             console.log('No contacts found, using client-level information.');
+
+            // Format the phone number
+            const formattedPhoneNumber = formatPhoneNumber(client.phoneNumber);
+
             const option = document.createElement('option');
             option.value = JSON.stringify({
                 callerFirstName: client.firstName,
                 callerLastName: client.lastName,
                 callerPhoneNumber: client.phoneNumber
             });
-            option.textContent = `${client.firstName} ${client.lastName} (${client.phoneNumber})`;
+            option.textContent = `${client.firstName} ${client.lastName} - ${formattedPhoneNumber}`;
             callerSelection.appendChild(option);
         } else {
             console.log('No contacts or client-level information found.');
-            
         }
-    
+
         const addNewOption = document.createElement('option');
         addNewOption.value = 'new';
         addNewOption.textContent = 'Add New Contact';
@@ -385,7 +395,14 @@ async function populateCallerSelection() {
         alert('Failed to fetch client data. Please try again.');
     }
 }
-document.getElementById('callerSelection').addEventListener('change', async function () {
+
+// Helper function to format phone numbers
+function formatPhoneNumber(phone) {
+    if (!phone) return '';
+    const cleaned = phone.replace(/\D/g, ''); // Remove all non-numeric characters
+    const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/); // Match the phone number pattern
+    return match ? `(${match[1]})-${match[2]}-${match[3]}` : phone; // Format if valid, else return original
+}document.getElementById('callerSelection').addEventListener('change', async function () {
     const selectedValue = this.value;
 
     if (selectedValue === 'new') {

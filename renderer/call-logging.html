@@ -196,67 +196,67 @@ if (invalidFields.length > 0) {
     try {
         // Save caller details if reasonForCall is not "None"
         if (callLog.reasonForCall !== "None") {
-            const generateContactId = () => `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-            const clientData = {
-                firstName: callLog.callerFirstName,
-                lastName: callLog.callerLastName,
-                phoneNumber: callLog.callerPhoneNumber,
-                contactId: generateContactId(), // Generate a unique contactId
-            };
+    const generateContactId = () => `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const contactId = generateContactId(); // Generate a unique contactId
+    const clientData = {
+        firstName: callLog.callerFirstName,
+        lastName: callLog.callerLastName,
+        phoneNumber: callLog.callerPhoneNumber,
+    };
 
-            // Save to Contacts only if reasonForCall is "To Apply Someone Else for Public Benefits"
-            if (callLog.reasonForCall === "To Apply Someone Else for Public Benefits") {
-                const addToContactsResponse = await fetch('/add-to-contacts', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        clientId,
-                        contact: clientData,
-                    }),
-                });
+    // Save to Contacts only if reasonForCall is "To Apply Someone Else for Public Benefits"
+    if (callLog.reasonForCall === "To Apply Someone Else for Public Benefits") {
+        const addToContactsResponse = await fetch('/add-to-contacts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                clientId,
+                contact: { ...clientData, contactId }, // Add contactId only to the Contacts array
+            }),
+        });
 
-                const addToContactsResult = await addToContactsResponse.json();
-                if (!addToContactsResponse.ok || !addToContactsResult.success) {
-                    alert(addToContactsResult.message || 'Failed to save contact details.');
-                    return;
-                }
-            } else {
-                // Save caller details to the client
-                const updateClientResponse = await fetch('/update-client', {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ clientId, clientData }),
-                });
-
-                const updateClientResult = await updateClientResponse.json();
-                if (!updateClientResponse.ok || !updateClientResult.success) {
-                    alert(updateClientResult.message || 'Failed to update client details.');
-                    return;
-                }
-
-                // Add caller details to the Contacts array
-                const addToContactsResponse = await fetch('/add-to-contacts', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        clientId,
-                        contact: clientData,
-                    }),
-                });
-
-                const addToContactsResult = await addToContactsResponse.json();
-                if (!addToContactsResponse.ok || !addToContactsResult.success) {
-                    alert(addToContactsResult.message || 'Failed to save contact details.');
-                    return;
-                }
-            }
+        const addToContactsResult = await addToContactsResponse.json();
+        if (!addToContactsResponse.ok || !addToContactsResult.success) {
+            alert(addToContactsResult.message || 'Failed to save contact details.');
+            return;
         }
+    } else {
+        // Save caller details to the client
+        const updateClientResponse = await fetch('/update-client', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ clientId, clientData }), // Do not include contactId here
+        });
+
+        const updateClientResult = await updateClientResponse.json();
+        if (!updateClientResponse.ok || !updateClientResult.success) {
+            alert(updateClientResult.message || 'Failed to update client details.');
+            return;
+        }
+
+        // Add caller details to the Contacts array
+        const addToContactsResponse = await fetch('/add-to-contacts', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                clientId,
+                contact: { ...clientData, contactId }, // Add contactId only to the Contacts array
+            }),
+        });
+
+        const addToContactsResult = await addToContactsResponse.json();
+        if (!addToContactsResponse.ok || !addToContactsResult.success) {
+            alert(addToContactsResult.message || 'Failed to save contact details.');
+            return;
+        }
+    }
+}
 
         // Log the call
         const logCallResponse = await fetch('/log-call', {

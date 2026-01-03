@@ -193,6 +193,96 @@ app.get('/get-user-role', async (req, res) => {
     }
 });
 
+app.get('/get-user-profiles', async (req, res) => {
+    const { metric, user } = req.query;
+
+    if (!metric || !user) {
+        return res.status(400).json({ success: false, message: 'Metric and user are required.' });
+    }
+
+    try {
+        const collection = db.collection('clients');
+        const clients = await collection.find({}).toArray();
+
+        // Filter clients based on the metric and user
+        const profiles = clients.flatMap(client => {
+            const clientName = `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Unknown';
+
+            if (metric === 'callsLogged') {
+                return client.callLogs?.filter(log => log.agent === user).map(log => ({
+                    id: client.id,
+                    name: clientName,
+                    phoneNumber: client.phoneNumber || 'N/A',
+                    streetAddress: client.streetAddress || '',
+                    city: client.city || '',
+                    state: client.state || '',
+                    zipCode: client.zipCode || '',
+                    county: client.county || '',
+                    notes: client.notes || [],
+                })) || [];
+            }
+
+            if (metric === 'screeningsStarted') {
+                return client.notes?.filter(note => 
+                    note.text.includes('New screening initiated.') && note.username?.toLowerCase() === user.toLowerCase()
+                ).map(() => ({
+                    id: client.id,
+                    name: clientName,
+                    phoneNumber: client.phoneNumber || 'N/A',
+                    streetAddress: client.streetAddress || '',
+                    city: client.city || '',
+                    state: client.state || '',
+                    zipCode: client.zipCode || '',
+                    county: client.county || '',
+                    notes: client.notes || [],
+                })) || [];
+            }
+
+            // Add similar logic for other metrics
+            if (metric === 'paceApplicationsCompleted') {
+                return client.notes?.filter(note => 
+                    note.text.includes('PACE application completed.') && note.user === user
+                ).map(() => ({
+                    id: client.id,
+                    name: clientName,
+                    phoneNumber: client.phoneNumber || 'N/A',
+                    streetAddress: client.streetAddress || '',
+                    city: client.city || '',
+                    state: client.state || '',
+                    zipCode: client.zipCode || '',
+                    county: client.county || '',
+                    notes: client.notes || [],
+                })) || [];
+            }
+
+            if (metric === 'ptrrApplicationsCompleted') {
+                return client.notes?.filter(note => 
+                    note.text.toLowerCase().includes('ptrr application completed.') &&
+                    note.username?.toLowerCase() === user.toLowerCase()
+                ).map(() => ({
+                    id: client.id,
+                    name: clientName,
+                    phoneNumber: client.phoneNumber || 'N/A',
+                    streetAddress: client.streetAddress || '',
+                    city: client.city || '',
+                    state: client.state || '',
+                    zipCode: client.zipCode || '',
+                    county: client.county || '',
+                    notes: client.notes || [],
+                })) || [];
+            }
+
+            // Repeat for other metrics...
+            return [];
+        });
+
+        res.json(profiles);
+    } catch (error) {
+        console.error('Error fetching user profiles:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch user profiles.' });
+    }
+});
+
 // Add a new client
 app.post('/add-client', async (req, res) => {
     const client = req.body;

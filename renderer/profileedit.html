@@ -812,6 +812,7 @@ async function saveContact() {
     const clientId = getQueryParam('id'); // Ensure clientId is retrieved from the URL
     const phoneNumberInput = document.getElementById('contactPhoneNumber');
     phoneNumberInput.classList.remove('error'); // Remove error class initially
+
     // Validate required fields
     if (!clientId || !firstName || !lastName || !phoneNumber) {
         alert('Please fill in all required fields.');
@@ -830,7 +831,6 @@ async function saveContact() {
         return;
     }
 
-
     // Generate a unique contactId for new contacts
     const generateContactId = () => `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -845,6 +845,19 @@ async function saveContact() {
     // Ensure the Contacts array exists locally
     if (!client.Contacts) {
         client.Contacts = []; // Initialize the Contacts array if it doesn't exist
+    }
+
+    // Check for duplicates
+    const isDuplicate = client.Contacts.some(contact =>
+        contact.firstName === newContact.firstName &&
+        contact.lastName === newContact.lastName &&
+        contact.phoneNumber === newContact.phoneNumber
+    );
+
+    if (isDuplicate) {
+        alert('This contact already exists. Duplicate contacts are not allowed.');
+        console.log('Duplicate contact detected. Skipping save.');
+        return;
     }
 
     try {

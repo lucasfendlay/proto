@@ -56,8 +56,10 @@ const isCustomNote = ![
     'Profile terminated.',
     'Profile termination undone.',
     'Profile created.',
+    'PTRR Application completed.'
 ].some(keyword => noteText.includes(keyword)) && 
-!noteText.includes('Inbound call logged') && 
+!noteText.includes('Inbound call logged.') && 
+!noteText.includes('Outbound call logged.') &&
 !noteText.includes('Applying') && 
 !noteText.includes('Referral provided');
 
@@ -86,6 +88,7 @@ const strongFormattedNotes = [
     'Profile terminated.',
     'Profile termination undone.',
     'Profile created.',
+    'PTRR Application completed.'
 ];
 
 const formattedNoteText = strongFormattedNotes.includes(noteText)
@@ -125,6 +128,9 @@ noteDiv.innerHTML = `
 notesList.appendChild(noteDiv);
     });
 }
+
+    // Expose renderNotes globally
+    window.renderNotes = renderNotes;
 
 window.editNote = async function (clientId, index) {
     console.log('Edit button clicked'); // Debugging
@@ -274,7 +280,7 @@ window.GoToProfileEditChecked = async function () {
 async function saveNote(noteText = null) {
     console.log('Save button clicked'); // Debugging
     const clientId = getClientId();
-    
+
     // Ensure the text is properly retrieved
     const text = typeof noteText === 'string' ? noteText : noteInput.value.trim();
     console.log('Client ID:', clientId); // Debugging
@@ -321,6 +327,8 @@ async function saveNote(noteText = null) {
         console.error('Error saving note:', error);
     }
 }
+
+saveNoteButton.addEventListener('click', saveNote);
 
 window.deleteNote = async function (clientId, index) {
     try {
@@ -375,3 +383,4 @@ window.deleteNote = async function (clientId, index) {
   populateActiveUser(); // Populate the active user
   renderNotes(clientId);
 });
+

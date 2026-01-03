@@ -1565,6 +1565,46 @@ link.href = URL.createObjectURL(blob);
 link.download = fileName;
 link.click();
 
+// Log a note after the download and re-render notes
+try {
+    const clientId = new URLSearchParams(window.location.search).get('id'); // Get client ID from URL
+    const activeUser = sessionStorage.getItem('loggedInUser') || 'Unknown User'; // Get the active user
+
+    const noteText = 'PTRR Application completed.';
+    const timestamp = new Date().toLocaleString();
+
+    const note = {
+        id: crypto.randomUUID(), // Generate a unique ID for the note
+        text: noteText,
+        timestamp: timestamp,
+        username: activeUser,
+    };
+
+    const response = await fetch('/add-note-to-client', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ clientId, note }),
+    });
+
+    const result = await response.json();
+    if (response.ok && result.success) {
+        console.log('Note logged successfully:', result.message);
+
+// Re-render notes after successfully logging the note
+if (typeof window.renderNotes === 'function') {
+    window.renderNotes(clientId);
+} else {
+    console.warn('renderNotes function is not available.');
+}
+    } else {
+        console.error('Failed to log note:', result.message);
+    }
+} catch (error) {
+    console.error('Error logging note:', error);
+}
+
 // Send the file to the backend
 const formData = new FormData();
 formData.append('file', blob, fileName); // Attach the file with the generated name

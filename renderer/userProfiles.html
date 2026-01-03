@@ -5,148 +5,157 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Profiles</title>
     <link rel="stylesheet" href="styles.css">
-
-    <!-- Flatpickr CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 </head>
+
+<style>
+
+#profileLinks li {
+    list-style-type: none; /* Remove bullet points */
+}
+    /* Shared container width */
+    .container {
+        width: 100%; /* Full width */
+        max-width: 1500px; /* Optional: Limit the maximum width */
+        margin: 0 auto; /* Center the container horizontally */
+        display: flex; /* Enable flexbox */
+        flex-direction: column; /* Stack children vertically */
+        align-items: center; /* Center children horizontally */
+    }
+
+    /* Input fields */
+    input[type="text"] {
+        width: 100%; /* Full width within the container */
+        max-width: 1500px; /* Optional: Limit the maximum width */
+        box-sizing: border-box; /* Include padding and border in the width */
+        margin-bottom: 10px; /* Add spacing between inputs */
+        align-self: center; /* Center the input fields */
+        padding: 10px; /* Add padding for better usability */
+        border: 1px solid #ccc; /* Light gray border */
+        border-radius: 4px; /* Slightly rounded corners */
+        font-size: 16px; /* Increase font size for better readability */
+    }
+
+    /* Profile list container */
+    #profileLinks {
+        width: 100%; /* Full width within the container */
+        max-width: 1500px; /* Optional: Limit the maximum width */
+        padding: 0; /* Remove default padding */
+        display: flex; /* Enable flexbox for the list */
+        flex-direction: column; /* Stack list items vertically */
+        align-items: center; /* Center list items horizontally */
+        text-transform: uppercase; /* Force all text to display in uppercase */
+    }
+
+    /* List items */
+    #profileLinks a {
+        width: 100%; /* Full width of the container */
+        max-width: 1500px; /* Optional: Limit the maximum width */
+        text-align: center; /* Center the text */
+        padding: 10px; /* Add padding for readability */
+        border-bottom: 1px solid #ccc; /* Optional: Add a border for separation */
+        list-style: none; /* Remove default bullet points */
+        color: #000dff; /* Set link color to blue */
+        display: block; /* Make the link take up the full width of the list item */
+    }
+
+    #profileLinks a:hover {
+        background-color: #f0f0f0; /* Optional: Add a hover effect */
+    }
+</style>
+
 <body>
     <h1>User Profiles</h1>
-    <button onclick="window.location.href='admindashboard.html'">Back to Admin Dashboard</button>
+    <button onclick="window.location.href='admindashboard.html'">Back to Dashboard</button>
     <br><br>
-
-    <!-- Filters Section -->
-    <div id="filters">
-        <label for="startDate">Start Date:</label>
-        <input type="text" id="startDate" placeholder="Select Start Date">
-
-        <label for="endDate">End Date:</label>
-        <input type="text" id="endDate" placeholder="Select End Date">
-
-        <button id="filterButton">Filter Profiles</button>
+    <!-- Add a dynamic header -->
+    <h2 id="dynamicHeader"></h2>
+    <div class="container">
+        <div id="profileLinks">
+            <!-- Dynamically populated profile links will go here -->
+        </div>
     </div>
-
-    <!-- Profiles Section -->
-    <div id="profiles">
-        <h2>Profiles</h2>
-        <ul id="profileList">
-            <!-- Dynamically populated profiles will appear here -->
-        </ul>
-    </div>
-
-    <!-- Flatpickr JS -->
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
     <script>
-        // Initialize Flatpickr for date inputs
-        flatpickr("#startDate", {
-            dateFormat: "Y-m-d",
-            altInput: true,
-            altFormat: "F j, Y",
-        });
+function formatMetricName(metric) {
+    const metricMapping = {
+        screeningsStarted: 'Screenings Initiated',
+        ptrrApplicationsCompleted: 'PTRR Applications Completed',
+        // Add more mappings as needed
+    };
+    return metricMapping[metric] || metric; // Default to the original name if no mapping exists
+}
 
-        flatpickr("#endDate", {
-            dateFormat: "Y-m-d",
-            altInput: true,
-            altFormat: "F j, Y",
-        });
+async function populateProfiles() {
+    const params = new URLSearchParams(window.location.search);
+    const metric = params.get('metric');
+    const user = params.get('user');
+    const startDate = params.get('startDate');
+    const endDate = params.get('endDate');
 
-        // Fetch and display profiles based on user interactions
-        async function fetchUserProfiles() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const username = urlParams.get('username'); // Get the username from the query string
-    const metric = urlParams.get('metric'); // Get the metric from the query string
-    const startDate = new Date(document.getElementById('startDate').value);
-    const endDate = new Date(document.getElementById('endDate').value);
+    // Format the metric name
+    const formattedMetric = formatMetricName(metric);
+
+    // Set the dynamic header
+    const dynamicHeader = document.getElementById('dynamicHeader');
+    dynamicHeader.textContent = `All ${formattedMetric || 'Metrics'} for ${user || 'Users'} between ${startDate || 'Start Date'} and ${endDate || 'End Date'}`;
+
+    console.log('Metric:', metric);
+    console.log('User:', user);
+    console.log('Start Date:', startDate);
+    console.log('End Date:', endDate);
 
     try {
-        // Fetch all clients
-        const response = await fetch('/get-all-clients');
+        const response = await fetch(`/get-user-profiles?metric=${metric}&user=${user}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const { clients } = await response.json();
-        console.log('Username:', username);
-        console.log('Clients:', clients);
+        const profiles = await response.json();
+        console.log('Fetched Profiles:', profiles);
 
-        // Filter clients based on the username, metric, and date range
-        const filteredClients = clients.filter(client => {
-            let hasMetric = true;
+        // Filter profiles to remove duplicates
+        const uniqueProfiles = [];
+        const seenIds = new Set();
 
-            // Handle different metrics
-            if (metric === 'callsLogged') {
-                hasMetric = client.callLogs && client.callLogs.length > 0;
-            } else if (metric === 'screeningsStarted') {
-                hasMetric = client.notes?.some(note => note.text.includes('New screening initiated.'));
-            } else if (metric) {
-                hasMetric = client.notes?.some(note => note.text.includes(`${metric.replace(/([A-Z])/g, ' $1')} completed.`));
+        profiles.forEach(profile => {
+            if (!seenIds.has(profile.id)) {
+                uniqueProfiles.push(profile);
+                seenIds.add(profile.id);
             }
-
-            // Check if the user has interacted with the client in any way
-            const hasUserInteraction = username
-                ? (
-                    client.callLogs?.some(log => log.agent && log.agent.toLowerCase() === username.toLowerCase()) || // Check callLogs for the username
-                    client.notes?.some(note => 
-                        (note.username && note.username.toLowerCase() === username.toLowerCase()) || // Check notes for the username
-                        (note.text && note.text.toLowerCase().includes(username.toLowerCase())) // Check if username is in the text
-                    )
-                )
-                : true;
-
-            // Check if the interaction falls within the date range
-            const hasDateRange = client.callLogs?.some(log => {
-                const logDate = new Date(log.timestamp);
-                return (
-                    (!isNaN(startDate) ? logDate >= startDate : true) &&
-                    (!isNaN(endDate) ? logDate <= endDate : true)
-                );
-            }) || client.notes?.some(note => {
-                const noteDate = new Date(note.timestamp);
-                return (
-                    (!isNaN(startDate) ? noteDate >= startDate : true) &&
-                    (!isNaN(endDate) ? noteDate <= endDate : true)
-                );
-            });
-
-            return hasMetric && hasUserInteraction && hasDateRange;
         });
 
-        // Render the filtered profiles
-        const profileList = document.getElementById('profileList');
-        profileList.innerHTML = ''; // Clear existing profiles
-
-        if (filteredClients.length === 0) {
-            const noResultsMessage = document.createElement('li');
-            noResultsMessage.textContent = 'No profiles found for the selected filters.';
-            profileList.appendChild(noResultsMessage);
-        } else {
-            filteredClients.forEach(client => {
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    <a href="profileview.html?id=${client.id}">
-                        <strong>Profile: ${client.id}</strong> | 
-                        ${client.firstName || ''} ${client.lastName || ''} | 
-                        ${client.phoneNumber ? `Phone: ${client.phoneNumber} | ` : ''}
-                        ${client.streetAddress || client.city || client.state || client.zipCode ? `Address: ${[
-                            client.streetAddress,
-                            client.city,
-                            client.state,
-                            client.zipCode,
-                            client.county ? `${client.county} County` : ''
-                        ].filter(Boolean).join(', ')} | ` : ''}
-                        <strong>Most Recent Note:</strong> ${client.notes?.[client.notes.length - 1]?.text || 'No notes available'}
-                    </a>`;
-                profileList.appendChild(li);
-            });
+        const profileLinksDiv = document.getElementById('profileLinks');
+        if (uniqueProfiles.length === 0) {
+            profileLinksDiv.innerHTML = `<li>No profiles found for the specified filters.</li>`;
+            return;
         }
+
+        profileLinksDiv.innerHTML = ``;
+        uniqueProfiles.forEach(profile => {
+    const mostRecentNote = profile.notes?.[profile.notes.length - 1];
+    const mostRecentActivity = mostRecentNote ? mostRecentNote.timestamp : 'No recent activity';
+
+    const li = document.createElement('li');
+    li.innerHTML = `
+        <a href="profileview.html?id=${profile.id}">
+            <strong>Profile: ${profile.id}</strong> | 
+            ${profile.name || ''} | 
+            ${profile.phoneNumber ? `Phone: ${profile.phoneNumber} | ` : ''}
+            ${profile.streetAddress || profile.city || profile.state || profile.zipCode ? `Address: ${[
+                profile.streetAddress,
+                profile.city,
+                profile.state,
+                profile.zipCode,
+                profile.county ? `${profile.county} County` : ''
+            ].filter(Boolean).join(', ')} | ` : ''}
+            <strong>Most Recent Activity:</strong> ${mostRecentActivity}
+        </a>`;
+    profileLinksDiv.appendChild(li);
+});
     } catch (error) {
-        console.error('Error fetching user profiles:', error);
+        console.error('Error fetching profiles:', error);
     }
 }
-        // Add event listener to the filter button
-        document.getElementById('filterButton').addEventListener('click', fetchUserProfiles);
-
-        // Fetch profiles on page load if username is provided
-        document.addEventListener('DOMContentLoaded', fetchUserProfiles);
-    </script>
+        document.addEventListener('DOMContentLoaded', populateProfiles);    </script>
 </body>
+
 </html>

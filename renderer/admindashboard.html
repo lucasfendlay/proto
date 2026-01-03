@@ -191,117 +191,116 @@ document.getElementById('viewCheckedOutClientsButton').addEventListener('click',
         }
         const { clients } = await response.json();
 
+        // Fetch all users
+        const usersResponse = await fetch('/get-users');
+        if (!usersResponse.ok) {
+            throw new Error(`HTTP error! status: ${usersResponse.status}`);
+        }
+        const users = await usersResponse.json();
+
         // Filter and process data
-        const filteredClients = clients.filter(client => {
-    const hasUser = !user || (client.callLogs && client.callLogs.some(log => log.agent === user));
-    const hasDateRange = client.callLogs && client.callLogs.some(log => {
-        const logDate = new Date(log.timestamp);
-        return logDate >= startDate && logDate <= endDate;
-    });
-    return hasUser && hasDateRange;
-});
+        const report = [];
 
-// Generate report summary
-const usersResponse = await fetch('/get-users');
-if (!usersResponse.ok) {
-    throw new Error(`HTTP error! status: ${usersResponse.status}`);
-}
-const users = await usersResponse.json();
+        clients.forEach(client => {
+            if (client.callLogs) {
+                client.callLogs.forEach(log => {
+                    const logDate = new Date(log.timestamp);
 
-const report = filteredClients.reduce((acc, client) => {
-    const user = users.find(u => u.username === client.callLogs[0]?.agent)?.username || 'Unknown User';
-    const callsLogged = client.callLogs.length;
-    const screeningsStarted = client.notes.filter(note =>
-        note.text.includes('New screening initiated.')
-    ).length;
+                    // Check if the log matches the selected user and date range
+                    if ((!user || log.agent === user) && new Date(logDate.setDate(logDate.getDate() - 1)) >= startDate && logDate <= endDate) {                        
+                        const agent = users.find(u => u.username === log.agent)?.username || 'Unknown User';
 
-    // Count applications completed for each benefit type
-    const paceApplicationsCompleted = client.notes.filter(note =>
-        note.text.includes('PACE Application completed.')
-    ).length;
-    const ptrrApplicationsCompleted = client.notes.filter(note =>
-        note.text.includes('PTRR Application completed.')
-    ).length;
-    const lisApplicationsCompleted = client.notes.filter(note =>
-        note.text.includes('LIS Application completed.')
-    ).length;
-    const mspApplicationsCompleted = client.notes.filter(note =>
-        note.text.includes('MSP Application completed.')
-    ).length;
-    const snapApplicationsCompleted = client.notes.filter(note =>
-        note.text.includes('SNAP Application completed.')
-    ).length;
-    const liheapApplicationsCompleted = client.notes.filter(note =>
-        note.text.includes('LIHEAP Application completed.')
-    ).length;
+                        // Check if the user already exists in the report
+                        let existingUser = report.find(row => row.user === agent);
+                        if (!existingUser) {
+                            // Add a new user entry
+                            existingUser = {
+                                user: agent,
+                                callsLogged: 0,
+                                screeningsStarted: 0,
+                                paceApplicationsCompleted: 0,
+                                ptrrApplicationsCompleted: 0,
+                                lisApplicationsCompleted: 0,
+                                mspApplicationsCompleted: 0,
+                                snapApplicationsCompleted: 0,
+                                liheapApplicationsCompleted: 0,
+                            };
+                            report.push(existingUser);
+                        }
 
-    // Check if the user already exists in the accumulator
-    const existingUser = acc.find(row => row.user === user);
-    if (existingUser) {
-        // Aggregate the fields
-        existingUser.callsLogged += callsLogged;
-        existingUser.screeningsStarted += screeningsStarted;
-        existingUser.paceApplicationsCompleted += paceApplicationsCompleted;
-        existingUser.ptrrApplicationsCompleted += ptrrApplicationsCompleted;
-        existingUser.lisApplicationsCompleted += lisApplicationsCompleted;
-        existingUser.mspApplicationsCompleted += mspApplicationsCompleted;
-        existingUser.snapApplicationsCompleted += snapApplicationsCompleted;
-        existingUser.liheapApplicationsCompleted += liheapApplicationsCompleted;
-    } else {
-        // Add a new user entry
-        acc.push({
-            user,
-            callsLogged,
-            screeningsStarted,
-            paceApplicationsCompleted,
-            ptrrApplicationsCompleted,
-            lisApplicationsCompleted,
-            mspApplicationsCompleted,
-            snapApplicationsCompleted,
-            liheapApplicationsCompleted
+                        // Increment calls logged for each log entry
+                        existingUser.callsLogged += 1;
+
+                        // Increment other metrics cumulatively
+                        existingUser.screeningsStarted += client.notes.filter(note =>
+                            note.text.includes('New screening initiated.')
+                        ).length;
+
+                        existingUser.paceApplicationsCompleted += client.notes.filter(note =>
+                            note.text.includes('PACE Application completed.')
+                        ).length;
+
+                        existingUser.ptrrApplicationsCompleted += client.notes.filter(note =>
+                            note.text.includes('PTRR Application completed.')
+                        ).length;
+
+                        existingUser.lisApplicationsCompleted += client.notes.filter(note =>
+                            note.text.includes('LIS Application completed.')
+                        ).length;
+
+                        existingUser.mspApplicationsCompleted += client.notes.filter(note =>
+                            note.text.includes('MSP Application completed.')
+                        ).length;
+
+                        existingUser.snapApplicationsCompleted += client.notes.filter(note =>
+                            note.text.includes('SNAP Application completed.')
+                        ).length;
+
+                        existingUser.liheapApplicationsCompleted += client.notes.filter(note =>
+                            note.text.includes('LIHEAP Application completed.')
+                        ).length;
+                    }
+                });
+            }
         });
-    }
 
-    return acc;
-}, []);
+        // Render the report in the table
+        const tableBody = document.querySelector('#reportTable tbody');
+        tableBody.innerHTML = ''; // Clear existing rows
 
-// Render the report in the table
-const tableBody = document.querySelector('#reportTable tbody');
-tableBody.innerHTML = ''; // Clear existing rows
+        report.forEach(row => {
+    const startDate = document.getElementById('startDate').value; // Get start date
+    const endDate = document.getElementById('endDate').value;     // Get end date
 
-report.forEach(row => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
         <td>${row.user}</td>
-        <td onclick="redirectToUserProfiles('callsLogged', '${row.user}')">${row.callsLogged}</td>
-        <td onclick="redirectToUserProfiles('screeningsStarted', '${row.user}')">${row.screeningsStarted}</td>
-        <td onclick="redirectToUserProfiles('paceApplicationsCompleted', '${row.user}')">${row.paceApplicationsCompleted}</td>
-        <td onclick="redirectToUserProfiles('ptrrApplicationsCompleted', '${row.user}')">${row.ptrrApplicationsCompleted}</td>
-        <td onclick="redirectToUserProfiles('lisApplicationsCompleted', '${row.user}')">${row.lisApplicationsCompleted}</td>
-        <td onclick="redirectToUserProfiles('mspApplicationsCompleted', '${row.user}')">${row.mspApplicationsCompleted}</td>
-        <td onclick="redirectToUserProfiles('snapApplicationsCompleted', '${row.user}')">${row.snapApplicationsCompleted}</td>
-        <td onclick="redirectToUserProfiles('liheapApplicationsCompleted', '${row.user}')">${row.liheapApplicationsCompleted}</td>
+        <td onclick="redirectToUserProfiles('callsLogged', '${row.user}', '${startDate}', '${endDate}')">${row.callsLogged}</td>
+        <td onclick="redirectToUserProfiles('screeningsStarted', '${row.user}', '${startDate}', '${endDate}')">${row.screeningsStarted}</td>
+        <td onclick="redirectToUserProfiles('paceApplicationsCompleted', '${row.user}', '${startDate}', '${endDate}')">${row.paceApplicationsCompleted}</td>
+        <td onclick="redirectToUserProfiles('ptrrApplicationsCompleted', '${row.user}', '${startDate}', '${endDate}')">${row.ptrrApplicationsCompleted}</td>
+        <td onclick="redirectToUserProfiles('lisApplicationsCompleted', '${row.user}', '${startDate}', '${endDate}')">${row.lisApplicationsCompleted}</td>
+        <td onclick="redirectToUserProfiles('mspApplicationsCompleted', '${row.user}', '${startDate}', '${endDate}')">${row.mspApplicationsCompleted}</td>
+        <td onclick="redirectToUserProfiles('snapApplicationsCompleted', '${row.user}', '${startDate}', '${endDate}')">${row.snapApplicationsCompleted}</td>
+        <td onclick="redirectToUserProfiles('liheapApplicationsCompleted', '${row.user}', '${startDate}', '${endDate}')">${row.liheapApplicationsCompleted}</td>
     `;
     tableBody.appendChild(tr);
 });
 
-// Make the report section visible
-document.getElementById('report').style.display = 'block';
+        // Make the report section visible
+        document.getElementById('report').style.display = 'block';
 
-console.log('Generated Report:', report);
+        console.log('Generated Report:', report);
     } catch (error) {
         console.error('Error generating report:', error);
     }
 }
 
-function redirectToUserProfiles(metric, user) {
-    const queryParams = new URLSearchParams();
-    queryParams.append('metric', metric);
-    if (user) {
-        queryParams.append('username', user);
-    }
-    window.location.href = `userProfiles.html?${queryParams.toString()}`;
+function redirectToUserProfiles(metric, user, startDate, endDate) {
+    const url = `userprofiles.html?metric=${metric}&user=${encodeURIComponent(user)}&startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+    window.location.href = url;
 }
+
 
     </script>
 </body>
