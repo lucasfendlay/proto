@@ -281,6 +281,17 @@ async function continueToApplication() {
             const memberBenefits = []; // Track benefits for this specific member
 
             ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'].forEach(benefit => {
+                // Check if the "Apply for" button is displayed
+                const benefitButton = document.querySelector(`.benefit-apply-button[data-benefit="${benefit}"][data-member-id="${member.householdMemberId}"]`);
+                const isButtonDisplayed = benefitButton && benefitButton.style.display !== 'none';
+
+                // Automatically set applying to false if the button is not displayed
+                if (!isButtonDisplayed) {
+                    if (member[benefit]?.application) {
+                        member[benefit].application.forEach(app => app.applying = false);
+                    }
+                }
+
                 if (member[benefit]?.application?.some(app => app.applying === true)) {
                     if (['SNAP', 'LIHEAP'].includes(benefit)) {
                         // Add SNAP and LIHEAP to the household-wide benefits set
@@ -293,87 +304,55 @@ async function continueToApplication() {
             });
 
             // If the member has individual benefits, add their name and benefits to the details
-if (memberBenefits.length > 0) {
-    individualBenefitsDetails.push(
-        `<strong>${member.firstName.toUpperCase()} ${member.lastName.toUpperCase()}</strong><br>${memberBenefits.join('<br>')}`
-    );
+            if (memberBenefits.length > 0) {
+                individualBenefitsDetails.push(
+                    `<strong>${member.firstName.toUpperCase()} ${member.lastName.toUpperCase()}</strong><br>${memberBenefits.join('<br>')}`
+                );
             }
         });
 
         // Generate the note content
-const householdBenefitsText = Array.from(householdBenefits).join('<br>'); // Use <br> for line breaks
-const individualBenefitsText = individualBenefitsDetails.join('<br><br>'); // Separate members with double <br>
+        const householdBenefitsText = Array.from(householdBenefits).join('<br>'); // Use <br> for line breaks
+        const individualBenefitsText = individualBenefitsDetails.join('<br><br>'); // Separate members with double <br>
 
-let noteContent = '';
-if (householdBenefits.size > 0) {
-    // If household benefits exist, include them with a line break before individual benefits
-    noteContent = `<strong>Applying</strong><br><br>${householdBenefitsText}<br><br>${individualBenefitsText}`.trim();
-} else {
-    // If no household benefits, exclude the extra line break before individual benefits
-    noteContent = `<strong>Applying</strong><br><br>${individualBenefitsText}`.trim();
-}
+        let noteContent = '';
+        if (householdBenefits.size > 0) {
+            // If household benefits exist, include them with a line break before individual benefits
+            noteContent = `<strong>Applying</strong><br><br>${householdBenefitsText}<br><br>${individualBenefitsText}`.trim();
+        } else {
+            // If no household benefits, exclude the extra line break before individual benefits
+            noteContent = `<strong>Applying</strong><br><br>${individualBenefitsText}`.trim();
+        }
 
-const timestamp = new Date().toLocaleString();
+        const timestamp = new Date().toLocaleString();
 
-// Add a note about the action
-const note = {
-    text: noteContent,
-    timestamp: timestamp,
-    username: activeUser
-};
+        // Add a note about the action
+        const note = {
+            text: noteContent,
+            timestamp: timestamp,
+            username: activeUser
+        };
 
-// Send the note to the backend
-const addNoteResponse = await fetch(`/add-note-to-client`, {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ clientId, note })
-});
+        // Send the note to the backend
+        const addNoteResponse = await fetch(`/add-note-to-client`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ clientId, note })
+        });
 
-if (!addNoteResponse.ok) {
-    console.warn('Failed to add note to client.');
-}
+        if (!addNoteResponse.ok) {
+            console.warn('Failed to add note to client.');
+        }
 
-console.log("Note added:", noteContent);
+        console.log("Note added:", noteContent);
 
     } catch (error) {
         console.error("Error during continueToApplication:", error);
     } finally {
         // Redirect to the application edit page regardless of success or failure
         window.location.href = `applicationedit.html?id=${clientId}`;
-    }
-}
-
-async function setCheckedOutStatus(clientId, status) {
-    try {
-        const response = await fetch('/update-client', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-                clientId, 
-                clientData: { 
-                    checkedOut: [
-                        {
-                            status: status, // Set status to false
-                            timestamp: status ? new Date().toISOString() : null, // Clear timestamp if status is false
-                            user: status ? sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User' : null // Clear user if status is false
-                        }
-                    ] 
-                } 
-            }),
-        });
-
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-            console.error(`Failed to update checkedOut status to ${status}:`, result.message);
-        } else {
-            console.log(`Successfully updated checkedOut status to ${status}.`);
-        }
-    } catch (error) {
-        console.error(`Error updating checkedOut status to ${status}:`, error);
     }
 }
 

@@ -182,8 +182,36 @@ document.addEventListener('DOMContentLoaded', async function () {
                 }
             `;
                 householdMemberContainer.appendChild(memberDiv);
+
+                            // Check the visibility of the PTRR button and update the state
+            const benefitButton = memberDiv.querySelector(`.benefit-apply-button[data-benefit="PTRR"][data-member-id="${member.householdMemberId}"]`);
+            const isButtonDisplayed = benefitButton && benefitButton.style.display !== 'none';
+
+            if (!isButtonDisplayed) {
+                // Update the PTRR.application state to ensure consistency
+                member.PTRR.application = member.PTRR.application.filter(app => !app.applying);
+            }
+        });
+
+        // Save the updated members to the backend after ensuring the state is consistent
+        const clientId = getQueryParameter('id');
+        try {
+            const response = await fetch(`/save-household-members`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ clientId, householdMembers: members }),
             });
-    
+
+            if (response.ok) {
+                console.log('Household members updated successfully on page load.');
+            } else {
+                console.error('Failed to update household members on page load:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Error saving household members on page load:', error);
+        }
             // Add event listeners to the benefit buttons
             const benefitButtons = document.querySelectorAll('.benefit-apply-button');
             benefitButtons.forEach(button => {
@@ -227,6 +255,15 @@ document.addEventListener('DOMContentLoaded', async function () {
         // Ensure the benefit structure exists
         member[benefit] = member[benefit] || {};
         member[benefit].application = member[benefit].application || [];
+    
+        // Check if the "Apply for" button is displayed
+        const benefitButton = document.querySelector(`.benefit-apply-button[data-benefit="${benefit}"][data-member-id="${memberId}"]`);
+        const isButtonDisplayed = benefitButton && benefitButton.style.display !== 'none';
+    
+        // Automatically set applying to false if the button is not displayed
+        if (!isButtonDisplayed) {
+            newApplyingState = false;
+        }
     
         // Update the application state
         if (newApplyingState) {
@@ -279,6 +316,15 @@ document.addEventListener('DOMContentLoaded', async function () {
                     member.SNAP = member.SNAP || {};
                     member.SNAP.application = member.SNAP.application || [];
     
+                    // Check if the "Apply for" button is displayed
+                    const benefitButton = document.querySelector(`.benefit-apply-button[data-benefit="SNAP"][data-member-id="${member.householdMemberId}"]`);
+                    const isButtonDisplayed = benefitButton && benefitButton.style.display !== 'none';
+    
+                    // Automatically set applying to false if the button is not displayed
+                    if (!isButtonDisplayed) {
+                        newApplyingState = false;
+                    }
+    
                     // Update the applying status
                     if (member.SNAP.application.length === 0) {
                         member.SNAP.application.push({ applying: newApplyingState });
@@ -295,6 +341,15 @@ document.addEventListener('DOMContentLoaded', async function () {
             members.forEach(member => {
                 member.LIHEAP = member.LIHEAP || {};
                 member.LIHEAP.application = member.LIHEAP.application || [];
+    
+                // Check if the "Apply for" button is displayed
+                const benefitButton = document.querySelector(`.benefit-apply-button[data-benefit="LIHEAP"][data-member-id="${member.householdMemberId}"]`);
+                const isButtonDisplayed = benefitButton && benefitButton.style.display !== 'none';
+    
+                // Automatically set applying to false if the button is not displayed
+                if (!isButtonDisplayed) {
+                    newApplyingState = false;
+                }
     
                 // Update the applying status
                 if (member.LIHEAP.application.length === 0) {
@@ -316,6 +371,18 @@ document.addEventListener('DOMContentLoaded', async function () {
     
             member[benefit] = member[benefit] || {};
             member[benefit].application = member[benefit].application || [];
+    
+            // Check if the "Apply for" button is displayed
+            const benefitButton = document.querySelector(`.benefit-apply-button[data-benefit="${benefit}"][data-member-id="${memberId}"]`);
+            const isButtonDisplayed = benefitButton && benefitButton.style.display !== 'none';
+    
+// Automatically set applying to false if the button is not displayed
+if (!isButtonDisplayed) {
+    newApplyingState = false;
+
+    // Ensure the application state is updated to reflect this
+    member[benefit].application = member[benefit].application.filter(app => !app.applying);
+}
     
             // Update the applying status
             if (member[benefit].application.length === 0) {
@@ -347,7 +414,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             console.error(`Error saving benefits for Benefit: ${benefit}:`, error);
         }
     }
-
+    
 // Function to display SNAP households
 async function displaySNAPHouseholds() {
     const snapHouseholdContainer = document.getElementById('snap-household-container');

@@ -677,7 +677,6 @@ body {
                     </select><br><br>
             </div>
 
-
             <div class="selection-box">
                 <label for="maritalStatus">Current Marital Status:</label>
                 <select id="maritalStatus" name="maritalStatus" class="selection-box-input" readonly>
@@ -701,6 +700,316 @@ body {
                 </select><br><br>
             </div>
 
+            <div class="form-field">
+                <label for="race">Select Race:</label>
+                <div id="race-container" class="multi-select-container">
+                    <input 
+                        type="text" 
+                        id="race-search" 
+                        class="multi-select-search" 
+                        placeholder="Type to search..." 
+                        autocomplete="off"
+                    >
+                    <div id="race-dropdown" class="multi-select-dropdown hidden">
+                        <div class="dropdown-item" data-value="American Indian or Alaska Native">American Indian or Alaska Native</div>
+                        <div class="dropdown-item" data-value="Asian">Asian</div>
+                        <div class="dropdown-item" data-value="Black or African American">Black or African American</div>
+                        <div class="dropdown-item" data-value="Native Hawaiian or Other Pacific Islander">Native Hawaiian or Other Pacific Islander</div>
+                        <div class="dropdown-item" data-value="White">White</div>
+                        <div class="dropdown-item" data-value="Other">Other</div>
+                    </div>
+                    <div id="selected-race-list" class="selected-items"></div>
+                </div>
+            </div>
+
+            <div class="form-field">
+                <label for="hispanicOrigin">Is this person of Hispanic, Latinx, or Spanish origin?</label>
+                <select id="hispanicOrigin" name="hispanicOrigin">
+                    <option value="" disabled selected>Select an option</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                    <option value="Prefer not to answer">Prefer not to answer</option>
+                </select>
+            </div>
+
+            <div id="homeboundQuestion" class="selection-box">
+                <label>Is this person homebound?</label>
+                <div id="modal-homebound-yes" data-value="yes">Yes</div>
+                <div id="modal-homebound-no" data-value="no">No</div>
+            </div>
+
+            <div id="militaryServiceQuestion" class="selection-box">
+                <label>Has this person ever served in the military?</label>
+                <div id="modal-military-yes" data-value="yes">Yes</div>
+                <div id="modal-military-no" data-value="no">No</div>
+            </div>
+            
+            <div id="religiousOrderQuestion" class="selection-box">
+                <label>Is this person a member of a religious order?</label>
+                <div id="modal-religious-yes" data-value="yes">Yes</div>
+                <div id="modal-religious-no" data-value="no">No</div>
+            </div>
+
+            <style>
+.multi-select-container {
+    position: relative;
+    width: 100%;
+    max-width: 800px;
+}
+
+.multi-select-search {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+.multi-select-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: white;
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.multi-select-dropdown.hidden {
+    display: none;
+}
+
+.dropdown-item {
+    padding: 10px;
+    cursor: pointer;
+}
+
+.dropdown-item:hover {
+    background-color: #007bff;
+    color: white;
+}
+
+.selected-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 10px;
+}
+
+.selected-item {
+    display: fixed;
+    align-items: center;
+    background-color: #007bff;
+    color: white;
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 1.2rem;
+}
+
+.selected-item .remove-item {
+    margin-left: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    color: white;
+    background-color: red;
+    border-radius: 50%;
+    padding: 0 5px;
+}
+
+.selection-box div.selected {
+    background-color: #007bff;
+    color: white;
+    border: 1px solid #0056b3;
+    border-radius: 5px;
+    padding: 5px;
+}
+</style>
+
+<script>
+
+    // Add event listeners to highlight the selected option for the "homebound" question
+document.addEventListener('DOMContentLoaded', () => {
+    const homeboundYes = document.getElementById('modal-homebound-yes');
+    const homeboundNo = document.getElementById('modal-homebound-no');
+
+    // Function to handle highlighting
+    function highlightHomeboundSelection(selectedElement) {
+        // Remove the "selected" class from both options
+        homeboundYes.classList.remove('selected');
+        homeboundNo.classList.remove('selected');
+
+        // Add the "selected" class to the clicked option
+        selectedElement.classList.add('selected');
+    }
+
+    // Add click event listeners to both options
+    homeboundYes.addEventListener('click', () => highlightHomeboundSelection(homeboundYes));
+    homeboundNo.addEventListener('click', () => highlightHomeboundSelection(homeboundNo));
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Military Service Question
+    const militaryYes = document.getElementById('modal-military-yes');
+    const militaryNo = document.getElementById('modal-military-no');
+
+    function highlightMilitarySelection(selectedElement) {
+        militaryYes.classList.remove('selected');
+        militaryNo.classList.remove('selected');
+        selectedElement.classList.add('selected');
+    }
+
+    militaryYes.addEventListener('click', () => highlightMilitarySelection(militaryYes));
+    militaryNo.addEventListener('click', () => highlightMilitarySelection(militaryNo));
+
+    // Religious Order Question
+    const religiousYes = document.getElementById('modal-religious-yes');
+    const religiousNo = document.getElementById('modal-religious-no');
+
+    function highlightReligiousSelection(selectedElement) {
+        religiousYes.classList.remove('selected');
+        religiousNo.classList.remove('selected');
+        selectedElement.classList.add('selected');
+    }
+
+    religiousYes.addEventListener('click', () => highlightReligiousSelection(religiousYes));
+    religiousNo.addEventListener('click', () => highlightReligiousSelection(religiousNo));
+});
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const raceSearch = document.getElementById('race-search');
+        const raceDropdown = document.getElementById('race-dropdown');
+        const selectedRaceList = document.getElementById('selected-race-list');
+    
+        // Show dropdown when the input is focused or clicked
+        raceSearch.addEventListener('focus', () => {
+            raceDropdown.classList.remove('hidden');
+        });
+    
+        // Filter dropdown items based on input
+        raceSearch.addEventListener('input', () => {
+            const filter = raceSearch.value.toLowerCase();
+            const items = raceDropdown.querySelectorAll('.dropdown-item');
+            items.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                item.style.display = text.includes(filter) ? 'block' : 'none';
+            });
+        });
+    
+        // Add selected race to the list
+        raceDropdown.addEventListener('click', (event) => {
+            if (event.target.classList.contains('dropdown-item')) {
+                const value = event.target.getAttribute('data-value');
+                const text = event.target.textContent;
+    
+                // Check if the race is already selected
+                if (!document.querySelector(`[data-value="${value}"].selected-item`)) {
+                    const raceItem = document.createElement('div');
+                    raceItem.classList.add('selected-item');
+                    raceItem.setAttribute('data-value', value);
+                    raceItem.innerHTML = `
+                        ${text}
+                        <span class="remove-item" data-value="${value}">&times;</span>
+                    `;
+                    selectedRaceList.appendChild(raceItem);
+    
+                    // Hide the selected item from the dropdown
+                    event.target.style.display = 'none';
+                }
+    
+                // Clear the input and hide the dropdown
+                raceSearch.value = '';
+                raceDropdown.classList.add('hidden');
+            }
+        });
+    
+        // Remove selected race from the list
+        selectedRaceList.addEventListener('click', (event) => {
+            if (event.target.classList.contains('remove-item')) {
+                const value = event.target.getAttribute('data-value');
+                const raceItem = document.querySelector(`[data-value="${value}"].selected-item`);
+                if (raceItem) {
+                    raceItem.remove();
+                }
+    
+                // Re-enable the option in the dropdown
+                const dropdownItem = Array.from(raceDropdown.children).find(item => item.getAttribute('data-value') === value);
+                if (dropdownItem) {
+                    dropdownItem.style.display = 'block';
+                }
+            }
+        });
+    
+        // Hide dropdown when clicking outside
+        document.addEventListener('click', (event) => {
+            if (!raceDropdown.contains(event.target) && event.target !== raceSearch) {
+                raceDropdown.classList.add('hidden');
+            }
+        });
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+    const hispanicSearch = document.getElementById('hispanic-search');
+    const hispanicDropdown = document.getElementById('hispanic-dropdown');
+    const selectedHispanic = document.getElementById('selected-hispanic');
+
+    // Show dropdown when the input is focused or clicked
+    hispanicSearch.addEventListener('focus', () => {
+        hispanicDropdown.classList.remove('hidden');
+    });
+
+    // Filter dropdown items based on input
+    hispanicSearch.addEventListener('input', () => {
+        const filter = hispanicSearch.value.toLowerCase();
+        const items = hispanicDropdown.querySelectorAll('.dropdown-item');
+        items.forEach(item => {
+            const text = item.textContent.toLowerCase();
+            item.style.display = text.includes(filter) ? 'block' : 'none';
+        });
+    });
+
+    // Add selected option to the field
+    hispanicDropdown.addEventListener('click', (event) => {
+        if (event.target.classList.contains('dropdown-item')) {
+            const value = event.target.getAttribute('data-value');
+            const text = event.target.textContent;
+
+            // Clear any existing selection
+            selectedHispanic.innerHTML = '';
+            const hispanicItem = document.createElement('div');
+            hispanicItem.classList.add('selected-item');
+            hispanicItem.setAttribute('data-value', value);
+            hispanicItem.innerHTML = `
+                ${text}
+                <span class="remove-item" data-value="${value}">&times;</span>
+            `;
+            selectedHispanic.appendChild(hispanicItem);
+
+            // Clear the input and hide the dropdown
+            hispanicSearch.value = '';
+            hispanicDropdown.classList.add('hidden');
+        }
+    });
+
+    // Remove selected option
+    selectedHispanic.addEventListener('click', (event) => {
+        if (event.target.classList.contains('remove-item')) {
+            selectedHispanic.innerHTML = '';
+        }
+    });
+
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', (event) => {
+        if (!hispanicDropdown.contains(event.target) && event.target !== hispanicSearch) {
+            hispanicDropdown.classList.add('hidden');
+        }
+    });
+});
+    </script>
 <label for="socialSecurityNumber">Social Security Number:</label>
 <input 
     type="text" 
@@ -798,10 +1107,9 @@ body {
 
     <div id="mealsQuestion" class="selection-box">
         <label>Is this person included in the SNAP household?</label>
-        <div id="modal-meals-yes" data-value="yes">Yes</div>
-        <div id="modal-meals-no" data-value="no">No</div>
+        <div id="modal-meals-yes" disabled data-value="yes" style="pointer-events: none; opacity: 0.5;">Yes</div>
+        <div id="modal-meals-no" disabled data-value="no" style="pointer-events: none; opacity: 0.5;">No</div>
     </div>
-
             <button type="button" id="add-member" class="submit-button">Add Member</button>
 
         </form>

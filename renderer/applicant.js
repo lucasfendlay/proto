@@ -162,12 +162,17 @@ if (membersToDisplay.size === 0) {
                         ? `<p class="household-member-info"><strong>Previous Marital Status:</strong> ${capitalizeFirstLetter(member.previousMaritalStatus)}</p>`
                         : ''
                     }
+                    <p class="household-member-info"><strong>Race:</strong> ${member.race && member.race.length > 0 ? member.race.map(r => capitalizeFirstLetter(r)).join(', ') : 'N/A'}</p>
+                    <p class="household-member-info"><strong>Hispanic Origin:</strong> ${member.hispanicOrigin ? capitalizeFirstLetter(member.hispanicOrigin) : 'N/A'}</p>
+                    <p class="household-member-info"><strong>Homebound:</strong> ${capitalizeFirstLetter(member.homebound || 'N/A')}</p>
+                    <p class="household-member-info"><strong>Military Service:</strong> ${capitalizeFirstLetter(member.military || 'N/A')}</p>
+                    <p class="household-member-info"><strong>Religious Order:</strong> ${capitalizeFirstLetter(member.religious || 'N/A')}</p>
                     <p class="household-member-info"><strong>SSN:</strong> ${member.socialSecurityNumber ? member.socialSecurityNumber : 'N/A'}</p>
                     <p class="household-member-info"><strong>Driver's License Number:</strong> ${member.driversLicenseNumber ? member.driversLicenseNumber : 'N/A'}</p>
-                    <p class="household-member-info"><strong>Disability:</strong> ${capitalizeFirstLetter(member.disability)}</p>
-                    <p class="household-member-info"><strong>Medicare:</strong> ${capitalizeFirstLetter(member.medicare)}</p>
-                    <p class="household-member-info"><strong>Medicaid:</strong> ${capitalizeFirstLetter(member.medicaid)}</p>
-                    <p class="household-member-info"><strong>US Citizen:</strong> ${capitalizeFirstLetter(member.citizen)}</p>
+                    <p class="household-member-info"><strong>Disability:</strong> ${capitalizeFirstLetter(member.disability || 'N/A')}</p>
+                    <p class="household-member-info"><strong>Medicare:</strong> ${capitalizeFirstLetter(member.medicare || 'N/A')}</p>
+                    <p class="household-member-info"><strong>Medicaid:</strong> ${capitalizeFirstLetter(member.medicaid || 'N/A')}</p>
+                    <p class="household-member-info"><strong>US Citizen:</strong> ${capitalizeFirstLetter(member.citizen || 'N/A')}</p>
                     ${
                         member.nonCitizenStatus && member.nonCitizenStatus.toLowerCase() !== 'citizen'
                             ? `<p class="household-member-info"><strong>Non-Citizen Status:</strong> ${capitalizeFirstLetter(member.nonCitizenStatus)}</p>`
@@ -798,7 +803,9 @@ async function addHouseholdMember() {
         const previousMaritalStatus = document.getElementById('previousMaritalStatus').value;
         const nonCitizenStatus = document.getElementById('nonCitizenStatus').value;
         const studentStatus = document.getElementById('studentStatus').value;
-        
+        const selectedRaces = Array.from(document.querySelectorAll('#selected-race-list .selected-item'))
+        .map(item => item.getAttribute('data-value'));
+        const hispanicOrigin = document.getElementById('hispanicOrigin')?.value || null;
         // Calculate age in Years, Months, and Days
         const calculateAge = (dob) => {
             const birthDate = new Date(dob);
@@ -829,7 +836,13 @@ async function addHouseholdMember() {
             { id: 'medicaid', elements: ['modal-medicaid-yes', 'modal-medicaid-no'] },
             { id: 'student', elements: ['modal-student-yes', 'modal-student-no'] },
             { id: 'meals', elements: ['modal-meals-yes', 'modal-meals-no'] },
-            { id: 'citizen', elements: ['modal-citizen-yes', 'modal-citizen-no'] }
+            { id: 'citizen', elements: ['modal-citizen-yes', 'modal-citizen-no'] },
+            { id: 'homebound', elements: ['modal-homebound-yes', 'modal-homebound-no'] },
+            { id: 'military', elements: ['modal-military-yes', 'modal-military-no'] },
+            { id: 'religious', elements: ['modal-religious-yes', 'modal-religious-no'] }
+            
+            // Add this line
+
         ];
 
         const answers = {};
@@ -886,6 +899,11 @@ async function addHouseholdMember() {
             previousMaritalStatus,
             nonCitizenStatus,
             studentStatus,
+            race: selectedRaces,
+            hispanicOrigin,
+            homebound: answers.homebound || 'N/A', // Default to 'no' if not selected
+            military: answers.military || 'N/A', // Default to 'no' if not selected
+            religious: answers.religious || 'N/A', // Default to 'no' if not selected
             ...answers,
             headOfHousehold: clientData.householdMembers.length === 0 // Automatically set as Head of Household if no members exist
 
@@ -982,51 +1000,73 @@ async function openEditModal(member) {
     document.getElementById('studentStatus').value = member.studentStatus || '';
     document.getElementById('nonCitizenStatus').value = member.nonCitizenStatus || '';
 
-    // Make SSN field read-only and add "Edit SSN" button if a valid 9-digit SSN exists
-const ssnInput = document.getElementById('socialSecurityNumber');
-const confirmSSNContainer = document.getElementById('confirmSSNContainer');
+    // Autofill the selected races
+    const selectedRaceList = document.getElementById('selected-race-list');
+    selectedRaceList.innerHTML = ''; // Clear any existing selections
+    if (member.race && Array.isArray(member.race)) {
+        member.race.forEach((race) => {
+            const raceItem = document.createElement('div');
+            raceItem.classList.add('selected-item');
+            raceItem.setAttribute('data-value', race);
+            raceItem.innerHTML = `
+                ${race}
+                <span class="remove-item" data-value="${race}">&times;</span>
+            `;
+            selectedRaceList.appendChild(raceItem);
+        });
+    }
 
-if (ssnInput.value && /^\d{3}-\d{2}-\d{4}$/.test(ssnInput.value)) { // Check if SSN is in the format xxx-xx-xxxx
-    const editSSNButton = document.createElement('button'); // Create the "Edit SSN" button
-    ssnInput.readOnly = true; // Make the SSN field read-only
-    confirmSSNContainer.style.display = 'none'; // Hide the confirm SSN container
-
-    // Configure the "Edit SSN" button
-    editSSNButton.id = 'editSSNButton';
-    editSSNButton.textContent = 'Edit SSN';
-
-    // Apply the same styles as #nextSSNButton
-    editSSNButton.style.display = 'inline-block';
-    editSSNButton.style.marginTop = '10px';
-    editSSNButton.style.padding = '10px 15px';
-    editSSNButton.style.cursor = 'pointer';
-    editSSNButton.style.border = '1px solid #000000';
-    editSSNButton.style.borderRadius = '5px';
-    editSSNButton.style.transition = 'background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease';
-
-    // Add hover effect
-    editSSNButton.addEventListener('mouseover', () => {
-        editSSNButton.style.backgroundColor = '#0056b3';
-        editSSNButton.style.color = 'white';
-        editSSNButton.style.borderColor = '#003f7f';
-    });
-    editSSNButton.addEventListener('mouseout', () => {
-        editSSNButton.style.backgroundColor = '';
-        editSSNButton.style.color = '';
-        editSSNButton.style.borderColor = '#000000';
-    });
-
-// Add a click event listener to trigger the resetSSN function
-editSSNButton.addEventListener('click', (event) => {
-    event.preventDefault(); // Prevent the default button behavior
-    resetSSNFields(); // Call the resetSSN function
-    ssnInput.readOnly = false; // Re-enable the SSN input field
-    editSSNButton.style.display = 'none'; // Hide the "Edit SSN" button
-});
-
-    // Insert the "Edit SSN" button after the SSN input field
-    ssnInput.parentNode.insertBefore(editSSNButton, ssnInput.nextSibling);
+// Autofill the selected Hispanic origin
+const hispanicOriginSelect = document.getElementById('hispanicOrigin');
+if (hispanicOriginSelect) {
+    hispanicOriginSelect.value = member.hispanicOrigin || ''; // Set the value of the <select> element
 }
+
+    // Make SSN field read-only and add "Edit SSN" button if a valid 9-digit SSN exists
+    const ssnInput = document.getElementById('socialSecurityNumber');
+    const confirmSSNContainer = document.getElementById('confirmSSNContainer');
+
+    if (ssnInput.value && /^\d{3}-\d{2}-\d{4}$/.test(ssnInput.value)) { // Check if SSN is in the format xxx-xx-xxxx
+        const editSSNButton = document.createElement('button'); // Create the "Edit SSN" button
+        ssnInput.readOnly = true; // Make the SSN field read-only
+        confirmSSNContainer.style.display = 'none'; // Hide the confirm SSN container
+
+        // Configure the "Edit SSN" button
+        editSSNButton.id = 'editSSNButton';
+        editSSNButton.textContent = 'Edit SSN';
+
+        // Apply the same styles as #nextSSNButton
+        editSSNButton.style.display = 'inline-block';
+        editSSNButton.style.marginTop = '10px';
+        editSSNButton.style.padding = '10px 15px';
+        editSSNButton.style.cursor = 'pointer';
+        editSSNButton.style.border = '1px solid #000000';
+        editSSNButton.style.borderRadius = '5px';
+        editSSNButton.style.transition = 'background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease';
+
+        // Add hover effect
+        editSSNButton.addEventListener('mouseover', () => {
+            editSSNButton.style.backgroundColor = '#0056b3';
+            editSSNButton.style.color = 'white';
+            editSSNButton.style.borderColor = '#003f7f';
+        });
+        editSSNButton.addEventListener('mouseout', () => {
+            editSSNButton.style.backgroundColor = '';
+            editSSNButton.style.color = '';
+            editSSNButton.style.borderColor = '#000000';
+        });
+
+        // Add a click event listener to trigger the resetSSN function
+        editSSNButton.addEventListener('click', (event) => {
+            event.preventDefault(); // Prevent the default button behavior
+            resetSSNFields(); // Call the resetSSN function
+            ssnInput.readOnly = false; // Re-enable the SSN input field
+            editSSNButton.style.display = 'none'; // Hide the "Edit SSN" button
+        });
+
+        // Insert the "Edit SSN" button after the SSN input field
+        ssnInput.parentNode.insertBefore(editSSNButton, ssnInput.nextSibling);
+    }
 
     // Step 3: Highlight the selected options for modal questions
     const modalQuestions = [
@@ -1035,7 +1075,11 @@ editSSNButton.addEventListener('click', (event) => {
         { id: 'medicaid', elements: ['modal-medicaid-yes', 'modal-medicaid-no'] },
         { id: 'student', elements: ['modal-student-yes', 'modal-student-no'] },
         { id: 'meals', elements: ['modal-meals-yes', 'modal-meals-no'] },
-        { id: 'citizen', elements: ['modal-citizen-yes', 'modal-citizen-no'] }
+        { id: 'citizen', elements: ['modal-citizen-yes', 'modal-citizen-no'] },
+        { id: 'homebound', elements: ['modal-homebound-yes', 'modal-homebound-no'] },
+        { id: 'military', elements: ['modal-military-yes', 'modal-military-no'] },
+        { id: 'religious', elements: ['modal-religious-yes', 'modal-religious-no'] }
+
     ];
 
     modalQuestions.forEach((question) => {
@@ -1089,7 +1133,7 @@ editSSNButton.addEventListener('click', (event) => {
             previousMaritalStatusContainer.style.display = 'none'; // Hide the dropdown
             document.getElementById('previousMaritalStatus').disabled = false; // Keep it enabled even if hidden
         }
-        }
+    }
 
     // Step 5: Set up the button for updating the member
     setupAddOrUpdateButton(true, member);
@@ -1120,6 +1164,12 @@ async function updateHouseholdMember(memberId) {
         const previousMaritalStatus = document.getElementById('previousMaritalStatus').value;
         const nonCitizenStatus = document.getElementById('nonCitizenStatus').value;
         const studentStatus = document.getElementById('studentStatus').value;
+        const hispanicOrigin = document.getElementById('hispanicOrigin')?.value || null;
+
+        // Gather the selected races
+        const selectedRaces = Array.from(document.querySelectorAll('#selected-race-list .selected-item'))
+            .map(item => item.getAttribute('data-value'));
+
 
         // Calculate age in Years, Months, and Days
         const calculateAge = (dob) => {
@@ -1151,7 +1201,10 @@ async function updateHouseholdMember(memberId) {
             { id: 'medicaid', elements: ['modal-medicaid-yes', 'modal-medicaid-no'] },
             { id: 'student', elements: ['modal-student-yes', 'modal-student-no'] },
             { id: 'meals', elements: ['modal-meals-yes', 'modal-meals-no'] },
-            { id: 'citizen', elements: ['modal-citizen-yes', 'modal-citizen-no'] }
+            { id: 'citizen', elements: ['modal-citizen-yes', 'modal-citizen-no'] },
+            { id: 'homebound', elements: ['modal-homebound-yes', 'modal-homebound-no'] }, // Add this line
+            { id: 'military', elements: ['modal-military-yes', 'modal-military-no'] },
+            { id: 'religious', elements: ['modal-religious-yes', 'modal-religious-no'] }
         ];
 
         const answers = {};
@@ -1174,11 +1227,6 @@ async function updateHouseholdMember(memberId) {
             answers.studentStatus = 'notstudent';
         }
 
-                // Check if previousMaritalStatus is not "Married (Living Together)"
-                if (previousMaritalStatus !== 'Married (Living Together)') {
-                    updatedMemberData.previousSpouseId = null; // Set previousSpouseId to null
-                }
-
         // Prepare the updated data
         const updatedMemberData = {
             householdMemberId: memberId,
@@ -1196,8 +1244,18 @@ async function updateHouseholdMember(memberId) {
             previousMaritalStatus,
             studentStatus,
             nonCitizenStatus,
+            race: selectedRaces, // Add selected races
+            hispanicOrigin: hispanicOrigin,
+            homebound: answers.homebound || 'N/A', // Default to 'no' if not selected
+            military: answers.military || 'N/A',
+            religious: answers.religious || 'N/A',
             ...answers,
         };
+
+        // Check if previousMaritalStatus is not "Married (Living Together)"
+        if (previousMaritalStatus !== 'Married (Living Together)') {
+            updatedMemberData.previousSpouseId = null; // Set previousSpouseId to null
+        }
 
         // If nonCitizenStatus is "ineligible non-citizen", set meals to "no"
         if (nonCitizenStatus.toLowerCase() === 'ineligible non-citizen') {
