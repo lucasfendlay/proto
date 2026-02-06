@@ -213,6 +213,10 @@ if (showApplicationEdit) {
 
     // Insert the navigation container at the very top of the body
     document.body.insertBefore(navigationContainer, document.body.firstChild);
+    // Add a border line below the navigation container
+    navigationContainer.style.borderBottom = '2px solid #ccc';
+    navigationContainer.style.paddingBottom = '10px';
+    navigationContainer.style.marginBottom = '10px';
 }
 
 // Call this function on DOMContentLoaded to ensure the buttons are added to the page
