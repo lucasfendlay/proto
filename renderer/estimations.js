@@ -2602,7 +2602,7 @@ function createStopScreeningButton() {
 
                 // 5. Add a note
                 const note = {
-                    text: '<strong>New screening started.</strong>',
+                    text: '<strong>New screening initiated.</strong>',
                     timestamp: new Date().toLocaleString(),
                     username: activeUser
                 };
