@@ -5,6 +5,12 @@ document.addEventListener('DOMContentLoaded', async function () {
     const closeModal = document.getElementById('close-modal'); // Close button
     let currentMemberId = null;
 
+    // Hide the main content until fully loaded
+    const mainContent = document.querySelector('.main-content') || document.body;
+    mainContent.style.visibility = 'hidden';
+    mainContent.style.opacity = '0';
+    mainContent.style.transition = 'opacity 0.3s ease';
+
     function getQueryParameter(name) {
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.get(name);
@@ -40,13 +46,13 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     }
 
-async function displayHouseholdMembers() {
-    const householdMemberContainer = document.getElementById('household-members-container');
-    const members = await loadHouseholdMembers();
-
-    householdMemberContainer.innerHTML = ''; // Clear existing content
-
-    const clientId = getQueryParameter('id');
+    async function displayHouseholdMembers(prefetchedMembers) {
+        const householdMemberContainer = document.getElementById('household-members-container');
+        const members = prefetchedMembers || await loadHouseholdMembers();
+    
+        householdMemberContainer.innerHTML = ''; // Clear existing content
+    
+        const clientId = getQueryParameter('id');
 
     if (members.length === 0) {
         const noMembersMessage = document.createElement('p');
@@ -273,7 +279,7 @@ async function displayHouseholdMembers() {
                                 const memberName = `${capitalizeFirstLetter(targetMember.firstName)} ${capitalizeFirstLetter(targetMember.lastName)}`;
                                 await addNoteToClient(clientId, `<strong>${benefit} screening reopened for ${memberName}.</strong>`);
                                 await renderNotesContainer();
-                                await displayHouseholdMembers();
+                                await refreshAllDisplays();
                             } else {
                                 console.error(`Failed to reopen ${benefit} screening.`);
                             }
@@ -535,7 +541,7 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
                 const benefitList = selectedBenefits.join('<br>');
                 await addNoteToClient(clientId, `<strong>Screening(s) closed for ${memberName}.</strong><br><br>${benefitList} <br><br> Reason: ${reason}`);
                 await renderNotesContainer();
-                await displayHouseholdMembers();
+                await refreshAllDisplays();
             } else {
                 console.error('Failed to close screening.');
             }
@@ -545,17 +551,17 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
     });
 }
 
-    async function displaySNAPHouseholds() {
-        const snapHouseholdContainer = document.getElementById('snap-household-container');
-        if (!snapHouseholdContainer) {
-            console.error('snap-household-container element not found in the DOM.');
-            return;
-        }
-    
-        const members = await loadHouseholdMembers();
-        snapHouseholdContainer.innerHTML = ''; // Clear existing content
-    
-        const clientId = getQueryParameter('id');
+async function displaySNAPHouseholds(prefetchedMembers) {
+    const snapHouseholdContainer = document.getElementById('snap-household-container');
+    if (!snapHouseholdContainer) {
+        console.error('snap-household-container element not found in the DOM.');
+        return;
+    }
+
+    const members = prefetchedMembers || await loadHouseholdMembers();
+    snapHouseholdContainer.innerHTML = ''; // Clear existing content
+
+    const clientId = getQueryParameter('id');
     
         // Check if any SNAP household member has screening closed
         const snapMembers = members.filter(m => m.meals?.toLowerCase() === "yes");
@@ -601,7 +607,7 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
                     if (saveResponse.ok) {
                         await addNoteToClient(clientId, '<strong>SNAP screening reopened.</strong>');
                         await renderNotesContainer();
-                        await displaySNAPHouseholds(); // Re-render
+                        await refreshAllDisplays();
                     } else {
                         console.error('Failed to reopen SNAP screening.');
                     }
@@ -789,7 +795,7 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
                     modal.style.display = 'none';
                     await addNoteToClient(clientId, `<strong>SNAP screening closed.</strong><br><br> Reason: ${reason}`);
                     await renderNotesContainer();
-                    await displaySNAPHouseholds(); // Re-render
+                    await refreshAllDisplays();
                 } else {
                     console.error('Failed to close SNAP screening.');
                 }
@@ -838,29 +844,42 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
         }
     }
 
-    async function displayLIHEAPHouseholds() {
-        const liheapHouseholdContainer = document.getElementById('liheap-household-container');
-        if (!liheapHouseholdContainer) {
-            console.error('liheap-household-container element not found in the DOM.');
-            return;
+        // Batch all display refreshes into a single function to avoid visual stutter
+        async function refreshAllDisplays() {
+            // Fetch data once, then pass to all display functions
+            const freshMembers = await loadHouseholdMembers();
+            const clientId = getQueryParameter('id');
+            const clientRes = await fetch(`/get-client/${clientId}`);
+            const freshClient = clientRes.ok ? await clientRes.json() : null;
+    
+            await displayHouseholdMembers(freshMembers);
+            await displaySNAPHouseholds(freshMembers);
+            await displayLIHEAPHouseholds(freshMembers, freshClient);
         }
-    
-        const members = await loadHouseholdMembers();
-        liheapHouseholdContainer.innerHTML = ''; // Clear existing content
 
-        // Exclude deceased members from LIHEAP household display
-        const activeMembersForLIHEAP = members.filter(
-            m => (m.deceased ?? '').toLowerCase() !== 'yes'
-        );
+        async function displayLIHEAPHouseholds(prefetchedMembers, prefetchedClient) {
+            const liheapHouseholdContainer = document.getElementById('liheap-household-container');
+            if (!liheapHouseholdContainer) {
+                console.error('liheap-household-container element not found in the DOM.');
+                return;
+            }
+        
+            const members = prefetchedMembers || await loadHouseholdMembers();
+            liheapHouseholdContainer.innerHTML = ''; // Clear existing content
     
-        // Check if client is not interested in LIHEAP
-        const clientId = getQueryParameter('id');
-        const client = await fetch(`/get-client/${clientId}`)
-            .then(response => response.json())
-            .catch(error => {
-                console.error('Error fetching client data:', error);
-                return null;
-            });
+            // Exclude deceased members from LIHEAP household display
+            const activeMembersForLIHEAP = members.filter(
+                m => (m.deceased ?? '').toLowerCase() !== 'yes'
+            );
+        
+            // Check if client is not interested in LIHEAP
+            const clientId = getQueryParameter('id');
+            const client = prefetchedClient || await fetch(`/get-client/${clientId}`)
+                .then(response => response.json())
+                .catch(error => {
+                    console.error('Error fetching client data:', error);
+                    return null;
+                });
     
         if (client && client.liheapEnrollment === 'notinterested') {
             const notInterestedMessage = document.createElement('p');
@@ -909,7 +928,7 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
                     if (saveResponse.ok) {
                         await addNoteToClient(clientId, '<strong>LIHEAP screening reopened.</strong>');
                         await renderNotesContainer();
-                        await displayLIHEAPHouseholds();
+                        await refreshAllDisplays();
                     } else {
                         console.error('Failed to reopen LIHEAP screening.');
                     }
@@ -1044,7 +1063,7 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
                     modal.style.display = 'none';
                     await addNoteToClient(clientId, `<strong>LIHEAP screening closed.</strong><br><br> Reason: ${reason}`);
                     await renderNotesContainer();
-                    await displayLIHEAPHouseholds();
+                    await refreshAllDisplays();
                 } else {
                     console.error('Failed to close LIHEAP screening.');
                 }
@@ -1056,24 +1075,23 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
 
 // After PACEEligibilityCheck, reload and display updated household members
 async function updateAndDisplayHouseholdMembers() {
-    const clientId = getQueryParameter('id'); // Get the client ID from the query parameter
+    const clientId = getQueryParameter('id');
     if (!clientId) {
         console.error('Client ID not found in query parameters.');
         return;
     }
 
     try {
-        // Fetch the updated client data from the backend
         const response = await fetch(`/get-client/${clientId}`);
         if (!response.ok) {
             throw new Error(`Failed to fetch updated client data: ${response.statusText}`);
         }
 
-        const updatedMembers = await response.json();
+        const updatedClient = await response.json();
 
-        if (updatedMembers && updatedMembers.householdMembers) {
-            console.log('Updated household members:', updatedMembers.householdMembers);
-            displayHouseholdMembers(); // Refresh the UI with updated data
+        if (updatedClient && updatedClient.householdMembers) {
+            console.log('Updated household members:', updatedClient.householdMembers);
+            await displayHouseholdMembers(updatedClient.householdMembers);
         } else {
             console.error('Failed to retrieve updated household members.');
         }
@@ -2501,16 +2519,13 @@ await LISEligibilityCheck(members);
 await MSPEligibilityCheck(members);
 await PTRREligibilityCheck(members);
 await SNAPEligibilityCheck(members, client.isFarmworker);
-
-// Initialize LIHEAP eligibility check and update the UI
 await LIHEAPEligibilityCheck(members);
-await displayLIHEAPHouseholds();
 
 // Update and display household members after eligibility checks
 await updateAndDisplayHouseholdMembers();
 
- // Call this function after eligibility checks
- await displaySNAPHouseholds();
+ // Refresh all displays after all eligibility checks are complete
+ await refreshAllDisplays();
 
 // Add "Stop Screening" button at the top of the estimations container
 function createStopScreeningButton() {
@@ -2630,13 +2645,7 @@ function createStopScreeningButton() {
                 if (snapHouseholdContainer) snapHouseholdContainer.style.display = '';
                 if (liheapHouseholdContainer) liheapHouseholdContainer.style.display = '';
 
-                // Show the left sidebar again
-                const leftSidebar = document.getElementById('leftSidebarContainer');
-                if (leftSidebar) leftSidebar.style.display = 'flex';
-
-                await displayHouseholdMembers();
-                await displaySNAPHouseholds();
-                await displayLIHEAPHouseholds();
+                await refreshAllDisplays();
             } catch (error) {
                 console.error('Error reopening all screening:', error);
             }
@@ -2819,9 +2828,7 @@ async function openStopScreeningModal() {
             if (snapHouseholdContainer) snapHouseholdContainer.style.display = 'none';
             if (liheapHouseholdContainer) liheapHouseholdContainer.style.display = 'none';
 
-            await displayHouseholdMembers();
-            await displaySNAPHouseholds();
-            await displayLIHEAPHouseholds();
+            await refreshAllDisplays();
         } catch (error) {
             console.error('Error closing all screening:', error);
         }
@@ -2830,7 +2837,7 @@ async function openStopScreeningModal() {
 
 createStopScreeningButton();
 
- // Expose functions globally
+// Expose functions globally
 window.eligibilityChecks = {
     loadHouseholdMembers,
     displayHouseholdMembers,
@@ -2841,14 +2848,12 @@ window.eligibilityChecks = {
     MSPEligibilityCheck,
     PTRREligibilityCheck,
     SNAPEligibilityCheck,
-    displayLIHEAPHouseholds
-
+    displayLIHEAPHouseholds,
+    LIHEAPEligibilityCheck
 };
 
-// Ensure the global object exists
-window.eligibilityChecks = window.eligibilityChecks || {};
-
-// Add LIHEAPEligibilityCheck to the global object
-window.eligibilityChecks.LIHEAPEligibilityCheck = LIHEAPEligibilityCheck;
+    // Show the page now that everything is loaded
+    mainContent.style.visibility = 'visible';
+    mainContent.style.opacity = '1';
 
 });
