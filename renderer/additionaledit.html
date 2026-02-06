@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Additional</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="notes.css">
+    <link rel="stylesheet" href="householdedit.css">
+
+    <script src="userInfo.js"></script>
+    <style>
+        /* Sidebar header styling */
+        .sidebar-header {
+            display: fixed;
+            justify-items: center;
+            text-align: center;
+            margin-bottom: 20px;
+            width: 300px;
+            margin: 0 auto;
+        }
+        .sidebar-header .button-container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+        /* Contacts list container */
+        #contacts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 300px;
+            margin: 0 auto;
+            max-height: 1000px;
+            overflow-y: auto;
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        /* Individual sidebar items */
+        .left-sidebar {
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin: 0 auto;
+            width: 280px;
+            transform: translateX(-8px);
+        }
+        .left-sidebar strong { font-weight: bold; }
+        .button-container { display: flex; gap: 10px; flex-wrap: wrap; }
+        .button-container button {
+            flex: 1; padding: 10px 15px;
+            border: 1px solid #000000; border-radius: 5px;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+        .button-container button:hover {
+            background-color: #0056b3; color: white; border-color: #003f7f;
+        }
+        .narrow-body { margin-left: 385px; margin-right: 10px; max-width: calc(100% - 395px); margin: 0 auto; margin-top: 60px; }
+        /* Modal */
+        .contactmodal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: scroll;
+        }
+        /* Match applicationedit modal layout */
+        .contactmodal-content {
+            background-color: transparent;
+            border-radius: 0px;
+            width: 90%;
+            max-width: 500px;
+            padding: 0px;
+            position: absolute;
+            top: 50%;
+            left: 46.8%;
+            transform: translate(-50%, -50%);
+            text-align: left;
+        }
+
+        /* Inner white card like applicationedit .modal-content */
+        .modal-content {
+            background-color: transparent;
+border-radius: px;
+width: 90%; /* Adjust width for responsiveness */
+max-width: 500px; /* Limit the modal width */
+padding: 0px;
+position: absolute; /* Position relative to the modal container */
+text-align: left;
+        }
+
+        .error { border: 2px solid red; background-color: #ffe6e6; }
+            </style>
+</head>
+<body class="narrow-body">
+    <h1>Additional</h1>
+
+    <!-- Left contacts sidebar -->
+    <div class="left-sidebar-container" id="contactsSidebarContainer">
+        <div class="sidebar-header">
+            <h2>Authorized Representative</h2>
+        </div>
+        <div id="contacts-list" class="left-sidebar"></div>
+    </div>
+
+    <!-- Notes -->
+    <div id="notes-container">
+        <textarea id="note-input" placeholder="Add Note..."></textarea>
+        <button id="save-note">Save Note</button>
+        <div id="notes-list"></div>
+    </div>
+
+    <!-- Authorized Representative dropdown -->
+    <div class="form-field">
+        <label for="authorizedRepresentativeSelect">Would you like to add an Authorized Representative?</label>
+        <select id="authorizedRepresentativeSelect" name="authorizedRepresentativeSelect">
+            <option value="" disabled selected>Select Authorized Representative</option>
+            <!-- Static options added -->
+            <option value="__NO__">No</option>
+            <option value="__ADD__">Add Authorized Representative</option>
+        </select>
+    </div>
+
+    <!-- Contact Modal -->
+    <div id="contactModal" class="contactmodal" style="display: none;">
+        <div class="modal-content">
+            <form id="contactForm">
+                <h2 id="modal-title">Add Authorized Representative</h2>
+                <label for="contactFirstName">First Name:</label>
+                <input type="text" id="contactFirstName" required>
+                <label for="contactLastName">Last Name:</label>
+                <input type="text" id="contactLastName" required>
+                <label for="contactPhoneNumber">Phone Number:</label>
+                <input type="text" id="contactPhoneNumber" required>
+                <label for="authorizedRepresentativeStreetAddress">Street Address:</label>
+                <input type="text" id="authorizedRepresentativeStreetAddress" placeholder="Street Address"></textarea>
+                <label for="authorizedRepresentativeStreetAddress2">Street Address 2:</label>
+                <input type="text" id="authorizedRepresentativeStreetAddress2" placeholder="Street Address Line 2"></textarea>
+                <label for="authorizedRepresentativeCity">City:</label>
+                <input type="text" id="authorizedRepresentativeCity" placeholder="City">
+                <label for="authorizedRepresentativeState">State:</label>
+                <input type="text" id="authorizedRepresentativeState" placeholder="State">
+                <label for="authorizedRepresentativeZipCode">Zip Code:</label>
+                <input type="text" id="authorizedRepresentativeZipCode" placeholder="Zip Code">
+                <label for="canSign">Can this person sign and submit the application(s) on behalf of applicant(s)?</label>
+                <select id="canSign">
+                    <option value disabled="selected">Select an option</option>
+                    <option value="yes" selected>Yes</option>
+                    <option value="no">No</option>
+                </select>
+                <label for="canReceiveMail">Can this person receive mail on behalf of applicant(s)?</label>
+                <select id="canReceiveMail">
+                    <option value disabled="selected">Select an option</option>
+                    <option value="yes" selected>Yes</option>
+                    <option value="no">No</option>
+                </select>
+                <label for="canCompleteInterview">Can this person complete interview on behalf of applicant(s)?</label>
+                <select id="canCompleteInterview">
+                    <option value disabled="selected">Select an option</option>
+                    <option value="yes" selected>Yes</option>
+                    <option value="no">No</option>
+                </select>
+                <label for="canReportChanges">Can this person report household changes on behalf of applicant(s)?</label>
+                <select id="canReportChanges">
+                    <option value disabled="selected">Select an option</option>
+                    <option value="yes" selected>Yes</option>
+                    <option value="no">No</option>
+                </select>
+                <label for="canUseBenefit">Can this person use the benefit(s) behalf of applicant(s)?</label>
+                <select id="canUseBenefit">
+                    <option value disabled="selected">Select an option</option>
+                    <option value="yes" selected>Yes</option>
+                    <option value="no">No</option>
+                </select>
+                <div class="button-container">
+                    <button type="button" onclick="saveAuthorizedRepresentative()">Save</button>
+                    <button type="button" onclick="closeContactModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="ptrr-deceased-container"></div>
+
+    <script src="editnavigation.js"></script>
+    <script src="notes.js"></script>
+
+    <script>
+    // Utility
+    function getQueryParam(name) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(name);
+    }
+
+    // Global client
+    let client = null;
+    let editingContactIndex = null;
+
+    // Load client and init UI
+    document.addEventListener('DOMContentLoaded', async () => {
+        const clientId = getQueryParam('id');
+        if (!clientId) { console.error('Client ID not found in query parameters.'); return; }
+
+        try {
+            const response = await fetch(`/get-client/${clientId}`);
+            if (!response.ok) throw new Error(`Failed to fetch client data: ${response.statusText}`);
+            client = await response.json();
+            renderAuthorizedRepresentative(); // was renderContacts()
+            populateAuthorizedRepresentativeDropdown();
+            // Initialize notes UI from notes.js
+        } catch (err) {
+            console.error('Error loading client data:', err);
+        }
+    });
+
+    // Replace contacts rendering with Authorized Representative rendering
+// Render AR details (Address line uses a break between address2 and city)
+function renderAuthorizedRepresentative() {
+    const container = document.getElementById('contacts-list');
+    container.innerHTML = '';
+
+    if (client?.authorizedRepresentativeAdded === false) {
+        container.innerHTML = '<p>No Authorized Representative</p>';
+        return;
+    }
+
+    const arList = Array.isArray(client?.authorizedRepresentatives) ? client.authorizedRepresentatives : [];
+    const ar = arList[0];
+
+    if (!ar || String(ar.authorizedRepresentative).toLowerCase() !== 'yes') {
+        container.innerHTML = '<p>No Authorized Representative</p>';
+        return;
+    }
+
+    const div = document.createElement('div');
+    div.classList.add('left-sidebar');
+
+    const addressParts = [
+        ar.streetAddress,
+        ar.streetAddress2,
+        ar.city && '<br>' + ar.city,
+        ar.state,
+        ar.zipCode
+    ].filter(Boolean);
+    const fullAddress = addressParts.length ? addressParts.join(', ') : 'N/A';
+
+    div.innerHTML = `
+        <p><strong>Name:</strong><br> ${ar.firstName?.toUpperCase() || 'N/A'} ${ar.lastName?.toUpperCase() || ''}</p>
+        <p><strong>Phone:</strong><br> ${formatPhoneNumber(ar.phoneNumber) || 'N/A'}</p>
+        <p><strong>Address:</strong><br> ${fullAddress.toUpperCase()}</p>
+        <p><strong>Sign/Submit Permission:</strong><br> ${(ar.canSign || 'N/A').toUpperCase()}</p>
+        <p><strong>Mail Permission:</strong><br> ${(ar.canReceiveMail || 'N/A').toUpperCase()}</p>
+        <p><strong>Interview Permission:</strong><br> ${(ar.canCompleteInterview || 'N/A').toUpperCase()}</p>
+        <p><strong>Report Changes Permission:</strong><br> ${(ar.canReportChanges || 'N/A').toUpperCase()}</p>
+        <p><strong>Use Benefit Permission:</strong><br> ${(ar.canUseBenefit || 'N/A').toUpperCase()}</p>
+        <div class="button-container">
+            <button type="button" onclick="openContactModal(${JSON.stringify(ar).replace(/"/g, '&quot;')})">Edit Authorized Representative</button>
+        </div>
+    `;
+    container.appendChild(div);
+}
+// Dedicated AR modal open (accept optional prefill)
+function openContactModal(prefill = null) {
+    const modal = document.getElementById('contactModal');
+    const modalTitle = document.getElementById('modal-title');
+    const firstNameInput = document.getElementById('contactFirstName');
+    const lastNameInput = document.getElementById('contactLastName');
+    const phoneNumberInput = document.getElementById('contactPhoneNumber');
+    const streetAddressInput = document.getElementById('authorizedRepresentativeStreetAddress');
+    const streetAddress2Input = document.getElementById('authorizedRepresentativeStreetAddress2')
+    const cityInput = document.getElementById('authorizedRepresentativeCity');
+    const stateInput = document.getElementById('authorizedRepresentativeState');
+    const zipCodeInput = document.getElementById('authorizedRepresentativeZipCode');
+    const canReceiveMailSelect = document.getElementById('canReceiveMail');
+    const canCompleteInterviewSelect = document.getElementById('canCompleteInterview');
+    const canSignSelect = document.getElementById('canSign');
+    const canReportChangesSelect = document.getElementById('canReportChanges');
+    const canUseBenefitSelect = document.getElementById('canUseBenefit');
+    const buttonContainer = modal.querySelector('.button-container');
+
+    modalTitle.textContent = prefill ? 'Edit Authorized Representative' : 'Add Authorized Representative';
+    firstNameInput.value = prefill?.firstName || '';
+    lastNameInput.value = prefill?.lastName || '';
+    phoneNumberInput.value = prefill?.phoneNumber || '';
+    streetAddressInput.value = prefill?.streetAddress || '';
+    streetAddress2Input.value = prefill?.streetAddress2 || '';
+    cityInput.value = prefill?.city || '';
+    stateInput.value = prefill?.state || '';
+    zipCodeInput.value = prefill?.zipCode || '';
+    canReceiveMailSelect.value = (prefill?.canReceiveMail || '');
+    canCompleteInterviewSelect.value = (prefill?.canCompleteInterview || '');
+    canSignSelect.value = (prefill?.canSign || '');
+    canReportChangesSelect.value = (prefill?.canReportChanges || '');
+    canUseBenefitSelect.value = (prefill?.canUseBenefit || '');
+
+    buttonContainer.innerHTML = `
+        <button type="button" onclick="saveAuthorizedRepresentative()">Save</button>
+        <button type="button" onclick="closeContactModal()">Cancel</button>
+    `;
+
+    modal.style.display = 'block';
+}
+
+// Keep close behavior
+function closeContactModal() {
+    document.getElementById('contactModal').style.display = 'none';
+}
+window.addEventListener('click', (event) => {
+    const modal = document.getElementById('contactModal');
+    const modalContent = modal.querySelector('.modal-content');
+    if (event.target === modal && !modalContent.contains(event.target)) closeContactModal();
+});
+
+// Save Authorized Representative (overwrite existing, then auto-select it)
+async function saveAuthorizedRepresentative() {
+    const clientId = getQueryParam('id');
+    if (!clientId) { alert('Missing client id'); return; }
+
+    const firstName = document.getElementById('contactFirstName').value.trim();
+    const lastName = document.getElementById('contactLastName').value.trim();
+    const phoneNumber = document.getElementById('contactPhoneNumber').value.trim();
+    const streetAddress = document.getElementById('authorizedRepresentativeStreetAddress').value.trim();
+    const streetAddress2 = document.getElementById('authorizedRepresentativeStreetAddress2').value.trim();
+    const city = document.getElementById('authorizedRepresentativeCity').value.trim();
+    const state = document.getElementById('authorizedRepresentativeState').value.trim();
+    const zipCode = document.getElementById('authorizedRepresentativeZipCode').value.trim();
+    const canReceiveMail = document.getElementById('canReceiveMail').value;
+    const canCompleteInterview = document.getElementById('canCompleteInterview').value;
+    const canSign = document.getElementById('canSign').value;
+    const canReportChanges = document.getElementById('canReportChanges').value;
+    const canUseBenefit = document.getElementById('canUseBenefit').value;
+
+    if (!firstName || !lastName || !phoneNumber || !streetAddress || !city || !state || !zipCode || !canReceiveMail || !canCompleteInterview || !canSign || !canReportChanges || !canUseBenefit) {
+        alert('Please fill in all required fields.');
+        return;
+    }
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(phoneNumber)) {
+        alert('Please enter a valid phone number with exactly 10 digits (no formatting).');
+        document.getElementById('contactPhoneNumber').classList.add('error');
+        return;
+    }
+
+    const arEntry = {
+        firstName,
+        lastName,
+        phoneNumber,
+        authorizedRepresentative: 'yes', // always authorized; modal manages AR details
+        canReceiveMail, // 'yes' or 'no'
+        canCompleteInterview,
+        canSign,
+        canReportChanges,
+        canUseBenefit,
+        streetAddress,
+        streetAddress2,
+        city,
+        state,
+        zipCode,
+    };
+
+    const newArray = [arEntry]; // enforce single AR
+
+    try {
+        const resp = await fetch('/update-client', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                clientId,
+                clientData: {
+                    authorizedRepresentatives: newArray,
+                    authorizedRepresentativeAdded: true
+                }
+            })
+        });
+        if (!resp.ok) throw new Error((await resp.json())?.message || 'Failed to save Authorized Representative');
+
+        client.authorizedRepresentatives = newArray;
+        client.authorizedRepresentativeAdded = true;
+
+        populateAuthorizedRepresentativeDropdown();
+        renderAuthorizedRepresentative();
+        const dropdown = document.getElementById('authorizedRepresentativeSelect');
+        dropdown.value = 'ar-manual-0'; // single manual entry
+        closeContactModal();
+    } catch (e) {
+        console.error(e);
+        alert('Could not save Authorized Representative. Please try again.');
+    }
+}
+
+    // Format phone
+    function formatPhoneNumber(phone) {
+        if (!phone) return '';
+        const cleaned = phone.replace(/\D/g, '');
+        const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/);
+        return match ? `(${match[1]})-${match[2]}-${match[3]}` : phone;
+    }
+
+// Authorized Representative dropdown population and save
+function populateAuthorizedRepresentativeDropdown() {
+    const dropdown = document.getElementById('authorizedRepresentativeSelect');
+    const currentSelection = dropdown.value;
+
+    // Reset with "No" only; we'll append dynamic ARs and then "Add"
+    dropdown.innerHTML = `
+        <option value="" disabled>Select Authorized Representative</option>
+        <option value="__NO__">No</option>
+    `;
+
+    // Contacts-based ARs (from client.Contacts)
+    const contactAuthorizedReps = (client?.Contacts || []).filter(
+        (c) => String(c.authorizedRepresentative).toLowerCase() === 'yes'
+    );
+
+    // Manual ARs (from client.authorizedRepresentatives)
+    const manualAuthorizedReps = (client?.authorizedRepresentatives || []).filter(
+        (ar) => String(ar.authorizedRepresentative).toLowerCase() === 'yes'
+    );
+
+    // Add contact AR options (use contactId as value)
+    contactAuthorizedReps.forEach((c) => {
+        const option = document.createElement('option');
+        option.value = String(c.contactId || `contact-${c.firstName}-${c.lastName}`);
+        option.textContent = `${c.firstName} ${c.lastName} - ${formatPhoneNumber(c.phoneNumber)}`;
+        option.dataset.source = 'contacts';
+        dropdown.appendChild(option);
+    });
+
+    // Add manual AR options (synthetic ids)
+    manualAuthorizedReps.forEach((ar, idx) => {
+        const syntheticId = `ar-manual-${idx}`;
+        const option = document.createElement('option');
+        option.value = syntheticId;
+        option.textContent = `${ar.firstName} ${ar.lastName} - ${formatPhoneNumber(ar.phoneNumber)}`;
+        option.dataset.source = 'manual';
+        dropdown.appendChild(option);
+    });
+
+    // Finally add "Add Authorized Representative" at the end
+    const addOpt = document.createElement('option');
+    addOpt.value = '__ADD__';
+    addOpt.textContent = 'Add Authorized Representative';
+    dropdown.appendChild(addOpt);
+
+    const allOptionsValues = new Set(
+        [
+            ...contactAuthorizedReps.map(c => String(c.contactId || `contact-${c.firstName}-${c.lastName}`)),
+            ...manualAuthorizedReps.map((_, idx) => `ar-manual-${idx}`),
+            '__NO__',
+            '__ADD__'
+        ]
+    );
+
+    // Page-load auto-select rules
+    if (client?.authorizedRepresentativeAdded === false) {
+        dropdown.value = '__NO__';
+    } else if (manualAuthorizedReps.length > 0) {
+        dropdown.value = 'ar-manual-0';
+    } else if (contactAuthorizedReps.length > 0) {
+        const firstContactVal = String(contactAuthorizedReps[0].contactId || `contact-${contactAuthorizedReps[0].firstName}-${contactAuthorizedReps[0].lastName}`);
+        dropdown.value = firstContactVal;
+    } else if (currentSelection && allOptionsValues.has(currentSelection)) {
+        dropdown.value = currentSelection;
+    } else {
+        // No dynamic ARs: leave selection blank (user can choose No or Add)
+        dropdown.value = '';
+    }
+}
+
+// Update handler for dropdown: "__NO__" deletes AR and flips flag; others open modal
+function updateAuthorizedRepresentativeInBackend(value) {
+    const clientId = getQueryParam('id');
+    if (!clientId) { console.error('Client ID not found in query parameters.'); return; }
+
+    if (value === '__NO__') {
+        // Delete AR and flip flag to false
+        fetch('/update-client', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                clientId,
+                clientData: {
+                    authorizedRepresentatives: [],        // remove ARs
+                    authorizedRepresentativeAdded: false // flip flag
+                }
+            })
+        }).then(r => r.ok ? null : r.json().then(e => Promise.reject(e)))
+          .then(() => {
+              client.authorizedRepresentatives = [];
+              client.authorizedRepresentativeAdded = false;
+              populateAuthorizedRepresentativeDropdown();
+              renderAuthorizedRepresentative();
+          })
+          .catch(err => console.error('Error clearing authorized rep:', err));
+        return;
+    }
+
+    if (value === '__ADD__') {
+    // Open empty modal to add a new AR
+    openContactModal();
+    const canReceiveMailSelect = document.getElementById('canReceiveMail');
+    if (canReceiveMailSelect) canReceiveMailSelect.value = 'yes';
+    // added defaults
+    const ci = document.getElementById('canCompleteInterview');
+    const cs = document.getElementById('canSign');
+    const cr = document.getElementById('canReportChanges');
+    const ub = document.getElementById('canUseBenefit');
+    if (ci) ci.value = '';
+    if (cs) cs.value = '';
+    if (cr) cr.value = '';
+    if (ub) ub.value = '';
+    return;
+}
+
+    // For manual selection, open modal with prefill
+    const isManual = value.startsWith('ar-manual-');
+    let prefill = null;
+
+    if (isManual) {
+        const idx = Number(value.replace('ar-manual-', ''));
+        const arList = Array.isArray(client?.authorizedRepresentatives) ? client.authorizedRepresentatives : [];
+        prefill = arList[idx] || null;
+    }
+
+    openContactModal(prefill);
+}
+// ...existing code...
+
+// Save on change
+document.addEventListener('DOMContentLoaded', () => {
+    const dropdown = document.getElementById('authorizedRepresentativeSelect');
+    dropdown.addEventListener('change', (e) => {
+        const val = e.target.value;
+        if (!val) { alert('Please select an option.'); return; }
+        updateAuthorizedRepresentativeInBackend(val);
+    });
+});
+
+document.addEventListener('DOMContentLoaded', async () => {
+        const clientId = getQueryParam('id');
+        if (!clientId) { console.error('Client ID not found in query parameters.'); return; }
+
+        try {
+            const response = await fetch(`/get-client/${clientId}`);
+            if (!response.ok) throw new Error(`Failed to fetch client data: ${response.statusText}`);
+            client = await response.json();
+            renderAuthorizedRepresentative(); // was renderContacts()
+            populateAuthorizedRepresentativeDropdown();
+            checkAndRenderPTRRDeceasedQuestion(); // NEW: render conditional question
+            // Initialize notes UI from notes.js
+        } catch (err) {
+            console.error('Error loading client data:', err);
+        }
+    });
+// ...existing code...
+
+    // Conditionally render: "Are you filing for PTRR on behalf of someone who is deceased?"
+    function checkAndRenderPTRRDeceasedQuestion() {
+        try {
+            const container = document.getElementById('ptrr-deceased-container');
+            if (!container) return;
+
+            const members = Array.isArray(client?.householdMembers) ? client.householdMembers : [];
+            if (members.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            // Find a member applying for PTRR
+            const applyingMember = members.find(m => {
+                // Handles array shape like m.PTRR?.application: [{ applying: true }]
+                const ptrrApps = Array.isArray(m?.PTRR?.application) ? m.PTRR.application : [];
+                const hasApplyingInArray = ptrrApps.some(a => a?.applying === true);
+
+                // Also support other possible shapes
+                const applyingFlags = [
+                    m?.applications?.PTRR?.applying,
+                    m?.PTRR?.applying,
+                    m?.application?.PTRR?.applying
+                ];
+                const hasDirectFlag = applyingFlags.some(v => String(v).toLowerCase() === 'true' || v === true);
+
+                return hasApplyingInArray || hasDirectFlag;
+            });
+
+            if (!applyingMember) {
+                container.innerHTML = '';
+                return;
+            }
+
+            // Normalize an identifier to compare leasePersons with the applying member.
+            const applyingId =
+                applyingMember.memberId ??
+                applyingMember.id ??
+                `${applyingMember.firstName || ''} ${applyingMember.lastName || ''}`.trim();
+
+            // Does any member have an expense with type "Previous Year" whose leasePersons EXCLUDES the applying member?
+            const hasPreviousYearExpenseWithDifferentLeasePerson = members.some(member => {
+                const expenses = Array.isArray(member?.expenses) ? member.expenses : [];
+                return expenses.some(exp => {
+                    const isPrevYear = String(exp?.type || '').toLowerCase() === 'previous year';
+                    if (!isPrevYear) return false;
+
+                    const leasePersons = exp?.leasePersons;
+
+                    // Normalize compare by id or "First Last"
+                    const equalsApplying = (val) => {
+                        const v = (val ?? '').toString().trim();
+                        if (!v) return false;
+                        // try id match
+                        if (v === applyingId) return true;
+                        // try name match (case-insensitive)
+                        const applyingName = `${applyingMember.firstName || ''} ${applyingMember.lastName || ''}`.trim();
+                        return applyingName && v.toLowerCase() === applyingName.toLowerCase();
+                    };
+
+                    if (Array.isArray(leasePersons)) {
+                        // Only true if NONE of the leasePersons equals the applying member
+                        const includesApplying = leasePersons.some(equalsApplying);
+                        return !includesApplying && leasePersons.length > 0;
+                    } else {
+                        // Single value: must not equal applying member
+                        return leasePersons != null && !equalsApplying(leasePersons);
+                    }
+                });
+            });
+
+            if (hasPreviousYearExpenseWithDifferentLeasePerson) {
+                // Render the question
+                const existingAnswer = getApplyingMemberPTRRDeceasedAnswer(applyingMember);
+                const existingDate = getApplyingMemberPTRRDeceasedDate(applyingMember);
+
+                container.innerHTML = `
+                    <div class="form-field">
+                        <label for="ptrrDeceasedQuestion">Are you filing for PTRR on behalf of someone who is deceased?</label>
+                        <select id="ptrrDeceasedQuestion" name="ptrrDeceasedQuestion">
+                            <option value="" disabled ${!existingAnswer ? 'selected' : ''}>Select an option</option>
+                            <option value="yes" ${existingAnswer === 'yes' ? 'selected' : ''}>Yes</option>
+                            <option value="no" ${existingAnswer === 'no' ? 'selected' : ''}>No</option>
+                        </select>
+                    </div>
+                    <div id="ptrr-deceased-date-container"></div>
+                `;
+
+                // Render date field if answer is yes (page load)
+                renderPTRRDeceasedDate(existingAnswer === 'yes', existingDate);
+
+                // Listen for changes and persist
+                const selectEl = document.getElementById('ptrrDeceasedQuestion');
+                if (selectEl) {
+                    selectEl.addEventListener('change', async (e) => {
+                        const value = e.target.value; // 'yes' | 'no'
+                        await savePTRRDeceasedAnswer(value);
+                        // re-render date field based on selection
+                        const latestDate = getApplyingMemberPTRRDeceasedDate(applyingMember);
+                        renderPTRRDeceasedDate(value === 'yes', latestDate);
+                    });
+                }
+            } else {
+                container.innerHTML = '';
+            }
+// ...existing code...
+
+        } catch (e) {
+            console.error('Error rendering PTRR deceased question:', e);
+        }
+    }
+
+    // Helpers to read/write PTRR deceased fields on applying member
+    function findApplyingMemberIndex() {
+        const members = Array.isArray(client?.householdMembers) ? client.householdMembers : [];
+        return members.findIndex(m => {
+            const ptrrApps = Array.isArray(m?.PTRR?.application) ? m.PTRR.application : [];
+            const hasApplyingInArray = ptrrApps.some(a => a?.applying === true);
+            const applyingFlags = [
+                m?.applications?.PTRR?.applying,
+                m?.PTRR?.applying,
+                m?.application?.PTRR?.applying
+            ];
+            const hasDirectFlag = applyingFlags.some(v => String(v).toLowerCase() === 'true' || v === true);
+            return hasApplyingInArray || hasDirectFlag;
+        });
+    }
+
+    function getApplyingMember() {
+        const idx = findApplyingMemberIndex();
+        if (idx < 0) return null;
+        return client.householdMembers[idx];
+    }
+
+    function getApplyingMemberPTRRApplicationObj(member) {
+        if (!member) return null;
+        const arr = Array.isArray(member?.PTRR?.application) ? member.PTRR.application : [];
+        return arr[0] || null; // assume index 0
+    }
+
+    function getApplyingMemberPTRRDeceasedAnswer(member) {
+        const app = getApplyingMemberPTRRApplicationObj(member);
+        // stored as 'yes'/'no'
+        return app?.ptrrDeceasedAnswer || null;
+    }
+
+    function getApplyingMemberPTRRDeceasedDate(member) {
+        const app = getApplyingMemberPTRRApplicationObj(member);
+        return app?.ptrrDeceasedDate || '';
+    }
+
+    async function savePTRRDeceasedAnswer(answer) {
+        const clientId = getQueryParam('id');
+        if (!clientId) return;
+
+        const idx = findApplyingMemberIndex();
+        if (idx < 0) return;
+
+        // Clone client data to mutate safely
+        const members = Array.isArray(client?.householdMembers) ? [...client.householdMembers] : [];
+        const member = { ...members[idx] };
+
+        // Ensure PTRR.application[0] exists
+        const appArr = Array.isArray(member?.PTRR?.application) ? [...member.PTRR.application] : [];
+        const firstApp = { ...(appArr[0] || {}) };
+
+        firstApp.ptrrDeceasedAnswer = answer; // 'yes' or 'no'
+        if (answer !== 'yes') {
+            // clear date if answer is not yes
+            delete firstApp.ptrrDeceasedDate;
+        }
+
+        appArr[0] = firstApp;
+        member.PTRR = { ...(member.PTRR || {}), application: appArr };
+        members[idx] = member;
+
+        try {
+            const resp = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, clientData: { householdMembers: members } })
+            });
+            if (!resp.ok) throw new Error((await resp.json())?.message || 'Failed to save PTRR deceased answer');
+            // Update local client cache
+            client.householdMembers = members;
+        } catch (e) {
+            console.error('Error saving PTRR deceased answer:', e);
+            alert('Could not save your selection. Please try again.');
+        }
+    }
+
+    async function savePTRRDeceasedDate(dateStr) {
+        const clientId = getQueryParam('id');
+        if (!clientId) return;
+
+        const idx = findApplyingMemberIndex();
+        if (idx < 0) return;
+
+        const members = Array.isArray(client?.householdMembers) ? [...client.householdMembers] : [];
+        const member = { ...members[idx] };
+        const appArr = Array.isArray(member?.PTRR?.application) ? [...member.PTRR.application] : [];
+        const firstApp = { ...(appArr[0] || {}) };
+
+        firstApp.ptrrDeceasedDate = dateStr; // ISO or yyyy-mm-dd from input
+        appArr[0] = firstApp;
+        member.PTRR = { ...(member.PTRR || {}), application: appArr };
+        members[idx] = member;
+
+        try {
+            const resp = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, clientData: { householdMembers: members } })
+            });
+            if (!resp.ok) throw new Error((await resp.json())?.message || 'Failed to save deceased date');
+            client.householdMembers = members;
+        } catch (e) {
+            console.error('Error saving PTRR deceased date:', e);
+            alert('Could not save the date. Please try again.');
+        }
+    }
+
+    function renderPTRRDeceasedDate(show, existingDate) {
+        const dateContainer = document.getElementById('ptrr-deceased-date-container');
+        if (!dateContainer) return;
+
+        if (!show) {
+            dateContainer.innerHTML = '';
+            return;
+        }
+
+        dateContainer.innerHTML = `
+            <div class="form-field">
+                <label for="ptrrDeceasedDate">Claimant Deceased Date</label>
+                <input type="date" id="ptrrDeceasedDate" name="ptrrDeceasedDate" value="${existingDate || ''}">
+            </div>
+        `;
+
+        // Attach change handler to persist date
+        const dateInput = document.getElementById('ptrrDeceasedDate');
+        if (dateInput) {
+            dateInput.addEventListener('change', async (e) => {
+                await savePTRRDeceasedDate(e.target.value || '');
+            });
+        }
+    }
+    </script>
+</body>
+</html>

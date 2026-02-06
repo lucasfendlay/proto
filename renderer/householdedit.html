@@ -299,10 +299,81 @@ body {
     <option value="VI">VI</option>
     <option value="VII">VII</option>
 </select><br><br>
-            <div class="selection-box">
-                <label for="dob">Date of Birth:</label>
-                <input type="date" id="dob" name="dob" class="selection-box-input"><br><br>
-            </div>
+
+<div id="deceasedQuestion" class="selection-box">
+    <label>Is this person deceased?</label>
+    <div id="modal-deceased-yes" data-value="yes">Yes</div>
+    <div id="modal-deceased-no" data-value="no">No</div>
+</div>
+
+<script>
+
+// Toggle visibility of fields based on deceased selection
+function updateVisibilityForDeceased(isDeceased) {
+    const toToggleIds = [
+        'disabilityQuestion',
+        'medicareQuestion',
+        'medicaidQuestion',
+        'studentQuestion',
+        'mealsQuestion',
+        'citizenQuestion',
+        'nonCitizenStatusContainer',
+        'studentStatusContainer',
+    ];
+
+    // Hide/show marital status wrappers
+    const maritalStatusWrapper = document.querySelector('label[for="maritalStatus"]')?.closest('.selection-box');
+    const previousMaritalStatusWrapper = document.getElementById('previousMaritalStatus')?.closest('.selection-box')
+        || document.querySelector('label[for="previousMaritalStatus"]')?.closest('.selection-box');
+
+    if (maritalStatusWrapper) maritalStatusWrapper.style.display = isDeceased ? 'none' : '';
+    if (previousMaritalStatusWrapper) previousMaritalStatusWrapper.style.display = isDeceased ? 'none' : '';
+
+    // Toggle dependent containers
+    toToggleIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = isDeceased ? 'none' : '';
+    });
+
+    // Show/hide Date of Death
+    const dodContainer = document.getElementById('dateOfDeathContainer');
+    const dodInput = document.getElementById('dateOfDeath');
+    if (dodContainer) {
+        dodContainer.style.display = isDeceased ? 'block' : 'none';
+    }
+    if (!isDeceased && dodInput) {
+        dodInput.value = '';
+    }
+}
+
+// Attach listeners to deceased yes/no
+document.getElementById('modal-deceased-yes')?.addEventListener('click', () => {
+    // highlight selection
+    document.getElementById('modal-deceased-no')?.classList.remove('selected');
+    document.getElementById('modal-deceased-yes')?.classList.add('selected');
+
+    updateVisibilityForDeceased(true);
+});
+
+document.getElementById('modal-deceased-no')?.addEventListener('click', () => {
+    // highlight selection
+    document.getElementById('modal-deceased-yes')?.classList.remove('selected');
+    document.getElementById('modal-deceased-no')?.classList.add('selected');
+
+    updateVisibilityForDeceased(false);
+});
+</script>
+
+<div class="selection-box">
+    <label for="dob">Date of Birth:</label>
+    <input type="date" id="dob" name="dob" class="selection-box-input"><br><br>
+</div>
+
+<div id="dateOfDeathContainer" style="display: none;">
+    <label for="dateOfDeath">Date of Death:</label>
+    <input type="date" id="dateOfDeath" name="dateOfDeath" class="selection-box-input"><br><br>
+</div>
+
 
             <script>
                 // Initialize Flatpickr for the Start Date field
@@ -552,34 +623,8 @@ async function redirectToHouseholdView() {
             throw new Error(`Failed to add note: ${noteResponse.statusText}`);
         }
 
-        // Update screening status in the database
-        const updateResponse = await fetch(`/update-client`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                clientId,
-                clientData: { screeningInProgress: false },
-            }),
-        });
-
-        if (!updateResponse.ok) {
-            const error = await updateResponse.json();
-            console.error('Error details:', error);
-
-            // Check if the error message indicates no changes were made
-            if (error.message === 'No changes were made to the client data.') {
-                console.log('No changes were made, but proceeding with redirect.');
-                // Redirect to the household view page
-                window.location.href = `householdview.html?id=${clientId}`;
-            } else {
-                throw new Error(`Failed to update client: ${error.message}`);
-            }
-        } else {
-            // Redirect to household view
-            window.location.href = `householdview.html?id=${clientId}`;
-        }
+        // Redirect to household view
+        window.location.href = `householdview.html?id=${clientId}`;
     } catch (error) {
         console.error("Error during redirectToHouseholdView:", error);
     }
@@ -599,10 +644,25 @@ async function toggleSidebarVisibility() {
 
         if (client && client.screeningInProgress) {
             document.getElementById('leftSidebarContainer').style.display = 'block';
+            // Show all sub-containers
+            const snapContainer = document.getElementById('snap-household-container');
+            const liheapContainer = document.getElementById('liheap-household-container');
+            const householdContainer = document.getElementById('household-members-container');
+            if (snapContainer) snapContainer.style.display = '';
+            if (liheapContainer) liheapContainer.style.display = '';
+            if (householdContainer) householdContainer.style.display = '';
             console.log('Sidebar is now visible'); // Debugging
         } else {
-            document.getElementById('leftSidebarContainer').style.display = 'none';
-            console.log('Sidebar is now hidden'); // Debugging
+            // Still show the sidebar container so the stop-screening / reopen button is visible
+            document.getElementById('leftSidebarContainer').style.display = 'block';
+            // Hide the individual benefit containers
+            const snapContainer = document.getElementById('snap-household-container');
+            const liheapContainer = document.getElementById('liheap-household-container');
+            const householdContainer = document.getElementById('household-members-container');
+            if (snapContainer) snapContainer.style.display = 'none';
+            if (liheapContainer) liheapContainer.style.display = 'none';
+            if (householdContainer) householdContainer.style.display = 'none';
+            console.log('Sidebar visible with only stop-screening container'); // Debugging
         }
     } catch (error) {
         console.error('Error toggling sidebar visibility:', error);

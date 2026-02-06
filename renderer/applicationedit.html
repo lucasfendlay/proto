@@ -228,6 +228,17 @@ body {
                 padding: 10px 15px;
             }
 
+            .button-container1 {
+                display: flex;
+                gap: 10px; /* Adds spacing between buttons */
+                flex-wrap: wrap; /* Ensures buttons wrap to the next line if needed */
+            }
+        
+            .button-container1 button {
+                flex: 1; /* Ensures buttons are evenly spaced */
+                padding: 10px 15px;
+            }
+
             /* Modal content styling */
 .modal-content {
     background-color: #ffffff;
@@ -344,18 +355,95 @@ body {
             <input type="email" id="emailAddress" name="emailAddress" placeholder="Enter Email Address">
         </div>
 
+        <div class="form-field">
+            <label>Are you currently experiencing homelessness?</label>
+            <div class="selection-box homelessness-container">
+                <div id="homelessness-yes" data-value="yes" class="option" onclick="updateHomelessness('yes')">Yes</div>
+                <div id="homelessness-no" data-value="no" class="option" onclick="updateHomelessness('no')">No</div>
+            </div>
+        </div>
+        
+        <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const clientId = getQueryParam('id'); // Get the client ID from the URL
+        
+            try {
+                const response = await fetch(`/get-client/${clientId}`);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch client data: ${response.statusText}`);
+                }
+        
+                const client = await response.json();
+                const homelessnessStatus = client.homelessness; // Fetch the saved value
+        
+                // Highlight the saved value
+                if (homelessnessStatus === 'yes') {
+                    document.getElementById('homelessness-yes').classList.add('selected');
+                } else if (homelessnessStatus === 'no') {
+                    document.getElementById('homelessness-no').classList.add('selected');
+                }
+        
+                // Make the options read-only
+                document.querySelectorAll('.homelessness-container .option').forEach(option => {
+                    option.style.pointerEvents = 'none'; // Disable click events
+                    option.style.opacity = '0.6'; // Optional: Dim the options to indicate they are read-only
+                });
+            } catch (error) {
+                console.error('Error loading homelessness status:', error);
+            }
+        });
+        
+        // Utility function to get query parameters
+        function getQueryParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+        </script>
+
 <!-- Add a container to hold the two sections -->
 <div class="address-container">
     <!-- Left Section: Street Address -->
     <div class="address-section">
-        <h2>Residential Address</h2>
+        <h2 id="addressHeader">Residential Address</h2>
         <div class="form-field">
             <label id="addressLabel" for="streetAddress">Street Address:</label>
             <input type="text" id="streetAddress" name="streetAddress" placeholder="Enter Street Address">
         </div>
 
+        <script>
+            document.addEventListener('DOMContentLoaded', async () => {
+                const clientId = getQueryParam('id'); // Get the client ID from the URL
+            
+                try {
+                    const response = await fetch(`/get-client/${clientId}`);
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch client data: ${response.statusText}`);
+                    }
+            
+                    const client = await response.json();
+                    const homelessnessStatus = client.homelessness; // Fetch the saved value
+            
+                    // Update the header based on homelessness status
+                    const addressHeader = document.getElementById('addressHeader');
+                    if (homelessnessStatus === 'yes') {
+                        addressHeader.textContent = 'Mailing Address';
+                    } else {
+                        addressHeader.textContent = 'Residential Address';
+                    }
+                } catch (error) {
+                    console.error('Error updating address header:', error);
+                }
+            });
+            
+            // Utility function to get query parameters
+            function getQueryParam(name) {
+                const urlParams = new URLSearchParams(window.location.search);
+                return urlParams.get(name);
+            }
+            </script>
+
 <div class="form-field">
-    <label for="streetAddress2">Address Line 2:</label>
+    <label id="addressLabel2" for="streetAddress2">Address Line 2:</label>
     <input type="text" id="streetAddress2" name="streetAddress2" placeholder="Enter Address Line 2">
 </div>
 
@@ -608,10 +696,10 @@ body {
 
     <div id="householdMemberContainer" class="household-member-container"></div>
 
-    <div class="button-container">
+    <div class="button-container1">
         <button id="add-household-member" style="display: none;">Add Household Member</button>
         <button id="save-exit" onclick="redirectToHouseholdView()">Save and Release Profile</button>
-        <button id="save-continue" onclick="goToRelationshipsEdit()">Save and Continue</button> <br>
+        <button id="save-continue" onclick="goToAdditionalEdit()">Save and Continue</button> <br>
     </div>
 
 <!-- Add this to your HTML -->
@@ -698,6 +786,11 @@ body {
                     <option value="Divorced">Divorced</option>
                     <option value="Widowed">Widowed</option>
                 </select><br><br>
+            </div>
+
+            <div id="dateOfSpousePassingContainer" style="display: none;">
+                <label for="dateOfSpousePassing">Date of Spousal Passing:</label>
+                <input type="date" id="dateOfSpousePassing" name="dateOfSpousePassing">
             </div>
 
             <div class="form-field">
@@ -1121,10 +1214,10 @@ function getQueryParam(name) {
     return urlParams.get(name);
 }
 
-        function goToRelationshipsEdit() {
+        function goToAdditionalEdit() {
     const clientId = getQueryParameter('id');
     if (clientId) {
-        window.location.href = `relationshipsedit.html?id=${clientId}`;
+        window.location.href = `additionaledit.html?id=${clientId}`;
     } else {
         console.error('Client ID not found in query parameters.');
     }
@@ -1162,12 +1255,16 @@ async function loadClientData() {
 
             // Update the label for Street Address based on homelessness status
             const addressLabel = document.getElementById('addressLabel');
+            const addressLabel2 = document.getElementById('addressLabel2');
             const mailingAddressQuestion = document.getElementById('mailingAddressQuestion');
             if (client.homelessness === 'yes') {
-                addressLabel.textContent = 'Mailing Address:';
+                addressLabel.textContent = 'Mailing Address Line 1:';
                 mailingAddressQuestion.style.display = 'none';
+                addressLabel2.textContent = 'Mailing Address Line 2:';
+                
             } else {
-                addressLabel.textContent = 'Street Address:';
+                addressLabel.textContent = 'Street Address Line 1:';
+                addressLabel2.textContent = 'Street Address Line 2:';
                 mailingAddressQuestion.style.display = 'block';
             }
         } else {

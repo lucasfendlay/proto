@@ -226,21 +226,6 @@ details > summary {
             console.warn('Failed to add note to client.');
         }
 
-        // Update screening status in the database
-        const updateClientResponse = await fetch(`/update-client`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                clientId,
-                clientData: { screeningInProgress: false }
-            })
-        });
-
-        if (!updateClientResponse.ok) {
-            console.warn('Failed to update client.');
-        }
     } catch (error) {
         console.error("Error during goToAssetView:", error);
     } finally {
@@ -262,28 +247,37 @@ function getQueryParam(name) {
 
 async function toggleSidebarVisibility() {
     const clientId = getQueryParam('id');
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
     try {
-        // Fetch client data from the backend
+        // Fetch client data via REST API
         const response = await fetch(`/get-client/${clientId}`);
         if (!response.ok) {
             throw new Error(`Failed to fetch client data: ${response.statusText}`);
         }
-
         const client = await response.json();
         console.log('Client data:', client); // Debugging
         console.log('screeningInProgress:', client?.screeningInProgress); // Debugging
 
         if (client && client.screeningInProgress) {
             document.getElementById('leftSidebarContainer').style.display = 'block';
+            // Show all sub-containers
+            const snapContainer = document.getElementById('snap-household-container');
+            const liheapContainer = document.getElementById('liheap-household-container');
+            const householdContainer = document.getElementById('household-members-container');
+            if (snapContainer) snapContainer.style.display = '';
+            if (liheapContainer) liheapContainer.style.display = '';
+            if (householdContainer) householdContainer.style.display = '';
             console.log('Sidebar is now visible'); // Debugging
         } else {
-            document.getElementById('leftSidebarContainer').style.display = 'none';
-            console.log('Sidebar is now hidden'); // Debugging
+            // Still show the sidebar container so the stop-screening / reopen button is visible
+            document.getElementById('leftSidebarContainer').style.display = 'block';
+            // Hide the individual benefit containers
+            const snapContainer = document.getElementById('snap-household-container');
+            const liheapContainer = document.getElementById('liheap-household-container');
+            const householdContainer = document.getElementById('household-members-container');
+            if (snapContainer) snapContainer.style.display = 'none';
+            if (liheapContainer) liheapContainer.style.display = 'none';
+            if (householdContainer) householdContainer.style.display = 'none';
+            console.log('Sidebar visible with only stop-screening container'); // Debugging
         }
     } catch (error) {
         console.error('Error toggling sidebar visibility:', error);

@@ -374,19 +374,6 @@ async function goToIncomeView() {
             console.warn('Failed to add note to client.');
         }
 
-        // Update screening status in the database
-        const updateClientResponse = await fetch(`${BACKEND_URL}/update-client`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                clientId,
-                clientData: { screeningInProgress: false }
-            })
-        });
-
-        if (!updateClientResponse.ok) {
-            console.warn('Failed to update client screening status.');
-        }
     } catch (error) {
         console.error("Error during goToIncomeView:", error);
     } finally {
@@ -508,32 +495,38 @@ function getQueryParam(name) {
 }
 
 async function toggleSidebarVisibility() {
-    const clientId = getQueryParam('id'); // Ensure clientId is retrieved from query parameters
-    const BACKEND_URL = window.location.origin || "http://localhost:3000";
-
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
+    const clientId = getQueryParam('id');
     try {
-        // Fetch client data from the backend API
-        const response = await fetch(`${BACKEND_URL}/get-client/${clientId}`);
+        // Fetch client data via REST API
+        const response = await fetch(`/get-client/${clientId}`);
         if (!response.ok) {
-            throw new Error('Failed to fetch client data.');
+            throw new Error(`Failed to fetch client data: ${response.statusText}`);
         }
-
         const client = await response.json();
         console.log('Client data:', client); // Debugging
         console.log('screeningInProgress:', client?.screeningInProgress); // Debugging
 
-        // Toggle sidebar visibility based on screeningInProgress
         if (client && client.screeningInProgress) {
             document.getElementById('leftSidebarContainer').style.display = 'block';
+            // Show all sub-containers
+            const snapContainer = document.getElementById('snap-household-container');
+            const liheapContainer = document.getElementById('liheap-household-container');
+            const householdContainer = document.getElementById('household-members-container');
+            if (snapContainer) snapContainer.style.display = '';
+            if (liheapContainer) liheapContainer.style.display = '';
+            if (householdContainer) householdContainer.style.display = '';
             console.log('Sidebar is now visible'); // Debugging
         } else {
-            document.getElementById('leftSidebarContainer').style.display = 'none';
-            console.log('Sidebar is now hidden'); // Debugging
+            // Still show the sidebar container so the stop-screening / reopen button is visible
+            document.getElementById('leftSidebarContainer').style.display = 'block';
+            // Hide the individual benefit containers
+            const snapContainer = document.getElementById('snap-household-container');
+            const liheapContainer = document.getElementById('liheap-household-container');
+            const householdContainer = document.getElementById('household-members-container');
+            if (snapContainer) snapContainer.style.display = 'none';
+            if (liheapContainer) liheapContainer.style.display = 'none';
+            if (householdContainer) householdContainer.style.display = 'none';
+            console.log('Sidebar visible with only stop-screening container'); // Debugging
         }
     } catch (error) {
         console.error('Error toggling sidebar visibility:', error);

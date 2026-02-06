@@ -82,6 +82,96 @@
                     <option value="Other">Other</option>
                 </select>
 
+                <!-- Place inside the general expense modal markup, below Kind and before Frequency -->
+<div id="lease-persons-container" class="form-field hidden" style="margin-top:10px;">
+    <label for="leasePersons">Person(s) on Lease/Deed:</label>
+    <div id="lease-container" class="multi-select-container">
+      <input type="text" id="lease-search" class="multi-select-search" placeholder="Type to search..." autocomplete="off">
+      <div id="lease-dropdown" class="multi-select-dropdown hidden"><!-- items populated dynamically --></div>
+      <div id="selected-lease-list" class="selected-items"></div>
+    </div>
+  </div>
+
+              <style>
+.multi-select-container {
+    position: relative;
+    width: 100%;
+    max-width: 800px;
+}
+
+.multi-select-search {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+.multi-select-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: white;
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.multi-select-dropdown.hidden {
+    display: none;
+}
+
+.dropdown-item {
+    padding: 10px;
+    cursor: pointer;
+}
+
+.dropdown-item:hover {
+    background-color: #007bff;
+    color: white;
+}
+
+.selected-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 10px;
+}
+
+.selected-item {
+    display: fixed;
+    align-items: center;
+    background-color: #007bff;
+    color: white;
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-size: 1.2rem;
+}
+
+.selected-item .remove-item {
+    margin-left: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    color: white;
+    background-color: red;
+    border-radius: 50%;
+    padding: 0 5px;
+}
+
+.selection-box div.selected {
+    background-color: #007bff;
+    color: white;
+    border: 1px solid #0056b3;
+    border-radius: 5px;
+    padding: 5px;
+}
+</style>
+
                 <!-- Frequency -->
                 <label for="expense-frequency">Frequency:</label>
                 <select id="expense-frequency" required>
@@ -169,12 +259,13 @@
     }
 
     .household-member1-box {
-    max-width: 600px; /* Set a maximum width */
-    margin: 0 auto; /* Center the container */
+    width: 1200px; /* Set a maximum width */
+    margin: 0; /* Center the container */
     padding: 20px; /* Add some padding */
     border: 1px solid #ccc; /* Optional: Add a border */
     border-radius: 8px; /* Optional: Add rounded corners */
-    max-width: 65%;
+    width: 100%;
+    flex: none;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Optional: Add a shadow */
 }
 
@@ -240,23 +331,33 @@
 /* Style for the expense list */
 .expense-list {
     list-style-type: none; /* Remove default bullet points */
+    justify-self: center;
     padding: 0; /* Remove default padding */
     margin: 0; /* Remove default margin */
-    width: 90%; /* Set a width for the list */
+    width: 100%; /* Set a width for the list */
+    flex: none;
 }
 
 /* Style for each expense list item */
 .expense-list li {
     display: grid; /* Use CSS Grid for layout */
-    grid-template-columns: repeat(6, 1fr); /* Define 6 equal columns */
-    grid-auto-rows: minmax(40px, auto); /* Ensure consistent row height */
-    gap: 10px; /* Add spacing between grid items */
-    padding: 10px; /* Add padding inside each item */
-    margin-bottom: 10px; /* Add spacing between list items */
-    border: 1px solid #ccc; /* Add a border around each item */
-    border-radius: 8px; /* Round the corners */
-    background-color: #f9f9f9; /* Light background color */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+    grid-template-columns: repeat(6, 1fr); /* Default: 6 equal columns */
+    grid-auto-rows: minmax(40px);
+    gap: 10px;
+    align-self: center;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    width: 1200px;
+    justify-self: center;
+}
+
+/* When leasePersons exists, use 7 columns */
+.expense-list li.has-lease {
+    grid-template-columns: repeat(7, 1fr);
 }
 
 /* Style for the expense details */
@@ -268,11 +369,11 @@
 
 /* Style for the expense list item buttons */
 .expense-list li .button-container {
-    display: flex; /* Use flexbox for layout */
-    justify-content: center; /* Center the buttons horizontally */
-    align-items: center; /* Center the buttons vertically */
-    gap: 10px; /* Add spacing between the buttons */
-    grid-column: span 6; /* Ensure the container spans the full width */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    grid-column: 1 / -1; /* Span all columns (works for 6 or 7) */
 }
 
 /* Style for individual buttons */
@@ -369,6 +470,8 @@ function GoToEstimationsStep() {
     }
 }
 
+// ...existing code...
+
 async function goToExpenseView() {
     const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
     if (!clientId) {
@@ -416,21 +519,6 @@ async function goToExpenseView() {
             console.warn('Failed to add note to client.');
         }
 
-        // Update screening status in the database
-        const updateClientResponse = await fetch('/update-client', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                clientId,
-                clientData: { screeningInProgress: false },
-            }),
-        });
-
-        if (!updateClientResponse.ok) {
-            console.warn('Failed to update client.');
-        }
     } catch (error) {
         console.error("Error during goToExpenseView:", error);
     } finally {
@@ -451,34 +539,39 @@ function getQueryParam(name) {
     return urlParams.get(name);
 }
 
-    async function toggleSidebarVisibility() {
+async function toggleSidebarVisibility() {
     const clientId = getQueryParam('id');
     try {
-        const client = await fetch(`/get-client/${clientId}`, {
-    method: 'GET',
-    headers: {
-        'Content-Type': 'application/json',
-    },
-})
-    .then((response) => {
+        // Fetch client data via REST API
+        const response = await fetch(`/get-client/${clientId}`);
         if (!response.ok) {
             throw new Error(`Failed to fetch client data: ${response.statusText}`);
         }
-        return response.json();
-    })
-    .catch((error) => {
-        console.error('Error fetching client data:', error);
-        return null;
-    });
-            console.log('Client data:', client); // Debugging
+        const client = await response.json();
+        console.log('Client data:', client); // Debugging
         console.log('screeningInProgress:', client?.screeningInProgress); // Debugging
 
         if (client && client.screeningInProgress) {
             document.getElementById('leftSidebarContainer').style.display = 'block';
+            // Show all sub-containers
+            const snapContainer = document.getElementById('snap-household-container');
+            const liheapContainer = document.getElementById('liheap-household-container');
+            const householdContainer = document.getElementById('household-members-container');
+            if (snapContainer) snapContainer.style.display = '';
+            if (liheapContainer) liheapContainer.style.display = '';
+            if (householdContainer) householdContainer.style.display = '';
             console.log('Sidebar is now visible'); // Debugging
         } else {
-            document.getElementById('leftSidebarContainer').style.display = 'none';
-            console.log('Sidebar is now hidden'); // Debugging
+            // Still show the sidebar container so the stop-screening / reopen button is visible
+            document.getElementById('leftSidebarContainer').style.display = 'block';
+            // Hide the individual benefit containers
+            const snapContainer = document.getElementById('snap-household-container');
+            const liheapContainer = document.getElementById('liheap-household-container');
+            const householdContainer = document.getElementById('household-members-container');
+            if (snapContainer) snapContainer.style.display = 'none';
+            if (liheapContainer) liheapContainer.style.display = 'none';
+            if (householdContainer) householdContainer.style.display = 'none';
+            console.log('Sidebar visible with only stop-screening container'); // Debugging
         }
     } catch (error) {
         console.error('Error toggling sidebar visibility:', error);

@@ -314,8 +314,26 @@ if (invalidFields.length > 0) {
                 return;
             }
 
-            // Redirect based on the reason for the call
-            const url = `profileedit.html?id=${clientId}`;
+                        // Update the client with checkedOut: true after redirecting
+                        await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    clientId, 
+                    clientData: { 
+                        checkedOut: [
+                            {
+                                status: true,
+                                timestamp: new Date().toISOString(),
+                                user: sessionStorage.getItem('loggedInUser') 
+                                    ? sessionStorage.getItem('loggedInUser').trim() 
+                                    : 'Unknown User'
+                            }
+                        ] 
+                    } 
+                }),
+            });
+            window.location.href = `profileedit.html?id=${clientId}`;
             window.location.href = url;
         } else {
             alert(logCallResult.message || 'Failed to log call.');

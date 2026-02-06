@@ -509,7 +509,15 @@ if (member.headOfHousehold === true) {
             if (clientData && clientData.screeningInProgress) {
                 document.getElementById('leftSidebarContainer').style.display = 'flex';
             } else {
-                document.getElementById('leftSidebarContainer').style.display = 'none';
+                // Still show the sidebar so the stop-screening / reopen button is visible
+                document.getElementById('leftSidebarContainer').style.display = 'flex';
+                // Hide the individual benefit containers
+                const snapContainer = document.getElementById('snap-household-container');
+                const liheapContainer = document.getElementById('liheap-household-container');
+                const householdContainer = document.getElementById('household-members-container');
+                if (snapContainer) snapContainer.style.display = 'none';
+                if (liheapContainer) liheapContainer.style.display = 'none';
+                if (householdContainer) householdContainer.style.display = 'none';
             }
         } catch (error) {
             console.error('Error fetching client data:', error);

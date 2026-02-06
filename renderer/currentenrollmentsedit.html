@@ -223,28 +223,7 @@ details > summary {
             console.warn(`Failed to add note: ${noteResponse.statusText}`);
         }
 
-        // Update screening status in the database
-        console.log('Payload for /update-client:', {
-            clientId,
-            clientData: { screeningInProgress: false }
-        });
-
-        const updateResponse = await fetch('/update-client', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                clientId,
-                clientData: { screeningInProgress: false }
-            })
-        });
-
-        if (!updateResponse.ok) {
-            console.warn(`Failed to update client: ${updateResponse.statusText}`);
-        }
-
-        // Redirect to current enrollments view regardless of the update result
+        // Redirect to current enrollments view
         window.location.href = `currentenrollmentsview.html?id=${clientId}`;
     } catch (error) {
         console.error("Error during redirecttoCurrentEnrollments:", error);

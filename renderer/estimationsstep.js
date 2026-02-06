@@ -1,69 +1,281 @@
 document.addEventListener('DOMContentLoaded', async function () {
-    const clientId = getQueryParameter('id'); // Get the client ID from the query parameter
-    const modal = document.getElementById('shelter-modal'); // Modal element
-    const modalTitle = document.getElementById('modal-title'); // Modal title element
-    const closeModal = document.getElementById('close-modal'); // Close button
+    const clientId = getQueryParameter('id');
+    const modal = document.getElementById('shelter-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const closeModal = document.getElementById('close-modal');
     let currentMemberId = null;
 
     await updateSaveContinueButtonVisibility();
-
 
     function getQueryParameter(name) {
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.get(name);
     }
-    
+
     // Load household members
     async function loadHouseholdMembers() {
-        const clientId = getQueryParameter('id'); // Retrieve the client ID from the URL
+        const clientId = getQueryParameter('id');
         if (!clientId) {
             console.error('Client ID not found in query parameters.');
             return [];
         }
-    
+
         try {
-            // Fetch the client data from the backend
             const response = await fetch(`/get-client/${clientId}`);
             if (!response.ok) {
                 throw new Error(`Failed to fetch client data: ${response.statusText}`);
             }
-    
+
             const clientData = await response.json();
-    
+
             if (!clientData || !clientData.householdMembers) {
                 console.error('No household members found for this client.');
                 return [];
             }
-    
-            console.log('Household members:', clientData.householdMembers);
-            return clientData.householdMembers;
+
+            const normalized = ensureBenefitSchema(clientData.householdMembers);
+            console.log('Household members:', normalized);
+            return normalized;
         } catch (error) {
             console.error('Error loading household members:', error);
             return [];
         }
     }
 
+    function ensureBenefitSchema(members) {
+        const benefitKeys = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
+        members.forEach(member => {
+            benefitKeys.forEach(key => {
+                if (!member[key] || typeof member[key] !== 'object') {
+                    member[key] = {};
+                }
+                if (!Array.isArray(member[key].eligibility)) {
+                    member[key].eligibility = ['Not Checked'];
+                }
+                if (!Array.isArray(member[key].application)) {
+                    member[key].application = [];
+                }
+            });
+        });
+        return members;
+    }
+
+    // ===== SINGLE displayHouseholdMembers =====
     async function displayHouseholdMembers() {
         const householdMemberContainer = document.getElementById('household-members-container');
         const members = await loadHouseholdMembers();
-    
-        householdMemberContainer.innerHTML = ''; // Clear existing content
-    
+
+        householdMemberContainer.innerHTML = '';
+
         if (members.length === 0) {
             const noMembersMessage = document.createElement('p');
             noMembersMessage.textContent = 'No household members found.';
             householdMemberContainer.appendChild(noMembersMessage);
         } else {
-            // Sort members: headOfHousehold: true listed first
             members.sort((a, b) => b.headOfHousehold - a.headOfHousehold);
-    
+
             members.forEach(member => {
                 const memberDiv = document.createElement('div');
-                memberDiv.classList.add('household-member-box'); // Add a class for styling
-    
-                // Update the display logic for each benefit field
+                memberDiv.classList.add('household-member-box');
+
+                const memberId = String(member.householdMemberId);
+                const memberFullName = `${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.lastName)}`;
+
+                // Check if member is deceased
+                const isDeceased = (member.deceased ?? '').toLowerCase() === 'yes';
+
+                // Determine which individual benefits are actively open for this member
+                const openBenefits = [];
+                const individualBenefits = ['PACE', 'LIS', 'MSP', 'PTRR'];
+                individualBenefits.forEach(benefit => {
+                    if (benefit !== 'PTRR' && isDeceased) return;
+                    const bObj = member[benefit];
+                    if (!bObj) return;
+                    if (bObj.screeningInProgress === false) return;
+                    if (bObj.eligibility?.includes('Not Checked')) return;
+                    if (benefit === 'PACE' && bObj.eligibility?.includes('Age Criteria Not Met')) return;
+                    if (bObj.eligibility && bObj.eligibility.length > 0) openBenefits.push(benefit);
+                });
+
+                // Helper to render screening closed box for a benefit
+                function benefitScreeningClosedBox(benefit) {
+                    const benefitObj = member[benefit];
+                    if (!benefitObj || benefitObj.screeningInProgress !== false) return '';
+                    return `
+                        <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center;">
+                            <p style="margin: 0 0 6px 0;"><strong>${benefit} Screening Closed</strong></p>
+                            <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${benefitObj.screeningCloseReason || 'N/A'}</p>
+                            <button class="reopen-benefit-btn" 
+                                data-benefit="${benefit}" 
+                                data-member-ids="${memberId}" 
+                                data-display-name="${memberFullName}"
+                            style="background-color: #007bff; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 12px; cursor: pointer; transition: background-color 0.3s;"
+                            onmouseover="this.style.backgroundColor='#0056b3'" 
+                            onmouseout="this.style.backgroundColor='#007bff'">
+                                Reopen ${benefit} Screening
+                            </button>
+                        </div>
+                    `;
+                }
+
+                // Helper to render open benefit section
+                function benefitOpenSection(benefit) {
+                    const bObj = member[benefit];
+                    if (!bObj) return '';
+
+                    if (benefit === 'PACE') {
+                        if (bObj.eligibility?.includes('Not Checked') || bObj.eligibility?.includes('Age Criteria Not Met')) return '';
+                        return `
+                            <details class="custom-details">
+                                <summary><br><strong>PACE</strong><br> 
+                                <p><strong></strong> ${
+                                    bObj.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+                                }<br>
+                                <button class="benefit-apply-button" data-benefit="PACE" data-member-id="${member.householdMemberId}" 
+                                    style="display: ${
+                                        bObj.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('already'))
+                                            ? 'none'
+                                            : 'block'
+                                    }; margin: 0 auto">
+                                    ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for PACE'}
+                                </button>
+                                <br>
+                                </summary></p>
+                                <hr class="separator-bar">
+                                <p><strong>Gross Adjusted Income:</strong> $${bObj.combinedIncome?.toFixed(2) || 'N/A'}</p>
+                            </details>
+                        `;
+                    }
+
+                    if (benefit === 'LIS') {
+                        if (bObj.eligibility?.includes('Not Checked')) return '';
+                        return `
+                            <details class="custom-details">
+                                <summary><br><strong>LIS</strong><br>
+                                <p><strong></strong> ${
+                                    bObj.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+                                }<br>
+                                <button class="benefit-apply-button" data-benefit="LIS" data-member-id="${member.householdMemberId}" 
+                                    style="display: ${
+                                        bObj.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('already'))
+                                            ? 'none'
+                                            : 'block'
+                                    }; margin: 0 auto">
+                                    ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for LIS'}
+                                </button>
+                                <br>
+                                </summary></p>
+                                <hr class="separator-bar">
+                                <p><strong>Gross Income:</strong> $${bObj.combinedIncome?.toFixed(2) || 'N/A'}</p>
+                                <p><strong>Combined Assets:</strong> $${bObj.combinedAssets?.toFixed(2) || 'N/A'}</p>
+                            </details>
+                        `;
+                    }
+
+                    if (benefit === 'MSP') {
+                        if (bObj.eligibility?.includes('Not Checked')) return '';
+                        return `
+                            <details class="custom-details">
+                                <summary><br><strong>MSP</strong>
+                                <p><strong></strong> ${
+                                    bObj.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+                                }<br>
+                                <button class="benefit-apply-button" data-benefit="MSP" data-member-id="${member.householdMemberId}" 
+                                    style="display: ${
+                                        Array.isArray(bObj.eligibility) &&
+                                        bObj.eligibility.some(e => 
+                                            e?.toLowerCase().includes('not') || 
+                                            e?.toLowerCase().includes('needs') || 
+                                            e?.toLowerCase().includes('already')
+                                        )
+                                            ? 'none'
+                                            : 'block'
+                                    }; margin: 0 auto;">
+                                    ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for MSP'}
+                                </button>
+                                <br>
+                                </summary></p>
+                                <hr class="separator-bar">
+                                <p><strong>Gross Adjusted Income:</strong> $${bObj.combinedIncome?.toFixed(2) || 'N/A'}</p>
+                                <p><strong>Combined Assets:</strong> $${bObj.combinedAssets?.toFixed(2) || 'N/A'}</p>
+                            </details>
+                        `;
+                    }
+
+                    if (benefit === 'PTRR') {
+                        if (bObj.eligibility?.includes('Not Checked')) return '';
+                        return `
+                            <details class="custom-details">
+                                <summary><br><strong>PTRR</strong>
+                                <p><strong></strong> ${
+                                    bObj.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+                                }<br>
+                                <button class="benefit-apply-button" data-benefit="PTRR" data-member-id="${member.householdMemberId}" 
+                                    style="display: ${
+                                        bObj.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('no') || e.toLowerCase().includes('already'))
+                                            ? 'none'
+                                            : 'block'
+                                    }; margin: 0 auto">
+                                    ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for PTRR'}
+                                </button>
+                                <br>
+                                </summary></p>
+                                <hr class="separator-bar">
+                                <p><strong>Gross Income:</strong> $${bObj.combinedIncome?.toFixed(2) || 'N/A'}</p>
+                            </details>
+                        `;
+                    }
+
+                    return '';
+                }
+
+                // Build benefit sections dynamically and sort open first, closed last
+                const benefitSections = [];
+
+                // PACE section
+                if (!isDeceased) {
+                    if (member.PACE?.screeningInProgress === false) {
+                        benefitSections.push({ closed: true, html: benefitScreeningClosedBox('PACE') });
+                    } else {
+                        const html = benefitOpenSection('PACE');
+                        if (html) benefitSections.push({ closed: false, html });
+                    }
+                }
+
+                // LIS section
+                if (!isDeceased) {
+                    if (member.LIS?.screeningInProgress === false) {
+                        benefitSections.push({ closed: true, html: benefitScreeningClosedBox('LIS') });
+                    } else {
+                        const html = benefitOpenSection('LIS');
+                        if (html) benefitSections.push({ closed: false, html });
+                    }
+                }
+
+                // MSP section
+                if (!isDeceased) {
+                    if (member.MSP?.screeningInProgress === false) {
+                        benefitSections.push({ closed: true, html: benefitScreeningClosedBox('MSP') });
+                    } else {
+                        const html = benefitOpenSection('MSP');
+                        if (html) benefitSections.push({ closed: false, html });
+                    }
+                }
+
+                // PTRR section
+                if (member.PTRR?.screeningInProgress === false) {
+                    benefitSections.push({ closed: true, html: benefitScreeningClosedBox('PTRR') });
+                } else {
+                    const html = benefitOpenSection('PTRR');
+                    if (html) benefitSections.push({ closed: false, html });
+                }
+
+                // Sort: open benefits first, closed benefits last
+                benefitSections.sort((a, b) => a.closed - b.closed);
+
                 memberDiv.innerHTML = `
                 ${member.headOfHousehold ? `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block;"><strong>Head of Household</strong></p>` : ''}
+                ${isDeceased ? `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block;"><strong>Deceased</strong></p>` : ''}
                 <h3>${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.middleInitial || '')} ${capitalizeFirstLetter(member.lastName)}</h3>
                 <p><strong>Age:</strong> ${member.age?.split('Y')[0] || 'N/A'}</p>
                 <p><strong>Marital Status:</strong> ${capitalizeFirstLetter(member.maritalStatus || 'N/A')}</p>
@@ -76,335 +288,178 @@ document.addEventListener('DOMContentLoaded', async function () {
                           }</p>`
                         : ''
                 }
-                ${ 
-                    member.PACE?.eligibility?.includes('Not Checked') ||
-                    member.PACE?.eligibility?.includes('Age Criteria Not Met')
-                        ? '' 
-                        : `
-                    <details class="custom-details">
-                        <summary><br><strong>PACE</strong><br> 
-                        <p><strong></strong> ${
-                            member.PACE?.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
-                        }<br>
-                        <button class="benefit-apply-button" data-benefit="PACE" data-member-id="${member.householdMemberId}" 
-                            style="display: ${
-                                member.PACE?.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('already'))
-                                    ? 'none'
-                                    : 'block'
-                            }; margin: 0 auto">
-                            ${member.PACE?.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for PACE'}
-                        </button>
-                        <br>
-                        </summary></p>
-                        <hr class="separator-bar">
-                        <p><strong>Gross Adjusted Income:</strong> $${member.PACE?.combinedIncome?.toFixed(2) || 'N/A'}</p>
-                    </details>
-                    `
-                }
-                ${ 
-                    member.LIS?.eligibility?.includes('Not Checked')                        ? '' 
-                        : `
-                    <details class="custom-details">
-                        <summary><br><strong>LIS</strong><br>
-                        <p><strong></strong> ${
-                            member.LIS?.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
-                        }<br>
-                        <button class="benefit-apply-button" data-benefit="LIS" data-member-id="${member.householdMemberId}" 
-                            style="display: ${
-                                member.LIS?.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('already'))
-                                    ? 'none'
-                                    : 'block'
-                            }; margin: 0 auto">
-                            ${member.LIS?.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for LIS'}
-                        </button>
-                        <br>
-                        </summary></p>
-                        <hr class="separator-bar">
-                        <p><strong>Gross Income:</strong> $${member.LIS?.combinedIncome?.toFixed(2) || 'N/A'}</p>
-                        <p><strong>Combined Assets:</strong> $${member.LIS?.combinedAssets?.toFixed(2) || 'N/A'}</p>
-                    </details>
-                    `
-                }
-                ${ 
-                    member.MSP?.eligibility?.includes('Not Checked') 
-                        ? '' 
-                        : `
-                    <details class="custom-details">
-    <summary><br><strong>MSP</strong>
-    <p><strong></strong> ${
-        member.MSP?.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
-    }<br>
-    <button class="benefit-apply-button" data-benefit="MSP" data-member-id="${member.householdMemberId}" 
-        style="display: ${
-    console.log('MSP Eligibility for', member.firstName, member.lastName, member.MSP?.eligibility),
-    Array.isArray(member.MSP?.eligibility) &&
-    member.MSP?.eligibility.some(e => 
-        e?.toLowerCase().includes('not') || 
-        e?.toLowerCase().includes('needs') || 
-        e?.toLowerCase().includes('already')
-    )
-        ? 'none'
-        : 'block'
-}; margin: 0 auto;">
-        ${member.MSP?.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for MSP'}
-    </button>
-    <br>
-    </summary></p>
-    <hr class="separator-bar">
-    <p><strong>Gross Adjusted Income:</strong> $${member.MSP?.combinedIncome?.toFixed(2) || 'N/A'}</p>
-    <p><strong>Combined Assets:</strong> $${member.MSP?.combinedAssets?.toFixed(2) || 'N/A'}</p>
-</details>
-                    `
-                }
-                ${ 
-                    member.PTRR?.eligibility?.includes('Not Checked') 
-                        ? '' 
-                        : `
-                        <details class="custom-details">
-                            <summary><br><strong>PTRR</strong>
-                            <p><strong></strong> ${
-                                member.PTRR?.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
-                            }<br>
-                            <button class="benefit-apply-button" data-benefit="PTRR" data-member-id="${member.householdMemberId}" 
-                                style="display: ${
-                                    member.PTRR?.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('no') || e.toLowerCase().includes('already'))
-                                        ? 'none'
-                                        : 'block'
-                                }; margin: 0 auto">
-                                ${member.PTRR?.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for PTRR'}
-                            </button>
-                            <br>
-                            </summary></p>
-                            <hr class="separator-bar">
-                            <p><strong>Gross Income:</strong> $${member.PTRR?.combinedIncome?.toFixed(2) || 'N/A'}</p>
-                        </details>
-                        `
-                }
+                ${benefitSections.map(s => s.html).join('')}
+                ${openBenefits.length > 0 ? `
+                    <br>
+                    <button class="btn-close-member-screening" data-member-id="${member.householdMemberId}" style="
+                        background-color: #dc3545;
+                        color: white;
+                        border: none;
+                        border-radius: 4px;
+                        padding: 8px 16px;
+                        font-size: 13px;
+                        cursor: pointer;
+                        transition: background-color 0.3s;
+                    " onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Close Screening(s)</button>
+                ` : ''}
             `;
                 householdMemberContainer.appendChild(memberDiv);
 
-                            // Check the visibility of the PTRR button and update the state
-            const benefitButton = memberDiv.querySelector(`.benefit-apply-button[data-benefit="PTRR"][data-member-id="${member.householdMemberId}"]`);
-            const isButtonDisplayed = benefitButton && benefitButton.style.display !== 'none';
-
-            if (!isButtonDisplayed) {
-                // Update the PTRR.application state to ensure consistency
-                member.PTRR.application = member.PTRR.application.filter(app => !app.applying);
-            }
-        });
-
-        // Save the updated members to the backend after ensuring the state is consistent
-        const clientId = getQueryParameter('id');
-        try {
-            const response = await fetch(`/save-household-members`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ clientId, householdMembers: members }),
+                // PTRR button visibility check — clean up application state
+                const ptrrButton = memberDiv.querySelector(`.benefit-apply-button[data-benefit="PTRR"][data-member-id="${member.householdMemberId}"]`);
+                const isPtrrButtonDisplayed = ptrrButton && ptrrButton.style.display !== 'none';
+                if (!isPtrrButtonDisplayed) {
+                    member.PTRR.application = member.PTRR.application.filter(app => !app.applying);
+                }
             });
 
-            if (response.ok) {
-                console.log('Household members updated successfully on page load.');
-            } else {
-                console.error('Failed to update household members on page load:', response.statusText);
+            // Save the updated members to the backend after ensuring state is consistent
+            try {
+                const response = await fetch(`/save-household-members`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientId, householdMembers: members }),
+                });
+                if (response.ok) {
+                    console.log('Household members updated successfully on page load.');
+                } else {
+                    console.error('Failed to update household members on page load:', response.statusText);
+                }
+            } catch (error) {
+                console.error('Error saving household members on page load:', error);
             }
-        } catch (error) {
-            console.error('Error saving household members on page load:', error);
-        }
-            // Add event listeners to the benefit buttons
+
+            // Add event listeners to the benefit apply buttons
             const benefitButtons = document.querySelectorAll('.benefit-apply-button');
             benefitButtons.forEach(button => {
                 button.addEventListener('click', async (event) => {
-                    const benefit = event.target.dataset.benefit; // Get the benefit type
-                    const memberId = event.target.dataset.memberId || null; // Get the member ID
-                    const buttonLabel = event.target.textContent.trim(); // Get the current button label
-                    const newApplyingState = buttonLabel.startsWith('Apply'); // Determine the new state
-            
+                    const benefit = event.target.dataset.benefit;
+                    const memberId = event.target.dataset.memberId || null;
+                    const buttonLabel = event.target.textContent.trim();
+                    const newApplyingState = buttonLabel.startsWith('Apply');
+
                     console.log(`Benefit: ${benefit}, Member ID: ${memberId}, New Applying State: ${newApplyingState}`);
-            
-                    const members = await loadHouseholdMembers(); // Reload members
-            
-                    // Use the handler to toggle the application state
-                    await handleBenefitApplicationToggle(members, benefit, memberId, newApplyingState);
-            
-                    // Refresh the display after updating
+
+                    const freshMembers = await loadHouseholdMembers();
+                    await updateMemberBenefits(freshMembers, benefit, newApplyingState, memberId);
+
                     if (benefit === 'SNAP') {
                         await displaySNAPHouseholds();
                     } else if (benefit === 'LIHEAP') {
                         await displayLIHEAPHouseholds();
                     } else {
-                        await displayHouseholdMembers(); // Refresh the display for individual benefits
+                        await displayHouseholdMembers();
                     }
-            
-                    // Update the visibility of the save/continue button
+
                     await updateSaveContinueButtonVisibility();
+                });
+            });
+
+            // Add event listeners to close member screening buttons (multi-benefit modal)
+            const closeMemberBtns = document.querySelectorAll('.btn-close-member-screening');
+            closeMemberBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const memberId = btn.dataset.memberId;
+                    const targetMember = members.find(m => String(m.householdMemberId) === memberId);
+                    // Recalculate open benefits for this member
+                    const memberOpenBenefits = [];
+                    const isDeceasedMember = (targetMember?.deceased ?? '').toLowerCase() === 'yes';
+                    ['PACE', 'LIS', 'MSP', 'PTRR'].forEach(benefit => {
+                        if (benefit !== 'PTRR' && isDeceasedMember) return;
+                        const bObj = targetMember?.[benefit];
+                        if (!bObj) return;
+                        if (bObj.screeningInProgress === false) return;
+                        if (bObj.eligibility?.includes('Not Checked')) return;
+                        if (benefit === 'PACE' && bObj.eligibility?.includes('Age Criteria Not Met')) return;
+                        if (bObj.eligibility && bObj.eligibility.length > 0) memberOpenBenefits.push(benefit);
+                    });
+                    openCloseMemberModal(clientId, members, memberId, memberOpenBenefits);
+                });
+            });
+
+            // Add event listeners to reopen-benefit buttons
+            const reopenBenefitBtns = document.querySelectorAll('.reopen-benefit-btn');
+            reopenBenefitBtns.forEach(btn => {
+                btn.addEventListener('click', async (event) => {
+                    const benefit = event.target.dataset.benefit;
+                    const memberIds = event.target.dataset.memberIds.split(',');
+                    const displayName = event.target.dataset.displayName;
+                    await reopenBenefitScreening(benefit, memberIds, displayName);
                 });
             });
         }
     }
 
-    async function handleBenefitApplicationToggle(members, benefit, memberId, newApplyingState) {
-        // Find the member by ID
-        const member = members.find(m => m.householdMemberId === memberId);
-        if (!member) {
-            console.error(`Member with ID ${memberId} not found.`);
-            return;
-        }
-    
-        // Ensure the benefit structure exists
-        member[benefit] = member[benefit] || {};
-        member[benefit].application = member[benefit].application || [];
-    
-        // Check if the "Apply for" button is displayed
-        const benefitButton = document.querySelector(`.benefit-apply-button[data-benefit="${benefit}"][data-member-id="${memberId}"]`);
-        const isButtonDisplayed = benefitButton && benefitButton.style.display !== 'none';
-    
-        // Automatically set applying to false if the button is not displayed
-        if (!isButtonDisplayed) {
-            newApplyingState = false;
-        }
-    
-        // Update the application state
-        if (newApplyingState) {
-            // If applying, ensure there is an object with `applying: true`
-            if (!member[benefit].application.some(app => app.applying)) {
-                member[benefit].application.push({ applying: true });
-            }
-        } else {
-            // If stopping, remove all objects with `applying: true`
-            member[benefit].application = member[benefit].application.filter(app => !app.applying);
-        }
-    
-        console.log(`Updated Applications for ${member.firstName} ${member.lastName}:`, member[benefit].application);
-    
-        // Save the updated members to the backend
-        const clientId = getQueryParameter('id');
-        try {
-            const response = await fetch(`/save-household-members`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ clientId, householdMembers: members }),
-            });
-    
-            if (response.ok) {
-                console.log(`Benefit ${benefit} updated successfully for ${member.firstName} ${member.lastName}.`);
-            } else {
-                console.error(`Failed to update benefit ${benefit} for ${member.firstName} ${member.lastName}:`, response.statusText);
-            }
-        } catch (error) {
-            console.error(`Error saving benefit ${benefit} for ${member.firstName} ${member.lastName}:`, error);
-        }
-    }
-
+    // ===== updateMemberBenefits (handles ALL benefit types) =====
     async function updateMemberBenefits(members, benefit, newApplyingState, memberId = null) {
-        // Ensure the function only handles the specified benefit
         const validBenefits = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
         if (!validBenefits.includes(benefit)) {
             console.warn(`updateMemberBenefits does not handle ${benefit}.`);
             return;
         }
-    
+
         console.log(`Updating benefits for Benefit: ${benefit}, Applying State: ${newApplyingState}, Member ID: ${memberId || 'N/A'}`);
-    
-        // Handle SNAP updates for all members with meals: "yes"
+
         if (benefit === 'SNAP') {
             members.forEach(member => {
                 if (member.meals?.toLowerCase() === "yes") {
                     member.SNAP = member.SNAP || {};
                     member.SNAP.application = member.SNAP.application || [];
-    
-                    // Check if the "Apply for" button is displayed
-                    const benefitButton = document.querySelector(`.benefit-apply-button[data-benefit="SNAP"][data-member-id="${member.householdMemberId}"]`);
-                    const isButtonDisplayed = benefitButton && benefitButton.style.display !== 'none';
-    
-                    // Automatically set applying to false if the button is not displayed
-                    if (!isButtonDisplayed) {
-                        newApplyingState = false;
-                    }
-    
-                    // Update the applying status
                     if (member.SNAP.application.length === 0) {
                         member.SNAP.application.push({ applying: newApplyingState });
                     } else {
-                        member.SNAP.application.forEach(app => {
-                            app.applying = newApplyingState;
-                        });
+                        member.SNAP.application.forEach(app => { app.applying = newApplyingState; });
                     }
                 }
             });
-        } 
-        // Handle LIHEAP updates for all members
-        else if (benefit === 'LIHEAP') {
+        } else if (benefit === 'LIHEAP') {
             members.forEach(member => {
                 member.LIHEAP = member.LIHEAP || {};
                 member.LIHEAP.application = member.LIHEAP.application || [];
-    
-                // Check if the "Apply for" button is displayed
-                const benefitButton = document.querySelector(`.benefit-apply-button[data-benefit="LIHEAP"][data-member-id="${member.householdMemberId}"]`);
-                const isButtonDisplayed = benefitButton && benefitButton.style.display !== 'none';
-    
-                // Automatically set applying to false if the button is not displayed
-                if (!isButtonDisplayed) {
-                    newApplyingState = false;
-                }
-    
-                // Update the applying status
                 if (member.LIHEAP.application.length === 0) {
                     member.LIHEAP.application.push({ applying: newApplyingState });
                 } else {
-                    member.LIHEAP.application.forEach(app => {
-                        app.applying = newApplyingState;
-                    });
+                    member.LIHEAP.application.forEach(app => { app.applying = newApplyingState; });
                 }
             });
-        } 
-        // Handle individual benefits for a specific member
-        else if (memberId) {
-            const member = members.find(m => m.householdMemberId === memberId);
+        } else if (memberId) {
+            const member = members.find(m => String(m.householdMemberId) === String(memberId));
             if (!member) {
                 console.error(`Member with ID ${memberId} not found.`);
                 return;
             }
-    
+
             member[benefit] = member[benefit] || {};
             member[benefit].application = member[benefit].application || [];
-    
+
             // Check if the "Apply for" button is displayed
             const benefitButton = document.querySelector(`.benefit-apply-button[data-benefit="${benefit}"][data-member-id="${memberId}"]`);
             const isButtonDisplayed = benefitButton && benefitButton.style.display !== 'none';
-    
-// Automatically set applying to false if the button is not displayed
-if (!isButtonDisplayed) {
-    newApplyingState = false;
 
-    // Ensure the application state is updated to reflect this
-    member[benefit].application = member[benefit].application.filter(app => !app.applying);
-}
-    
-            // Update the applying status
-            if (member[benefit].application.length === 0) {
-                member[benefit].application.push({ applying: newApplyingState });
-            } else {
-                member[benefit].application.forEach(app => {
-                    app.applying = newApplyingState;
-                });
+            // Automatically set applying to false if the button is not displayed
+            if (!isButtonDisplayed) {
+                newApplyingState = false;
             }
+
+            if (newApplyingState) {
+                if (!member[benefit].application.some(app => app.applying)) {
+                    member[benefit].application.push({ applying: true });
+                }
+            } else {
+                member[benefit].application = member[benefit].application.filter(app => !app.applying);
+            }
+
+            console.log(`Updated Applications for ${member.firstName} ${member.lastName}:`, member[benefit].application);
         }
-    
-        // Save the updated members to the backend
+
         const clientId = getQueryParameter('id');
         try {
             const response = await fetch(`/save-household-members`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ clientId, householdMembers: members }),
             });
-    
+
             if (response.ok) {
                 console.log(`Benefits updated successfully for Benefit: ${benefit}.`);
             } else {
@@ -414,312 +469,645 @@ if (!isButtonDisplayed) {
             console.error(`Error saving benefits for Benefit: ${benefit}:`, error);
         }
     }
-    
-// Function to display SNAP households
-async function displaySNAPHouseholds() {
-    const snapHouseholdContainer = document.getElementById('snap-household-container');
-    if (!snapHouseholdContainer) {
-        console.error('snap-household-container element not found in the DOM.');
-        return;
+
+    // --- Close Member Screening Modal (with checkboxes for open benefits) ---
+function createCloseMemberModal() {
+    if (document.getElementById('close-member-modal')) return;
+
+    const modalOverlay = document.createElement('div');
+    modalOverlay.id = 'close-member-modal';
+    modalOverlay.style.cssText = `
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+    `;
+
+    modalOverlay.innerHTML = `
+        <div style="background: white; padding: 24px; border-radius: 8px; min-width: 380px; max-width: 520px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <h3 id="close-member-modal-title" style="margin-top: 0;">Close Screening</h3>
+            <div id="close-member-benefits-checkboxes" style="margin: 12px 0;"></div>
+            <label for="close-member-reason-select"><strong>Select a reason:</strong></label>
+            <select id="close-member-reason-select" style="width: 100%; padding: 8px; margin: 12px 0; font-size: 14px;">
+                <option value="">-- Select a reason --</option>
+            </select>
+            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 16px;">
+                <button id="close-member-cancel-btn" style="padding: 8px 16px; cursor: pointer;">Cancel</button>
+                <button id="close-member-confirm-btn" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#d9534f'">Confirm Close</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modalOverlay);
+
+    document.getElementById('close-member-cancel-btn').addEventListener('click', () => {
+        modalOverlay.style.display = 'none';
+    });
+
+    modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) {
+            modalOverlay.style.display = 'none';
+        }
+    });
+}
+
+function getCloseReasonsForBenefits(selectedBenefits) {
+    const commonReasons = [
+        { value: "Client Not Interested", label: "Not Interested" },
+        { value: "Too Confusing", label: "Too Confusing" },
+        { value: "Will Call Back", label: "Will Call Back" }
+    ];
+
+    const benefitReasons = {
+        'PACE': [
+            { value: "Already Enrolled", label: "Already Enrolled" },
+            { value: "Ineligible - Income", label: "Ineligible - Income" },
+            { value: "Age Criteria Not Met", label: "Age Criteria Not Met" },
+            { value: "Enrolled in Medicaid", label: "Enrolled in Medicaid" },
+            { value: "Residency Not Met", label: "PA Residency Not Met" },
+            ...commonReasons
+        ],
+        'LIS': [
+            { value: "Already Enrolled", label: "Already Enrolled" },
+            { value: "Ineligible - Income", label: "Ineligible - Income" },
+            { value: "Ineligible - Assets", label: "Ineligible - Assets" },
+            { value: "Not Enrolled in Medicare", label: "Not Enrolled in Medicare" },
+            { value: "Enrolled in Medicaid", label: "Enrolled in Medicaid" },
+            ...commonReasons
+        ],
+        'MSP': [
+            { value: "Already Enrolled", label: "Already Enrolled in MSP" },
+            { value: "Ineligible - Income", label: "Ineligible - Income" },
+            { value: "Ineligible - Assets", label: "Ineligible - Assets" },
+            { value: "Not Enrolled in Medicare", label: "Not Enrolled in Medicare" },
+            { value: "Enrolled in Medicaid", label: "Enrolled in Medicaid" },
+            ...commonReasons
+        ],
+        'PTRR': [
+            { value: "Already Applied", label: "Already Applied This Year" },
+            { value: "Ineligible - Income", label: "Ineligible - Income" },
+            { value: "Age/Disability/Widow Criteria Not Met", label: "Age/Disability/Widow Criteria Not Met" },
+            { value: "No Formal Lease", label: "No Formal Lease" },
+            { value: "No Relevant Expenses", label: "No Relevant Expenses" },
+            ...commonReasons
+        ]
+    };
+
+    if (selectedBenefits.length === 0) return [];
+
+    if (selectedBenefits.length === 1) {
+        const benefit = selectedBenefits[0];
+        return benefitReasons[benefit] || [
+            { value: "Already Enrolled", label: "Already Enrolled" },
+            { value: "Ineligible - Income", label: "Ineligible - Income" },
+            { value: "Ineligible - Assets", label: "Ineligible - Assets" },
+            ...commonReasons
+        ];
     }
 
-    const members = await loadHouseholdMembers();
-    snapHouseholdContainer.innerHTML = ''; // Clear existing content
+    // Multiple benefits selected — compute intersection by value
+    const reasonSets = selectedBenefits.map(benefit => {
+        const reasons = benefitReasons[benefit] || [];
+        return new Set(reasons.map(r => r.value));
+    });
 
-    // Group members into SNAP households based on "meals=yes"
-    const snapHouseholds = [];
-    const processedMembers = new Set();
+    // Find values present in ALL selected benefits
+    const sharedValues = [...reasonSets[0]].filter(value =>
+        reasonSets.every(set => set.has(value))
+    );
 
-    for (const member of members) {
-        if (processedMembers.has(member.householdMemberId)) continue;
+    // Use the label from the first benefit's reasons for each shared value
+    const firstBenefitReasons = benefitReasons[selectedBenefits[0]] || [];
+    return sharedValues.map(value => {
+        const match = firstBenefitReasons.find(r => r.value === value);
+        return match || { value, label: value };
+    });
+}
 
-        if (member.meals?.toLowerCase() === "yes") {
-            const snapHousehold = [member];
-            processedMembers.add(member.householdMemberId);
+function updateReasonDropdown(selectedBenefits) {
+    const select = document.getElementById('close-member-reason-select');
+    if (!select) return;
 
-            for (const otherMember of members) {
-                if (
-                    otherMember.householdMemberId !== member.householdMemberId &&
-                    otherMember.meals?.toLowerCase() === "yes"
-                ) {
-                    snapHousehold.push(otherMember);
-                    processedMembers.add(otherMember.householdMemberId);
+    const reasons = getCloseReasonsForBenefits(selectedBenefits);
+    select.innerHTML = '<option value="">-- Select a reason --</option>';
+    reasons.forEach(reason => {
+        const option = document.createElement('option');
+        option.value = reason.value;
+        option.textContent = reason.label;
+        select.appendChild(option);
+    });
+}
+
+    function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
+        createCloseMemberModal();
+        const modal = document.getElementById('close-member-modal');
+        const checkboxContainer = document.getElementById('close-member-benefits-checkboxes');
+        const select = document.getElementById('close-member-reason-select');
+        const confirmBtn = document.getElementById('close-member-confirm-btn');
+        const title = document.getElementById('close-member-modal-title');
+    
+        const targetMember = allMembers.find(m => m.householdMemberId === memberId);
+        const memberName = targetMember
+            ? `${capitalizeFirstLetter(targetMember.firstName)} ${capitalizeFirstLetter(targetMember.lastName)}`
+            : 'Unknown';
+    
+        title.textContent = `Close Screening for ${memberName}`;
+    
+    // ...existing code...
+        // Build selectable benefit tiles (click to toggle selection)
+        checkboxContainer.innerHTML = '<p style="margin-bottom: 10px;"><strong>Select benefits to close:</strong></p>';
+        openBenefits.forEach(benefit => {
+            const tile = document.createElement('div');
+            tile.className = 'close-member-benefit-tile';
+            tile.dataset.benefit = benefit;
+            tile.dataset.selected = 'false';
+            tile.textContent = benefit;
+            tile.style.cssText = `
+                display: block;
+                padding: 10px 16px;
+                margin: 6px 0;
+                border: 2px solid #ccc;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 500;
+                color: #333;
+                background-color: #f9f9f9;
+                transition: all 0.2s ease;
+                user-select: none;
+            `;
+    
+            tile.addEventListener('mouseover', () => {
+                if (tile.dataset.selected === 'false') {
+                    tile.style.borderColor = '#337ab7';
+                    tile.style.backgroundColor = '#e8f0fe';
                 }
+            });
+    
+            tile.addEventListener('mouseout', () => {
+                if (tile.dataset.selected === 'false') {
+                    tile.style.borderColor = '#ccc';
+                    tile.style.backgroundColor = '#f9f9f9';
+                }
+            });
+    
+            tile.addEventListener('click', () => {
+                const isSelected = tile.dataset.selected === 'true';
+                tile.dataset.selected = isSelected ? 'false' : 'true';
+    
+                if (tile.dataset.selected === 'true') {
+                    tile.style.borderColor = 'black';
+                    tile.style.backgroundColor = '#007bff';
+                    tile.style.color = 'white';
+                } else {
+                    tile.style.borderColor = '#ccc';
+                    tile.style.backgroundColor = '#f9f9f9';
+                    tile.style.color = '#333';
+                }
+    
+                // Update reason dropdown based on selected benefits
+                const selected = Array.from(checkboxContainer.querySelectorAll('.close-member-benefit-tile[data-selected="true"]')).map(t => t.dataset.benefit);
+                updateReasonDropdown(selected);
+            });
+    
+            checkboxContainer.appendChild(tile);
+        });
+    
+        // Initialize with no reasons (nothing checked yet)
+        select.innerHTML = '<option value="">-- Select a reason --</option>';
+        modal.style.display = 'flex';
+    
+        // Remove old listener by cloning
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+    
+        newConfirmBtn.addEventListener('click', async () => {
+            const selectedBenefits = Array.from(checkboxContainer.querySelectorAll('.close-member-benefit-tile[data-selected="true"]')).map(t => t.dataset.benefit);
+            const reason = select.value;
+    
+            if (selectedBenefits.length === 0) {
+                alert('Please select at least one benefit to close.');
+                return;
+            }
+            if (!reason) {
+                alert('Please select a reason.');
+                return;
+            }
+    
+            try {
+                if (targetMember) {
+                    for (const benefit of selectedBenefits) {
+                        if (targetMember[benefit]) {
+                            targetMember[benefit].screeningInProgress = false;
+                            targetMember[benefit].screeningCloseReason = reason;
+                        }
+                    }
+                }
+    
+                const saveResponse = await fetch(`/save-household-members`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientId, householdMembers: allMembers })
+                });
+    
+                if (saveResponse.ok) {
+                    modal.style.display = 'none';
+                    const benefitList = selectedBenefits.join('<br>');
+                    await addNoteToClient(clientId, `<strong>Screening(s) closed for ${memberName}.</strong><br><br>${benefitList} <br><br> Reason: ${reason}`);
+                    await renderNotesContainer();
+                    await displayHouseholdMembers();
+                } else {
+                    console.error('Failed to close screening.');
+                }
+            } catch (error) {
+                console.error('Error closing screening:', error);
+            }
+        });
+    }
+
+    // ===== SNAP Households Display =====
+    async function displaySNAPHouseholds() {
+        const snapHouseholdContainer = document.getElementById('snap-household-container');
+        if (!snapHouseholdContainer) {
+            console.error('snap-household-container element not found in the DOM.');
+            return;
+        }
+
+        const members = await loadHouseholdMembers();
+        snapHouseholdContainer.innerHTML = '';
+
+        const snapHouseholds = [];
+        const processedMembers = new Set();
+
+        for (const member of members) {
+            if (processedMembers.has(member.householdMemberId)) continue;
+
+            if (member.meals?.toLowerCase() === "yes") {
+                const snapHousehold = [member];
+                processedMembers.add(member.householdMemberId);
+
+                for (const otherMember of members) {
+                    if (
+                        otherMember.householdMemberId !== member.householdMemberId &&
+                        otherMember.meals?.toLowerCase() === "yes"
+                    ) {
+                        snapHousehold.push(otherMember);
+                        processedMembers.add(otherMember.householdMemberId);
+                    }
+                }
+
+                snapHouseholds.push(snapHousehold);
+            }
+        }
+
+        if (snapHouseholds.length === 0) {
+            const noHouseholdsMessage = document.createElement('p');
+            noHouseholdsMessage.textContent = 'NO SNAP HOUSEHOLDS FOUND.';
+            snapHouseholdContainer.appendChild(noHouseholdsMessage);
+            return;
+        }
+
+        snapHouseholds.forEach(household => {
+            const householdDiv = document.createElement('div');
+            householdDiv.classList.add('household-member-box');
+
+            const snapMemberIds = household.map(m => String(m.householdMemberId));
+            const snapMemberNames = household.map(m => `${capitalizeFirstLetter(m.firstName)} ${capitalizeFirstLetter(m.lastName)}`).join(', ');
+
+            const isSnapScreeningClosed = household[0]?.SNAP?.screeningInProgress === false;
+            const snapCloseReason = household[0]?.SNAP?.screeningCloseReason || 'N/A';
+
+            if (isSnapScreeningClosed) {
+                householdDiv.innerHTML = `
+                    <h3>SNAP HOUSEHOLD</h3>
+                    <p><strong>Members:</strong> ${snapMemberNames}</p>
+                    <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center;">
+                        <p style="margin: 0 0 6px 0;"><strong>SNAP Screening Closed</strong></p>
+                        <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${snapCloseReason}</p>
+                        <button class="reopen-benefit-btn" 
+                            data-benefit="SNAP" 
+                            data-member-ids="${snapMemberIds.join(',')}" 
+                            data-display-name="SNAP Household"
+                            style="background-color: #007bff; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 12px; cursor: pointer; transition: background-color 0.3s;"
+                            onmouseover="this.style.backgroundColor='#0056b3'" 
+                            onmouseout="this.style.backgroundColor='#007bff'">
+                            Reopen SNAP Screening
+                        </button>
+                    </div>
+                `;
+                snapHouseholdContainer.appendChild(householdDiv);
+
+                const reopenBtn = householdDiv.querySelector('.reopen-benefit-btn');
+                if (reopenBtn) {
+                    reopenBtn.addEventListener('click', async () => {
+                        await reopenBenefitScreening('SNAP', snapMemberIds, 'SNAP Household');
+                    });
+                }
+                return;
             }
 
-            snapHouseholds.push(snapHousehold);
-        }
+            const combinedMonthlyIncome = household[0]?.SNAP?.combinedMonthlyIncome || 0;
+            const totalNetIncome = household[0]?.SNAP?.totalNetIncome || 0;
+            const excessShelterCost = household[0]?.SNAP?.excessShelterCost || 0;
+            const totalUtilityAllowance = household[0]?.SNAP?.totalUtilityAllowance || 0;
+            const totalMedicalExpenses = household[0]?.SNAP?.totalMedicalExpenses || 0;
+            const totalOtherExpenses = household[0]?.SNAP?.totalOtherExpenses || 0;
+            const eligibility = household[0]?.SNAP?.eligibility?.map(capitalizeFirstLetter) || 'Not Available';
+            const benefitAmount = household[0]?.SNAP?.benefitAmount || 0;
+            const combinedAssets = household[0]?.SNAP?.combinedAssets || 0;
+
+            const isLikelyEligible = Array.isArray(eligibility)
+                ? !eligibility.some(item => 
+                    item.toLowerCase().includes("not") || 
+                    item.toLowerCase().includes("needs") || 
+                    item.toLowerCase().includes("already")
+                )
+                : !String(eligibility).toLowerCase().includes("not") &&
+                  !String(eligibility).toLowerCase().includes("needs") &&
+                  !String(eligibility).toLowerCase().includes("already");
+
+            householdDiv.innerHTML = `
+                <details class="custom-details">
+                    <summary><h3>SNAP HOUSEHOLD</h3></summary>
+                    <p><strong>Total Gross Income:</strong> $${combinedMonthlyIncome.toFixed(2)}</p>
+                    <p><strong>Shelter Deduction:</strong> $${excessShelterCost.toFixed(2)}</p>
+                    <p><strong>Medical Expense Deductions:</strong> $${totalMedicalExpenses.toFixed(2)}</p>
+                    <p><strong>Other Expense Deductions:</strong> $${totalOtherExpenses.toFixed(2)}</p>
+                    <p><strong>Adjusted Net Income:</strong> $${totalNetIncome.toFixed(2)}</p>
+                    <p><strong>Combined Assets:</strong> $${combinedAssets.toFixed(2)}</p>
+                    <hr class="separator-bar">
+                </details>
+                <p><strong>Members:</strong> ${snapMemberNames}</p>
+                <p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
+                ${
+                    isLikelyEligible && benefitAmount >= 0
+                        ? `
+                        <p><strong>Estimated Benefit Amount:</strong> ${
+                            benefitAmount < 24 ? "Up to $24.00" : `Up to $24.00 - $${benefitAmount.toFixed(2)}`
+                        }</p>
+                        <p><strong>Expedited Eligibility:</strong> ${
+                            capitalizeFirstLetter(household[0]?.SNAP?.expeditedEligibility || 'N/A')
+                        }</p>
+                        `
+                        : ''
+                }
+                <button class="benefit-apply-button" data-benefit="SNAP" style="display: ${isLikelyEligible ? 'block' : 'none'};">
+                    ${household.every(member => member.SNAP?.application?.some(app => app.applying)) ? 'Stop Applying' : 'Apply for SNAP'}
+                </button>
+                <button class="close-benefit-btn" 
+                    data-benefit="SNAP" 
+                    data-member-ids="${snapMemberIds.join(',')}" 
+                    data-display-name="SNAP Household"
+                    style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 11px; cursor: pointer; margin: 8px 0; transition: background-color 0.3s;"
+                    onmouseover="this.style.backgroundColor='#a71d2a'" 
+                    onmouseout="this.style.backgroundColor='#dc3545'">
+                    Close SNAP Screening
+                </button>
+            `;
+
+            snapHouseholdContainer.appendChild(householdDiv);
+
+            const benefitButton = householdDiv.querySelector('.benefit-apply-button');
+            benefitButton.addEventListener('click', async (event) => {
+                const benefit = event.target.dataset.benefit;
+                const buttonLabel = event.target.textContent.trim();
+                const newApplyingState = buttonLabel.startsWith('Apply');
+
+                const freshMembers = await loadHouseholdMembers();
+                await updateMemberBenefits(freshMembers, benefit, newApplyingState);
+
+                if (benefit === 'SNAP') {
+                    await displaySNAPHouseholds();
+                } else if (benefit === 'LIHEAP') {
+                    await displayLIHEAPHouseholds();
+                }
+                await updateSaveContinueButtonVisibility();
+            });
+
+            const closeBtn = householdDiv.querySelector('.close-benefit-btn');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
+                    openBenefitScreeningCloseModal('SNAP', snapMemberIds, 'SNAP Household');
+                });
+            }
+        });
     }
 
-    if (snapHouseholds.length === 0) {
-        const noHouseholdsMessage = document.createElement('p');
-        noHouseholdsMessage.textContent = 'NO SNAP HOUSEHOLDS FOUND.';
-        snapHouseholdContainer.appendChild(noHouseholdsMessage);
-        return;
-    }
-
-    snapHouseholds.forEach(household => {
-        const householdDiv = document.createElement('div');
-        householdDiv.classList.add('household-member-box'); // Apply the same class for styling
-
-        // Use the uniform values from the first member of the household
-        const combinedMonthlyIncome = household[0]?.SNAP?.combinedMonthlyIncome || 0;
-        const totalNetIncome = household[0]?.SNAP?.totalNetIncome || 0;
-        const excessShelterCost = household[0]?.SNAP?.excessShelterCost || 0;
-        const totalUtilityAllowance = household[0]?.SNAP?.totalUtilityAllowance || 0;
-        const totalMedicalExpenses = household[0]?.SNAP?.totalMedicalExpenses || 0;
-        const totalOtherExpenses = household[0]?.SNAP?.totalOtherExpenses || 0;
-        const eligibility = household[0]?.SNAP?.eligibility?.map(capitalizeFirstLetter) || 'Not Available';
-        const benefitAmount = household[0]?.SNAP?.benefitAmount || 0;
-        const combinedAssets = household[0]?.SNAP?.combinedAssets || 0;
-
-        // Check if eligibility does NOT include "Not", "needs", or "already"
-const isLikelyEligible = Array.isArray(eligibility)
-? !eligibility.some(item => 
-    item.toLowerCase().includes("not") || 
-    item.toLowerCase().includes("needs") || 
-    item.toLowerCase().includes("already")
-)
-: !String(eligibility).toLowerCase().includes("not") &&
-  !String(eligibility).toLowerCase().includes("needs") &&
-  !String(eligibility).toLowerCase().includes("already");
-
-        // Populate household details
-householdDiv.innerHTML = `
-<details class="custom-details">
-    <summary><h3>SNAP HOUSEHOLD</h3></summary>
-    <p><strong>Total Gross Income:</strong> $${combinedMonthlyIncome.toFixed(2)}</p>
-    <p><strong>Shelter Deduction:</strong> $${excessShelterCost.toFixed(2)}</p>
-    <p><strong>Medical Expense Deductions:</strong> $${totalMedicalExpenses.toFixed(2)}</p>
-    <p><strong>Other Expense Deductions:</strong> $${totalOtherExpenses.toFixed(2)}</p>
-    <p><strong>Adjusted Net Income:</strong> $${totalNetIncome.toFixed(2)}</p>
-    <p><strong>Combined Assets:</strong> $${combinedAssets.toFixed(2)}</p>
-    <hr class="separator-bar">
-</details>
-<p><strong>Members:</strong> ${household.map(member => `${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.lastName)}`).join(', ')}</p>
-<p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
-${
-    isLikelyEligible && benefitAmount >= 0
-        ? `
-        <p><strong>Estimated Benefit Amount:</strong> ${
-            benefitAmount < 24 ? "Up to $24.00" : `Up to $24.00 - $${benefitAmount.toFixed(2)}`
-        }</p>
-        <p><strong>Expedited Eligibility:</strong> ${
-            capitalizeFirstLetter(household[0]?.SNAP?.expeditedEligibility || 'N/A')
-        }</p>
-        `
-        : ''
-}
-<button class="benefit-apply-button" data-benefit="SNAP" style="display: ${isLikelyEligible ? 'block' : 'none'};">
-    ${household.every(member => member.SNAP?.application?.some(app => app.applying)) ? 'Stop Applying' : 'Apply for SNAP'}
-</button>
-`;
-        
-
-    snapHouseholdContainer.appendChild(householdDiv);
-
-    // Add event listener to the SNAP benefit button
-    const benefitButton = householdDiv.querySelector('.benefit-apply-button');
-benefitButton.addEventListener('click', async (event) => {
-    const benefit = event.target.dataset.benefit; // Get the benefit type
-    const buttonLabel = event.target.textContent.trim(); // Get the current button label
-    const newApplyingState = buttonLabel.startsWith('Apply'); // Determine the new state
-
-    const members = await loadHouseholdMembers(); // Reload members
-    await updateMemberBenefits(members, benefit, newApplyingState); // Update the benefit
-
-    // Refresh the display after updating
-    if (benefit === 'SNAP') {
-        await displaySNAPHouseholds();
-    } else if (benefit === 'LIHEAP') {
-        await displayLIHEAPHouseholds();
-    }
-    await updateSaveContinueButtonVisibility(); // Update button visibility
-});
-});
-}
-    
+    // ===== LIHEAP Households Display =====
     async function displayLIHEAPHouseholds() {
         const liheapHouseholdContainer = document.getElementById('liheap-household-container');
         if (!liheapHouseholdContainer) {
             console.error('liheap-household-container element not found in the DOM.');
             return;
         }
-    
+
         const members = await loadHouseholdMembers();
-        liheapHouseholdContainer.innerHTML = ''; // Clear existing content
-    
-        if (members.length === 0) {
+        liheapHouseholdContainer.innerHTML = '';
+
+        const activeMembersForLIHEAP = members.filter(
+            m => (m.deceased ?? '').toLowerCase() !== 'yes'
+        );
+
+        const clientId = getQueryParameter('id');
+        const clientResponse = await fetch(`/get-client/${clientId}`)
+            .then(response => response.json())
+            .catch(error => {
+                console.error('Error fetching client data:', error);
+                return null;
+            });
+
+        if (clientResponse && clientResponse.liheapEnrollment === 'notinterested') {
+            const notInterestedMessage = document.createElement('p');
+            notInterestedMessage.textContent = 'NO LIHEAP HOUSEHOLDS FOUND.';
+            liheapHouseholdContainer.appendChild(notInterestedMessage);
+            return;
+        }
+
+        if (activeMembersForLIHEAP.length === 0) {
             const noHouseholdsMessage = document.createElement('p');
             noHouseholdsMessage.textContent = 'NO LIHEAP HOUSEHOLDS FOUND.';
             liheapHouseholdContainer.appendChild(noHouseholdsMessage);
             return;
         }
-    
-        // Use the combined values from the household
-        const combinedYearlyIncome = members[0]?.LIHEAP?.combinedYearlyIncome || 0;
-        const eligibility = members[0]?.LIHEAP?.eligibility?.map(capitalizeFirstLetter) || 'Not Available';
-    
-        // Create a container for the LIHEAP household details
-        const householdDiv = document.createElement('div');
-        householdDiv.classList.add('household-member-box'); // Add a class for styling
-    
-// Check if eligibility does NOT include "Not", "needs", or "already"
-const isLikelyEligible = Array.isArray(eligibility)
-? !eligibility.some(item => 
-    item.toLowerCase().includes("not") || 
-    item.toLowerCase().includes("needs") || 
-    item.toLowerCase().includes("already")
-)
-: !String(eligibility).toLowerCase().includes("not") &&
-  !String(eligibility).toLowerCase().includes("needs") &&
-  !String(eligibility).toLowerCase().includes("already");
 
-        // Populate household details
+        const liheapMemberIds = activeMembersForLIHEAP.map(m => String(m.householdMemberId));
+        const liheapMemberNames = activeMembersForLIHEAP.map(m => `${capitalizeFirstLetter(m.firstName)} ${capitalizeFirstLetter(m.lastName)}`).join(', ');
+
+        const isLiheapScreeningClosed = activeMembersForLIHEAP[0]?.LIHEAP?.screeningInProgress === false;
+        const liheapCloseReason = activeMembersForLIHEAP[0]?.LIHEAP?.screeningCloseReason || 'N/A';
+
+        if (isLiheapScreeningClosed) {
+            const householdDiv = document.createElement('div');
+            householdDiv.classList.add('household-member-box');
+            householdDiv.innerHTML = `
+                <h3>LIHEAP HOUSEHOLD</h3>
+                <p><strong>Members:</strong> ${liheapMemberNames}</p>
+                <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center;">
+                    <p style="margin: 0 0 6px 0;"><strong>LIHEAP Screening Closed</strong></p>
+                    <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${liheapCloseReason}</p>
+                    <button class="reopen-liheap-btn" 
+                            style="background-color: #007bff; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 12px; cursor: pointer; transition: background-color 0.3s;"
+                            onmouseover="this.style.backgroundColor='#0056b3'" 
+                            onmouseout="this.style.backgroundColor='#007bff'">
+                        Reopen LIHEAP Screening
+                    </button>
+                </div>
+            `;
+            liheapHouseholdContainer.appendChild(householdDiv);
+
+            const reopenBtn = householdDiv.querySelector('.reopen-liheap-btn');
+            if (reopenBtn) {
+                reopenBtn.addEventListener('click', async () => {
+                    await reopenBenefitScreening('LIHEAP', liheapMemberIds, 'LIHEAP Household');
+                });
+            }
+            return;
+        }
+
+        const combinedYearlyIncome = activeMembersForLIHEAP[0]?.LIHEAP?.combinedYearlyIncome || 0;
+        const eligibility = activeMembersForLIHEAP[0]?.LIHEAP?.eligibility?.map(capitalizeFirstLetter) || 'Not Available';
+
+        const householdDiv = document.createElement('div');
+        householdDiv.classList.add('household-member-box');
+
         householdDiv.innerHTML = `
             <details class="custom-details">
                 <summary><h3>LIHEAP HOUSEHOLD</h3></summary>
                 <p><strong>Combined Yearly Income:</strong> $${combinedYearlyIncome.toFixed(2)}</p>
                 <hr class="separator-bar">
             </details>
-            <p><strong>Members:</strong> ${members.map(member => `${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.lastName)}`).join(', ')}</p>
+            <p><strong>Members:</strong> ${liheapMemberNames}</p>
             <p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
-            <button class="benefit-apply-button" data-benefit="LIHEAP"style="display: ${isLikelyEligible ? 'block' : 'none'};">
-                ${members.every(member => member.LIHEAP?.application?.some(app => app.applying)) ? 'Stop Applying' : 'Apply for LIHEAP'}
+            <button class="benefit-apply-button" data-benefit="LIHEAP" style="display: ${
+                Array.isArray(eligibility) && !eligibility.some(e => e.toLowerCase().includes('not') || e.toLowerCase().includes('already') || e.toLowerCase().includes('needs'))
+                    ? 'block' : 'none'
+            };">
+                ${
+                    activeMembersForLIHEAP.every(m => m.LIHEAP?.application?.some(app => app.applying))
+                        ? 'Stop Applying' : 'Apply for LIHEAP'
+                }
+            </button>
+            <button class="close-liheap-btn" 
+                style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 11px; cursor: pointer; margin: 8px 0; transition: background-color 0.3s;"
+                onmouseover="this.style.backgroundColor='#a71d2a'" 
+                onmouseout="this.style.backgroundColor='#dc3545'">
+                Close LIHEAP Screening
             </button>
         `;
-    
+
         liheapHouseholdContainer.appendChild(householdDiv);
-    
-        // Add event listener to the LIHEAP benefit button
-        const benefitButton = householdDiv.querySelector('.benefit-apply-button');
-benefitButton.addEventListener('click', async (event) => {
-    const benefit = event.target.dataset.benefit; // Get the benefit type
-    const buttonLabel = event.target.textContent.trim(); // Get the current button label
-    const newApplyingState = buttonLabel.startsWith('Apply'); // Determine the new state
 
-    const members = await loadHouseholdMembers(); // Reload members
-    await updateMemberBenefits(members, benefit, newApplyingState); // Update the benefit
+        const liheapButton = householdDiv.querySelector('.benefit-apply-button[data-benefit="LIHEAP"]');
+        if (liheapButton) {
+            liheapButton.addEventListener('click', async (event) => {
+                const benefit = event.target.dataset.benefit;
+                const buttonLabel = event.target.textContent.trim();
+                const newApplyingState = buttonLabel.startsWith('Apply');
 
-    // Refresh the display after updating
-    if (benefit === 'SNAP') {
-        await displaySNAPHouseholds();
-    } else if (benefit === 'LIHEAP') {
-        await displayLIHEAPHouseholds();
-    }
-    await updateSaveContinueButtonVisibility(); // Update button visibility
-});
+                const freshMembers = await loadHouseholdMembers();
+                await updateMemberBenefits(freshMembers, benefit, newApplyingState);
+
+                await displayLIHEAPHouseholds();
+                await updateSaveContinueButtonVisibility();
+            });
+        }
+
+        const closeBtn = householdDiv.querySelector('.close-liheap-btn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                openBenefitScreeningCloseModal('LIHEAP', liheapMemberIds, 'LIHEAP Household');
+            });
+        }
     }
 
     async function updateSaveContinueButtonVisibility() {
-        const members = await loadHouseholdMembers(); // Load the household members
-    
-        // Check if any member has `applying: true` in any of their benefit applications
+        const members = await loadHouseholdMembers();
+
         const hasApplyingTrue = members.some(member =>
             Object.values(member).some(benefit =>
                 benefit?.application?.some(app => app.applying === true)
             )
         );
-    
-        // Get the #save-continue button
+
         const saveContinueButton = document.getElementById('save-continue');
-    
+
         if (saveContinueButton) {
-            // Show the button if any `applying: true` exists, otherwise hide it
             const previousDisplay = saveContinueButton.style.display;
             saveContinueButton.style.display = hasApplyingTrue ? 'block' : 'none';
-    
-            // If the button was shown and is now hidden, refresh the page
+
             if (previousDisplay === 'block' && saveContinueButton.style.display === 'none') {
-                location.reload(); // Refresh the page
+                location.reload();
             }
         }
     }
 
-// After PACEEligibilityCheck, reload and display updated household members
-async function updateAndDisplayHouseholdMembers() {
-    const clientId = getQueryParameter('id'); // Get the client ID from the query parameter
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
-    try {
-        // Fetch the updated client data from the backend
-        const response = await fetch(`/get-client/${clientId}`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch updated client data: ${response.statusText}`);
+    async function updateAndDisplayHouseholdMembers() {
+        const clientId = getQueryParameter('id');
+        if (!clientId) {
+            console.error('Client ID not found in query parameters.');
+            return;
         }
 
-        const updatedMembers = await response.json();
+        try {
+            const response = await fetch(`/get-client/${clientId}`);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch updated client data: ${response.statusText}`);
+            }
 
-        if (updatedMembers && updatedMembers.householdMembers) {
-            console.log('Updated household members:', updatedMembers.householdMembers);
-            displayHouseholdMembers(); // Refresh the UI with updated data
-        } else {
-            console.error('Failed to retrieve updated household members.');
+            const updatedMembers = await response.json();
+
+            if (updatedMembers && updatedMembers.householdMembers) {
+                console.log('Updated household members:', updatedMembers.householdMembers);
+                displayHouseholdMembers();
+            } else {
+                console.error('Failed to retrieve updated household members.');
+            }
+        } catch (error) {
+            console.error('Error updating and displaying household members:', error);
         }
-    } catch (error) {
-        console.error('Error updating and displaying household members:', error);
-    }
-}
-
-function calculateYearlyIncome(amount, frequency, startDate, endDate, type = "Previous") {
-    if (!amount || !frequency) {
-        console.error('Invalid income data:', { amount, frequency });
-        return 0;
     }
 
-    // Default yearly multiplier based on frequency
-    let yearlyMultiplier;
-    switch (frequency.toLowerCase()) {
-        case 'one-time':
-            yearlyMultiplier = 1; // One-time income
-            break;
-        case 'weekly':
-            yearlyMultiplier = 52; // 52 weeks in a year
-            break;
-        case 'bi-weekly':
-            yearlyMultiplier = 26; // 26 bi-weekly periods in a year
-            break;
-        case 'semi-monthly':
-            yearlyMultiplier = 24; // 24 semi-monthly periods in a year
-            break;
-        case 'monthly':
-            yearlyMultiplier = 12; // 12 months in a year
-            break;
-        case 'quarterly':
-            yearlyMultiplier = 4; // 4 quarters in a year
-            break;
-        case 'annually':
-            yearlyMultiplier = 1; // Already yearly
-            break;
-        default:
-            console.error('Unknown frequency:', frequency);
+    function calculateYearlyIncome(amount, frequency, startDate, endDate, type = "Previous") {
+        if (!amount || !frequency) {
+            console.error('Invalid income data:', { amount, frequency });
             return 0;
+        }
+
+        let yearlyMultiplier;
+        switch (frequency.toLowerCase()) {
+            case 'one-time': yearlyMultiplier = 1; break;
+            case 'weekly': yearlyMultiplier = 52; break;
+            case 'bi-weekly': yearlyMultiplier = 26; break;
+            case 'semi-monthly': yearlyMultiplier = 24; break;
+            case 'monthly': yearlyMultiplier = 12; break;
+            case 'quarterly': yearlyMultiplier = 4; break;
+            case 'annually': yearlyMultiplier = 1; break;
+            default:
+                console.error('Unknown frequency:', frequency);
+                return 0;
+        }
+
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+            console.error('Invalid startDate or endDate:', { startDate, endDate });
+            return 0;
+        }
+
+        const totalDaysInYear = 365;
+        const activeDays = Math.min(Math.max((end - start) / (1000 * 60 * 60 * 24) + 1, 0), 365);
+        const proratedMultiplier = Math.min(activeDays / totalDaysInYear, 1);
+        const proratedYearlyIncome = amount * yearlyMultiplier * proratedMultiplier;
+
+        console.log(`Start Date: ${start}, End Date: ${end}`);
+        console.log(`Active Days: ${activeDays}, Prorated Multiplier: ${proratedMultiplier}`);
+        console.log(`Prorated income: Amount: ${amount}, Frequency: ${frequency}, Prorated Yearly Income: ${proratedYearlyIncome}`);
+        return proratedYearlyIncome;
     }
-
-    // Validate and parse the provided startDate and endDate
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-        console.error('Invalid startDate or endDate:', { startDate, endDate });
-        return 0; // Return 0 if dates are invalid
-    }
-
-    // Calculate the number of days the income is active within the given dates
-    const totalDaysInYear = 365; // Assuming a non-leap year
-    const activeDays = Math.min(Math.max((end - start) / (1000 * 60 * 60 * 24) + 1, 0), 365); // Cap active days at 365
-    // Prorate the yearly income based on active days
-    const proratedMultiplier = Math.min(activeDays / totalDaysInYear, 1); // Ensure the multiplier does not exceed 1
-    const proratedYearlyIncome = amount * yearlyMultiplier * proratedMultiplier;
-
-    console.log(`Start Date: ${start}, End Date: ${end}`);
-    console.log(`Active Days: ${activeDays}, Prorated Multiplier: ${proratedMultiplier}`);
-    console.log(`Prorated income: Amount: ${amount}, Frequency: ${frequency}, Prorated Yearly Income: ${proratedYearlyIncome}`);
-    return proratedYearlyIncome;
-}
 
 async function PACEEligibilityCheck(members) {
     // Step 1: Precompute adjustedIncome for all members
@@ -882,10 +1270,12 @@ if (years < 64 || (years === 64 && months < 11) || (years === 64 && months === 1
 }
 
 // Save eligibility to the PACE object
+const existingPACE = member.PACE || {};
 member.PACE = {
-    combinedIncome: Math.max(0, member.combinedIncome),    eligibility: eligibility
+    ...existingPACE,
+    combinedIncome: Math.max(0, member.combinedIncome),
+    eligibility: eligibility
 };
-
 console.log(`PACE object for ${member.firstName} ${member.lastName}:`, member.PACE);
             } catch (error) {
                 console.error(`Error processing member ${member.firstName} ${member.lastName}:`, error);
@@ -1952,11 +2342,16 @@ async function LIHEAPEligibilityCheck() {
 
         const members = client.householdMembers;
 
-        // Combine all members' yearly income
+        // Filter out deceased members for LIHEAP inclusion logic only
+        const activeMembersForLIHEAP = members.filter(
+            m => (m.deceased ?? '').toLowerCase() !== 'yes'
+        );
+
+        // Combine all active members' yearly income
         let combinedYearlyIncome = 0;
 
-        members.forEach(member => {
-            const incomes = member.income || [];
+        activeMembersForLIHEAP.forEach(member => {
+            const incomes = (member.income || []).filter(income => income.type?.toLowerCase() === 'current'); // Only include 'current' income
 
             // Calculate yearly income for each income source
             const yearlyIncome = incomes.reduce((sum, income) => {
@@ -1972,8 +2367,8 @@ async function LIHEAPEligibilityCheck() {
             combinedYearlyIncome += yearlyIncome;
         });
 
-        // Determine LIHEAP eligibility
-        const householdSize = members.length;
+        // Determine LIHEAP eligibility using only non-deceased members
+        const householdSize = activeMembersForLIHEAP.length;
         const incomeLimits = [
             0, 23475, 31725, 39975, 48225, 56475, 64725, 72975, 81225, 89475, 97725, 105975, 114225, 122475, 130725, 138975
         ];
@@ -1982,8 +2377,18 @@ async function LIHEAPEligibilityCheck() {
         const eligibility = [];
         if (client.liheapEnrollment === 'notinterested') {
             eligibility.push("Not Interested");
+        } else if (client.liheapEnrollment === null || client.liheapEnrollment === undefined || client.liheapEnrollment === 'n/a') {
+            eligibility.push("Needs Current Enrollment Status");
+        } else if ((client.liheapEnrollment === 'no' || client.liheapEnrollment === 'yes') && (client.heatingCrisis === null || client.heatingCrisis === undefined || client.heatingCrisis === 'n/a')) {
+            eligibility.push("Needs Heating Crisis Status");
         } else if (client.liheapEnrollment === 'yes' && client.heatingCrisis === 'no') {
             eligibility.push("Already Enrolled");
+        } else if (client.residenceStatusCurrent === null || client.residenceStatusCurrent === undefined || client.residenceStatusCurrent === 'n/a') {
+            eligibility.push("Needs Current Residence Status");
+        } else if ((client.residenceStatusCurrent === null || client.residenceStatusCurrent === undefined || client.residenceStatusCurrent === 'n/a' || client.residenceStatusCurrent !== 'owned') && (client.subsidizedHousing === null || client.subsidizedHousing === undefined || client.subsidizedHousing === 'n/a')) {
+            eligibility.push("Needs Subsidized Housing Status");
+        } else if (client.subsidizedHousing === 'yes' && (client.heatingCost === null || client.heatingCost === undefined || client.heatingCost === 'n/a')) {
+            eligibility.push("Needs Heating Cost Responsibility Status");
         } else if (client.subsidizedHousing === 'yes' && client.heatingCost === 'yes') {
             eligibility.push("Not Likely Eligible for LIHEAP (Heating cost included in rent, household rent is subsidized)");
         } else if (client.heatingCrisis === 'yes') {
@@ -1994,16 +2399,16 @@ async function LIHEAPEligibilityCheck() {
             eligibility.push("Not Likely Eligible for LIHEAP (Income)");
         }
 
-        // Update each member with the combined income and eligibility
-        members.forEach(member => {
+        // Update LIHEAP only for non-deceased members
+        activeMembersForLIHEAP.forEach(member => {
             member.LIHEAP = {
                 combinedYearlyIncome: combinedYearlyIncome,
                 eligibility: eligibility
             };
-
             console.log(`Updated LIHEAP object for ${member.firstName} ${member.lastName}:`, member.LIHEAP);
         });
 
+        // Do not modify deceased members' LIHEAP object
         // Save the updated household members back to the server
         const saveResponse = await fetch(`/save-household-members`, {
             method: 'POST',
@@ -2046,7 +2451,7 @@ await updateAndDisplayHouseholdMembers();
  // Call this function after eligibility checks
  await displaySNAPHouseholds();
 
- // Expose functions globally
+// Expose functions globally
 window.eligibilityChecks = {
     loadHouseholdMembers,
     displayHouseholdMembers,
@@ -2066,5 +2471,487 @@ window.eligibilityChecks = window.eligibilityChecks || {};
 
 // Add LIHEAPEligibilityCheck to the global object
 window.eligibilityChecks.LIHEAPEligibilityCheck = LIHEAPEligibilityCheck;
+
+// ...existing code...
+
+// ===== Individual Benefit Screening Close/Reopen =====
+
+// --- Benefit-specific close reasons (matches estimations.js exactly) ---
+function getCloseReasonsForBenefit(benefit) {
+    const commonReasons = [
+        { value: "Client Not Interested", label: "Not Interested" },
+        { value: "Too Confusing", label: "Too Confusing" },
+        { value: "Will Call Back", label: "Will Call Back" }
+    ];
+
+    switch (benefit) {
+        case 'PACE':
+            return [
+                { value: "Already Enrolled", label: "Already Enrolled" },
+                { value: "Ineligible - Income", label: "Ineligible - Income" },
+                { value: "Age Criteria Not Met", label: "Age Criteria Not Met" },
+                { value: "Enrolled in Medicaid", label: "Enrolled in Medicaid" },
+                { value: "Residency Not Met", label: "PA Residency Not Met" },
+                ...commonReasons
+            ];
+        case 'LIS':
+            return [
+                { value: "Already Enrolled", label: "Already Enrolled" },
+                { value: "Ineligible - Income", label: "Ineligible - Income" },
+                { value: "Ineligible - Assets", label: "Ineligible - Assets" },
+                { value: "Not Enrolled in Medicare", label: "Not Enrolled in Medicare" },
+                { value: "Enrolled in Medicaid", label: "Enrolled in Medicaid" },
+                ...commonReasons
+            ];
+        case 'MSP':
+            return [
+                { value: "Already Enrolled", label: "Already Enrolled in MSP" },
+                { value: "Ineligible - Income", label: "Ineligible - Income" },
+                { value: "Ineligible - Assets", label: "Ineligible - Assets" },
+                { value: "Not Enrolled in Medicare", label: "Not Enrolled in Medicare" },
+                { value: "Enrolled in Medicaid", label: "Enrolled in Medicaid" },
+                ...commonReasons
+            ];
+        case 'PTRR':
+            return [
+                { value: "Already Applied", label: "Already Applied This Year" },
+                { value: "Ineligible - Income", label: "Ineligible - Income" },
+                { value: "Age/Disability/Widow Criteria Not Met", label: "Age/Disability/Widow Criteria Not Met" },
+                { value: "No Formal Lease", label: "No Formal Lease" },
+                { value: "No Relevant Expenses", label: "No Relevant Expenses" },
+                ...commonReasons
+            ];
+        default:
+            return [
+                { value: "Already Enrolled", label: "Already Enrolled" },
+                { value: "Ineligible - Income", label: "Ineligible - Income" },
+                { value: "Ineligible - Assets", label: "Ineligible - Assets" },
+                ...commonReasons
+            ];
+    }
+}
+
+// --- Helper functions for notes ---
+async function addNoteToClient(clientId, noteText) {
+    const activeUser = sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User';
+    const timestamp = new Date().toLocaleString();
+
+    const note = {
+        text: noteText,
+        timestamp: timestamp,
+        username: activeUser
+    };
+
+    try {
+        const response = await fetch(`/add-note-to-client`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, note })
+        });
+
+        if (!response.ok) {
+            console.warn('Failed to add note to client.');
+        }
+    } catch (error) {
+        console.error('Error adding note:', error);
+    }
+}
+
+async function renderNotesContainer() {
+    const clientId = getQueryParameter('id');
+    if (typeof window.renderNotes === 'function') {
+        await window.renderNotes(clientId);
+    } else {
+        console.warn('renderNotes function from notes.js not available. Notes may not refresh.');
+    }
+}
+
+// --- Individual Benefit Screening Close Modal ---
+function createCloseIndividualModal() {
+    if (document.getElementById('close-individual-modal')) return;
+
+    const modalOverlay = document.createElement('div');
+    modalOverlay.id = 'close-individual-modal';
+    modalOverlay.style.cssText = `
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+    `;
+
+    modalOverlay.innerHTML = `
+        <div style="background: white; padding: 24px; border-radius: 8px; min-width: 350px; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <h3 id="individual-modal-title" style="margin-top: 0;">Close Screening</h3>
+            <label for="individual-close-reason-select"><strong>Select a reason:</strong></label>
+            <select id="individual-close-reason-select" style="width: 100%; padding: 8px; margin: 12px 0; font-size: 14px;">
+                <option value="">-- Select a reason --</option>
+            </select>
+            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 16px;">
+                <button id="individual-close-cancel-btn" style="padding: 8px 16px; cursor: pointer;">Cancel</button>
+                <button id="individual-close-confirm-btn" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Confirm Close</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modalOverlay);
+
+    document.getElementById('individual-close-cancel-btn').addEventListener('click', () => {
+        modalOverlay.style.display = 'none';
+    });
+
+    modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) {
+            modalOverlay.style.display = 'none';
+        }
+    });
+}
+
+// --- SNAP Screening Close Modal ---
+function createCloseSnapModal() {
+    if (document.getElementById('close-snap-modal')) return;
+
+    const modalOverlay = document.createElement('div');
+    modalOverlay.id = 'close-snap-modal';
+    modalOverlay.style.cssText = `
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+    `;
+
+    modalOverlay.innerHTML = `
+        <div style="background: white; padding: 24px; border-radius: 8px; min-width: 350px; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <h3 style="margin-top: 0;">Close SNAP Screening</h3>
+            <label for="snap-close-reason-select"><strong>Select a reason:</strong></label>
+            <select id="snap-close-reason-select" style="width: 100%; padding: 8px; margin: 12px 0; font-size: 14px;">
+                <option value="">-- Select a reason --</option>
+                <option value="Already Enrolled">Already Enrolled</option>
+                <option value="Ineligible - Income">Ineligible - Income</option>
+                <option value="Ineligible - Assets">Ineligible - Income and Assets</option>
+                <option value="Client Not Interested">Not Interested</option>
+                <option value="Client Unresponsive">Too Confusing</option>
+                <option value="Will Call Back">Will Call Back</option>
+            </select>
+            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 16px;">
+                <button id="snap-close-cancel-btn" style="padding: 8px 16px; cursor: pointer;">Cancel</button>
+                <button id="snap-close-confirm-btn" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Confirm Close</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modalOverlay);
+
+    document.getElementById('snap-close-cancel-btn').addEventListener('click', () => {
+        modalOverlay.style.display = 'none';
+    });
+
+    modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) {
+            modalOverlay.style.display = 'none';
+        }
+    });
+}
+
+// --- LIHEAP Screening Close Modal ---
+function createCloseLiheapModal() {
+    if (document.getElementById('close-liheap-modal')) return;
+
+    const modalOverlay = document.createElement('div');
+    modalOverlay.id = 'close-liheap-modal';
+    modalOverlay.style.cssText = `
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+    `;
+
+    modalOverlay.innerHTML = `
+        <div style="background: white; padding: 24px; border-radius: 8px; min-width: 350px; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <h3 style="margin-top: 0;">Close LIHEAP Screening</h3>
+            <label for="liheap-close-reason-select"><strong>Select a reason:</strong></label>
+            <select id="liheap-close-reason-select" style="width: 100%; padding: 8px; margin: 12px 0; font-size: 14px;">
+                <option value="">-- Select a reason --</option>
+                <option value="Already Enrolled">Already Enrolled</option>
+                <option value="Ineligible - Income">Ineligible - Income</option>
+                <option value="Subsidized Housing and No Heating Responsibility">Subsidized Housing and No Heating Responsibility</option>
+                <option value="Client Not Interested">Not Interested</option>
+                <option value="Client Unresponsive">Too Confusing</option>
+                <option value="Will Call Back">Will Call Back</option>
+            </select>
+            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 16px;">
+                <button id="liheap-close-cancel-btn" style="padding: 8px 16px; cursor: pointer;">Cancel</button>
+                <button id="liheap-close-confirm-btn" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Confirm Close</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modalOverlay);
+
+    document.getElementById('liheap-close-cancel-btn').addEventListener('click', () => {
+        modalOverlay.style.display = 'none';
+    });
+
+    modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) {
+            modalOverlay.style.display = 'none';
+        }
+    });
+}
+
+// --- Unified openBenefitScreeningCloseModal that routes to the correct modal ---
+function openBenefitScreeningCloseModal(benefit, memberIds, displayName) {
+    if (benefit === 'SNAP') {
+        openCloseSnapModal(memberIds);
+    } else if (benefit === 'LIHEAP') {
+        openCloseLiheapModal(memberIds);
+    } else {
+        // Individual benefit (PACE, LIS, MSP, PTRR)
+        openCloseIndividualModal(memberIds, benefit, displayName);
+    }
+}
+
+function openCloseIndividualModal(memberIds, benefit, displayName) {
+    createCloseIndividualModal();
+    const modal = document.getElementById('close-individual-modal');
+    const select = document.getElementById('individual-close-reason-select');
+    const confirmBtn = document.getElementById('individual-close-confirm-btn');
+    const title = document.getElementById('individual-modal-title');
+
+    title.textContent = `Close ${benefit} Screening for ${displayName}`;
+
+    // Populate dropdown with benefit-specific reasons
+    const reasons = getCloseReasonsForBenefit(benefit);
+    select.innerHTML = '<option value="">-- Select a reason --</option>';
+    reasons.forEach(reason => {
+        const option = document.createElement('option');
+        option.value = reason.value;
+        option.textContent = reason.label;
+        select.appendChild(option);
+    });
+
+    modal.style.display = 'flex';
+
+    // Remove old listener by cloning
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+    newConfirmBtn.addEventListener('click', async () => {
+        const reason = select.value;
+        if (!reason) {
+            alert('Please select a reason.');
+            return;
+        }
+
+        try {
+            const membersResponse = await fetch(`/get-client/${clientId}`);
+            if (!membersResponse.ok) throw new Error('Failed to fetch client data');
+            const clientData = await membersResponse.json();
+            const currentMembers = clientData.householdMembers || [];
+
+            for (const member of currentMembers) {
+                if (memberIds.includes(String(member.householdMemberId))) {
+                    if (member[benefit]) {
+                        member[benefit].screeningInProgress = false;
+                        member[benefit].screeningCloseReason = reason;
+                    }
+                }
+            }
+
+            const saveResponse = await fetch('/save-household-members', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, householdMembers: currentMembers })
+            });
+
+            if (saveResponse.ok) {
+                modal.style.display = 'none';
+                await addNoteToClient(clientId, `<strong>${benefit} screening closed for ${displayName}.</strong><br><br> Reason: ${reason}`);
+                await renderNotesContainer();
+                await displayHouseholdMembers();
+                await displaySNAPHouseholds();
+                await displayLIHEAPHouseholds();
+            } else {
+                console.error(`Failed to close ${benefit} screening.`);
+            }
+        } catch (error) {
+            console.error(`Error closing ${benefit} screening:`, error);
+        }
+    });
+}
+
+function openCloseSnapModal(memberIds) {
+    createCloseSnapModal();
+    const modal = document.getElementById('close-snap-modal');
+    const select = document.getElementById('snap-close-reason-select');
+    const confirmBtn = document.getElementById('snap-close-confirm-btn');
+
+    select.value = '';
+    modal.style.display = 'flex';
+
+    // Remove old listener by cloning
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+    newConfirmBtn.addEventListener('click', async () => {
+        const reason = select.value;
+        if (!reason) {
+            alert('Please select a reason.');
+            return;
+        }
+
+        try {
+            const membersResponse = await fetch(`/get-client/${clientId}`);
+            if (!membersResponse.ok) throw new Error('Failed to fetch client data');
+            const clientData = await membersResponse.json();
+            const currentMembers = clientData.householdMembers || [];
+
+            for (const member of currentMembers) {
+                if (memberIds.includes(String(member.householdMemberId))) {
+                    if (member.SNAP) {
+                        member.SNAP.screeningInProgress = false;
+                        member.SNAP.screeningCloseReason = reason;
+                    }
+                }
+            }
+
+            const saveResponse = await fetch('/save-household-members', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, householdMembers: currentMembers })
+            });
+
+            if (saveResponse.ok) {
+                modal.style.display = 'none';
+                await addNoteToClient(clientId, `<strong>SNAP screening closed.</strong><br><br> Reason: ${reason}`);
+                await renderNotesContainer();
+                await displaySNAPHouseholds();
+            } else {
+                console.error('Failed to close SNAP screening.');
+            }
+        } catch (error) {
+            console.error('Error closing SNAP screening:', error);
+        }
+    });
+}
+
+function openCloseLiheapModal(memberIds) {
+    createCloseLiheapModal();
+    const modal = document.getElementById('close-liheap-modal');
+    const select = document.getElementById('liheap-close-reason-select');
+    const confirmBtn = document.getElementById('liheap-close-confirm-btn');
+
+    select.value = '';
+    modal.style.display = 'flex';
+
+    // Remove old listener by cloning
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+    newConfirmBtn.addEventListener('click', async () => {
+        const reason = select.value;
+        if (!reason) {
+            alert('Please select a reason.');
+            return;
+        }
+
+        try {
+            const membersResponse = await fetch(`/get-client/${clientId}`);
+            if (!membersResponse.ok) throw new Error('Failed to fetch client data');
+            const clientData = await membersResponse.json();
+            const currentMembers = clientData.householdMembers || [];
+
+            for (const member of currentMembers) {
+                if (memberIds.includes(String(member.householdMemberId))) {
+                    if (member.LIHEAP) {
+                        member.LIHEAP.screeningInProgress = false;
+                        member.LIHEAP.screeningCloseReason = reason;
+                    }
+                }
+            }
+
+            const saveResponse = await fetch('/save-household-members', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, householdMembers: currentMembers })
+            });
+
+            if (saveResponse.ok) {
+                modal.style.display = 'none';
+                await addNoteToClient(clientId, `<strong>LIHEAP screening closed.</strong><br><br> Reason: ${reason}`);
+                await renderNotesContainer();
+                await displayLIHEAPHouseholds();
+            } else {
+                console.error('Failed to close LIHEAP screening.');
+            }
+        } catch (error) {
+            console.error('Error closing LIHEAP screening:', error);
+        }
+    });
+}
+
+// Reopen screening for an individual benefit on specific member(s)
+async function reopenBenefitScreening(benefit, memberIds, displayName) {
+    try {
+        const membersResponse = await fetch(`/get-client/${clientId}`);
+        if (!membersResponse.ok) throw new Error('Failed to fetch client data');
+        const clientData = await membersResponse.json();
+        const currentMembers = clientData.householdMembers || [];
+
+        for (const member of currentMembers) {
+            if (memberIds.includes(String(member.householdMemberId))) {
+                if (member[benefit]) {
+                    member[benefit].screeningInProgress = true;
+                    member[benefit].screeningCloseReason = null;
+                }
+            }
+        }
+
+        const saveResponse = await fetch('/save-household-members', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, householdMembers: currentMembers })
+        });
+
+        if (!saveResponse.ok) {
+            console.error('Failed to save household members.');
+            return;
+        }
+
+        // Use benefit-specific note format matching estimations.js
+        let noteText;
+        if (benefit === 'SNAP') {
+            noteText = '<strong>SNAP screening reopened.</strong>';
+        } else if (benefit === 'LIHEAP') {
+            noteText = '<strong>LIHEAP screening reopened.</strong>';
+        } else {
+            noteText = `<strong>${benefit} screening reopened for ${displayName}.</strong>`;
+        }
+
+        await addNoteToClient(clientId, noteText);
+        await renderNotesContainer();
+
+        console.log(`${benefit} screening reopened for ${displayName}.`);
+
+        // Refresh displays
+        await displayHouseholdMembers();
+        await displaySNAPHouseholds();
+        await displayLIHEAPHouseholds();
+    } catch (error) {
+        console.error(`Error reopening ${benefit} screening:`, error);
+    }
+}
+
+// Expose for use in inline handlers
+window.openBenefitScreeningCloseModal = openBenefitScreeningCloseModal;
+window.reopenBenefitScreening = reopenBenefitScreening;
 
 });

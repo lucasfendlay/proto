@@ -15,7 +15,7 @@ async function generatePDF(data) {
     const { PDFDocument } = PDFLib;
 
     // Load the existing PDF template
-    const pdfBytes = await fetch('/assets/2024_pa-1000.pdf').then((res) => res.arrayBuffer());
+    const pdfBytes = await fetch('/assets/2025_pa-1000.pdf').then((res) => res.arrayBuffer());
     const pdfDoc = await PDFDocument.load(pdfBytes);
 
     // Get the form fields
@@ -25,6 +25,47 @@ async function generatePDF(data) {
 const ptrrApplicant = data.householdMembers?.find(
     (member) => member.PTRR?.application?.some((app) => app.applying === true)
 );
+
+// Claimant deceased: checkbox and date from PTRR.application[0]
+try {
+    const applicantPTRRApp = ptrrApplicant?.PTRR?.application?.[0] || null;
+    const claimantDeceasedAnswer = applicantPTRRApp?.ptrrDeceasedAnswer; // 'yes' | 'no'
+    const claimantDeceasedDateRaw = applicantPTRRApp?.ptrrDeceasedDate;  // 'yyyy-mm-dd'
+
+    const claimantDeceasedCheck = form.getCheckBox('Click on oval if claimant is deceased');
+    // We will draw text directly instead of using the text field API
+    const page = pdfDoc.getPages()[0]; // Assuming date field is on page 1
+    const deathDateCoords = { x: 519, y: 482 }; // Update to the exact coordinates for the date field
+
+    if (claimantDeceasedAnswer === 'yes') {
+        if (claimantDeceasedCheck) claimantDeceasedCheck.check();
+
+        // Format yyyy-mm-dd -> mm/dd/yy and add one day
+        const formattedClaimantDeath = claimantDeceasedDateRaw
+            ? new Date(new Date(`${claimantDeceasedDateRaw}T00:00:00Z`).getTime() + 24 * 60 * 60 * 1000)
+                  .toLocaleDateString('en-US', { year: '2-digit', month: '2-digit', day: '2-digit' })
+            : '';
+
+        page.drawText(formattedClaimantDeath, {
+            x: deathDateCoords.x,
+            y: deathDateCoords.y,
+            size: 8,
+            font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
+            color: PDFLib.rgb(0, 0, 0),
+        });
+    } else {
+        if (claimantDeceasedCheck) claimantDeceasedCheck.uncheck();
+        page.drawText('', {
+            x: deathDateCoords.x,
+            y: deathDateCoords.y,
+            size: 8,
+            font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
+            color: PDFLib.rgb(0, 0, 0),
+        });
+    }
+} catch (error) {
+    console.error('Error processing claimant deceased information:', error.message, error.stack);
+}
 
 // Find the household member with the `previousSpouseId` matching the applicant's `householdMemberId`
 const spouse = data.householdMembers?.find((member) => {
@@ -135,11 +176,47 @@ if (spouseSsnField) {
 }
 
 // Check the "Spouse Deceased" checkbox only if the previousMaritalStatus is "Widowed"
-const spouseDeceasedField = form.getCheckBox('Spouse Deceased');
+const spouseDeceasedField = form.getCheckBox('Click on oval if spouse is deceased');
 if (spouseDeceasedField) {
     // Debugging: Log the ptrrApplicant and its previousMaritalStatus
     console.log('PTRR Applicant:', ptrrApplicant);
     console.log('PTRR Applicant Previous Marital Status (raw):', ptrrApplicant?.previousMaritalStatus);
+
+// Populate the "Enter spouse's date of death in mm/dd/yy format" field if previousMaritalStatus is "Widowed"
+const spouseDateOfDeathField = form.getTextField("Enter spouse's date of death in mm/dd/yy format");
+if (spouseDateOfDeathField) {
+    const maritalStatus = ptrrApplicant?.previousMaritalStatus?.toLowerCase().trim();
+    if (maritalStatus === 'widowed' && ptrrApplicant?.dateOfSpousePassing) {
+        const formattedDateOfDeath = new Date(new Date(`${ptrrApplicant.dateOfSpousePassing}T00:00:00Z`).getTime() + 24 * 60 * 60 * 1000)
+            .toLocaleDateString('en-US', { year: '2-digit', month: '2-digit', day: '2-digit' });
+
+        // Use drawText to write the formatted date
+        const page = pdfDoc.getPages()[0]; // Assuming the field is on the first page
+        page.drawText(formattedDateOfDeath, {
+            x: 519, // Replace with the actual x-coordinate of the field
+            y: 463, // Replace with the actual y-coordinate of the field
+            size: 8, // Adjust the font size as needed
+            font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
+            color: PDFLib.rgb(0, 0, 0), // Black color
+        });
+
+        console.log(`Spouse's date of death set to: ${formattedDateOfDeath}`);
+    } else {
+        // Clear the field if conditions are not met
+        const page = pdfDoc.getPages()[0]; // Assuming the field is on the first page
+        page.drawText('', {
+            x: 100, // Replace with the actual x-coordinate of the field
+            y: 200, // Replace with the actual y-coordinate of the field
+            size: 12, // Adjust the font size as needed
+            font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
+            color: PDFLib.rgb(0, 0, 0), // Black color
+        });
+
+        console.log('Spouse\'s date of death not set because conditions are not met.');
+    }
+} else {
+    console.error('Field "Enter spouse\'s date of death in mm/dd/yy format" not found in the form.');
+}
 
     // Normalize the marital status for comparison
     const maritalStatus = ptrrApplicant?.previousMaritalStatus?.toLowerCase().trim();
@@ -1022,7 +1099,7 @@ console.log(`Federal CSRS amount based on marital status: ${federalCSRSAmount}`)
 
 // Fill "Social Security, SSI, and SSP Income" field
 page.drawText(totalYearlyIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), { // Format with commas and 2 decimal places
-    x: 281, // Replace with the actual x-coordinate
+    x: 277, // Replace with the actual x-coordinate
     y: 423, // Replace with the actual y-coordinate
     size: 12,
     font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
@@ -1374,7 +1451,7 @@ const rebateAmountFormatted = rebateAmount.toLocaleString('en-US', { minimumFrac
 if (data.residenceStatus === 'owned' || data.residenceStatus === 'rentedowned') {
     // Write the rebate amount to the PDF
     page2.drawText(rebateAmountFormatted, {
-        x: 260, // Replace with the actual x-coordinate for the rebate field
+        x: 264, // Replace with the actual x-coordinate for the rebate field
         y: 629, // Replace with the actual y-coordinate for the rebate field
         size: 6,
         font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
@@ -1484,10 +1561,10 @@ console.log(`TOTAL INCOME written to page 2: ${totalIncomeFormatted}`);
 
 // Define the coordinates for the 8 possible ovals
 const ovalPositions = [
-    { x: 355, y: 341 }, // Position 1 (Owned Bracket 1)
-    { x: 355, y: 331 }, // Position 2 (Owned Bracket 2)
-    { x: 355, y: 320 }, // Position 3 (Owned Bracket 3)
-    { x: 355, y: 310 }, // Position 4 (Owned Bracket 4)
+    { x: 528, y: 341 }, // Position 1 (Owned Bracket 1)
+    { x: 528, y: 331 }, // Position 2 (Owned Bracket 2)
+    { x: 528, y: 320 }, // Position 3 (Owned Bracket 3)
+    { x: 528, y: 310 }, // Position 4 (Owned Bracket 4)
     { x: 528, y: 341 }, // Position 5 (Rented Bracket 1)
     { x: 528, y: 331 }, // Position 6 (Rented Bracket 2)
     { x: 528, y: 320 }, // Position 7 (Rented Bracket 3)
@@ -1629,7 +1706,7 @@ async function listFormFields() {
 
     try {
         // Load the existing PDF template
-        const pdfBytes = await fetch('/assets/2024_pa-1000.pdf').then((res) => res.arrayBuffer());
+        const pdfBytes = await fetch('/assets/2025_pa-1000.pdf').then((res) => res.arrayBuffer());
         const pdfDoc = await PDFDocument.load(pdfBytes);
 
         // Get the form fields

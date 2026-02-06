@@ -517,6 +517,9 @@ async function redirectToRelationshipsView() {
     }
 
     try {
+
+        await setCheckedOutStatus(clientId, false);
+
         // Save relationships data (if applicable)
         await saveRelationshipsData();
 
@@ -539,34 +542,8 @@ async function redirectToRelationshipsView() {
             throw new Error(`Failed to add note: ${noteResponse.statusText}`);
         }
 
-        // Update screening status in the database
-        const updateResponse = await fetch(`/update-client`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                clientId,
-                clientData: { screeningInProgress: false },
-            }),
-        });
-
-        if (!updateResponse.ok) {
-            const error = await updateResponse.json();
-            console.error('Error details:', error);
-
-            // Check if the error message indicates no changes were made
-            if (error.message === 'No changes were made to the client data.') {
-                console.log('No changes were made, but proceeding with redirect.');
-                // Redirect to the relationships view page
-                window.location.href = `relationshipsview.html?id=${clientId}`;
-            } else {
-                throw new Error(`Failed to update client: ${error.message}`);
-            }
-        } else {
-            // Redirect to relationships view
-            window.location.href = `relationshipsview.html?id=${clientId}`;
-        }
+        // Redirect to relationships view
+        window.location.href = `relationshipsview.html?id=${clientId}`;
     } catch (error) {
         console.error("Error during redirectToRelationshipsView:", error);
     }

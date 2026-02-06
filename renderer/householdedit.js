@@ -213,35 +213,42 @@ async function loadSavedData() {
                 sortedMembers.forEach((member) => {
                     const memberElement = document.createElement('div');
                     memberElement.classList.add('household-member'); // Add a class for styling
+                
+                    const isDeceased = member.deceased === 'yes';
                     memberElement.innerHTML = `
-                    <p class="household-member-info"><strong>Name:</strong> ${member.prefix || ''} ${capitalizeFirstLetter(member.firstName || '')} ${member.middleInitial ? capitalizeFirstLetter(member.middleInitial || '') : ''} ${capitalizeFirstLetter(member.lastName || '') } ${member.suffix || ''}</p>
+                        <p class="household-member-info"><strong>Name:</strong> ${member.prefix || ''} ${capitalizeFirstLetter(member.firstName || '')} ${member.middleInitial ? capitalizeFirstLetter(member.middleInitial || '') : ''} ${capitalizeFirstLetter(member.lastName || '') } ${member.suffix || ''}</p>
                         <p class="household-member-info"><strong>DOB:</strong> ${member.dob}</p>
+                                              ${isDeceased ? `<p class="household-member-info"><strong>Deceased: YES</strong></p>` : ''}
+                        ${isDeceased ? `<p class="household-member-info"><strong>Date of Death: ${member.dateOfDeath || 'N/A'}</strong></p>` : ''}
+
                         <p class="household-member-info"><strong>Age:</strong> ${member.age}</p>
                         <p class="household-member-info"><strong>Legal Sex:</strong> ${capitalizeFirstLetter(member.legalSex)}</p>
-                        <p class="household-member-info"><strong>Marital Status:</strong> ${capitalizeFirstLetter(member.maritalStatus)}</p>
+                                
+                        ${!isDeceased ? `<p class="household-member-info"><strong>Marital Status:</strong> ${capitalizeFirstLetter(member.maritalStatus)}</p>` : ''}
                         ${
-                            member.previousMaritalStatus && typeof member.previousMaritalStatus === 'string' && member.previousMaritalStatus.toLowerCase() !== 'n/a'
+                            !isDeceased && member.previousMaritalStatus && typeof member.previousMaritalStatus === 'string' && member.previousMaritalStatus.toLowerCase() !== 'n/a'
                                 ? `<p class="household-member-info"><strong>Previous Marital Status:</strong> ${capitalizeFirstLetter(member.previousMaritalStatus)}</p>`
                                 : ''
                         }
                         <p class="household-member-info"><strong>SSN:</strong> ${member.socialSecurityNumber ? member.socialSecurityNumber : 'N/A'}</p>
-
-                        <p class="household-member-info"><strong>Disability:</strong> ${capitalizeFirstLetter(member.disability)}</p>
-                        <p class="household-member-info"><strong>Medicare:</strong> ${capitalizeFirstLetter(member.medicare)}</p>
-                        <p class="household-member-info"><strong>Medicaid:</strong> ${capitalizeFirstLetter(member.medicaid)}</p>
-                        <p class="household-member-info"><strong>US Citizen:</strong> ${capitalizeFirstLetter(member.citizen)}</p>
+                
+                        ${!isDeceased ? `<p class="household-member-info"><strong>Disability:</strong> ${capitalizeFirstLetter(member.disability)}</p>` : ''}
+                        ${!isDeceased ? `<p class="household-member-info"><strong>Medicare:</strong> ${capitalizeFirstLetter(member.medicare)}</p>` : ''}
+                        ${!isDeceased ? `<p class="household-member-info"><strong>Medicaid:</strong> ${capitalizeFirstLetter(member.medicaid)}</p>` : ''}
+                        ${!isDeceased ? `<p class="household-member-info"><strong>US Citizen:</strong> ${capitalizeFirstLetter(member.citizen)}</p>` : ''}
                         ${
-                            member.nonCitizenStatus && member.nonCitizenStatus.toLowerCase() !== 'citizen'
+                            !isDeceased && member.nonCitizenStatus && member.nonCitizenStatus.toLowerCase() !== 'citizen'
                                 ? `<p class="household-member-info"><strong>Non-Citizen Status:</strong> ${capitalizeFirstLetter(member.nonCitizenStatus)}</p>`
                                 : ''
                         }
-                        <p class="household-member-info"><strong>Student:</strong> ${capitalizeFirstLetter(member.student)}</p>
+                        ${!isDeceased ? `<p class="household-member-info"><strong>Student:</strong> ${capitalizeFirstLetter(member.student)}</p>` : ''}
                         ${
-                            member.studentStatus && member.studentStatus.toLowerCase() !== 'notstudent'
+                            !isDeceased && member.studentStatus && member.studentStatus.toLowerCase() !== 'notstudent'
                                 ? `<p class="household-member-info"><strong>Student Status:</strong> ${capitalizeFirstLetter(member.studentStatus)}</p>`
                                 : ''
                         }
-                        <p class="household-member-info"><strong>Included in SNAP Household:</strong> ${capitalizeFirstLetter(member.meals)}</p>
+                        ${!isDeceased ? `<p class="household-member-info"><strong>Included in SNAP Household:</strong> ${capitalizeFirstLetter(member.meals)}</p>` : ''}
+                
                         <div class="button-container">
                             <button class="edit-member-button" data-member-id="${member.householdMemberId}">Edit</button>
                             <button class="delete-member-button" data-member-id="${member.householdMemberId}" style="color: white; background-color: red" 
@@ -256,7 +263,7 @@ async function loadSavedData() {
                     `;
                     householdMemberContainer.appendChild(memberElement);
                 });
-            
+                            
                 // Add event listeners to "Make Head of Household" buttons
                 document.querySelectorAll('.make-head-button').forEach((button) => {
                     button.addEventListener('click', async (event) => {
@@ -1035,13 +1042,13 @@ async function prepareHouseholdMemberModal() {
             'nonCitizenStatus'
         ];
 
-            // Make SSN field editable and hide the "Edit SSN" button
-    const ssnInput = document.getElementById('socialSecurityNumber');
-    const editSSNButton = document.getElementById('editSSNButton');
-    ssnInput.readOnly = false; // Make the SSN field editable
-    if (editSSNButton) {
-        editSSNButton.style.display = 'none'; // Hide the "Edit SSN" button
-    }
+        // Make SSN field editable and hide the "Edit SSN" button
+        const ssnInput = document.getElementById('socialSecurityNumber');
+        const editSSNButton = document.getElementById('editSSNButton');
+        ssnInput.readOnly = false; // Make the SSN field editable
+        if (editSSNButton) {
+            editSSNButton.style.display = 'none'; // Hide the "Edit SSN" button
+        }
 
         resetSSNFields();
 
@@ -1052,11 +1059,11 @@ async function prepareHouseholdMemberModal() {
             }
         });
 
-                // Hide the "Next" button initially
-                const nextButton = document.getElementById('nextSSNButton');
-                if (nextButton) {
-                    nextButton.style.display = 'none';
-                }
+        // Hide the "Next" button initially
+        const nextButton = document.getElementById('nextSSNButton');
+        if (nextButton) {
+            nextButton.style.display = 'none';
+        }
 
         // Reset visibility of all modal questions
         const modalQuestions = [
@@ -1074,6 +1081,12 @@ async function prepareHouseholdMemberModal() {
             }
         });
 
+        // Hide Date of Death container by default
+        const dateOfDeathContainer = document.getElementById('dateOfDeathContainer');
+        const dateOfDeathInput = document.getElementById('dateOfDeath');
+        if (dateOfDeathContainer) dateOfDeathContainer.style.display = 'none';
+        if (dateOfDeathInput) dateOfDeathInput.value = '';
+
         // Reset all question selections
         const questionOptions = [
             'modal-disability-yes',
@@ -1087,7 +1100,9 @@ async function prepareHouseholdMemberModal() {
             'modal-meals-yes',
             'modal-meals-no',
             'modal-citizen-yes',
-            'modal-citizen-no'
+            'modal-citizen-no',
+            'modal-deceased-yes',
+            'modal-deceased-no'
         ];
         questionOptions.forEach((optionId) => {
             const option = document.getElementById(optionId);
@@ -1095,6 +1110,16 @@ async function prepareHouseholdMemberModal() {
                 option.classList.remove('selected'); // Remove the 'selected' class
             }
         });
+
+        // Default deceased to "no": highlight UI option and set input value (if present)
+        const deceasedNo = document.getElementById('modal-deceased-no');
+        if (deceasedNo) {
+            deceasedNo.classList.add('selected');
+        }
+        const deceasedInput = document.getElementById('deceased');
+        if (deceasedInput) {
+            deceasedInput.value = 'no';
+        }
 
         // Hide the nonCitizenStatusContainer and studentStatusContainer by default
         const nonCitizenStatusContainer = document.getElementById('nonCitizenStatusContainer');
@@ -1123,19 +1148,19 @@ async function prepareHouseholdMemberModal() {
             const previousMaritalStatusContainer = document.getElementById('previousMaritalStatus').parentNode; // Get the container
 
             // Hide or show the previousMaritalStatus dropdown based on headOfHousehold status
-const hasHeadOfHousehold = clientData.householdMembers?.some(member => member.headOfHousehold);
+            const hasHeadOfHousehold = clientData.householdMembers?.some(member => member.headOfHousehold);
 
-if (hasHeadOfHousehold) {
-    // Hide for members who are not the head of household
-    if (!clientData.headOfHousehold) {
-        previousMaritalStatusContainer.style.display = 'none'; // Hide the dropdown
-    } else {
-        previousMaritalStatusContainer.style.display = 'block'; // Show the dropdown for the head of household
-    }
-} else {
-    // Show if there is no head of household
-    previousMaritalStatusContainer.style.display = 'block';
-}
+            if (hasHeadOfHousehold) {
+                // Hide for members who are not the head of household
+                if (!clientData.headOfHousehold) {
+                    previousMaritalStatusContainer.style.display = 'none'; // Hide the dropdown
+                } else {
+                    previousMaritalStatusContainer.style.display = 'block'; // Show the dropdown for the head of household
+                }
+            } else {
+                // Show if there is no head of household
+                previousMaritalStatusContainer.style.display = 'block';
+            }
 
             if (clientData.disability === 'yes') {
                 disabilityQuestion.style.display = 'block';
@@ -1180,7 +1205,8 @@ if (hasHeadOfHousehold) {
                 { id: 'medicaid', elements: ['modal-medicaid-yes', 'modal-medicaid-no'] },
                 { id: 'student', elements: ['modal-student-yes', 'modal-student-no'] },
                 { id: 'meals', elements: ['modal-meals-yes', 'modal-meals-no'] },
-                { id: 'citizen', elements: ['modal-citizen-yes', 'modal-citizen-no'] }
+                { id: 'citizen', elements: ['modal-citizen-yes', 'modal-citizen-no'] },
+                { id: 'deceased', elements: ['modal-deceased-yes', 'modal-deceased-no'] }
             ];
 
             modalQuestions.forEach((question) => {
@@ -1188,7 +1214,31 @@ if (hasHeadOfHousehold) {
                     const element = document.getElementById(elementId);
                     if (element) {
                         element.addEventListener('click', () => {
-                            highlightSelection(question.elements, element); // Highlight the selected option
+                            // Ensure toggling between yes/no keeps a single selection
+                            question.elements.forEach((id) => {
+                                const el = document.getElementById(id);
+                                if (el) el.classList.remove('selected');
+                            });
+                            element.classList.add('selected');
+
+                            // Keep the hidden/select input synchronized for deceased
+                            if (question.id === 'deceased') {
+                                const val = element.getAttribute('data-value');
+                                const input = document.getElementById('deceased');
+                                if (input) input.value = val;
+
+                                // Toggle Date of Death visibility
+                                const dodContainer = document.getElementById('dateOfDeathContainer');
+                                const dodInput = document.getElementById('dateOfDeath');
+                                if (dodContainer) {
+                                    if (val === 'yes') {
+                                        dodContainer.style.display = 'block';
+                                    } else {
+                                        dodContainer.style.display = 'none';
+                                        if (dodInput) dodInput.value = '';
+                                    }
+                                }
+                            }
                         });
                     }
                 });
@@ -1344,19 +1394,24 @@ async function addHouseholdMember() {
         const previousMaritalStatus = document.getElementById('previousMaritalStatus').value;
         const nonCitizenStatus = document.getElementById('nonCitizenStatus').value;
         const studentStatus = document.getElementById('studentStatus').value;
+        const dateOfDeath = document.getElementById('dateOfDeath')?.value || '';
+
         
         // Calculate age in Years, Months, and Days
-        const calculateAge = (dob) => {
+        const calculateAge = (dob, endDateStr) => {
+            if (!dob) return { years: 0, months: 0, days: 0 };
             const birthDate = new Date(dob);
-            const today = new Date();
-            today.setDate(today.getDate() - 1); // Subtract 1 day from the current date
-            let years = today.getFullYear() - birthDate.getFullYear();
-            let months = today.getMonth() - birthDate.getMonth();
-            let days = today.getDate() - birthDate.getDate();
+            // Use Date of Death if provided, otherwise use "today - 1 day"
+            const endDate = endDateStr ? new Date(endDateStr) : new Date();
+            if (!endDateStr) endDate.setDate(endDate.getDate() - 1);
+
+            let years = endDate.getFullYear() - birthDate.getFullYear();
+            let months = endDate.getMonth() - birthDate.getMonth();
+            let days = endDate.getDate() - birthDate.getDate();
 
             if (days < 0) {
                 months -= 1;
-                days += new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+                days += new Date(endDate.getFullYear(), endDate.getMonth(), 0).getDate();
             }
             if (months < 0) {
                 years -= 1;
@@ -1366,7 +1421,7 @@ async function addHouseholdMember() {
             return { years, months, days };
         };
 
-        const age = calculateAge(dob);
+        const age = calculateAge(dob, dateOfDeath);
 
         // Gather answers to modal questions
         const modalQuestions = [
@@ -1375,12 +1430,14 @@ async function addHouseholdMember() {
             { id: 'medicaid', elements: ['modal-medicaid-yes', 'modal-medicaid-no'] },
             { id: 'student', elements: ['modal-student-yes', 'modal-student-no'] },
             { id: 'meals', elements: ['modal-meals-yes', 'modal-meals-no'] },
-            { id: 'citizen', elements: ['modal-citizen-yes', 'modal-citizen-no'] }
+            { id: 'citizen', elements: ['modal-citizen-yes', 'modal-citizen-no'] },
+            { id: 'deceased', elements: ['modal-deceased-yes', 'modal-deceased-no'] } // added
         ];
 
         const answers = {};
         modalQuestions.forEach((question) => {
-            const visible = document.getElementById(`${question.id}Question`).style.display !== 'none';
+            const questionContainer = document.getElementById(`${question.id}Question`);
+            const visible = !questionContainer || questionContainer.style.display !== 'none';
             if (visible) {
                 question.elements.forEach((elementId) => {
                     const element = document.getElementById(elementId);
@@ -1389,7 +1446,6 @@ async function addHouseholdMember() {
                     }
                 });
             } else {
-                // Default to "no" if the question is not visible
                 answers[question.id] = 'no';
             }
         });
@@ -1410,32 +1466,35 @@ async function addHouseholdMember() {
             answers.studentStatus = 'notstudent';
         }
 
-        const clientData = await fetch(`/get-client/${clientId}`).then(res => res.json());
-        if (!clientData) {
-            console.error('Client data not found.');
-            return;
-        }
-
-        // Prepare the data to save
-        const householdMemberData = {
-            householdMemberId: crypto.randomUUID(), // Generate a unique ID
-            prefix,
-            firstName,
-            middleInitial,
-            lastName,
-            suffix,
-            dob,
-            legalSex,
-            socialSecurityNumber,
-            age: `${age.years} Years, ${age.months} Months, ${age.days} Days`,
-            maritalStatus,
-            previousMaritalStatus,
-            nonCitizenStatus,
-            studentStatus,
-            ...answers,
-            headOfHousehold: clientData.householdMembers.length === 0 // Automatically set as Head of Household if no members exist
-
-        };
+                // Fetch clientData to determine headOfHousehold safely
+                const clientResp = await fetch(`/get-client/${clientId}`);
+                if (!clientResp.ok) {
+                    throw new Error(`Failed to fetch client data: ${clientResp.statusText}`);
+                }
+                const clientDataForHOH = await clientResp.json();
+                const isFirstMember = !(clientDataForHOH.householdMembers && clientDataForHOH.householdMembers.length > 0);
+        
+                // Prepare the data to save
+                const householdMemberData = {
+                    householdMemberId: crypto.randomUUID(),
+                    prefix,
+                    firstName,
+                    middleInitial,
+                    lastName,
+                    suffix,
+                    dob,
+                    legalSex,
+                    socialSecurityNumber,
+                    age: `${age.years} Years, ${age.months} Months, ${age.days} Days`,
+                    maritalStatus,
+                    previousMaritalStatus,
+                    nonCitizenStatus,
+                    studentStatus,
+                    ...answers, // includes deceased
+                    // Only include dateOfDeath if deceased is yes
+                    dateOfDeath: answers.deceased === 'yes' ? dateOfDeath : '',
+                    headOfHousehold: isFirstMember
+                };
 
         // If nonCitizenStatus is "ineligible non-citizen", set meals to "no"
         if (nonCitizenStatus.toLowerCase() === 'ineligible non-citizen') {
@@ -1572,6 +1631,19 @@ if (ssnInput.value && /^\d{3}-\d{2}-\d{4}$/.test(ssnInput.value)) { // Check if 
     ssnInput.parentNode.insertBefore(editSSNButton, ssnInput.nextSibling);
 }
 
+    // Initialize Date of Death visibility and value
+    const dodContainer = document.getElementById('dateOfDeathContainer');
+    const dodInput = document.getElementById('dateOfDeath');
+    if (dodContainer) {
+        if (member.deceased === 'yes') {
+            dodContainer.style.display = 'block';
+            if (dodInput) dodInput.value = member.dateOfDeath || '';
+        } else {
+            dodContainer.style.display = 'none';
+            if (dodInput) dodInput.value = '';
+        }
+    }
+
     // Step 3: Highlight the selected options for modal questions
     const modalQuestions = [
         { id: 'disability', elements: ['modal-disability-yes', 'modal-disability-no'] },
@@ -1579,7 +1651,8 @@ if (ssnInput.value && /^\d{3}-\d{2}-\d{4}$/.test(ssnInput.value)) { // Check if 
         { id: 'medicaid', elements: ['modal-medicaid-yes', 'modal-medicaid-no'] },
         { id: 'student', elements: ['modal-student-yes', 'modal-student-no'] },
         { id: 'meals', elements: ['modal-meals-yes', 'modal-meals-no'] },
-        { id: 'citizen', elements: ['modal-citizen-yes', 'modal-citizen-no'] }
+        { id: 'citizen', elements: ['modal-citizen-yes', 'modal-citizen-no'] },
+        { id: 'deceased', elements: ['modal-deceased-yes', 'modal-deceased-no'] } // include deceased
     ];
 
     modalQuestions.forEach((question) => {
@@ -1596,28 +1669,66 @@ if (ssnInput.value && /^\d{3}-\d{2}-\d{4}$/.test(ssnInput.value)) { // Check if 
         });
     });
 
+    // Toggle visibility of fields based on deceased selection
+    (function applyDeceasedVisibility() {
+        const isDeceased = member.deceased === 'yes';
+
+        const maritalStatusWrapper = document.querySelector('label[for="maritalStatus"]')?.closest('.selection-box');
+        const previousMaritalStatusWrapper = document.getElementById('previousMaritalStatus')?.closest('.selection-box')
+            || document.querySelector('label[for="previousMaritalStatus"]')?.closest('.selection-box');
+
+        if (maritalStatusWrapper) maritalStatusWrapper.style.display = isDeceased ? 'none' : '';
+        if (previousMaritalStatusWrapper) previousMaritalStatusWrapper.style.display = isDeceased ? 'none' : '';
+
+        const toToggleIds = [
+            'disabilityQuestion',
+            'medicareQuestion',
+            'medicaidQuestion',
+            'studentQuestion',
+            'mealsQuestion',
+            'citizenQuestion',
+            'nonCitizenStatusContainer',
+            'studentStatusContainer',
+        ];
+        toToggleIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = isDeceased ? 'none' : '';
+        });
+    })();
+
     // Step 4: Handle visibility of conditional fields
     const nonCitizenStatusContainer = document.getElementById('nonCitizenStatusContainer');
     const studentStatusContainer = document.getElementById('studentStatusContainer');
     const mealsQuestion = document.getElementById('mealsQuestion');
-    const previousMaritalStatusContainer = document.getElementById('previousMaritalStatus').parentNode; // Get the container
+    const previousMaritalStatusContainer = document.getElementById('previousMaritalStatus').parentNode;
 
-    if (member.citizen === 'no') {
-        nonCitizenStatusContainer.style.display = 'block';
-        if (member.nonCitizenStatus.toLowerCase() === 'ineligible non-citizen') {
-            mealsQuestion.style.display = 'none';
-        }
+    // If deceased, keep all dependent containers hidden and skip conditional logic
+    if (member.deceased === 'yes') {
+        if (nonCitizenStatusContainer) nonCitizenStatusContainer.style.display = 'none';
+        if (studentStatusContainer) studentStatusContainer.style.display = 'none';
+        if (mealsQuestion) mealsQuestion.style.display = 'none';
+        if (previousMaritalStatusContainer) previousMaritalStatusContainer.style.display = 'none';
     } else {
-        nonCitizenStatusContainer.style.display = 'none';
-    }
+        // Existing conditional logic applies only when not deceased
+        if (member.citizen === 'no') {
+            nonCitizenStatusContainer.style.display = 'block';
+            if (member.nonCitizenStatus?.toLowerCase() === 'ineligible non-citizen') {
+                mealsQuestion.style.display = 'none';
+            } else {
+                mealsQuestion.style.display = 'block';
+            }
+        } else {
+            nonCitizenStatusContainer.style.display = 'none';
+        }
 
-    if (member.student === 'yes') {
-        studentStatusContainer.style.display = 'block';
-        if (member.studentStatus.toLowerCase() === 'ineligible student') {
-            mealsQuestion.style.display = 'none';
+        if (member.student === 'yes') {
+            studentStatusContainer.style.display = 'block';
+            if (member.studentStatus?.toLowerCase() === 'ineligible student') {
+                mealsQuestion.style.display = 'none';
+            }
+        } else {
+            studentStatusContainer.style.display = 'none';
         }
-    } else {
-        studentStatusContainer.style.display = 'none';
     }
 
     const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
@@ -1626,7 +1737,14 @@ if (ssnInput.value && /^\d{3}-\d{2}-\d{4}$/.test(ssnInput.value)) { // Check if 
         const clientData = await response.json();
         const hasHeadOfHousehold = clientData.householdMembers?.some(m => m.headOfHousehold);
 
-        if (hasHeadOfHousehold) {
+        // Ensure we have the container reference
+        const previousMaritalStatusContainer = document.getElementById('previousMaritalStatus')?.closest('.selection-box')
+            || document.getElementById('previousMaritalStatus')?.parentNode;
+
+        // Always hide if deceased, regardless of HOH rules
+        if (member.deceased === 'yes') {
+            if (previousMaritalStatusContainer) previousMaritalStatusContainer.style.display = 'none';
+        } else if (hasHeadOfHousehold) {
             // Show only for the head of household
             if (member.headOfHousehold) {
                 previousMaritalStatusContainer.style.display = 'block';
@@ -1646,7 +1764,8 @@ if (ssnInput.value && /^\d{3}-\d{2}-\d{4}$/.test(ssnInput.value)) { // Check if 
         } else {
             // Show if there is no head of household
             previousMaritalStatusContainer.style.display = 'block';
-        }}
+        }
+    }
     // Step 5: Set up the button for updating the member
     setupAddOrUpdateButton(true, member);
 
@@ -1675,30 +1794,34 @@ async function updateHouseholdMember(memberId) {
         const previousMaritalStatus = document.getElementById('previousMaritalStatus').value;
         const nonCitizenStatus = document.getElementById('nonCitizenStatus').value;
         const studentStatus = document.getElementById('studentStatus').value;
+                // Date of Death (only if deceased === 'yes')
+                const dateOfDeath = document.getElementById('dateOfDeath')?.value || '';
 
-        // Calculate age in Years, Months, and Days
-        const calculateAge = (dob) => {
-            const birthDate = new Date(dob);
-            const today = new Date();
-            today.setDate(today.getDate() - 1); // Subtract 1 day from the current date
-            let years = today.getFullYear() - birthDate.getFullYear();
-            let months = today.getMonth() - birthDate.getMonth();
-            let days = today.getDate() - birthDate.getDate();
-
-            if (days < 0) {
-                months -= 1;
-                days += new Date(today.getFullYear(), today.getMonth(), 0).getDate();
-            }
-            if (months < 0) {
-                years -= 1;
-                months += 12;
-            }
-
-            return { years, months, days };
-        };
-
-        const age = calculateAge(dob);
-
+                // Calculate age in Years, Months, and Days
+                const calculateAge = (dob, endDateStr) => {
+                    if (!dob) return { years: 0, months: 0, days: 0 };
+                    const birthDate = new Date(dob);
+                    const endDate = endDateStr ? new Date(endDateStr) : new Date();
+                    if (!endDateStr) endDate.setDate(endDate.getDate() - 1);
+        
+                    let years = endDate.getFullYear() - birthDate.getFullYear();
+                    let months = endDate.getMonth() - birthDate.getMonth();
+                    let days = endDate.getDate() - birthDate.getDate();
+        
+                    if (days < 0) {
+                        months -= 1;
+                        days += new Date(endDate.getFullYear(), endDate.getMonth(), 0).getDate();
+                    }
+                    if (months < 0) {
+                        years -= 1;
+                        months += 12;
+                    }
+        
+                    return { years, months, days };
+                };
+        
+                const age = calculateAge(dob, dateOfDeath);
+        
         // Gather answers to modal questions
         const modalQuestions = [
             { id: 'disability', elements: ['modal-disability-yes', 'modal-disability-no'] },
@@ -1706,17 +1829,25 @@ async function updateHouseholdMember(memberId) {
             { id: 'medicaid', elements: ['modal-medicaid-yes', 'modal-medicaid-no'] },
             { id: 'student', elements: ['modal-student-yes', 'modal-student-no'] },
             { id: 'meals', elements: ['modal-meals-yes', 'modal-meals-no'] },
-            { id: 'citizen', elements: ['modal-citizen-yes', 'modal-citizen-no'] }
+            { id: 'citizen', elements: ['modal-citizen-yes', 'modal-citizen-no'] },
+            { id: 'deceased', elements: ['modal-deceased-yes', 'modal-deceased-no'] } // added
         ];
 
         const answers = {};
         modalQuestions.forEach((question) => {
-            question.elements.forEach((elementId) => {
-                const element = document.getElementById(elementId);
-                if (element && element.classList.contains('selected')) {
-                    answers[question.id] = element.getAttribute('data-value');
-                }
-            });
+            const questionContainer = document.getElementById(`${question.id}Question`);
+            const visible = !questionContainer || questionContainer.style.display !== 'none';
+            if (visible) {
+                question.elements.forEach((elementId) => {
+                    const element = document.getElementById(elementId);
+                    if (element && element.classList.contains('selected')) {
+                        answers[question.id] = element.getAttribute('data-value');
+                    }
+                });
+            } else {
+                // default hidden questions to "no"
+                answers[question.id] = 'no';
+            }
         });
 
         // Set nonCitizenStatus to "citizen" if citizen is "yes"
@@ -1745,8 +1876,10 @@ async function updateHouseholdMember(memberId) {
             previousMaritalStatus,
             studentStatus,
             nonCitizenStatus,
-            ...answers,
-        };
+            ...answers, // includes deceased
+                        // Only include dateOfDeath if deceased is yes
+                        dateOfDeath: answers.deceased === 'yes' ? dateOfDeath : '',
+                    };            
 
         // If nonCitizenStatus is "ineligible non-citizen", set meals to "no"
         if (nonCitizenStatus.toLowerCase() === 'ineligible non-citizen') {

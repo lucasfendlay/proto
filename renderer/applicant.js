@@ -162,6 +162,10 @@ if (membersToDisplay.size === 0) {
                         ? `<p class="household-member-info"><strong>Previous Marital Status:</strong> ${capitalizeFirstLetter(member.previousMaritalStatus)}</p>`
                         : ''
                     }
+                    ${member.previousMaritalStatus && member.previousMaritalStatus.toLowerCase() === 'widowed' && member.dateOfSpousePassing
+                        ? `<p class="household-member-info"><strong>Date of Spouse Passing:</strong> ${member.dateOfSpousePassing}</p>`
+                        : ''
+                    }
                     <p class="household-member-info"><strong>Race:</strong> ${member.race && member.race.length > 0 ? member.race.map(r => capitalizeFirstLetter(r)).join(', ') : 'N/A'}</p>
                     <p class="household-member-info"><strong>Hispanic Origin:</strong> ${member.hispanicOrigin ? capitalizeFirstLetter(member.hispanicOrigin) : 'N/A'}</p>
                     <p class="household-member-info"><strong>Homebound:</strong> ${capitalizeFirstLetter(member.homebound || 'N/A')}</p>
@@ -1101,6 +1105,7 @@ if (hispanicOriginSelect) {
     const studentStatusContainer = document.getElementById('studentStatusContainer');
     const mealsQuestion = document.getElementById('mealsQuestion');
     const previousMaritalStatusContainer = document.getElementById('previousMaritalStatus').parentNode; // Get the container
+    const dateOfSpousePassingContainer = document.getElementById('dateOfSpousePassingContainer'); // New field container
 
     if (member.citizen === 'no') {
         nonCitizenStatusContainer.style.display = 'block';
@@ -1119,6 +1124,14 @@ if (hispanicOriginSelect) {
     } else {
         studentStatusContainer.style.display = 'none';
     }
+
+    // Show or hide the date of passing field based on previousMaritalStatus
+if (member.previousMaritalStatus === 'Widowed') {
+    dateOfSpousePassingContainer.style.display = 'block';
+    document.getElementById('dateOfSpousePassing').value = member.dateOfSpousePassing || ''; // Autofill if available
+} else {
+    dateOfSpousePassingContainer.style.display = 'none';
+}
 
     const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
     const response = await fetch(`/get-client/${clientId}`);
@@ -1165,6 +1178,8 @@ async function updateHouseholdMember(memberId) {
         const nonCitizenStatus = document.getElementById('nonCitizenStatus').value;
         const studentStatus = document.getElementById('studentStatus').value;
         const hispanicOrigin = document.getElementById('hispanicOrigin')?.value || null;
+        const dateOfSpousePassing = document.getElementById('dateOfSpousePassing').value;
+
 
         // Gather the selected races
         const selectedRaces = Array.from(document.querySelectorAll('#selected-race-list .selected-item'))
@@ -1251,6 +1266,11 @@ async function updateHouseholdMember(memberId) {
             religious: answers.religious || 'N/A',
             ...answers,
         };
+
+        // Include dateOfSpousePassing if previousMaritalStatus is "Widowed"
+if (previousMaritalStatus === 'Widowed') {
+    updatedMemberData.dateOfSpousePassing = dateOfSpousePassing;
+}
 
         // Check if previousMaritalStatus is not "Married (Living Together)"
         if (previousMaritalStatus !== 'Married (Living Together)') {

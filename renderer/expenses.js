@@ -9,8 +9,197 @@ document.addEventListener('DOMContentLoaded', async function () {
     const saveUtilityExpensesButton = document.getElementById('save-utility-expenses'); // Save Utility Expenses button
     const utilityExpenseList = document.getElementById('utility-expense-list'); // Utility expense list
     let currentMemberId = null;
+    const leaseSelectContainer = document.createElement('div');
+    leaseSelectContainer.id = 'lease-persons-container';
+    leaseSelectContainer.classList.add('hidden');
+    leaseSelectContainer.style.marginTop = '10px';
 
-    // State management object for currentMemberId
+// Internal state for selected lease persons
+let leaseSelectedPersons = [];
+
+// Cache household members for option population
+let cachedHouseholdMembers = null;
+async function getHouseholdMembersCached() {
+    if (cachedHouseholdMembers) return cachedHouseholdMembers;
+    cachedHouseholdMembers = await loadHouseholdMembers();
+    return cachedHouseholdMembers;
+}
+
+// Populate dropdown items from household members
+function renderLeaseDropdownItems(members) {
+    const dropdown = document.getElementById('lease-dropdown');
+    if (!dropdown) return;
+
+    dropdown.innerHTML = '';
+    const options = [
+        ...members.map(m => ({
+            id: String(m.householdMemberId),
+            label: `${m.firstName} ${m.middleInitial || ''} ${m.lastName}`.replace(/\s+/g, ' ').trim()
+        })),
+        { id: '__outside__', label: 'Outside of Household' }
+    ];
+
+    options.forEach(opt => {
+        const div = document.createElement('div');
+        div.classList.add('dropdown-item');
+        div.setAttribute('data-value', opt.id);
+        div.textContent = opt.label;
+
+        // Hide item if already selected
+        if (leaseSelectedPersons.some(p => p.id === opt.id)) {
+            div.style.display = 'none';
+        }
+
+        div.addEventListener('click', () => {
+            if (!leaseSelectedPersons.some(p => p.id === opt.id)) {
+                leaseSelectedPersons.push({ id: opt.id, label: opt.label });
+                renderLeaseSelectedTags();
+                div.style.display = 'none';
+            }
+            const search = document.getElementById('lease-search');
+            if (search) search.value = '';
+            dropdown.classList.add('hidden');
+        });
+
+        dropdown.appendChild(div);
+    });
+}
+
+// Render selected tags (chips)
+function renderLeaseSelectedTags() {
+    const selectedList = document.getElementById('selected-lease-list');
+    const dropdown = document.getElementById('lease-dropdown');
+    if (!selectedList) return;
+
+    selectedList.innerHTML = '';
+    leaseSelectedPersons.forEach(sel => {
+        const item = document.createElement('div');
+        item.classList.add('selected-item');
+        item.setAttribute('data-value', sel.id);
+        item.innerHTML = `
+            ${sel.label}
+            <span class="remove-item" data-value="${sel.id}">&times;</span>
+        `;
+        selectedList.appendChild(item);
+    });
+
+    // Remove handler restores the option in dropdown
+    selectedList.querySelectorAll('.remove-item').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation(); // prevent modal close or other global click handlers
+
+            const id = e.target.getAttribute('data-value');
+            leaseSelectedPersons = leaseSelectedPersons.filter(p => p.id !== id);
+
+            // Re-enable the option in the dropdown
+            const dropdownItem = Array.from(dropdown.children).find(item => item.getAttribute('data-value') === id);
+            if (dropdownItem) dropdownItem.style.display = 'block';
+
+            renderLeaseSelectedTags();
+        });
+    });
+}
+
+// Search/filter and visibility like race dropdown
+document.addEventListener('focusin', (e) => {
+    if (e.target && e.target.id === 'lease-search') {
+        const dropdown = document.getElementById('lease-dropdown');
+        dropdown?.classList.remove('hidden');
+    }
+});
+
+document.addEventListener('input', (e) => {
+    if (e.target && e.target.id === 'lease-search') {
+        const filter = e.target.value.toLowerCase();
+        const dropdown = document.getElementById('lease-dropdown');
+        if (!dropdown) return;
+        const items = dropdown.querySelectorAll('.dropdown-item');
+        items.forEach(item => {
+            const text = item.textContent.toLowerCase();
+            item.style.display = text.includes(filter) ? 'block' : 'none';
+
+            // Keep already-selected items hidden
+            const val = item.getAttribute('data-value');
+            if (leaseSelectedPersons.some(p => p.id === val)) {
+                item.style.display = 'none';
+            }
+        });
+    }
+});
+
+// Hide dropdown when clicking outside
+document.addEventListener('click', (event) => {
+    const dropdown = document.getElementById('lease-dropdown');
+    const search = document.getElementById('lease-search');
+    if (!dropdown || !search) return;
+    if (!dropdown.contains(event.target) && event.target !== search) {
+        dropdown.classList.add('hidden');
+    }
+});
+
+// When to show Lease/Deed selector
+function shouldShowLeaseDropdown(expenseType, kind) {
+    return expenseType === 'Previous Year' && (kind === 'Rent' || kind === 'Property Taxes');
+}
+
+// Ensure visibility and populate items
+async function ensureLeaseDropdownVisibility() {
+    const expenseType = modalTitle.textContent.includes('Previous Year') ? 'Previous Year' : modalTitle.textContent.split(' ')[1];
+    const kind = document.getElementById('expense-kind')?.value;
+    const container = document.getElementById('lease-persons-container');
+
+    if (!container) return;
+
+    if (shouldShowLeaseDropdown(expenseType, kind)) {
+        container.classList.remove('hidden'); // show (block via CSS)
+        const members = await getHouseholdMembersCached();
+        renderLeaseDropdownItems(members);
+        renderLeaseSelectedTags();
+    } else {
+        container.classList.add('hidden'); // hide
+        leaseSelectedPersons = [];
+        renderLeaseSelectedTags();
+    }
+}
+
+// Call on kind change and modal open
+document.getElementById('expense-kind').addEventListener('change', () => {
+    // ...existing autofill...
+    ensureLeaseDropdownVisibility();
+});
+
+document.addEventListener('click', async (event) => {
+    if (event.target.classList.contains('add-expense-button')) {
+        // ...existing modal logic...
+        if (expenseType !== 'Utility') {
+            modal.classList.remove('hidden');
+            await ensureLeaseDropdownVisibility();
+        }
+    }
+});
+
+// Edit flow prefill
+document.addEventListener('click', async function (event) {
+    if (event.target.classList.contains('edit-expense-button')) {
+        // ...existing fetch...
+        modal.classList.remove('hidden');
+        await ensureLeaseDropdownVisibility();
+        if (shouldShowLeaseDropdown(expense.type, expense.kind) && Array.isArray(expense.leasePersons)) {
+            const members = await getHouseholdMembersCached();
+            leaseSelectedPersons = expense.leasePersons.map(label => {
+                const match = members.find(m =>
+                    `${m.firstName} ${m.middleInitial || ''} ${m.lastName}`.replace(/\s+/g, ' ').trim() === label
+                );
+                return { id: match ? String(match.householdMemberId) : '__outside__', label };
+            });
+            renderLeaseDropdownItems(members);
+            renderLeaseSelectedTags();
+        }
+    }
+});
+
+// State management object for currentMemberId
 const memberState = {
     currentMemberId: null,
     setCurrentMemberId(id) {
@@ -44,6 +233,8 @@ document.getElementById('expense-kind').addEventListener('change', function () {
         amountInput.value = '';
         frequencyInput.value = '';
     }
+        // Show/hide and populate Lease/Deed dropdown when applicable
+        ensureLeaseDropdownVisibility();
 });
 
     // Define dropdown options for each expense type
@@ -306,22 +497,24 @@ setupModalClose('previous-year-modal', 'previous-year-form');
                 <div class="${title.toLowerCase().replace(/\s+/g, '-')}-expenses-container" style="margin: 20px 0;">
                     <h4>${title} Expenses</h4>
                     <ul>
-                        ${expenses.map(expense => `
-                            <li data-expense-id="${expense.id}">
-                                <p><strong>Type:</strong> ${expense.type}</p>
-                                <p><strong>Kind:</strong> ${expense.kind}</p>
-                            <p><strong>Amount:</strong> $${formatAmount(expense.amount)}</p>
-                                <p><strong>Frequency:</strong> ${expense.frequency}</p>
-                                <p><strong>Start Date:</strong> ${expense.startDate}</p>
-                                <p><strong>End Date:</strong> ${expense.endDate}</p>
-                                        <div class="button-container">
-
+                    ${expenses.map(expense => `
+                        <li data-expense-id="${expense.id}" class="${Array.isArray(expense.leasePersons) && expense.leasePersons.length > 0 ? 'has-lease' : ''}">
+                            <p><strong>Type:</strong><br> ${expense.type}</p>
+                            <p><strong>Kind:</strong><br> ${expense.kind}</p>
+                                                        ${Array.isArray(expense.leasePersons) && expense.leasePersons.length > 0 ? `
+                                <p><strong>Person(s) on Lease/Deed:</strong><br> ${expense.leasePersons.join(', ')}</p>
+                            ` : ''}
+                            <p><strong>Amount:</strong><br> $${formatAmount(expense.amount)}</p>
+                            <p><strong>Frequency:</strong><br> ${expense.frequency}</p>
+                            <p><strong>Start Date:</strong><br> ${expense.startDate}</p>
+                            <p><strong>End Date:</strong><br> ${expense.endDate}</p>
+                            <div class="button-container">
                                 <button class="edit-expense-button" data-expense-id="${expense.id}">Edit</button>
-                                <button class="delete-expense-button" data-expense-id="${expense.id}" style="color: white; background-color: red;";>Delete</button>
-                                </div>
-                            </li>
-                        `).join('')}
-                    </ul>
+                                <button class="delete-expense-button" data-expense-id="${expense.id}" style="color: white; background-color: red;">Delete</button>
+                            </div>
+                        </li>
+                    `).join('')}
+                                        </ul>
                 </div>
             `;
         };
@@ -530,7 +723,7 @@ document.addEventListener('click', (event) => {
 });
 
 // Attach event listener to the parent container using event delegation
-document.addEventListener('click', (event) => {
+document.addEventListener('click', async (event) => {
     if (event.target.classList.contains('add-expense-button')) {
         const expenseType = event.target.dataset.expenseType; // Get the expense type from the button
         const memberId = event.target.dataset.memberId; // Get the member ID from the button
@@ -586,6 +779,9 @@ document.addEventListener('click', (event) => {
 
             // Show the general modal
             modal.classList.remove('hidden');
+
+            // Ensure Lease/Deed dropdown visibility and option population
+            await ensureLeaseDropdownVisibility();
         }
         // Reset the "Add Expense" button text to default
         addExpenseButton.textContent = 'Add Expense';
@@ -668,7 +864,11 @@ async function saveExpense() {
         kind: expenseKind,
         frequency: expenseFrequency,
         startDate: expenseStartDate,
-        endDate: expenseEndDate
+        endDate: expenseEndDate,
+        leasePersons: shouldShowLeaseDropdown(
+            modalTitle.textContent.includes('Previous Year') ? 'Previous Year' : modalTitle.textContent.split(' ')[1],
+            expenseKind
+        ) ? leaseSelectedPersons.map(p => p.label) : undefined
     };
 
     console.log('New Expense:', newExpense);
@@ -783,6 +983,10 @@ async function overwriteExpense() {
         frequency: expenseFrequency,
         startDate: expenseStartDate,
         endDate: expenseEndDate,
+        leasePersons: shouldShowLeaseDropdown(
+            modalTitle.textContent.includes('Previous Year') ? 'Previous Year' : modalTitle.textContent.split(' ')[1],
+            expenseKind
+        ) ? leaseSelectedPersons.map(p => p.label) : undefined
     };
 
     console.log('Updated Expense Payload:', updatedExpense);
@@ -934,6 +1138,34 @@ document.addEventListener('click', async function (event) {
 
             // Show the modal
             modal.classList.remove('hidden');
+
+                        // Ensure Lease/Deed dropdown visibility and prefill when applicable
+            try {
+                await ensureLeaseDropdownVisibility();
+                const isPrevYearLeaseKind =
+                    expense.type === 'Previous Year' &&
+                    (expense.kind === 'Rent' || expense.kind === 'Property Taxes');
+
+                if (isPrevYearLeaseKind) {
+                    const members = await getHouseholdMembersCached();
+                    // Rehydrate leaseSelectedPersons from saved labels
+                    leaseSelectedPersons = Array.isArray(expense.leasePersons)
+                        ? expense.leasePersons.map(label => {
+                            const match = members.find(m =>
+                                `${m.firstName} ${m.middleInitial || ''} ${m.lastName}`.replace(/\s+/g, ' ').trim() === label
+                            );
+                            return {
+                                id: match ? String(match.householdMemberId) : '__outside__',
+                                label
+                            };
+                        })
+                        : [];
+                    renderLeaseDropdownItems(members);
+                    renderLeaseSelectedTags();
+                }
+            } catch (e) {
+                console.warn('Lease/Deed dropdown prefill error:', e);
+            }
 
             // Change the button text to "Save and Update"
             addExpenseButton.textContent = 'Save and Update';

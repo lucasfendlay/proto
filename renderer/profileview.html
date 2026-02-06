@@ -185,6 +185,29 @@
             position: relative; /* Position relative for internal elements */
             text-align: left;
         }
+
+        .centered-form {
+    display: flex;
+    flex-direction: column; /* Stack items vertically */
+    align-items: center; /* Center items horizontally */
+    justify-content: center; /* Center items vertically */
+    text-align: center; /* Center text */
+    width: 100%; /* Make the form take up the full width of its container */
+    max-width: 800px; /* Optional: Limit the maximum width of the form */
+    margin: 0 auto; /* Center the form horizontally */
+}
+
+.centered-form .form-field {
+    width: 100%; /* Make each form field stretch across the form */
+    margin: 10px 0; /* Add vertical spacing between fields */
+}
+
+.centered-form .read-only-field {
+    width: calc(100% - 40px); /* Stretch fields but leave space for side margins */
+    padding: 10px; /* Add padding inside the fields */
+    margin: 0 20px; /* Add consistent side margins */
+    box-sizing: border-box; /* Include padding and border in the element's total width */
+}
     </style>
 
 </head>
@@ -248,7 +271,7 @@
     <button id="call-logging-button" class="interactive" onclick="confirmAndLogCall()">Log New Call</button>
 
 
-    <form id="clientForm">
+    <form id="clientForm" class="centered-form">        
         <h2>Primary Client</h2>
         <div class="form-field">
             <label for="firstName">First Name:</label>
@@ -261,6 +284,10 @@
         <div class="form-field">
             <label for="phoneNumber">Phone Number:</label>
             <span id="phoneNumber" class="read-only-field">Loading...</span>
+        </div>
+        <div class="form-field">
+            <label for="homelessness">Are you currently experiencing homelessness?</label>
+            <span id="homelessness" class="read-only-field">Loading...</span>
         </div>
         <div class="form-field">
             <label for="streetAddress">Street Address:</label>
@@ -298,7 +325,7 @@
 
 
     <div class="button-container">
-        <button id="profile-edit-button" class="interactive" onclick="if(confirm('Are you sure you want to check out this profile?')) { GoToProfileEditChecked(); }">Check Out Profile</button>    
+        <button id="profile-edit-button" class="interactive" style="border: 1px solid #000000; border-radius: 5px" onclick="if(confirm('Are you sure you want to check out this profile?')) { GoToProfileEditChecked(); }">Check Out Profile</button>    
     </div>
 
         <h2>Interaction Tracker</h2>
@@ -342,6 +369,7 @@ async function loadClientData() {
             document.getElementById('firstName').textContent = client.firstName ? client.firstName.toUpperCase() : 'N/A';
             document.getElementById('lastName').textContent = client.lastName ? client.lastName.toUpperCase() : 'N/A';
             document.getElementById('phoneNumber').textContent = client.phoneNumber ? client.phoneNumber.toUpperCase() : 'N/A';
+            document.getElementById('homelessness').textContent = client.homelessness ? client.homelessness.toUpperCase() : 'N/A';
             document.getElementById('streetAddress').textContent = client.streetAddress ? client.streetAddress.toUpperCase() : 'N/A';
             document.getElementById('streetAddress2').textContent = client.streetAddress2 ? client.streetAddress2.toUpperCase() : 'N/A';
             document.getElementById('city').textContent = client.city ? client.city.toUpperCase() : 'N/A';

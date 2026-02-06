@@ -75,37 +75,6 @@
             margin-bottom: 10px;
         }
 
-        .selection-box {
-            display: flex;
-            gap: 8px;
-            justify-content: center;
-            margin-top: 8px;
-        }
-
-        .selection-box div {
-            padding: 8px 16px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            background-color: #f5f5f5;
-            cursor: pointer;
-            text-align: center;
-            font-weight: 500;
-            transition: background-color 0.2s ease, border-color 0.2s ease;
-            width: 100px;
-            box-sizing: border-box;
-        }
-
-        .selection-box div:hover {
-            background-color: #eaeaea;
-            border-color: #999;
-        }
-
-        .selection-box div.selected {
-            background-color: #007bff;
-            color: white;
-            border-color: #0056b3;
-        }
-
         #terminate-button {
             background-color: #ff4d4d;
             color: white;
@@ -135,6 +104,45 @@
             flex-wrap: wrap;
             margin-top: 20px;
         }
+
+        .selection-box div {
+    height: 35px; /* Consistent height */
+    border: 1px solid #ddd;
+    padding: 0 15px; /* Horizontal padding only */
+    display: flex; /* Use flexbox for alignment */
+    align-items: center; /* Center text vertically */
+    justify-content: center; /* Center text horizontally */
+    box-sizing: border-box; /* Ensure total size remains the same */
+    margin-bottom: 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    }
+
+.selection-box div.selected {
+    background-color: #007bff;
+    color: white;
+    height: 35px; /* Consistent height */
+    border: 1px solid #0056b3; /* Consistent border */
+    padding: 0 15px; /* Horizontal padding only */
+    display: flex; /* Use flexbox for alignment */
+    align-items: center; /* Center text vertically */
+    justify-content: center; /* Center text horizontally */
+    box-sizing: border-box; /* Ensure total size remains the same */
+}
+
+.selection-box-input {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 10px;
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+}
+.selection-box select option {
+    padding: 10px;
+}
     
         .button-container button {
     flex: 1;
@@ -238,6 +246,30 @@
         background-color: #ffe6e6; /* Light red background */
     }
 
+    .centered-form {
+    display: flex;
+    flex-direction: column; /* Stack items vertically */
+    align-items: center; /* Center items horizontally */
+    justify-content: center; /* Center items vertically */
+    text-align: center; /* Center text */
+    width: 100%; /* Make the form take up the full width of its container */
+    max-width: 800px; /* Optional: Limit the maximum width of the form */
+    margin: 0 auto; /* Center the form horizontally */
+}
+
+.centered-form .form-field {
+    width: 100%; /* Make each form field stretch across the form */
+    margin: 10px 0; /* Add vertical spacing between fields */
+}
+
+.centered-form input[type="text"],
+.centered-form select {
+    width: calc(100% - 40px); /* Stretch inputs but leave space for side margins */
+    padding: 10px; /* Add padding inside the input fields */
+    margin: 0 20px; /* Add consistent side margins */
+    box-sizing: border-box; /* Include padding and border in the element's total width */
+}
+
 </style>
 
     <script src="editnavigation.js"></script>
@@ -302,8 +334,9 @@
         <div id="household-members-container" class="left-sidebar"></div>
 </div>
 
-    <form id="clientForm">
-        <h2>Primary Client</h2>
+<form id="clientForm" class="centered-form">
+    
+    <h2>Primary Client</h2>
         <div class="form-field">
             <label for="firstName">First Name:</label>
             <input type="text" id="firstName" name="firstName">
@@ -1132,7 +1165,7 @@ document.querySelectorAll('select').forEach(select => {
         window.onload = loadClientData;
 
         async function confirmAndRedirect() {
-    if (confirm("Are you sure you want to start screening?")) {
+    if (confirm("Are you sure you want to start a new screening?")) {
         const clientId = getQueryParam('id');
         const noteContent = "<strong>New screening initiated.</strong>";
         const timestamp = new Date().toLocaleString();
@@ -1187,6 +1220,37 @@ document.querySelectorAll('select').forEach(select => {
             }
 
             console.log('Screening status successfully updated.');
+
+            // Reopen all benefit screenings on all household members
+            const membersResponse = await fetch(`/get-client/${clientId}`);
+            if (membersResponse.ok) {
+                const clientData = await membersResponse.json();
+                const currentMembers = clientData.householdMembers || [];
+
+                const allBenefits = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
+                for (const member of currentMembers) {
+                    for (const benefit of allBenefits) {
+                        if (member[benefit]) {
+                            member[benefit].screeningInProgress = true;
+                            member[benefit].screeningCloseReason = null;
+                        }
+                    }
+                }
+
+                const saveMembersResponse = await fetch('/save-household-members', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientId, householdMembers: currentMembers })
+                });
+
+                if (!saveMembersResponse.ok) {
+                    console.error('Failed to reopen benefit screenings on household members.');
+                } else {
+                    console.log('All benefit screenings reopened on household members.');
+                }
+            } else {
+                console.error('Failed to fetch household members for screening reopen.');
+            }
 
             // Redirect to householdedit.html
             window.location.href = `householdedit.html?id=${clientId}`;

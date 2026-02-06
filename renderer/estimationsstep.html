@@ -17,29 +17,28 @@
 
 #save-exit, #save-continue {
             border: 1px solid #000000;
-            border-radius: 5px; /* Rounded corners */
-            padding: 10px 20px; /* Add padding for better spacing */
-            background-color: #007bff; /* Light background color */
-            color: white; /* Blue text color */
-            transition: background-color 0.3s, color 0.3s; /* Smooth hover effect */
+            border-radius: 5px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.3s, color 0.3s;
         }
     
-        /* Hover effect for the buttons */
         #save-exit:hover, #save-continue:hover {
-            background-color: #0056b3; /* Blue background on hover */
-            color: white; /* White text on hover */
+            background-color: #0056b3;
+            color: white;
         }
 
         details > summary {
-    cursor: pointer; /* Change cursor to hand */
-}
-        /* General styles */
+            cursor: pointer;
+        }
+
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
             color: #333;
-            margin-top: 60px; /* Adjust this value to match the height of the navigation container */
+            margin-top: 60px;
         }
         
         #app {
@@ -51,43 +50,40 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         
-        /* Header styles */
         h1 {
             text-align: center;
             color: #444;
         }
         
-        /* Household member container */
         #household-members-container {
             display: absolute;
             flex-direction: column;
-            align-items: center; /* Center the content horizontally */
-            gap: 15px; /* Add gap between SNAP household boxes */
-            min-width: 500px; /* Ensure minimum width for better visibility */
-            max-width: 500px; /* Limit maximum width for layout consistency */
+            align-items: center;
+            gap: 15px;
+            min-width: 500px;
+            max-width: 500px;
             padding: 20px;
             background: #f9f9f9;
             border-radius: 8px;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
         
-        /* Individual household member card */
         .household-member-box {
-    border: none;
-    align-self: center; /* Center the box horizontally */
-    padding: 15px;
-    margin-bottom: 10px; /* Reduce the gap between cards */
-    border-radius: 5px;
-    background: #f4f4f4; /* Slightly darker gray than the page background */
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
+            border: none;
+            align-self: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            background: #f4f4f4;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
 
-.household-member-box:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}       
-        /* Member details */
+        .household-member-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
         .household-member-box h3 {
             margin: 0 0 10px;
             font-size: 1.2em;
@@ -100,67 +96,100 @@
             color: #555;
         }
         
-        /* Spouse details */
         .household-member-box p span {
             font-weight: bold;
             color: #444;
         }
         
-        /* SNAP household container */
         #snap-household-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center; /* Center the content horizontally */
-    min-width: 500px; /* Ensure minimum width for better visibility */
-    max-width: 500px; /* Limit maximum width for layout consistency */
-    padding: 20px;
-    background: #f9f9f9;
-    border-radius: 8px;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    margin-top: 20px; /* Add consistent spacing above the SNAP container */
-}
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 500px;
+            max-width: 500px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-top: 20px;
+        }
  
-#liheap-household-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center; /* Center the content horizontally */
-    min-width: 500px; /* Ensure minimum width for better visibility */
-    max-width: 500px; /* Limit maximum width for layout consistency */
-    padding: 20px;
-    background: #f9f9f9;
-    border-radius: 8px;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    margin-top: 20px; /* Add consistent spacing above the SNAP container */
-}
-        /* SNAP household box */
+        #liheap-household-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 500px;
+            max-width: 500px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-top: 20px;
+        }
         
         .snap-household-box h3 {
             margin-top: 0;
             color: #333;
         }
-        </style>
+
+        /* Screening control buttons */
+        .screening-controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .screening-controls button {
+            border: 1px solid #000000;
+            border-radius: 5px;
+            padding: 10px 20px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        #stop-screening-btn {
+            background-color: #dc3545;
+        }
+
+        #stop-screening-btn:hover {
+            background-color: #a71d2a;
+        }
+
+        #reopen-screening-btn {
+            background-color: #007bff;
+        }
+
+        #reopen-screening-btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
 </head>
 <body>
     <h1>Estimated Eligibilities</h1>
+
+    <!-- Screening control buttons -->
+    <div class="screening-controls" id="screening-controls">
+        <!-- These will be dynamically populated by loadScreeningButtons -->
+    </div>
+    
     <div id="notes-container">
         <textarea id="note-input" placeholder="Add Note..."></textarea>
         <button id="save-note">Save Note</button>
-        <div id="notes-list">
-            </div>
-            </div>
+        <div id="notes-list"></div>
+    </div>
 
-            <div id="snap-household-container"></div>
-            <div id="liheap-household-container"></div>
+    <div id="snap-household-container"></div>
+    <div id="liheap-household-container"></div>
 
     <div id="household-members-container" class="household-member-container"></div>
 
-        <!-- Add Save and Release Profile button -->
-        <div class="button-container">
-            <button id="save-continue" onclick="continueToApplication()">Continue to Applicant Step</button>
-        </div>
-        <div class="button-container">
-            <button id="save-exit" onclick="redirectToEstimationsView()">Save and Release Profile</button>
-        </div>
+    <div class="button-container">
+        <button id="save-continue" onclick="continueToApplication()">Continue to Applicant Step</button>
+    </div>
+    <div class="button-container">
+        <button id="save-exit" onclick="redirectToEstimationsView()">Save and Release Profile</button>
+    </div>
     
 </body>
 
@@ -172,8 +201,284 @@ function getQueryParameter(name) {
     return urlParams.get(name);
 }
 
+async function loadScreeningButtons() {
+    const clientId = getQueryParameter('id');
+    try {
+        const response = await fetch(`/get-client/${clientId}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client data: ${response.statusText}`);
+        }
+        const client = await response.json();
+
+        const controlsDiv = document.getElementById('screening-controls');
+        controlsDiv.innerHTML = ''; // Clear existing content
+
+        if (client && client.screeningInProgress) {
+            // Show "Close Screening" button that opens a modal
+            const stopBtn = document.createElement('button');
+            stopBtn.id = 'stop-screening-btn';
+            stopBtn.textContent = 'Terminate Screening';
+            stopBtn.style.cssText = 'background-color: #dc3545; color: white; border: 1px solid #000; border-radius: 5px; padding: 10px 20px; cursor: pointer; font-size: 14px; font-weight: bold; transition: background-color 0.3s;';
+            stopBtn.onmouseover = () => stopBtn.style.backgroundColor = '#a71d2a';
+            stopBtn.onmouseout = () => stopBtn.style.backgroundColor = '#dc3545';
+            stopBtn.addEventListener('click', () => openStopScreeningModal());
+            controlsDiv.appendChild(stopBtn);
+        } else {
+            // Show "Screening Closed" message with reopen button
+            const closedBox = document.createElement('div');
+            closedBox.style.cssText = 'background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 12px; border-radius: 5px; display: inline-block;';
+            closedBox.innerHTML = '<p style="margin: 0 0 10px 0;"><strong>No Screening in Progress</strong></p>';
+
+            const reopenBtn = document.createElement('button');
+            reopenBtn.id = 'reopen-screening-btn';
+            reopenBtn.textContent = 'Start New Screening';
+            
+            reopenBtn.addEventListener('click', () => reopenScreening());
+            closedBox.appendChild(reopenBtn);
+            controlsDiv.appendChild(closedBox);
+
+            // Hide estimation containers when screening is closed
+            const householdContainer = document.getElementById('household-members-container');
+            const snapContainer = document.getElementById('snap-household-container');
+            const liheapContainer = document.getElementById('liheap-household-container');
+            if (householdContainer) householdContainer.style.display = 'none';
+            if (snapContainer) snapContainer.style.display = 'none';
+            if (liheapContainer) liheapContainer.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error loading screening buttons:', error);
+    }
+}
+
+// --- Stop Screening Modal ---
+function createStopScreeningModal() {
+    if (document.getElementById('stop-screening-modal')) return;
+
+    const modalOverlay = document.createElement('div');
+    modalOverlay.id = 'stop-screening-modal';
+    modalOverlay.style.cssText = `
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+    `;
+
+    modalOverlay.innerHTML = `
+        <div style="background: white; padding: 24px; border-radius: 8px; min-width: 350px; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <h3 style="margin-top: 0;">Terminate Screening</h3>
+            <p style="margin-bottom: 12px;">This will close screening for <strong>all benefits</strong> across <strong>all household members</strong> and mark this client's screening as complete.</p>
+            <label for="stop-screening-reason-select"><strong>Select a reason:</strong></label>
+            <select id="stop-screening-reason-select" style="width: 100%; padding: 8px; margin: 12px 0; font-size: 14px;">
+                <option value="">-- Select a reason --</option>
+                <option value="Not Interested">Not Interested</option>
+                <option value="Too Confusing">Too Confusing</option>
+                <option value="Unable to Contact">Unable to Contact</option>
+                <option value="Will Call Back">Will Call Back</option>
+                <option value="Other">Other</option>
+            </select>
+            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 16px;">
+                <button id="stop-screening-cancel-btn" style="padding: 8px 16px; cursor: pointer;">Cancel</button>
+                <button id="stop-screening-confirm-btn" style="padding: 8px 16px; background: #d9534f; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#8b0000'" onmouseout="this.style.backgroundColor='#d9534f'">Confirm Terminate Screening</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modalOverlay);
+
+    document.getElementById('stop-screening-cancel-btn').addEventListener('click', () => {
+        modalOverlay.style.display = 'none';
+    });
+
+    modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) {
+            modalOverlay.style.display = 'none';
+        }
+    });
+}
+
+async function openStopScreeningModal() {
+    createStopScreeningModal();
+    const modal = document.getElementById('stop-screening-modal');
+    const select = document.getElementById('stop-screening-reason-select');
+    const confirmBtn = document.getElementById('stop-screening-confirm-btn');
+
+    select.value = '';
+    modal.style.display = 'flex';
+
+    // Remove old listener by cloning
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+    newConfirmBtn.addEventListener('click', async () => {
+        const reason = select.value;
+        if (!reason) {
+            alert('Please select a reason.');
+            return;
+        }
+
+        const clientId = getQueryParameter('id');
+        const activeUser = sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User';
+
+        try {
+            // 1. Fetch current household members
+            const membersResponse = await fetch(`/get-client/${clientId}`);
+            if (!membersResponse.ok) throw new Error('Failed to fetch client data');
+            const clientData = await membersResponse.json();
+            const currentMembers = clientData.householdMembers || [];
+
+            // 2. Close screening for all benefits on all members
+            const allBenefits = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
+            for (const member of currentMembers) {
+                for (const benefit of allBenefits) {
+                    if (member[benefit]) {
+                        member[benefit].screeningInProgress = false;
+                        member[benefit].screeningCloseReason = reason;
+                    }
+                }
+            }
+
+            // 3. Save updated household members
+            const saveResponse = await fetch('/save-household-members', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, householdMembers: currentMembers })
+            });
+
+            if (!saveResponse.ok) {
+                console.error('Failed to save household members.');
+                return;
+            }
+
+            // 4. Update client-level screeningInProgress to false
+            const updateResponse = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId,
+                    clientData: { screeningInProgress: false }
+                })
+            });
+
+            if (!updateResponse.ok) {
+                console.error('Failed to update client screening status.');
+                return;
+            }
+
+            // 5. Add a note
+            const note = {
+                text: `<strong>Screening Terminated.</strong><br><br> Reason: ${reason}`,
+                timestamp: new Date().toLocaleString(),
+                username: activeUser
+            };
+            await fetch('/add-note-to-client', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, note })
+            });
+
+            modal.style.display = 'none';
+            console.log('All screening closed successfully.');
+
+                        // Re-render notes
+                        if (typeof window.renderNotes === 'function') {
+                await window.renderNotes(clientId);
+            }
+            loadScreeningButtons(); // Refresh buttons and hide containers
+        } catch (error) {
+            console.error('Error closing all screening:', error);
+        }
+    });
+}
+
+async function reopenScreening() {
+    const clientId = getQueryParameter('id');
+    const confirmAction = confirm("Are you sure you want to reopen screenings for all benefits?");
+    if (!confirmAction) return;
+
+    const activeUser = sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User';
+
+    try {
+        // 1. Fetch current household members
+        const membersResponse = await fetch(`/get-client/${clientId}`);
+        if (!membersResponse.ok) throw new Error('Failed to fetch client data');
+        const clientData = await membersResponse.json();
+        const currentMembers = clientData.householdMembers || [];
+
+        // 2. Reopen screening for all benefits on all members
+        const allBenefits = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
+        for (const member of currentMembers) {
+            for (const benefit of allBenefits) {
+                if (member[benefit]) {
+                    member[benefit].screeningInProgress = true;
+                    member[benefit].screeningCloseReason = null;
+                }
+            }
+        }
+
+        // 3. Save updated household members
+        const saveResponse = await fetch('/save-household-members', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, householdMembers: currentMembers })
+        });
+
+        if (!saveResponse.ok) {
+            console.error('Failed to save household members.');
+            return;
+        }
+
+        // 4. Update client-level screeningInProgress to true
+        const updateResponse = await fetch('/update-client', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                clientId,
+                clientData: { screeningInProgress: true }
+            })
+        });
+
+        if (!updateResponse.ok) {
+            console.error('Failed to update client screening status.');
+            return;
+        }
+
+        // 5. Add a note
+        const note = {
+            text: '<strong>New screening started.</strong>',
+            timestamp: new Date().toLocaleString(),
+            username: activeUser
+        };
+        await fetch('/add-note-to-client', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, note })
+        });
+
+        console.log('All screening reopened successfully.');
+
+                // Re-render notes
+                if (typeof window.renderNotes === 'function') {
+            await window.renderNotes(clientId);
+        }
+
+        // Show estimation containers again
+        const householdContainer = document.getElementById('household-members-container');
+        const snapContainer = document.getElementById('snap-household-container');
+        const liheapContainer = document.getElementById('liheap-household-container');
+        if (householdContainer) householdContainer.style.display = '';
+        if (snapContainer) snapContainer.style.display = '';
+        if (liheapContainer) liheapContainer.style.display = '';
+
+        loadScreeningButtons(); // Refresh buttons
+    } catch (error) {
+        console.error('Error reopening screening:', error);
+    }
+}
+
 async function redirectToEstimationsView() {
-    // Retrieve the client ID from the query parameters
     const clientId = getQueryParameter('id');
     if (!clientId) {
         console.error('Client ID not found in query parameters.');
@@ -181,13 +486,11 @@ async function redirectToEstimationsView() {
     }
 
     const confirmAction = confirm("Are you sure you want to save and release this profile?");
-    if (!confirmAction) {
-        return;
-    }
+    if (!confirmAction) return;
 
     const noteContent = "Profile released.";
     const timestamp = new Date().toLocaleString();
-    const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
+    const activeUser = sessionStorage.getItem('loggedInUser');
 
     if (!activeUser) {
         console.error("No active user found in sessionStorage.");
@@ -195,13 +498,9 @@ async function redirectToEstimationsView() {
     }
 
     try {
-
         await setCheckedOutStatus(clientId, false);
-
-        // Perform any necessary save operations here
         console.log("Saving profile and redirecting...");
 
-        // Add a note about the action
         const note = {
             text: noteContent,
             timestamp: timestamp,
@@ -210,61 +509,37 @@ async function redirectToEstimationsView() {
 
         const addNoteResponse = await fetch(`/add-note-to-client`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ clientId, note })
         });
 
         if (!addNoteResponse.ok) {
             console.warn('Failed to add note to client.');
         }
-
-        // Update screening status in the database
-        const updateClientResponse = await fetch(`/update-client`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                clientId,
-                clientData: { screeningInProgress: false }
-            })
-        });
-
-        if (!updateClientResponse.ok) {
-            console.warn('Failed to update client.');
-        }
     } catch (error) {
         console.error("Error during redirectToEstimationsView:", error);
     } finally {
-        // Redirect to the estimations view page regardless of success or failure
         window.location.href = `estimationsview.html?id=${clientId}`;
     }
 }
 
 async function continueToApplication() {
-    // Retrieve the client ID from the query parameters
     const clientId = getQueryParameter('id');
     if (!clientId) {
         console.error('Client ID not found in query parameters.');
         return;
     }
 
-    const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
+    const activeUser = sessionStorage.getItem('loggedInUser');
     if (!activeUser) {
         console.error("No active user found in sessionStorage.");
         return;
     }
 
-    // Confirm the action with the user
     const confirmAction = confirm("Are you sure you want to continue to the application step?");
-    if (!confirmAction) {
-        return;
-    }
+    if (!confirmAction) return;
 
     try {
-        // Fetch household members from the backend
         const response = await fetch(`/get-client/${clientId}`);
         if (!response.ok) {
             throw new Error(`Failed to fetch client data: ${response.statusText}`);
@@ -273,72 +548,65 @@ async function continueToApplication() {
         const clientData = await response.json();
         const members = clientData.householdMembers || [];
 
-        // Separate household-wide benefits and individual benefits
-        const householdBenefits = new Set(); // Set to track SNAP and LIHEAP (household-wide benefits)
-        const individualBenefitsDetails = []; // Array to store individual benefit details
+        const householdBenefits = new Set();
+        const individualBenefitsDetails = [];
 
         members.forEach(member => {
-            const memberBenefits = []; // Track benefits for this specific member
+            const memberBenefits = [];
 
             ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'].forEach(benefit => {
-                // Check if the "Apply for" button is displayed
-                const benefitButton = document.querySelector(`.benefit-apply-button[data-benefit="${benefit}"][data-member-id="${member.householdMemberId}"]`);
-                const isButtonDisplayed = benefitButton && benefitButton.style.display !== 'none';
+                const isHouseholdBenefit = ['SNAP', 'LIHEAP'].includes(benefit);
 
-                // Automatically set applying to false if the button is not displayed
-                if (!isButtonDisplayed) {
+                let isButtonDisplayed = true;
+                if (!isHouseholdBenefit) {
+                    const benefitButton = document.querySelector(
+                        `.benefit-apply-button[data-benefit="${benefit}"][data-member-id="${member.householdMemberId}"]`
+                    );
+                    isButtonDisplayed = !!benefitButton && benefitButton.style.display !== 'none';
+                }
+
+                if (!isHouseholdBenefit && !isButtonDisplayed) {
                     if (member[benefit]?.application) {
                         member[benefit].application.forEach(app => app.applying = false);
                     }
                 }
 
                 if (member[benefit]?.application?.some(app => app.applying === true)) {
-                    if (['SNAP', 'LIHEAP'].includes(benefit)) {
-                        // Add SNAP and LIHEAP to the household-wide benefits set
+                    if (isHouseholdBenefit) {
                         householdBenefits.add(benefit);
                     } else {
-                        // Add individual benefits to the member's list
                         memberBenefits.push(benefit);
                     }
                 }
             });
 
-            // If the member has individual benefits, add their name and benefits to the details
             if (memberBenefits.length > 0) {
                 individualBenefitsDetails.push(
-                    `<strong>${member.firstName.toUpperCase()} ${member.lastName.toUpperCase()}</strong><br>${memberBenefits.join('<br>')}`
+                    `<strong>${member.firstName.toUpperCase()} ${member.lastName.toUpperCase()}</strong><br><br>${memberBenefits.join('<br>')}`
                 );
             }
         });
 
-        // Generate the note content
-        const householdBenefitsText = Array.from(householdBenefits).join('<br>'); // Use <br> for line breaks
-        const individualBenefitsText = individualBenefitsDetails.join('<br><br>'); // Separate members with double <br>
+        const householdBenefitsText = Array.from(householdBenefits).join('<br>');
+        const individualBenefitsText = individualBenefitsDetails.join('<br><br>');
 
         let noteContent = '';
         if (householdBenefits.size > 0) {
-            // If household benefits exist, include them with a line break before individual benefits
             noteContent = `<strong>Applying</strong><br><br>${householdBenefitsText}<br><br>${individualBenefitsText}`.trim();
         } else {
-            // If no household benefits, exclude the extra line break before individual benefits
             noteContent = `<strong>Applying</strong><br><br>${individualBenefitsText}`.trim();
         }
 
         const timestamp = new Date().toLocaleString();
-
-        // Add a note about the action
         const note = {
             text: noteContent,
             timestamp: timestamp,
             username: activeUser
         };
 
-        // Send the note to the backend
         const addNoteResponse = await fetch(`/add-note-to-client`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ clientId, note })
         });
 
@@ -347,17 +615,20 @@ async function continueToApplication() {
         }
 
         console.log("Note added:", noteContent);
-
     } catch (error) {
         console.error("Error during continueToApplication:", error);
     } finally {
-        // Redirect to the application edit page regardless of success or failure
         window.location.href = `applicationedit.html?id=${clientId}`;
     }
 }
 
+// Load screening buttons on page load
+window.addEventListener('DOMContentLoaded', () => {
+    loadScreeningButtons();
+});
+
 </script>
-</html>
     <script src="estimationsstep.js" defer></script>
     <script src="notes.js"></script>
     <script src="editnavigation.js"></script>
+</html>
