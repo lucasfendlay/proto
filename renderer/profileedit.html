@@ -213,31 +213,30 @@
         }
 
                 /* Modal styling */
-                .modal {
+                .contactmodal {
     display: none;
-    position: fixed; /* Position relative to the viewport */
+    position: fixed;
     top: 0;
     left: 0;
-    width: 100vw; /* Full viewport width */
-    height: 100vh; /* Full viewport height */
-    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
-    z-index: 1000; /* Ensure it appears above other elements */
-    display: flex; /* Use flexbox for centering */
-    justify-content: center; /* Center horizontally */
-    align-items: center; /* Center vertically */
-    overflow: hidden; /* Prevent scrolling */
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
 }
 
 .modal-content {
-    background-color: transparent;
-    border-radius: px;
-    width: 90%; /* Adjust width for responsiveness */
-    max-width: 500px; /* Limit the modal width */
-    padding: 0px;
-    position: absolute; /* Position relative to the modal container */
-    top: 50%; /* Center vertically */
-    left: 46.8%; /* Center horizontally */
-    transform: translate(-50%, -50%); /* Adjust for the modal's own dimensions */
+    background-color: white;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    padding: 20px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     text-align: left;
 }    
 
@@ -809,7 +808,10 @@ function openContactModal(contact = null, index = null) {
         modalTitle.textContent = 'Edit Contact';
         firstNameInput.value = contact.firstName || '';
         lastNameInput.value = contact.lastName || '';
-        phoneNumberInput.value = contact.phoneNumber || '';
+        console.log('Raw phone from contact:', contact.phoneNumber, typeof contact.phoneNumber);
+        const formattedPhone = formatPhoneNumber(contact.phoneNumber);
+        console.log('Formatted phone:', formattedPhone);
+        phoneNumberInput.value = formattedPhone || '';
         authorizedRepSelect.value = contact.authorizedRepresentative || 'N/A';
         editingContactIndex = index;
 
@@ -833,7 +835,7 @@ deleteButton.onmouseout = () => deleteButton.style.backgroundColor = 'red';
         editingContactIndex = null;
     }
 
-    modal.style.display = 'block';
+    modal.style.display = 'flex';
 }
 
 // Save the contact (add or edit)
@@ -853,10 +855,11 @@ async function saveContact() {
         return;
     }
 
-    // Validate phone number format (exactly 10 digits, no formatting)
+    // Validate phone number format (exactly 10 digits, or formatted as (xxx)-xxx-xxxx)
+    const cleanedPhone = phoneNumber.replace(/[\(\)\-\s]/g, ''); // Strip formatting characters
     const phoneRegex = /^\d{10}$/;
-    if (!phoneRegex.test(phoneNumber)) {
-        alert('Please enter a valid phone number with exactly 10 digits (no formatting).');
+    if (!phoneRegex.test(cleanedPhone)) {
+        alert('Please enter a valid phone number (10 digits or (xxx)-xxx-xxxx format).');
         console.error('Invalid phone number:', phoneNumber);
 
         // Add error class to the input field
@@ -870,7 +873,7 @@ async function saveContact() {
     const newContact = {
         firstName,
         lastName,
-        phoneNumber,
+        phoneNumber: cleanedPhone,
         authorizedRepresentative,
         contactId: editingContactIndex !== null ? client.Contacts[editingContactIndex].contactId : generateContactId(), // Reuse existing contactId if editing
     };
@@ -895,12 +898,18 @@ async function saveContact() {
 
     try {
         let response;
+        let oldContactData = null; // Capture old contact data before overwriting
+
         if (editingContactIndex !== null) {
+            // Capture old contact for matching purposes
+            oldContactData = { ...client.Contacts[editingContactIndex] };
+
             // Edit existing contact
             client.Contacts[editingContactIndex] = newContact;
 
             // Send update request to the backend
             response = await fetch('/add-to-contacts', {
+
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -931,6 +940,35 @@ async function saveContact() {
         const result = await response.json();
         if (response.ok && result.success) {
             console.log('Contact saved successfully:', result.message);
+
+            // Sync contact -> client: if the old or new contact matches client on 2 of 3 fields, update client
+            const currentClientData = {
+                firstName: client.firstName || '',
+                lastName: client.lastName || '',
+                phoneNumber: client.phoneNumber || '',
+            };
+
+            const shouldSync = oldContactData
+                ? fieldsMatchCount(currentClientData, oldContactData) >= 3
+                : fieldsMatchCount(currentClientData, newContact) >= 3;
+
+            if (shouldSync) {
+                const cleanedContactPhone = String(newContact.phoneNumber || '').replace(/\D/g, '');
+                await updateClientData('firstName', newContact.firstName);
+                await updateClientData('lastName', newContact.lastName);
+                await updateClientData('phoneNumber', cleanedContactPhone);
+                document.getElementById('firstName').value = newContact.firstName.toUpperCase();
+                document.getElementById('lastName').value = newContact.lastName.toUpperCase();
+                document.getElementById('phoneNumber').value = formatPhoneNumber(cleanedContactPhone);
+                client.firstName = newContact.firstName;
+                client.lastName = newContact.lastName;
+                client.phoneNumber = cleanedContactPhone;
+                console.log('Primary client data synced from contact update.');
+            }
+
+            // Refresh contacts from server and re-render
+            closeContactModal();
+            await loadClientData();
         } else {
             console.error('Failed to save contact:', result.message);
             alert(`Error: ${result.message}`);
@@ -939,10 +977,6 @@ async function saveContact() {
         console.error('Error while saving contact to the database:', error);
         alert('An error occurred while saving the contact. Please try again.');
     }
-
-    // Re-render contacts and close modal
-    renderContacts();
-    closeContactModal();
 }
 
 // Delete a contact
@@ -1010,10 +1044,70 @@ function openContactModalByIndex(index) {
 
 // Utility function to format phone numbers
 function formatPhoneNumber(phone) {
-    if (!phone) return '';
-    const cleaned = phone.replace(/\D/g, ''); // Remove all non-numeric characters
-    const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/); // Match the phone number pattern
-    return match ? `(${match[1]})-${match[2]}-${match[3]}` : phone; // Format if valid, else return original
+    if (phone === null || phone === undefined || phone === '') return '';
+    const phoneStr = String(phone).trim();
+    const cleaned = phoneStr.replace(/\D/g, '');
+    if (cleaned.length === 10) {
+        return `(${cleaned.substring(0, 3)})-${cleaned.substring(3, 6)}-${cleaned.substring(6)}`;
+    }
+    if (cleaned.length === 11 && cleaned.startsWith('1')) {
+        const withoutCountryCode = cleaned.substring(1);
+        return `(${withoutCountryCode.substring(0, 3)})-${withoutCountryCode.substring(3, 6)}-${withoutCountryCode.substring(6)}`;
+    }
+    return phoneStr;
+}
+
+// Helper: Check if client and contact match on at least 2 of 3 fields (firstName, lastName, phoneNumber)
+function fieldsMatchCount(clientData, contactData) {
+    let matches = 0;
+    if ((clientData.firstName || '').toUpperCase() === (contactData.firstName || '').toUpperCase()) matches++;
+    if ((clientData.lastName || '').toUpperCase() === (contactData.lastName || '').toUpperCase()) matches++;
+    const clientPhone = String(clientData.phoneNumber || '').replace(/\D/g, '');
+    const contactPhone = String(contactData.phoneNumber || '').replace(/\D/g, '');
+    if (clientPhone && contactPhone && clientPhone === contactPhone) matches++;
+    return matches;
+}
+
+// Sync client -> contact: find a contact matching 3 of 3 fields (using OLD client values) and update it with NEW client values
+async function syncClientToContact(oldClientData, newClientData) {
+    if (!client.Contacts || client.Contacts.length === 0) return;
+
+    for (let i = 0; i < client.Contacts.length; i++) {
+        const contact = client.Contacts[i];
+        if (fieldsMatchCount(oldClientData, contact) >= 3) {
+            // Update the contact with new client values
+            const updatedContact = {
+                ...contact,
+                firstName: newClientData.firstName || contact.firstName,
+                lastName: newClientData.lastName || contact.lastName,
+                phoneNumber: String(newClientData.phoneNumber || '').replace(/\D/g, '') || contact.phoneNumber,
+            };
+
+            client.Contacts[i] = updatedContact;
+
+            try {
+                const response = await fetch('/add-to-contacts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        clientId: client.id,
+                        contact: updatedContact,
+                        index: i,
+                    }),
+                });
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    console.log(`Contact at index ${i} synced from client update.`);
+                    renderContacts();
+                } else {
+                    console.error('Failed to sync contact from client update:', result.message);
+                }
+            } catch (error) {
+                console.error('Error syncing contact from client update:', error);
+            }
+            break; // Only update the first matching contact
+        }
+    }
 }
 
 async function saveClient() {
@@ -1021,7 +1115,7 @@ async function saveClient() {
     const clientData = {
         firstName: document.getElementById('firstName').value,
         lastName: document.getElementById('lastName').value,
-        phoneNumber: document.getElementById('phoneNumber').value,
+        phoneNumber: document.getElementById('phoneNumber').value.replace(/\D/g, ''), // Store as raw digits
         streetAddress: document.getElementById('streetAddress').value,
         streetAddress2: document.getElementById('streetAddress2').value,
         city: document.getElementById('city').value,
@@ -1029,7 +1123,7 @@ async function saveClient() {
         zipCode: document.getElementById('zipCode').value,
         county: document.getElementById('county').value,
         speakingLanguage: document.getElementById('speakingLanguage').value,
-        interpreter: document.querySelector('.selection-box div.selected')?.dataset.value || 'N/A', // Default to "N/A"
+        interpreter: document.querySelector('.selection-box div.selected')?.dataset.value || 'N/A',
     };
 
     try {
@@ -1141,8 +1235,32 @@ async function updateClientData(field, value) {
 document.querySelectorAll('input[type="text"]').forEach(input => {
     input.addEventListener('blur', async (event) => {
         const field = event.target.id; // Use the input's ID as the field name
-        const value = event.target.value;
+        let value = event.target.value;
+
+        // Clean phone number before saving to database
+        if (field === 'phoneNumber') {
+            value = value.replace(/\D/g, ''); // Strip to digits only for storage
+        }
+
+        // Capture old client data before the update for sync purposes
+        const oldClientData = {
+            firstName: client.firstName || '',
+            lastName: client.lastName || '',
+            phoneNumber: client.phoneNumber || '',
+        };
+
         await updateClientData(field, value); // Wait for the client data to be updated
+
+        // Build new client data after the update
+        const newClientData = { ...oldClientData, [field]: value };
+
+        // Sync client -> contact if firstName, lastName, or phoneNumber changed
+        if (['firstName', 'lastName', 'phoneNumber'].includes(field)) {
+            await syncClientToContact(oldClientData, newClientData);
+            // Update local client object
+            client[field] = value;
+        }
+
         loadClientData(); // Reload client data to ensure it is displayed in all caps
     });
 });

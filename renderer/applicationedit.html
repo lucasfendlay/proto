@@ -2125,7 +2125,10 @@ function openContactModal(contact = null, index = null) {
         modalTitle.textContent = 'Edit Contact';
         firstNameInput.value = contact.firstName || '';
         lastNameInput.value = contact.lastName || '';
-        phoneNumberInput.value = contact.phoneNumber || '';
+        const formattedPhone = formatPhoneNumber(contact.phoneNumber);
+        console.log('Raw phone from contact:', contact.phoneNumber, typeof contact.phoneNumber);
+        console.log('Formatted phone:', formattedPhone);
+        phoneNumberInput.value = formattedPhone;
         authorizedRepSelect.value = contact.authorizedRepresentative || 'N/A';
         editingContactIndex = index;
 
@@ -2149,7 +2152,14 @@ function openContactModal(contact = null, index = null) {
         editingContactIndex = null;
     }
 
-    modal.style.display = 'block';
+    modal.style.display = 'flex';
+
+    // Re-apply formatted phone after modal is visible to prevent browser clearing the value
+    if (contact && contact.phoneNumber) {
+        setTimeout(() => {
+            document.getElementById('contactPhoneNumber').value = formatPhoneNumber(contact.phoneNumber);
+        }, 0);
+    }
 }
 
 // Save the contact (add or edit)
@@ -2169,10 +2179,11 @@ async function saveContact() {
         return;
     }
 
-    // Validate phone number format (exactly 10 digits, no formatting)
+    // Validate phone number format (exactly 10 digits, or formatted as (xxx)-xxx-xxxx)
+    const cleanedPhone = phoneNumber.replace(/[\(\)\-\s]/g, ''); // Strip formatting characters
     const phoneRegex = /^\d{10}$/;
-    if (!phoneRegex.test(phoneNumber)) {
-        alert('Please enter a valid phone number with exactly 10 digits (no formatting).');
+    if (!phoneRegex.test(cleanedPhone)) {
+        alert('Please enter a valid phone number (10 digits or (xxx)-xxx-xxxx format).');
         console.error('Invalid phone number:', phoneNumber);
 
         // Add error class to the input field
@@ -2186,7 +2197,7 @@ async function saveContact() {
     const newContact = {
         firstName,
         lastName,
-        phoneNumber,
+        phoneNumber: cleanedPhone,
         authorizedRepresentative,
         contactId: editingContactIndex !== null ? client.Contacts[editingContactIndex].contactId : generateContactId(), // Reuse existing contactId if editing
     };
@@ -2328,17 +2339,17 @@ function openContactModalByIndex(index) {
 
 // Utility function to format phone numbers
 function formatPhoneNumber(phone) {
-    if (!phone) return '';
-    const cleaned = phone.replace(/\D/g, ''); // Remove all non-numeric characters
-    const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/); // Match the phone number pattern
-    return match ? `(${match[1]})-${match[2]}-${match[3]}` : phone; // Format if valid, else return original
-}
-
-function formatPhoneNumber(phone) {
-    if (!phone) return '';
-    const cleaned = phone.replace(/\D/g, ''); // Remove all non-numeric characters
-    const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/); // Match the phone number pattern
-    return match ? `(${match[1]})-${match[2]}-${match[3]}` : phone; // Format if valid, else return original
+    if (phone === null || phone === undefined || phone === '') return '';
+    const phoneStr = String(phone).trim();
+    const cleaned = phoneStr.replace(/\D/g, '');
+    if (cleaned.length === 10) {
+        return `(${cleaned.substring(0, 3)})-${cleaned.substring(3, 6)}-${cleaned.substring(6)}`;
+    }
+    if (cleaned.length === 11 && cleaned.startsWith('1')) {
+        const withoutCountryCode = cleaned.substring(1);
+        return `(${withoutCountryCode.substring(0, 3)})-${withoutCountryCode.substring(3, 6)}-${withoutCountryCode.substring(6)}`;
+    }
+    return phoneStr;
 }
 
 function getQueryParam(name) {
