@@ -359,7 +359,7 @@ document.getElementById('expense-kind').addEventListener('change', function () {
                     </div>
                     <div class="add-expense-buttons">
                         ${
-                            member.meals?.toLowerCase() === "yes"
+                            member.SNAP?.screeningInProgress === true && member.meals?.toLowerCase() === "yes"
                                 ? `
                                     <button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Shelter">Add Shelter Expense</button>
                                     ${
@@ -367,30 +367,30 @@ document.getElementById('expense-kind').addEventListener('change', function () {
                                             ? '' // Do not show the button if Utility expenses exist
                                             : `<button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Utility">Add Utility Expense</button>`
                                     }
-                                            ${
-                            member.meals?.toLowerCase() === "yes" &&
-                            (parseInt(member.age?.split('Y')[0]) >= 60 || member.disability?.toLowerCase() === "yes")
-                                ? `<button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Medical">Add Medical Expense</button>`
-                                : ''
-                        }
+                                    ${
+                                        (parseInt(member.age?.split('Y')[0]) >= 60 || member.disability?.toLowerCase() === "yes")
+                                            ? `<button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Medical">Add Medical Expense</button>`
+                                            : ''
+                                    }
                                     <button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Other">Add Other Expense</button>
                                 `
                                 : ''
                         }
                         ${
-                            (member.selections?.["Has this person already applied for PTRR this year?"]?.toLowerCase() === "no" ||
-                             member.selections?.["Is this person currently enrolled in PACE?"]?.toLowerCase() === "no" ||
+                            (member.PTRR?.screeningInProgress === true ||
+                             member.PACE?.screeningInProgress === true ||
                              (member.previousSpouseId && members.some(spouse =>
                                 spouse.householdMemberId === member.previousSpouseId &&
                                 (
-                                    spouse.selections?.["Has this person already applied for PTRR this year?"]?.toLowerCase() === "no" ||
-                                    spouse.selections?.["Is this person currently enrolled in PACE?"]?.toLowerCase() === "no"
+                                    spouse.PTRR?.screeningInProgress === true ||
+                                    spouse.PACE?.screeningInProgress === true
                                 )
                             )))
                                 ? `<button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Previous Year">Add Previous Year Expense</button>`
                                 : ''
                         }
                     </div>
+
                 `;
     
                 householdMemberContainer.appendChild(memberDiv);
@@ -424,19 +424,18 @@ document.getElementById('expense-kind').addEventListener('change', function () {
     
         // Run eligibility checks and update the UI
         const membersForEligibility = await loadHouseholdMembers();
-        await window.eligibilityChecks.PACEEligibilityCheck(membersForEligibility);
-        await window.eligibilityChecks.LISEligibilityCheck(membersForEligibility);
-        await window.eligibilityChecks.MSPEligibilityCheck(membersForEligibility);
-        await window.eligibilityChecks.PTRREligibilityCheck(membersForEligibility);
-        await window.eligibilityChecks.SNAPEligibilityCheck(membersForEligibility);
-        await window.eligibilityChecks.LIHEAPEligibilityCheck(membersForEligibility);
-    
-        console.log('Eligibility Checks:', window.eligibilityChecks);
-    
-        // Update the UI
-        await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
-        await window.eligibilityChecks.displayLIHEAPHouseholds();
-        await window.eligibilityChecks.displaySNAPHouseholds();
+        // Trigger eligibility checks
+        await window.eligibilityChecks.PACEEligibilityCheck(members);
+        await window.eligibilityChecks.LISEligibilityCheck(members);
+        await window.eligibilityChecks.MSPEligibilityCheck(members);
+        await window.eligibilityChecks.PTRREligibilityCheck(members);
+        await window.eligibilityChecks.SNAPEligibilityCheck(members);
+        await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
+
+        // Single refresh after all checks complete
+        if (window.eligibilityChecks && window.eligibilityChecks.refreshAllDisplays) {
+            await window.eligibilityChecks.refreshAllDisplays();
+        }
     }
 
 

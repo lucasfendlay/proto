@@ -66,17 +66,18 @@ async function saveAsset(memberId, asset) {
 
     // Run eligibility checks and update the UI
     const members = await loadHouseholdMembers();
-    await window.eligibilityChecks.PACEEligibilityCheck(members);
-    await window.eligibilityChecks.LISEligibilityCheck(members);
-    await window.eligibilityChecks.MSPEligibilityCheck(members);
-    await window.eligibilityChecks.PTRREligibilityCheck(members);
-    await window.eligibilityChecks.SNAPEligibilityCheck(members);
+        // Trigger eligibility checks
+        await window.eligibilityChecks.PACEEligibilityCheck(members);
+        await window.eligibilityChecks.LISEligibilityCheck(members);
+        await window.eligibilityChecks.MSPEligibilityCheck(members);
+        await window.eligibilityChecks.PTRREligibilityCheck(members);
+        await window.eligibilityChecks.SNAPEligibilityCheck(members);
+        await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
 
-    console.log('Eligibility Checks:', window.eligibilityChecks);
-
-    // Update the UI
-    await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
-    await window.eligibilityChecks.displaySNAPHouseholds();
+        // Single refresh after all checks complete
+        if (window.eligibilityChecks && window.eligibilityChecks.refreshAllDisplays) {
+            await window.eligibilityChecks.refreshAllDisplays();
+        }
 }
 
 async function displayHouseholdMembers() {
@@ -163,14 +164,22 @@ const grossIncomeLimits = [
     11482, 12380, 13278, 14176, 15074
 ];
 
-const showAddAssetButton = selections['Is this person currently enrolled in LIS/ Extra Help?']?.toLowerCase() === 'no' || 
-                           selections['Is this person currently enrolled in the Medicare Savings Program?']?.toLowerCase() === 'no' ||
-                           member.meals?.toLowerCase() === 'yes' && (combinedMonthlyIncome !== undefined && parseFloat(combinedMonthlyIncome) <= 150) ||
-                           ((parseInt(member.age) >= 60 || member.disability === 'yes') &&
-                           (member.SNAP?.householdSize !== undefined && 
-                            member.SNAP?.combinedMonthlyIncome > grossIncomeLimits[member.SNAP.householdSize]));                           
-
-    
+const showAddAssetButton = 
+    member.LIS?.screeningInProgress === true || 
+    member.MSP?.screeningInProgress === true ||
+    (member.SNAP?.screeningInProgress === true && member.meals?.toLowerCase() === 'yes' && 
+        (combinedMonthlyIncome !== undefined && parseFloat(combinedMonthlyIncome) <= 150)) ||
+    ((parseInt(member.age) >= 60 || member.disability === 'yes') &&
+        (member.SNAP?.householdSize !== undefined && 
+         member.SNAP?.combinedMonthlyIncome > grossIncomeLimits[member.SNAP.householdSize])) ||
+    member.LIHEAP?.screeningInProgress === true ||
+    (member.currentSpouseId && members.some(spouse =>
+        spouse.householdMemberId === member.currentSpouseId &&
+        (
+            spouse.LIS?.screeningInProgress === true ||
+            spouse.MSP?.screeningInProgress === true
+        )
+    ));                           
                 if (showAddAssetButton) {
                     const addAssetButton = document.createElement('button');
                     addAssetButton.classList.add('add-asset-button');
@@ -252,17 +261,18 @@ alert('Failed to fetch asset details.');
             
                             // Run eligibility checks and update the UI
                             const members = await loadHouseholdMembers();
-                            await window.eligibilityChecks.PACEEligibilityCheck(members);
-                            await window.eligibilityChecks.LISEligibilityCheck(members);
-                            await window.eligibilityChecks.MSPEligibilityCheck(members);
-                            await window.eligibilityChecks.PTRREligibilityCheck(members);
-                            await window.eligibilityChecks.SNAPEligibilityCheck(members);
-            
-                            console.log('Eligibility Checks:', window.eligibilityChecks);
-            
-                            // Update the UI
-                            await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
-                            await window.eligibilityChecks.displaySNAPHouseholds();
+        // Trigger eligibility checks
+        await window.eligibilityChecks.PACEEligibilityCheck(members);
+        await window.eligibilityChecks.LISEligibilityCheck(members);
+        await window.eligibilityChecks.MSPEligibilityCheck(members);
+        await window.eligibilityChecks.PTRREligibilityCheck(members);
+        await window.eligibilityChecks.SNAPEligibilityCheck(members);
+        await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
+
+        // Single refresh after all checks complete
+        if (window.eligibilityChecks && window.eligibilityChecks.refreshAllDisplays) {
+            await window.eligibilityChecks.refreshAllDisplays();
+        }
                         } else {
                             alert('Failed to delete asset.');
                         }
@@ -343,17 +353,18 @@ alert('Failed to fetch asset details.');
     
                     // Run eligibility checks and update the UI
                     const members = await loadHouseholdMembers();
-                    await window.eligibilityChecks.PACEEligibilityCheck(members);
-                    await window.eligibilityChecks.LISEligibilityCheck(members);
-                    await window.eligibilityChecks.MSPEligibilityCheck(members);
-                    await window.eligibilityChecks.PTRREligibilityCheck(members);
-                    await window.eligibilityChecks.SNAPEligibilityCheck(members);
-    
-                    console.log('Eligibility Checks:', window.eligibilityChecks);
-    
-                    // Update the UI
-                    await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
-                    await window.eligibilityChecks.displaySNAPHouseholds();
+        // Trigger eligibility checks
+        await window.eligibilityChecks.PACEEligibilityCheck(members);
+        await window.eligibilityChecks.LISEligibilityCheck(members);
+        await window.eligibilityChecks.MSPEligibilityCheck(members);
+        await window.eligibilityChecks.PTRREligibilityCheck(members);
+        await window.eligibilityChecks.SNAPEligibilityCheck(members);
+        await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
+
+        // Single refresh after all checks complete
+        if (window.eligibilityChecks && window.eligibilityChecks.refreshAllDisplays) {
+            await window.eligibilityChecks.refreshAllDisplays();
+        }
     
                     // Reset modal state
                     isEditing = false;
@@ -477,18 +488,18 @@ alert('Failed to fetch asset details.');
                     assetItem.remove();
         
                     // Run eligibility checks and update the UI
-                    const members = await loadHouseholdMembers();
-                    await window.eligibilityChecks.PACEEligibilityCheck(members);
-                    await window.eligibilityChecks.LISEligibilityCheck(members);
-                    await window.eligibilityChecks.MSPEligibilityCheck(members);
-                    await window.eligibilityChecks.PTRREligibilityCheck(members);
-                    await window.eligibilityChecks.SNAPEligibilityCheck(members);
-        
-                    console.log('Eligibility Checks:', window.eligibilityChecks);
-        
-                    // Update the UI
-                    await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
-                    await window.eligibilityChecks.displaySNAPHouseholds();
+        // Trigger eligibility checks
+        await window.eligibilityChecks.PACEEligibilityCheck(members);
+        await window.eligibilityChecks.LISEligibilityCheck(members);
+        await window.eligibilityChecks.MSPEligibilityCheck(members);
+        await window.eligibilityChecks.PTRREligibilityCheck(members);
+        await window.eligibilityChecks.SNAPEligibilityCheck(members);
+        await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
+
+        // Single refresh after all checks complete
+        if (window.eligibilityChecks && window.eligibilityChecks.refreshAllDisplays) {
+            await window.eligibilityChecks.refreshAllDisplays();
+        }
                 } else {
                     alert('Failed to delete asset.');
                 }

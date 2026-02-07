@@ -194,16 +194,18 @@ document.addEventListener('DOMContentLoaded', async function () {
     
             }
     
-            // Trigger eligibility checks
-            await window.eligibilityChecks.PACEEligibilityCheck(members);
-            await window.eligibilityChecks.LISEligibilityCheck(members);
-            await window.eligibilityChecks.MSPEligibilityCheck(members);
-            await window.eligibilityChecks.PTRREligibilityCheck(members);
-            await window.eligibilityChecks.SNAPEligibilityCheck(members);
-    
-            // Optionally update the UI
-            await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
-            await window.eligibilityChecks.displaySNAPHouseholds();
+        // Trigger eligibility checks
+        await window.eligibilityChecks.PACEEligibilityCheck(members);
+        await window.eligibilityChecks.LISEligibilityCheck(members);
+        await window.eligibilityChecks.MSPEligibilityCheck(members);
+        await window.eligibilityChecks.PTRREligibilityCheck(members);
+        await window.eligibilityChecks.SNAPEligibilityCheck(members);
+        await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
+
+        // Single refresh after all checks complete
+        if (window.eligibilityChecks && window.eligibilityChecks.refreshAllDisplays) {
+            await window.eligibilityChecks.refreshAllDisplays();
+        }
     
             console.log(`Relationship saved: ${memberId} -> ${relatedMemberId}: ${relationship}`);
         } catch (error) {
@@ -292,6 +294,7 @@ spouseDropdown.addEventListener('change', async function () {
 
         // Run PACE and PTRR eligibility checks
         const members = await loadHouseholdMembers(); // Reload household members after saving
+        // Trigger eligibility checks
         await window.eligibilityChecks.PACEEligibilityCheck(members);
         await window.eligibilityChecks.LISEligibilityCheck(members);
         await window.eligibilityChecks.MSPEligibilityCheck(members);
@@ -299,10 +302,10 @@ spouseDropdown.addEventListener('change', async function () {
         await window.eligibilityChecks.SNAPEligibilityCheck(members);
         await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
 
-        // Optionally update the UI
-        await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
-        await window.eligibilityChecks.displaySNAPHouseholds();
-        await window.eligibilityChecks.displayLIHEAPHouseholds();
+        // Single refresh after all checks complete
+        if (window.eligibilityChecks && window.eligibilityChecks.refreshAllDisplays) {
+            await window.eligibilityChecks.refreshAllDisplays();
+        }
         }
 
 });

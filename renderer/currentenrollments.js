@@ -398,19 +398,18 @@ if (member.headOfHousehold === true) {
                         }
                     }
             
-                    // Run all eligibility checks after saving
-                    const members = await loadHouseholdMembers(); // Reload household members after saving
-                    await window.eligibilityChecks.PACEEligibilityCheck(members);
-                    await window.eligibilityChecks.LISEligibilityCheck(members);
-                    await window.eligibilityChecks.MSPEligibilityCheck(members);
-                    await window.eligibilityChecks.PTRREligibilityCheck(members);
-                    await window.eligibilityChecks.SNAPEligibilityCheck(members);
-                    await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
-            
-                    // Optionally update the UI
-                    await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
-                    await window.eligibilityChecks.displaySNAPHouseholds();
-                    await window.eligibilityChecks.displayLIHEAPHouseholds();
+        // Trigger eligibility checks
+        await window.eligibilityChecks.PACEEligibilityCheck(members);
+        await window.eligibilityChecks.LISEligibilityCheck(members);
+        await window.eligibilityChecks.MSPEligibilityCheck(members);
+        await window.eligibilityChecks.PTRREligibilityCheck(members);
+        await window.eligibilityChecks.SNAPEligibilityCheck(members);
+        await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
+
+        // Single refresh after all checks complete
+        if (window.eligibilityChecks && window.eligibilityChecks.refreshAllDisplays) {
+            await window.eligibilityChecks.refreshAllDisplays();
+        }
                 });
             });
 

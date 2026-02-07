@@ -21,24 +21,33 @@ async function saveClientUpdate(clientId, key, value) {
         if (response.ok) {
             console.log(`Successfully updated ${key}: ${value}`);
         
-            // Re-fetch client data and re-trigger LIHEAP eligibility check
-            const updatedClientResponse = await fetch(`/get-client/${clientId}`);
-            if (updatedClientResponse.ok) {
-                const updatedClient = await updatedClientResponse.json();
-                console.log('Updated client data:', updatedClient); // Debugging log
-        
-                // Trigger LIHEAP eligibility check
-                if (window.eligibilityChecks && window.eligibilityChecks.LIHEAPEligibilityCheck) {
-                    await window.eligibilityChecks.LIHEAPEligibilityCheck(updatedClient);
-                } else {
-                    console.error('LIHEAPEligibilityCheck function not found.');
+            // Load household members for eligibility checks
+            const members = await loadHouseholdMembers();
+
+            // Trigger all eligibility checks
+            if (window.eligibilityChecks) {
+                if (window.eligibilityChecks.PACEEligibilityCheck) {
+                    await window.eligibilityChecks.PACEEligibilityCheck(members);
                 }
-        
-                // Trigger display function
-                if (window.eligibilityChecks && window.eligibilityChecks.displayLIHEAPHouseholds) {
-                    await window.eligibilityChecks.displayLIHEAPHouseholds();
-                } else {
-                    console.error('displayLIHEAPHouseholds function not found.');
+                if (window.eligibilityChecks.LISEligibilityCheck) {
+                    await window.eligibilityChecks.LISEligibilityCheck(members);
+                }
+                if (window.eligibilityChecks.MSPEligibilityCheck) {
+                    await window.eligibilityChecks.MSPEligibilityCheck(members);
+                }
+                if (window.eligibilityChecks.PTRREligibilityCheck) {
+                    await window.eligibilityChecks.PTRREligibilityCheck(members);
+                }
+                if (window.eligibilityChecks.SNAPEligibilityCheck) {
+                    await window.eligibilityChecks.SNAPEligibilityCheck(members);
+                }
+                if (window.eligibilityChecks.LIHEAPEligibilityCheck) {
+                    await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
+                }
+
+                // Single refresh after all checks complete
+                if (window.eligibilityChecks.refreshAllDisplays) {
+                    await window.eligibilityChecks.refreshAllDisplays();
                 }
             }
         } else {
@@ -331,7 +340,7 @@ async function loadSavedData() {
                             }
                         }
 
-            // Load household members before running eligibility checks
+        // Load household members before running eligibility checks
         const members = await loadHouseholdMembers();
 
         // Trigger eligibility checks
@@ -342,10 +351,10 @@ async function loadSavedData() {
         await window.eligibilityChecks.SNAPEligibilityCheck(members);
         await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
 
-        // Optionally update the UI
-        await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
-        await window.eligibilityChecks.displaySNAPHouseholds();
-        await window.eligibilityChecks.displayLIHEAPHouseholds();
+        // Single refresh after all checks complete
+        if (window.eligibilityChecks && window.eligibilityChecks.refreshAllDisplays) {
+            await window.eligibilityChecks.refreshAllDisplays();
+        }
         }
     } catch (error) {
         console.error('Error loading saved data:', error);

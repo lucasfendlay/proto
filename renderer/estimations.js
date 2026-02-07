@@ -551,7 +551,7 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
     });
 }
 
-async function displaySNAPHouseholds(prefetchedMembers) {
+async function displaySNAPHouseholds(prefetchedMembers, prefetchedClient) {
     const snapHouseholdContainer = document.getElementById('snap-household-container');
     if (!snapHouseholdContainer) {
         console.error('snap-household-container element not found in the DOM.');
@@ -562,6 +562,14 @@ async function displaySNAPHouseholds(prefetchedMembers) {
     snapHouseholdContainer.innerHTML = ''; // Clear existing content
 
     const clientId = getQueryParameter('id');
+
+    // Fetch fresh client data if not provided
+    const currentClient = prefetchedClient || await fetch(`/get-client/${clientId}`)
+        .then(response => response.ok ? response.json() : null)
+        .catch(error => {
+            console.error('Error fetching client data:', error);
+            return null;
+        });
     
         // Check if any SNAP household member has screening closed
         const snapMembers = members.filter(m => m.meals?.toLowerCase() === "yes");
@@ -645,10 +653,41 @@ async function displaySNAPHouseholds(prefetchedMembers) {
         }
     
         if (snapHouseholds.length === 0) {
-            const noHouseholdsMessage = document.createElement('p');
-            noHouseholdsMessage.textContent = 'NO SNAP HOUSEHOLDS FOUND.';
-            snapHouseholdContainer.appendChild(noHouseholdsMessage);
+            const noHouseholdsDiv = document.createElement('div');
+            noHouseholdsDiv.classList.add('household-member-box');
+
+            // Check if any SNAP household member has screening in progress
+            const anySnapScreeningActive = members.some(m => m.SNAP?.screeningInProgress === true);
+
+            // Check if client is already enrolled in SNAP or not interested
+            const isAlreadyEnrolled = currentClient?.snap === 'yes';
+            const isNotInterested = currentClient?.snap === 'notinterested';
+
+            noHouseholdsDiv.innerHTML = `
+                <h3>SNAP HOUSEHOLD</h3>
+                ${isAlreadyEnrolled ? `
+                    <p>ALREADY ENROLLED</p>
+                ` : isNotInterested ? `
+                    <p>NOT INTERESTED</p>
+                ` : `
+                    <p>NO SNAP HOUSEHOLDS FOUND.</p>
+                `}
+                ${anySnapScreeningActive || isAlreadyEnrolled || isNotInterested ? `
+                    <button class="btn-close-snap-screening" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Close SNAP Screening</button>
+                ` : ''}
+            `;
+
+            snapHouseholdContainer.appendChild(noHouseholdsDiv);
+
+            if (anySnapScreeningActive || isAlreadyEnrolled || isNotInterested) {
+                const closeBtn = noHouseholdsDiv.querySelector('.btn-close-snap-screening');
+                closeBtn.addEventListener('click', () => {
+                    const snapMembers = members.filter(m => m.SNAP?.screeningInProgress === true);
+                    openCloseSnapModal(clientId, members, snapMembers);
+                });
+            }
         } else {
+
             snapHouseholds.forEach(household => {
                 const householdDiv = document.createElement('div');
                 householdDiv.classList.add('household-member-box');
@@ -844,18 +883,92 @@ async function displaySNAPHouseholds(prefetchedMembers) {
         }
     }
 
-        // Batch all display refreshes into a single function to avoid visual stutter
-        async function refreshAllDisplays() {
-            // Fetch data once, then pass to all display functions
-            const freshMembers = await loadHouseholdMembers();
-            const clientId = getQueryParameter('id');
-            const clientRes = await fetch(`/get-client/${clientId}`);
-            const freshClient = clientRes.ok ? await clientRes.json() : null;
+// Batch all display refreshes into a single function to avoid visual stutter
+async function refreshAllDisplays() {
+    // Fetch data once, then pass to all display functions
+    const freshMembers = await loadHouseholdMembers();
+    const clientId = getQueryParameter('id');
+    const clientRes = await fetch(`/get-client/${clientId}`);
+    const freshClient = clientRes.ok ? await clientRes.json() : null;
+
+    await displayHouseholdMembers(freshMembers);
+    await displaySNAPHouseholds(freshMembers, freshClient);
+    await displayLIHEAPHouseholds(freshMembers, freshClient);
+
+    // Check if all screenings are now closed across all members
+    await checkAndAutoTerminateScreening(freshMembers);
+}
+
+// Auto-terminate screening if all benefits are closed for all members
+async function checkAndAutoTerminateScreening(members) {
+    // Only check if screening is currently in progress
+    if (client.screeningInProgress !== true) return;
+
+    const allBenefits = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
     
-            await displayHouseholdMembers(freshMembers);
-            await displaySNAPHouseholds(freshMembers);
-            await displayLIHEAPHouseholds(freshMembers, freshClient);
+    // Check if every member has all their benefits either closed (screeningInProgress === false) or not checked
+    const allClosed = members.every(member => {
+        return allBenefits.every(benefit => {
+            const benefitObj = member[benefit];
+            if (!benefitObj) return true; // No benefit object = not applicable
+            if (benefitObj.eligibility?.includes('Not Checked')) return true; // Skip "Not Checked" benefits
+            if (benefitObj.eligibility?.includes('Not Enrolled in Medicare')) return true;
+            if (benefitObj.eligibility?.includes('Enrolled in Medicaid')) return true;
+            if (benefitObj.eligibility?.includes('Age Criteria Not Met')) return true;
+            if (benefitObj.eligibility?.includes('No Formal Lease')) return true;
+            if (benefitObj.eligibility?.includes('Not Interested')) return true;
+            if (benefitObj.eligibility?.includes('Already Enrolled')) return true;
+            if (benefitObj.eligibility?.includes('Already Applied')) return true;
+            return benefitObj.screeningInProgress === false;
+        });
+    });
+
+    if (allClosed) {
+        const activeUser = sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User';
+
+        try {
+            // Update client-level screeningInProgress to false
+            const updateResponse = await fetch(`/update-client`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, clientData: { screeningInProgress: false } })
+            });
+
+            if (updateResponse.ok) {
+                // Add a note
+                const note = {
+                    text: '<strong>Screening automatically terminated — all benefits closed.</strong>',
+                    timestamp: new Date().toLocaleString(),
+                    username: activeUser
+                };
+                await fetch('/add-note-to-client', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientId, note })
+                });
+
+                if (typeof window.renderNotes === 'function') {
+                    await window.renderNotes(clientId);
+                }
+
+                client.screeningInProgress = false;
+                createStopScreeningButton();
+
+                // Hide all estimation containers
+                const householdMemberContainer = document.getElementById('household-members-container');
+                const snapHouseholdContainer = document.getElementById('snap-household-container');
+                const liheapHouseholdContainer = document.getElementById('liheap-household-container');
+                if (householdMemberContainer) householdMemberContainer.style.display = 'none';
+                if (snapHouseholdContainer) snapHouseholdContainer.style.display = 'none';
+                if (liheapHouseholdContainer) liheapHouseholdContainer.style.display = 'none';
+
+                console.log('All screenings closed — screening auto-terminated.');
+            }
+        } catch (error) {
+            console.error('Error auto-terminating screening:', error);
         }
+    }
+}
 
         async function displayLIHEAPHouseholds(prefetchedMembers, prefetchedClient) {
             const liheapHouseholdContainer = document.getElementById('liheap-household-container');
@@ -872,19 +985,44 @@ async function displaySNAPHouseholds(prefetchedMembers) {
                 m => (m.deceased ?? '').toLowerCase() !== 'yes'
             );
         
-            // Check if client is not interested in LIHEAP
-            const clientId = getQueryParameter('id');
-            const client = prefetchedClient || await fetch(`/get-client/${clientId}`)
-                .then(response => response.json())
-                .catch(error => {
-                    console.error('Error fetching client data:', error);
-                    return null;
+        // Check if client is not interested in LIHEAP or already enrolled
+        const clientId = getQueryParameter('id');
+        const client = prefetchedClient || await fetch(`/get-client/${clientId}`)
+            .then(response => response.json())
+            .catch(error => {
+                console.error('Error fetching client data:', error);
+                return null;
+            });
+
+            const isLiheapAlreadyEnrolled = client?.liheapEnrollment === 'yes' && client?.heatingCrisis === 'no';
+            const isLiheapNotInterested = client?.liheapEnrollment === 'notinterested';
+
+        if (isLiheapAlreadyEnrolled || isLiheapNotInterested) {
+            const noHouseholdsDiv = document.createElement('div');
+            noHouseholdsDiv.classList.add('household-member-box');
+
+            const anyLiheapScreeningActive = members.some(m => m.LIHEAP?.screeningInProgress === true);
+
+            noHouseholdsDiv.innerHTML = `
+                <h3>LIHEAP HOUSEHOLD</h3>
+                ${isLiheapAlreadyEnrolled ? `
+                    <p>ALREADY ENROLLED</p>
+                ` : `
+                    <p>NOT INTERESTED</p>
+                `}
+                ${anyLiheapScreeningActive || isLiheapAlreadyEnrolled || isLiheapNotInterested ? `
+                    <button class="btn-close-liheap-screening" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Close LIHEAP Screening</button>
+                ` : ''}
+            `;
+            liheapHouseholdContainer.appendChild(noHouseholdsDiv);
+
+            if (anyLiheapScreeningActive || isLiheapAlreadyEnrolled || isLiheapNotInterested) {
+                const closeBtn = noHouseholdsDiv.querySelector('.btn-close-liheap-screening');
+                closeBtn.addEventListener('click', () => {
+                    const liheapMembers = members.filter(m => m.LIHEAP?.screeningInProgress === true);
+                    openCloseLiheapModal(clientId, members, liheapMembers);
                 });
-    
-        if (client && client.liheapEnrollment === 'notinterested') {
-            const notInterestedMessage = document.createElement('p');
-            notInterestedMessage.textContent = 'NO LIHEAP HOUSEHOLDS FOUND.';
-            liheapHouseholdContainer.appendChild(notInterestedMessage);
+            }
             return;
         }
 
@@ -2521,9 +2659,6 @@ await PTRREligibilityCheck(members);
 await SNAPEligibilityCheck(members, client.isFarmworker);
 await LIHEAPEligibilityCheck(members);
 
-// Update and display household members after eligibility checks
-await updateAndDisplayHouseholdMembers();
-
  // Refresh all displays after all eligibility checks are complete
  await refreshAllDisplays();
 
@@ -2537,7 +2672,7 @@ function createStopScreeningButton() {
     if (existing) existing.remove();
 
     // Check if client screening is already stopped
-    if (client.screeningInProgress === false) {
+    if (client.screeningInProgress === false || client.screeningInProgress === undefined || client.screeningInProgress === null) {
         // Hide all estimation containers but keep sidebar visible
         const householdMemberContainer = document.getElementById('household-members-container');
         const snapContainer = document.getElementById('snap-household-container');
@@ -2653,6 +2788,9 @@ function createStopScreeningButton() {
 
         return;
     }
+
+    // Only show the Terminate Screening button if screeningInProgress is explicitly true
+    if (client.screeningInProgress !== true) return;
 
     // Insert the stop screening button
     const stopBtnContainer = document.createElement('div');
@@ -2849,7 +2987,8 @@ window.eligibilityChecks = {
     PTRREligibilityCheck,
     SNAPEligibilityCheck,
     displayLIHEAPHouseholds,
-    LIHEAPEligibilityCheck
+    LIHEAPEligibilityCheck,
+    refreshAllDisplays
 };
 
     // Show the page now that everything is loaded

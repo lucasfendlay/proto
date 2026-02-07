@@ -45,51 +45,51 @@ document.addEventListener('click', (event) => {
 });
 
     // Save income to the database
-async function saveIncome(memberId, income) {
-    try {
-        const response = await fetch(`${BACKEND_URL}/update-member-income`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                clientId,
-                memberId,
-                income
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to save income.');
-        }
-
-        const members = await loadHouseholdMembers();
-        await window.eligibilityChecks.PACEEligibilityCheck(members);
-        await window.eligibilityChecks.LISEligibilityCheck(members);
-        await window.eligibilityChecks.MSPEligibilityCheck(members);
-        await window.eligibilityChecks.PTRREligibilityCheck(members);
-        await window.eligibilityChecks.SNAPEligibilityCheck(members);
-        await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
-
-        console.log('Eligibility Checks:', window.eligibilityChecks);
-
-        // Update the UI
-        await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
-        await window.eligibilityChecks.displaySNAPHouseholds();
-        await window.eligibilityChecks.displayLIHEAPHouseholds();
-
-        console.log(`Income saved for member ${memberId}:`, income);
-
-                // Hide the modal after saving
-                const modal = document.getElementById('income-modal');
-                modal.classList.add('hidden'); // Add the 'hidden' class
-                modal.style.display = 'none'; // Ensure the modal is hidden
-        
-                // Optionally reset the form
-                const incomeForm = document.getElementById('income-form');
-                incomeForm.reset(); // Clear all input fields in the form
-            } catch (error) {
-                console.error('Error saving income:', error);
+    async function saveIncome(memberId, income) {
+        try {
+            const response = await fetch(`${BACKEND_URL}/update-member-income`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId,
+                    memberId,
+                    income
+                })
+            });
+    
+            if (!response.ok) {
+                throw new Error('Failed to save income.');
             }
-        }
+    
+            const members = await loadHouseholdMembers();
+            await window.eligibilityChecks.PACEEligibilityCheck(members);
+            await window.eligibilityChecks.LISEligibilityCheck(members);
+            await window.eligibilityChecks.MSPEligibilityCheck(members);
+            await window.eligibilityChecks.PTRREligibilityCheck(members);
+            await window.eligibilityChecks.SNAPEligibilityCheck(members);
+            await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
+    
+            // Single refresh after all checks complete
+            if (window.eligibilityChecks?.refreshAllDisplays) {
+                await window.eligibilityChecks.refreshAllDisplays();
+            }
+
+            // Re-render the income list UI
+            await displayHouseholdMembers();
+    
+            console.log(`Income saved for member ${memberId}:`, income);
+    
+                    // Hide the modal after saving
+                    const modal = document.getElementById('income-modal');
+                    modal.classList.add('hidden');
+                    modal.style.display = 'none';
+            
+                    const incomeForm = document.getElementById('income-form');
+                    incomeForm.reset();
+                } catch (error) {
+                    console.error('Error saving income:', error);
+                }
+            }
 
         async function displayHouseholdMembers() {
             const householdMemberContainer = document.getElementById('household-member-container');
@@ -187,12 +187,17 @@ async function saveIncome(memberId, income) {
 `;
     
 if (
-    member.meals === 'yes' || 
-    member.selections?.['Is this person currently enrolled in LIS/ Extra Help?'] === 'no' || 
-    member.selections?.['Is this person currently enrolled in the Medicare Savings Program?'] === 'no' ||
-    (   !member.LIHEAP?.eligibility?.includes('Already Enrolled') &&
-        !member.LIHEAP?.eligibility?.includes('Not Likely Eligible for LIHEAP (Heating cost included in rent, household rent is subsidized)') &&
-        !member.LIHEAP?.eligibility?.includes('Not Interested'))
+    member.LIS?.screeningInProgress === true || 
+    member.MSP?.screeningInProgress === true ||
+    (member.SNAP?.screeningInProgress === true && member.meals === 'yes') ||
+    member.LIHEAP?.screeningInProgress === true ||
+    (member.currentSpouseId && members.some(spouse =>
+        spouse.householdMemberId === member.currentSpouseId &&
+        (
+            spouse.LIS?.screeningInProgress === true ||
+            spouse.MSP?.screeningInProgress === true
+        )
+    )) 
 ) {
     const addCurrentYearIncomeButton = document.createElement('button');
     addCurrentYearIncomeButton.classList.add('add-income-button');
@@ -203,13 +208,13 @@ if (
 }
     
 if (
-    member.selections?.['Is this person currently enrolled in PACE?'] === 'no' ||
-    member.selections?.['Has this person already applied for PTRR this year?'] === 'no' ||
+    member.PACE?.screeningInProgress === true ||
+    member.PTRR?.screeningInProgress === true ||
     (member.previousSpouseId && members.some(spouse =>
         spouse.householdMemberId === member.previousSpouseId &&
         (
-            spouse.selections?.['Is this person currently enrolled in PACE?'] === 'no' ||
-            spouse.selections?.['Has this person already applied for PTRR this year?'] === 'no'
+            spouse.PACE?.screeningInProgress === true ||
+            spouse.PTRR?.screeningInProgress === true
         )
     ))
 ) {
@@ -368,7 +373,7 @@ if (income.type === 'Previous' && (startYear !== 2025 || endYear !== 2025)) {
                     throw new Error('Failed to update income.');
                 }
 
-                    // Re-run eligibility checks and update the display
+    // Re-run eligibility checks and update the display
     const members = await loadHouseholdMembers();
     await window.eligibilityChecks.PACEEligibilityCheck(members);
     await window.eligibilityChecks.LISEligibilityCheck(members);
@@ -377,32 +382,20 @@ if (income.type === 'Previous' && (startYear !== 2025 || endYear !== 2025)) {
     await window.eligibilityChecks.SNAPEligibilityCheck(members);
     await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
 
-    console.log('Eligibility Checks:', window.eligibilityChecks);
+    // Single refresh after all checks complete
+    if (window.eligibilityChecks?.refreshAllDisplays) {
+        await window.eligibilityChecks.refreshAllDisplays();
+    }
 
-    // Update the UI
-    await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
-    await window.eligibilityChecks.displaySNAPHouseholds();
-    await window.eligibilityChecks.displayLIHEAPHouseholds();
+    // Re-render the income list UI
+    await displayHouseholdMembers();
 
     console.log('Income updated and checks re-run for member:', currentMemberId);
 
 
-                // Update the UI for the existing income entry
-                const incomeItem = document.querySelector(`[data-income-id="${editingIncomeId}"]`);
-                if (incomeItem) {
-                    incomeItem.querySelector('p:nth-child(1)').innerHTML = `<strong>Income Type:</strong> ${income.type}`;
-                    incomeItem.querySelector('p:nth-child(2)').innerHTML = `<strong>Income Kind:</strong> ${income.kind}`;
-                    incomeItem.querySelector('p:nth-child(3)').innerHTML = `<strong>Amount:</strong> $${income.amount}`;
-                    incomeItem.querySelector('p:nth-child(4)').innerHTML = `<strong>Frequency:</strong> ${income.frequency}`;
-                    incomeItem.querySelector('p:nth-child(5)').innerHTML = `<strong>Start Date:</strong> ${income.startDate}`;
-                    incomeItem.querySelector('p:nth-child(6)').innerHTML = `<strong>End Date:</strong> ${income.endDate}`;
-                }
             } else {
                 // Save new income to the database
                 await saveIncome(currentMemberId, income);
-
-                // Dynamically update the income list UI
-                updateIncomeListUI(currentMemberId, income);
             }
 
             // Reset modal state
@@ -559,6 +552,7 @@ function attachIncomeEventListeners(incomeItem) {
                     const incomeItem = document.querySelector(`[data-income-id="${incomeId}"]`);
                     if (incomeItem) {
                         incomeItem.remove();
+                    }
 
                         const members = await loadHouseholdMembers();
         await window.eligibilityChecks.PACEEligibilityCheck(members);
@@ -568,14 +562,16 @@ function attachIncomeEventListeners(incomeItem) {
         await window.eligibilityChecks.SNAPEligibilityCheck(members);
         await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
 
-        console.log('Eligibility Checks:', window.eligibilityChecks);
+        // Single refresh after all checks complete
+        if (window.eligibilityChecks?.refreshAllDisplays) {
+            await window.eligibilityChecks.refreshAllDisplays();
+        }
 
-        // Update the UI
-        await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
-        await window.eligibilityChecks.displaySNAPHouseholds();
-        await window.eligibilityChecks.displayLIHEAPHouseholds();
-                    }
+        // Re-render the income list UI
+        await displayHouseholdMembers();
+
                     } catch (error) {
+
                     console.error('Error deleting income:', error);
                     alert('Failed to delete income. Please try again.');
                 }
