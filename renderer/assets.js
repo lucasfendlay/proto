@@ -488,18 +488,20 @@ alert('Failed to fetch asset details.');
                     assetItem.remove();
         
                     // Run eligibility checks and update the UI
-        // Trigger eligibility checks
-        await window.eligibilityChecks.PACEEligibilityCheck(members);
-        await window.eligibilityChecks.LISEligibilityCheck(members);
-        await window.eligibilityChecks.MSPEligibilityCheck(members);
-        await window.eligibilityChecks.PTRREligibilityCheck(members);
-        await window.eligibilityChecks.SNAPEligibilityCheck(members);
-        await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
+                    const members = await loadHouseholdMembers();
+                    // Trigger eligibility checks
+                    await window.eligibilityChecks.PACEEligibilityCheck(members);
+                    await window.eligibilityChecks.LISEligibilityCheck(members);
+                    await window.eligibilityChecks.MSPEligibilityCheck(members);
+                    await window.eligibilityChecks.PTRREligibilityCheck(members);
+                    await window.eligibilityChecks.SNAPEligibilityCheck(members);
+                    await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
 
-        // Single refresh after all checks complete
-        if (window.eligibilityChecks && window.eligibilityChecks.refreshAllDisplays) {
-            await window.eligibilityChecks.refreshAllDisplays();
-        }
+                    // Single refresh after all checks complete
+                    if (window.eligibilityChecks && window.eligibilityChecks.refreshAllDisplays) {
+                        await window.eligibilityChecks.refreshAllDisplays();
+                    }
+                    
                 } else {
                     alert('Failed to delete asset.');
                 }

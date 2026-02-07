@@ -226,6 +226,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         // Add styles to make the container narrower
         householdMemberContainer.style.maxWidth = '600px'; // Adjust the width as needed
         householdMemberContainer.style.margin = '0 auto'; // Center the container
+        householdMemberContainer.style.textAlign = 'center'; // Center text content
     
         document.body.appendChild(householdMemberContainer);
     
@@ -245,12 +246,14 @@ document.addEventListener('DOMContentLoaded', async function () {
             members.forEach(member => {
                 const memberDiv = document.createElement('div');
                 memberDiv.classList.add('household-member');
+                memberDiv.style.textAlign = 'center'; // Center content within each member card
+                memberDiv.style.margin = '0 auto'; // Center the card itself
     
                 // Populate member details
                 memberDiv.innerHTML = `
                     <p><strong>Name:</strong> ${member.firstName} ${member.middleInitial || ''} ${member.lastName}</p>
                     <p><strong>Date of Birth:</strong> ${member.dob}</p>
-                    <p><strong>Marital Status:</strong> ${member.maritalStatus}</p>
+                    <p><strong>Marital Status:</strong> <br>${member.maritalStatus || 'N/A'}</p>
                     <div class="relationships-container">
                         <p><strong>Relationships:</strong></p>
                     </div>
@@ -260,6 +263,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 if (member.previousMaritalStatus === 'Married (Living Together)') {
                     const spouseDropdownContainer = document.createElement('div');
                     spouseDropdownContainer.classList.add('spouse-dropdown-container');
+                    spouseDropdownContainer.style.textAlign = 'center'; // Center the spouse dropdown
                     spouseDropdownContainer.innerHTML = `
                         <label for="spouse-dropdown-${member.householdMemberId}"><strong>Select Previous Year Spouse:</strong></label>
                         <select id="spouse-dropdown-${member.householdMemberId}" class="spouse-dropdown">
@@ -320,9 +324,9 @@ spouseDropdown.addEventListener('change', async function () {
                     .forEach(otherMember => {
                         const relationshipDiv = document.createElement('div');
                         relationshipDiv.classList.add('relationship-entry');
+                        relationshipDiv.style.textAlign = 'center'; // Center each relationship entry
     
-                        relationshipDiv.innerHTML = `
-                            <p><strong>${otherMember.firstName} ${otherMember.middleInitial || ''} ${otherMember.lastName}</strong></p>
+                        relationshipDiv.innerHTML = `                            <p><strong>${otherMember.firstName} ${otherMember.middleInitial || ''} ${otherMember.lastName}</strong></p>
                             <select class="relationship-dropdown" data-member-id="${member.householdMemberId}" data-related-member-id="${otherMember.householdMemberId}">
                                 <option value="">Select Relationship</option>
                                 <option value="spouse">Spouse</option>
@@ -391,6 +395,8 @@ spouseDropdown.addEventListener('change', async function () {
         // Add action buttons below the household member containers
         const actionButtonsDiv = document.createElement('div');
         actionButtonsDiv.classList.add('action-buttons');
+        actionButtonsDiv.style.textAlign = 'center'; // Center the buttons
+        actionButtonsDiv.style.marginTop = '20px';
         actionButtonsDiv.innerHTML = `
             <button id="save-exit" onclick="redirectToRelationshipsView()">Save and Release Profile</button>
             <button id="save-continue" onclick="GoToCurrentEnrollmentsEdit()">Save and Continue</button>

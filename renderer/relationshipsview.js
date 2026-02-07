@@ -50,8 +50,10 @@ document.addEventListener('DOMContentLoaded', async function () {
         // Add styles to make the container narrower
         householdMemberContainer.style.maxWidth = '600px'; // Adjust the width as needed
         householdMemberContainer.style.margin = '0 auto'; // Center the container
+        householdMemberContainer.style.textAlign = 'center'; // Center text content
     
         document.body.appendChild(householdMemberContainer);
+
     
         const members = await loadHouseholdMembers();
     
@@ -69,12 +71,14 @@ document.addEventListener('DOMContentLoaded', async function () {
             members.forEach(member => {
                 const memberDiv = document.createElement('div');
                 memberDiv.classList.add('household-member');
+                memberDiv.style.textAlign = 'center'; // Center content within each member card
+                memberDiv.style.margin = '0 auto'; // Center the card itself
     
                 // Populate member details
                 memberDiv.innerHTML = `
                     <p><strong>Name:</strong> ${member.firstName} ${member.middleInitial || ''} ${member.lastName}</p>
                     <p><strong>Date of Birth:</strong> ${member.dob}</p>
-                    <p><strong>Marital Status:</strong> ${member.maritalStatus}</p>
+                    <p><strong>Marital Status:</strong> <br>${member.maritalStatus || 'N/A'}</p>
                     <div class="relationships-container">
                         <p><strong>Relationships:</strong></p>
                     </div>
@@ -87,6 +91,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     .forEach(otherMember => {
                         const relationshipDiv = document.createElement('div');
                         relationshipDiv.classList.add('relationship-entry');
+                        relationshipDiv.style.textAlign = 'center'; // Center each relationship entry
     
                         relationshipDiv.innerHTML = `
                             <p><strong>${otherMember.firstName} ${otherMember.middleInitial || ''} ${otherMember.lastName}</strong></p>

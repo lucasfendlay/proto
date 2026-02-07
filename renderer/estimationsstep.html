@@ -224,26 +224,11 @@ async function loadScreeningButtons() {
             stopBtn.addEventListener('click', () => openStopScreeningModal());
             controlsDiv.appendChild(stopBtn);
         } else {
-            // Show "Screening Closed" message with reopen button
+            // Show "Screening Closed" message (no reopen button here — reopen is per-benefit)
             const closedBox = document.createElement('div');
             closedBox.style.cssText = 'background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 12px; border-radius: 5px; display: inline-block;';
-            closedBox.innerHTML = '<p style="margin: 0 0 10px 0;"><strong>No Screening in Progress</strong></p>';
-
-            const reopenBtn = document.createElement('button');
-            reopenBtn.id = 'reopen-screening-btn';
-            reopenBtn.textContent = 'Start New Screening';
-            
-            reopenBtn.addEventListener('click', () => reopenScreening());
-            closedBox.appendChild(reopenBtn);
+            closedBox.innerHTML = '<p style="margin: 0;"><strong>No Screening in Progress</strong></p>';
             controlsDiv.appendChild(closedBox);
-
-            // Hide estimation containers when screening is closed
-            const householdContainer = document.getElementById('household-members-container');
-            const snapContainer = document.getElementById('snap-household-container');
-            const liheapContainer = document.getElementById('liheap-household-container');
-            if (householdContainer) householdContainer.style.display = 'none';
-            if (snapContainer) snapContainer.style.display = 'none';
-            if (liheapContainer) liheapContainer.style.display = 'none';
         }
     } catch (error) {
         console.error('Error loading screening buttons:', error);
@@ -369,7 +354,7 @@ async function openStopScreeningModal() {
 
             // 5. Add a note
             const note = {
-                text: `<strong>Screening Terminated.</strong><br><br> Reason: ${reason}`,
+                text: `<strong>Screening terminated.</strong><br><br> Reason: ${reason}`,
                 timestamp: new Date().toLocaleString(),
                 username: activeUser
             };
@@ -393,30 +378,29 @@ async function openStopScreeningModal() {
     });
 }
 
-async function reopenScreening() {
+async function reopenSingleBenefitScreening(memberId, benefit) {
     const clientId = getQueryParameter('id');
-    const confirmAction = confirm("Are you sure you want to reopen screenings for all benefits?");
+    const confirmAction = confirm(`Are you sure you want to reopen screening for ${benefit}?`);
     if (!confirmAction) return;
 
     const activeUser = sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User';
 
     try {
-        // 1. Fetch current household members
-        const membersResponse = await fetch(`/get-client/${clientId}`);
-        if (!membersResponse.ok) throw new Error('Failed to fetch client data');
-        const clientData = await membersResponse.json();
+        // 1. Fetch current client data
+        const response = await fetch(`/get-client/${clientId}`);
+        if (!response.ok) throw new Error('Failed to fetch client data');
+        const clientData = await response.json();
         const currentMembers = clientData.householdMembers || [];
 
-        // 2. Reopen screening for all benefits on all members
-        const allBenefits = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
-        for (const member of currentMembers) {
-            for (const benefit of allBenefits) {
-                if (member[benefit]) {
-                    member[benefit].screeningInProgress = true;
-                    member[benefit].screeningCloseReason = null;
-                }
-            }
+        // 2. Find the target member and reopen the specific benefit
+        const targetMember = currentMembers.find(m => m.householdMemberId === memberId);
+        if (!targetMember || !targetMember[benefit]) {
+            console.error(`Member ${memberId} or benefit ${benefit} not found.`);
+            return;
         }
+
+        targetMember[benefit].screeningInProgress = true;
+        targetMember[benefit].screeningCloseReason = null;
 
         // 3. Save updated household members
         const saveResponse = await fetch('/save-household-members', {
@@ -430,7 +414,7 @@ async function reopenScreening() {
             return;
         }
 
-        // 4. Update client-level screeningInProgress to true
+        // 4. Also set client-level screeningInProgress back to true
         const updateResponse = await fetch('/update-client', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -446,8 +430,9 @@ async function reopenScreening() {
         }
 
         // 5. Add a note
+        const memberName = `${targetMember.firstName || ''} ${targetMember.lastName || ''}`.trim();
         const note = {
-            text: '<strong>New screening initiated.</strong>',
+            text: `<strong>Screening reopened</strong> for <strong>${benefit}</strong> — ${memberName}`,
             timestamp: new Date().toLocaleString(),
             username: activeUser
         };
@@ -457,24 +442,22 @@ async function reopenScreening() {
             body: JSON.stringify({ clientId, note })
         });
 
-        console.log('All screening reopened successfully.');
+        console.log(`Screening reopened for ${benefit} on member ${memberId}.`);
 
-                // Re-render notes
-                if (typeof window.renderNotes === 'function') {
+        // Re-render notes
+        if (typeof window.renderNotes === 'function') {
             await window.renderNotes(clientId);
         }
 
-        // Show estimation containers again
-        const householdContainer = document.getElementById('household-members-container');
-        const snapContainer = document.getElementById('snap-household-container');
-        const liheapContainer = document.getElementById('liheap-household-container');
-        if (householdContainer) householdContainer.style.display = '';
-        if (snapContainer) snapContainer.style.display = '';
-        if (liheapContainer) liheapContainer.style.display = '';
-
-        loadScreeningButtons(); // Refresh buttons
+        // Refresh the page to reflect changes
+        loadScreeningButtons();
+        if (typeof window.loadHouseholdMembers === 'function') {
+            await window.loadHouseholdMembers();
+        } else {
+            location.reload();
+        }
     } catch (error) {
-        console.error('Error reopening screening:', error);
+        console.error('Error reopening single benefit screening:', error);
     }
 }
 

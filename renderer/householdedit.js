@@ -1581,19 +1581,24 @@ async function openEditModal(member) {
     // Step 1: Prepare the modal (reuse the logic from add modal)
     await prepareHouseholdMemberModal();
 
-    // Step 2: Autofill the modal with the member's data
-    document.getElementById('prefix').value = member.prefix || '';
-    document.getElementById('firstName').value = member.firstName || '';
-    document.getElementById('middleInitial').value = member.middleInitial || '';
-    document.getElementById('lastName').value = member.lastName || '';
-    document.getElementById('suffix').value = member.suffix || '';
-    document.getElementById('dob').value = member.dob || '';
-    document.getElementById('socialSecurityNumber').value = member.socialSecurityNumber || '';
-    document.getElementById('legalSex').value = member.legalSex || '';
-    document.getElementById('maritalStatus').value = member.maritalStatus || '';
-    document.getElementById('previousMaritalStatus').value = member.previousMaritalStatus || '';
-    document.getElementById('studentStatus').value = member.studentStatus || '';
-    document.getElementById('nonCitizenStatus').value = member.nonCitizenStatus || '';
+// Step 2: Autofill the modal with the member's data
+document.getElementById('prefix').value = member.prefix || '';
+document.getElementById('firstName').value = member.firstName || '';
+document.getElementById('middleInitial').value = member.middleInitial || '';
+document.getElementById('lastName').value = member.lastName || '';
+document.getElementById('suffix').value = member.suffix || '';
+document.getElementById('dob').value = member.dob || '';
+document.getElementById('socialSecurityNumber').value = member.socialSecurityNumber || '';
+document.getElementById('legalSex').value = member.legalSex || '';
+document.getElementById('maritalStatus').value = member.maritalStatus || '';
+document.getElementById('previousMaritalStatus').value = member.previousMaritalStatus || '';
+document.getElementById('studentStatus').value = member.studentStatus || '';
+document.getElementById('nonCitizenStatus').value = member.nonCitizenStatus || '';
+
+// If deceased is null or undefined, default it to 'no'
+if (member.deceased == null) {
+    member.deceased = 'no';
+}
 
     // Make SSN field read-only and add "Edit SSN" button if a valid 9-digit SSN exists
 const ssnInput = document.getElementById('socialSecurityNumber');

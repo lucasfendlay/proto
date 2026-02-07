@@ -398,6 +398,9 @@ if (member.headOfHousehold === true) {
                         }
                     }
             
+        // Fetch fresh members before running eligibility checks
+        const members = await loadHouseholdMembers();
+
         // Trigger eligibility checks
         await window.eligibilityChecks.PACEEligibilityCheck(members);
         await window.eligibilityChecks.LISEligibilityCheck(members);
@@ -506,10 +509,10 @@ if (member.headOfHousehold === true) {
 
             // Check if screeningInProgress is true
             if (clientData && clientData.screeningInProgress) {
-                document.getElementById('leftSidebarContainer').style.display = 'flex';
+                document.getElementById('leftSidebarContainer').style.display = 'block';
             } else {
                 // Still show the sidebar so the stop-screening / reopen button is visible
-                document.getElementById('leftSidebarContainer').style.display = 'flex';
+                document.getElementById('leftSidebarContainer').style.display = 'block';
                 // Hide the individual benefit containers
                 const snapContainer = document.getElementById('snap-household-container');
                 const liheapContainer = document.getElementById('liheap-household-container');

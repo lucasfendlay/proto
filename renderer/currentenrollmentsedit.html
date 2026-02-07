@@ -9,22 +9,11 @@
     <link rel="stylesheet" href="incomeedit.css">
     <link rel="stylesheet" href="notes.css">
     <script src="userInfo.js"></script>
-
-    </head>
-
     <style>
 
 details > summary {
     cursor: pointer; /* Change cursor to hand */
 }
-.narrow-body {
-        margin-left: 385px; /* Space for the left sidebar */
-        margin-right: 10px; /* Optional: Space on the right */
-        max-width: calc(100% - 395px); /* Ensure the body doesn't exceed the available space */
-        margin: 0 auto; /* Center the content horizontally */
-        margin-top: 60px; /* Adjust this value to match the height of the navigation container */
-
-    }
 
 .household-member.no-questions {
     opacity: 0.5;
@@ -74,58 +63,16 @@ details > summary {
     pointer-events: none;
 }      
 
-.left-sidebar-containerr {
-    display: flex;
-    flex-direction: column; /* Stack the containers vertically */
-    align-items: flex-start; /* Align containers to the left */
-    border: #000000 1px solid; /* Optional: Border for separation */
-    box-shadow: 5px 0 5px rgba(0, 0, 0.1); /* Optional: Subtle shadow */
-    padding: 10px;
-    position: fixed; /* Position the container absolutely */
-    z-index: 1000; /* Ensure it appears above other content */
-    left: 0; /* Align it to the left side of the screen */
-    top: 80px; /* Adjusted to make space for the input box and save button */
-    width: 300px; /* Fixed width for the sidebar */
-    min-width: 300px; /* Ensure the sidebar has a minimum width */
-    height: calc(100vh - 70px); /* Dynamically adjust height based on the viewport */
-    overflow-y: auto; /* Enable vertical scrolling for overflow content */
-    padding: 10px;
-    pointer-events: auto; /* Ensure the container captures scroll events */
-    text-align: center; /* Center all text */
-    background-color: #f9f9f9; /* Optional: Background color */
-    border-right: 1px solid #000000; /* Optional: Border for separation */
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1); /* Optional: Subtle shadow */
-}
-
-.left-sidebarr {
-    display: flex; /* Enable Flexbox */
-    min-width: 90%; /* Set width to 95% of the sidebar */
-    width: 90%; /* Set width to 95% of the sidebar */
-    flex-direction: column; /* Stack items vertically */
-    border: #000000 1px solid; /* Optional: Border for separation */
-    box-shadow: 5px 0 5px rgba(0, 0, 0.1); /* Optional: Subtle shadow */
-    padding: 10px;
-    align-items: center; /* Center items horizontally */
-    z-index: 1000; /* Ensure it appears above other content */
-    background-color: #f9f9f9;
-    border-right: 1px solid #000000;
-    padding: 15px;
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-    margin: 0 auto; /* Center horizontally */
-    text-align: center; /* Center all text */
-}
-
     </style>
 </head>
 <body class="narrow-body">
 
     <h1>Current Enrollments</h1>
 
-<div class="left-sidebar-containerr" id="leftSidebarContainer" style="display: none;">
-    <div id="snap-household-container" class="left-sidebarr"></div>
-    <div id="liheap-household-container" class="left-sidebarr"></div>
-
-    <div id="household-members-container" class="left-sidebarr"></div>
+<div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
+    <div id="snap-household-container" class="left-sidebar"></div>
+    <div id="liheap-household-container" class="left-sidebar"></div>
+    <div id="household-members-container" class="left-sidebar"></div>
 </div>
 
 <div id="notes-container">
@@ -232,36 +179,6 @@ details > summary {
         window.location.href = `currentenrollmentsview.html?id=${clientId}`;
     }
 }
-
-    async function checkScreeningStatus() {
-    const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
-    try {
-        // Fetch client data from the server using an HTTP API call
-        const response = await fetch(`/get-client/${clientId}`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client data: ${response.statusText}`);
-        }
-
-        const clientData = await response.json();
-
-        // Check if screeningInProgress is true
-        if (clientData && clientData.screeningInProgress) {
-            document.getElementById('leftSidebarContainer').style.display = 'flex';
-        } else {
-            document.getElementById('leftSidebarContainer').style.display = 'none';
-        }
-    } catch (error) {
-        console.error('Error fetching client data:', error);
-    }
-}
-
-// Call the function on page load
-window.addEventListener('load', checkScreeningStatus);
 
     async function saveCurrentEnrollmentsData() {
         // Implement logic to save current enrollments data if needed

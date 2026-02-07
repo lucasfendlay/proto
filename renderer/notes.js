@@ -65,8 +65,8 @@ const isCustomNote = ![
 !noteText.includes('SNAP screening reopened.') &&
 !noteText.includes('LIHEAP screening closed.') &&
 !noteText.includes('LIHEAP screening reopened.') &&
-!noteText.includes('Screening terminated.')
-!noteText.includes('Screening(s)') &&
+!noteText.includes('Screening terminated.') &&
+!noteText.includes('Screening(s) closed.') &&
 !noteText.includes('screening reopened') &&
 !noteText.includes('Referral provided');
 

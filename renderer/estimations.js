@@ -95,10 +95,10 @@ document.addEventListener('DOMContentLoaded', async function () {
             const benefitSections = [];
 
             // PACE section
-            if (!isDeceased) {
-                if (paceScreeningClosed) {
-                    benefitSections.push({ closed: true, html: `
-                        <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center;">
+                if (!isDeceased) {
+                    if (paceScreeningClosed) {
+                        benefitSections.push({ closed: true, html: `
+                        <div style="background-color:rgb(212, 212, 212); border: 1px solid rgb(0, 0, 0); padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center; width: 100%; box-sizing: border-box;">
                             <p style="margin: 0 0 6px 0;"><strong>PACE Screening Closed</strong></p>
                             <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${member.PACE?.screeningCloseReason || 'N/A'}</p>
                             <button class="btn-reopen-individual-screening" data-benefit="PACE" data-member-id="${member.householdMemberId}"
@@ -110,11 +110,18 @@ document.addEventListener('DOMContentLoaded', async function () {
                         </div>
                     `});
                 } else if (!member.PACE?.eligibility?.includes('Not Checked')) {
+                    const paceElig = member.PACE?.eligibility?.map(capitalizeFirstLetter) || [];
+                    const paceIsNot = paceElig.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED") || item.includes("AGE CRITERIA NOT MET") || item.includes("ENROLLED IN MEDICAID") || item.includes("RESIDENCY NOT MET"));
+                    const paceNeedsInfo = paceElig.some(item => item.includes("NEEDS") || item.includes("DETERMINATION PENDING"));
+                    const paceIsLikely = !paceIsNot && !paceNeedsInfo;
+                    const paceBgColor = paceIsNot ? '#f8d7da' : paceNeedsInfo ? '#fff3cd' : paceIsLikely ? '#d4edda' : 'transparent';
+                    const paceBorderColor = paceIsNot ? '#f5c6cb' : paceNeedsInfo ? '#ffc107' : paceIsLikely ? '#c3e6cb' : '#ccc';
+
                     benefitSections.push({ closed: false, html: `
-                        <details class="custom-details">
+                        <details class="custom-details" style="background-color: ${paceBgColor}; border: 1px solid ${paceBorderColor}; border-radius: 4px; padding: 8px; margin: 8px 0; width: 100%; box-sizing: border-box;">
                             <summary><br><strong>PACE</strong><br>
                             <p><strong></strong> ${
-                                member.PACE?.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+                                paceElig.join(', ') || 'Not Available'
                             }</summary></p>
                             <hr class="separator-bar">
                             <p><strong>Gross Adjusted Income:</strong> $${member.PACE?.combinedIncome?.toFixed(2) || 'N/A'}</p>
@@ -127,7 +134,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             if (!isDeceased) {
                 if (lisScreeningClosed) {
                     benefitSections.push({ closed: true, html: `
-                        <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center;">
+                        <div style="background-color:rgb(212, 212, 212); border: 1px solid rgb(0, 0, 0); padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center; width: 100%; box-sizing: border-box;">
                             <p style="margin: 0 0 6px 0;"><strong>LIS Screening Closed</strong></p>
                             <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${member.LIS?.screeningCloseReason || 'N/A'}</p>
                             <button class="btn-reopen-individual-screening" data-benefit="LIS" data-member-id="${member.householdMemberId}"
@@ -139,11 +146,18 @@ document.addEventListener('DOMContentLoaded', async function () {
                         </div>
                     `});
                 } else if (!member.LIS?.eligibility?.includes('Not Checked')) {
+                    const lisElig = member.LIS?.eligibility?.map(capitalizeFirstLetter) || [];
+                    const lisIsNot = lisElig.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED") || item.includes("NOT ENROLLED IN MEDICARE") || item.includes("ENROLLED IN MEDICAID"));
+                    const lisNeedsInfo = lisElig.some(item => item.includes("NEEDS") || item.includes("DETERMINATION PENDING"));
+                    const lisIsLikely = !lisIsNot && !lisNeedsInfo;
+                    const lisBgColor = lisIsNot ? '#f8d7da' : lisNeedsInfo ? '#fff3cd' : lisIsLikely ? '#d4edda' : 'transparent';
+                    const lisBorderColor = lisIsNot ? '#f5c6cb' : lisNeedsInfo ? '#ffc107' : lisIsLikely ? '#c3e6cb' : '#ccc';
+
                     benefitSections.push({ closed: false, html: `
-                        <details class="custom-details">
+                        <details class="custom-details" style="background-color: ${lisBgColor}; border: 1px solid ${lisBorderColor}; border-radius: 4px; padding: 8px; margin: 8px 0; width: 100%; box-sizing: border-box;">
                             <summary><br><strong>LIS</strong><br>
                             <p><strong></strong> ${
-                                member.LIS?.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+                                lisElig.join(', ') || 'Not Available'
                             }</summary></p>
                             <hr class="separator-bar">
                             <p><strong>Gross Income:</strong> $${member.LIS?.combinedIncome?.toFixed(2) || 'N/A'}</p>
@@ -157,9 +171,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             if (!isDeceased) {
                 if (mspScreeningClosed) {
                     benefitSections.push({ closed: true, html: `
-                        <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center;">
-                            <p style="margin: 0 0 6px 0;"><strong>MSP Screening Closed</strong></p>
-                            <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${member.MSP?.screeningCloseReason || 'N/A'}</p>
+                        <div style="background-color:rgb(212, 212, 212); border: 1px solid rgb(0, 0, 0); padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center; width: 100%; box-sizing: border-box;">
+                            <p style="margin: 0 0 6px 0;"><strong>MSP Screening Closed</strong></p>                            <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${member.MSP?.screeningCloseReason || 'N/A'}</p>
                             <button class="btn-reopen-individual-screening" data-benefit="MSP" data-member-id="${member.householdMemberId}"
                                 style="background-color: #007bff; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 12px; cursor: pointer; transition: background-color 0.3s;"
                                 onmouseover="this.style.backgroundColor='#0056b3'" 
@@ -169,11 +182,18 @@ document.addEventListener('DOMContentLoaded', async function () {
                         </div>
                     `});
                 } else if (!member.MSP?.eligibility?.includes('Not Checked')) {
+                    const mspElig = member.MSP?.eligibility?.map(capitalizeFirstLetter) || [];
+                    const mspIsNot = mspElig.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED") || item.includes("NOT ENROLLED IN MEDICARE") || item.includes("ENROLLED IN MEDICAID"));
+                    const mspNeedsInfo = mspElig.some(item => item.includes("NEEDS") || item.includes("DETERMINATION PENDING"));
+                    const mspIsLikely = !mspIsNot && !mspNeedsInfo;
+                    const mspBgColor = mspIsNot ? '#f8d7da' : mspNeedsInfo ? '#fff3cd' : mspIsLikely ? '#d4edda' : 'transparent';
+                    const mspBorderColor = mspIsNot ? '#f5c6cb' : mspNeedsInfo ? '#ffc107' : mspIsLikely ? '#c3e6cb' : '#ccc';
+
                     benefitSections.push({ closed: false, html: `
-                        <details class="custom-details">
+                        <details class="custom-details" style="background-color: ${mspBgColor}; border: 1px solid ${mspBorderColor}; border-radius: 4px; padding: 8px; margin: 8px 0; width: 100%; box-sizing: border-box;">
                             <summary><br><strong>MSP</strong>
                             <p><strong></strong> ${
-                                member.MSP?.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+                                mspElig.join(', ') || 'Not Available'
                             }</summary></p>
                             <hr class="separator-bar">
                             <p><strong>Gross Adjusted Income:</strong> $${member.MSP?.combinedIncome?.toFixed(2) || 'N/A'}</p>
@@ -186,9 +206,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             // PTRR section
             if (ptrrScreeningClosed) {
                 benefitSections.push({ closed: true, html: `
-                    <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center;">
-                        <p style="margin: 0 0 6px 0;"><strong>PTRR Screening Closed</strong></p>
-                        <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${member.PTRR?.screeningCloseReason || 'N/A'}</p>
+                        <div style="background-color:rgb(212, 212, 212); border: 1px solid rgb(0, 0, 0); padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center; width: 100%; box-sizing: border-box;">
+                            <p style="margin: 0 0 6px 0;"><strong>PTRR Screening Closed</strong></p>                        <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${member.PTRR?.screeningCloseReason || 'N/A'}</p>
                         <button class="btn-reopen-individual-screening" data-benefit="PTRR" data-member-id="${member.householdMemberId}"
                             style="background-color: #007bff; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 12px; cursor: pointer; transition: background-color 0.3s;"
                             onmouseover="this.style.backgroundColor='#0056b3'" 
@@ -198,11 +217,18 @@ document.addEventListener('DOMContentLoaded', async function () {
                     </div>
                 `});
             } else if (!member.PTRR?.eligibility?.includes('Not Checked')) {
+                const ptrrElig = member.PTRR?.eligibility?.map(capitalizeFirstLetter) || [];
+                const ptrrIsNot = ptrrElig.some(item => item.includes("NOT") || item.includes("ALREADY APPLIED") || item.includes("NOT INTERESTED") || item.includes("NO FORMAL LEASE") || item.includes("AGE") || item.includes("CRITERIA NOT MET"));
+                const ptrrNeedsInfo = ptrrElig.some(item => item.includes("NEEDS") || item.includes("DETERMINATION PENDING"));
+                const ptrrIsLikely = !ptrrIsNot && !ptrrNeedsInfo;
+                const ptrrBgColor = ptrrIsNot ? '#f8d7da' : ptrrNeedsInfo ? '#fff3cd' : ptrrIsLikely ? '#d4edda' : 'transparent';
+                const ptrrBorderColor = ptrrIsNot ? '#f5c6cb' : ptrrNeedsInfo ? '#ffc107' : ptrrIsLikely ? '#c3e6cb' : '#ccc';
+
                 benefitSections.push({ closed: false, html: `
-                    <details class="custom-details">
+                    <details class="custom-details" style="background-color: ${ptrrBgColor}; border: 1px solid ${ptrrBorderColor}; border-radius: 4px; padding: 8px; margin: 8px 0; width: 100%; box-sizing: border-box;">
                         <summary><br><strong>PTRR Eligibility</strong>
                         <p><strong></strong> ${
-                            member.PTRR?.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+                            ptrrElig.join(', ') || 'Not Available'
                         }</summary></p>
                         <hr class="separator-bar">
                         <p><strong>Gross Income:</strong> $${member.PTRR?.combinedIncome?.toFixed(2) || 'N/A'}</p>
@@ -432,56 +458,91 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
     const confirmBtn = document.getElementById('close-member-confirm-btn');
     const title = document.getElementById('close-member-modal-title');
 
-    const targetMember = allMembers.find(m => m.householdMemberId === memberId);
-    const memberName = targetMember
-        ? `${capitalizeFirstLetter(targetMember.firstName)} ${capitalizeFirstLetter(targetMember.lastName)}`
-        : 'Unknown';
+    title.textContent = `Close Screening(s)`;
 
-    title.textContent = `Close Screening for ${memberName}`;
+    // Build a list of all open benefits across all members (excluding SNAP and LIHEAP)
+    const excludedBenefits = ['SNAP', 'LIHEAP'];
+    const benefitKeys = ['PACE', 'LIS', 'MSP', 'PTRR'];
 
-// ...existing code...
-    // Build selectable benefit tiles (click to toggle selection)
+    const allOpenBenefitEntries = []; // { memberId, memberName, benefit }
+
+    allMembers.forEach(member => {
+        const isDeceased = (member.deceased ?? '').toLowerCase() === 'yes';
+        const memberName = `${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.lastName)}`;
+
+        benefitKeys.forEach(benefit => {
+            // Skip deceased members for PACE, LIS, MSP (PTRR is only for head of household)
+            if (isDeceased && benefit !== 'PTRR') return;
+            // PTRR: skip if not head of household
+            if (benefit === 'PTRR' && !member.headOfHousehold) return;
+            // Skip deceased for PTRR too
+            if (isDeceased && benefit === 'PTRR') return;
+
+            const benefitObj = member[benefit];
+            if (!benefitObj) return;
+            if (benefitObj.screeningInProgress === false) return; // Already closed
+            if (benefitObj.eligibility?.includes('Not Checked')) return;
+
+            // Must have eligibility data
+            if (benefitObj.eligibility && benefitObj.eligibility.length > 0) {
+                allOpenBenefitEntries.push({
+                    memberId: member.householdMemberId,
+                    memberName,
+                    benefit
+                });
+            }
+        });
+    });
+
+    // Group entries by member for display
+    const groupedByMember = {};
+    allOpenBenefitEntries.forEach(entry => {
+        if (!groupedByMember[entry.memberId]) {
+            groupedByMember[entry.memberId] = {
+                memberName: entry.memberName,
+                benefits: []
+            };
+        }
+        groupedByMember[entry.memberId].benefits.push(entry.benefit);
+    });
+
+    // Build selectable benefit tiles grouped by member
     checkboxContainer.innerHTML = '<p style="margin-bottom: 10px;"><strong>Select benefits to close:</strong></p>';
-    openBenefits.forEach(benefit => {
-        const tile = document.createElement('div');
-        tile.className = 'close-member-benefit-tile';
-        tile.dataset.benefit = benefit;
-        tile.dataset.selected = 'false';
-        tile.textContent = benefit;
-        tile.style.cssText = `
-            display: block;
-            padding: 10px 16px;
-            margin: 6px 0;
-            border: 2px solid #ccc;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            color: #333;
-            background-color: #f9f9f9;
-            transition: all 0.2s ease;
-            user-select: none;
-        `;
 
-        tile.addEventListener('mouseover', () => {
-            if (tile.dataset.selected === 'false') {
-                tile.style.borderColor = '#337ab7';
-                tile.style.backgroundColor = '#e8f0fe';
-            }
-        });
+    // Add "Select All" toggle
+    const selectAllContainer = document.createElement('div');
+    selectAllContainer.style.cssText = 'margin-bottom: 12px; padding: 8px 0; border-bottom: 1px solid #ddd;';
+    const selectAllBtn = document.createElement('button');
+    selectAllBtn.textContent = 'Select All';
+    selectAllBtn.style.cssText = `
+        padding: 6px 14px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        margin-right: 8px;
+        transition: background-color 0.3s;
+    `;
+    const deselectAllBtn = document.createElement('button');
+    deselectAllBtn.textContent = 'Deselect All';
+    deselectAllBtn.style.cssText = `
+        padding: 6px 14px;
+        background-color: #6c757d;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        transition: background-color 0.3s;
+    `;
 
-        tile.addEventListener('mouseout', () => {
-            if (tile.dataset.selected === 'false') {
-                tile.style.borderColor = '#ccc';
-                tile.style.backgroundColor = '#f9f9f9';
-            }
-        });
-
-        tile.addEventListener('click', () => {
-            const isSelected = tile.dataset.selected === 'true';
-            tile.dataset.selected = isSelected ? 'false' : 'true';
-
-            if (tile.dataset.selected === 'true') {
+    const toggleAllTiles = (selected) => {
+        const allTiles = checkboxContainer.querySelectorAll('.close-member-benefit-tile');
+        allTiles.forEach(tile => {
+            tile.dataset.selected = selected ? 'true' : 'false';
+            if (selected) {
                 tile.style.borderColor = 'black';
                 tile.style.backgroundColor = '#007bff';
                 tile.style.color = 'white';
@@ -490,17 +551,95 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
                 tile.style.backgroundColor = '#f9f9f9';
                 tile.style.color = '#333';
             }
-
-            // Update reason dropdown based on selected benefits
-            const selected = Array.from(checkboxContainer.querySelectorAll('.close-member-benefit-tile[data-selected="true"]')).map(t => t.dataset.benefit);
-            updateReasonDropdown(selected);
         });
+        const selectedBenefits = selected
+            ? allOpenBenefitEntries.map(e => e.benefit)
+            : [];
+        updateReasonDropdown([...new Set(selectedBenefits)]);
+    };
 
-        checkboxContainer.appendChild(tile);
+    selectAllBtn.addEventListener('click', () => toggleAllTiles(true));
+    deselectAllBtn.addEventListener('click', () => toggleAllTiles(false));
+    selectAllContainer.appendChild(selectAllBtn);
+    selectAllContainer.appendChild(deselectAllBtn);
+    checkboxContainer.appendChild(selectAllContainer);
+
+    // Pre-select the tiles for the member who initiated the modal
+    const initiatingMemberId = memberId;
+
+    Object.keys(groupedByMember).forEach(mId => {
+        const group = groupedByMember[mId];
+
+        // Member name header
+        const memberHeader = document.createElement('p');
+        memberHeader.style.cssText = 'margin: 12px 0 4px 0; font-weight: 600; font-size: 14px; color: #555;';
+        memberHeader.textContent = group.memberName;
+        checkboxContainer.appendChild(memberHeader);
+
+        group.benefits.forEach(benefit => {
+            const tile = document.createElement('div');
+            tile.className = 'close-member-benefit-tile';
+            tile.dataset.benefit = benefit;
+            tile.dataset.memberId = mId;
+            tile.dataset.selected = 'false';
+            tile.textContent = benefit;
+            tile.style.cssText = `
+                display: block;
+                padding: 10px 16px;
+                margin: 6px 0;
+                border: 2px solid #ccc;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 500;
+                color: #333;
+                background-color: #f9f9f9;
+                transition: all 0.2s ease;
+                user-select: none;
+            `;
+
+            tile.addEventListener('mouseover', () => {
+                if (tile.dataset.selected === 'false') {
+                    tile.style.borderColor = '#337ab7';
+                    tile.style.backgroundColor = '#e8f0fe';
+                }
+            });
+
+            tile.addEventListener('mouseout', () => {
+                if (tile.dataset.selected === 'false') {
+                    tile.style.borderColor = '#ccc';
+                    tile.style.backgroundColor = '#f9f9f9';
+                }
+            });
+
+            tile.addEventListener('click', () => {
+                const isSelected = tile.dataset.selected === 'true';
+                tile.dataset.selected = isSelected ? 'false' : 'true';
+
+                if (tile.dataset.selected === 'true') {
+                    tile.style.borderColor = 'black';
+                    tile.style.backgroundColor = '#007bff';
+                    tile.style.color = 'white';
+                } else {
+                    tile.style.borderColor = '#ccc';
+                    tile.style.backgroundColor = '#f9f9f9';
+                    tile.style.color = '#333';
+                }
+
+                // Update reason dropdown based on unique selected benefits
+                const selectedBenefitNames = Array.from(
+                    checkboxContainer.querySelectorAll('.close-member-benefit-tile[data-selected="true"]')
+                ).map(t => t.dataset.benefit);
+                updateReasonDropdown([...new Set(selectedBenefitNames)]);
+            });
+
+            checkboxContainer.appendChild(tile);
+        });
     });
 
-    // Initialize with no reasons (nothing checked yet)
+    // Initialize reason dropdown — nothing pre-selected
     select.innerHTML = '<option value="">-- Select a reason --</option>';
+
     modal.style.display = 'flex';
 
     // Remove old listener by cloning
@@ -508,10 +647,12 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
     confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
 
     newConfirmBtn.addEventListener('click', async () => {
-        const selectedBenefits = Array.from(checkboxContainer.querySelectorAll('.close-member-benefit-tile[data-selected="true"]')).map(t => t.dataset.benefit);
+        const selectedTiles = Array.from(
+            checkboxContainer.querySelectorAll('.close-member-benefit-tile[data-selected="true"]')
+        );
         const reason = select.value;
 
-        if (selectedBenefits.length === 0) {
+        if (selectedTiles.length === 0) {
             alert('Please select at least one benefit to close.');
             return;
         }
@@ -521,12 +662,28 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
         }
 
         try {
-            if (targetMember) {
-                for (const benefit of selectedBenefits) {
-                    if (targetMember[benefit]) {
-                        targetMember[benefit].screeningInProgress = false;
-                        targetMember[benefit].screeningCloseReason = reason;
+            // Group selected tiles by member
+            const closuresByMember = {};
+            selectedTiles.forEach(tile => {
+                const mId = tile.dataset.memberId;
+                const benefit = tile.dataset.benefit;
+                if (!closuresByMember[mId]) closuresByMember[mId] = [];
+                closuresByMember[mId].push(benefit);
+            });
+
+            // Apply closures to each member
+            const noteLines = [];
+            for (const [mId, benefits] of Object.entries(closuresByMember)) {
+                const targetMember = allMembers.find(m => m.householdMemberId === mId);
+                if (targetMember) {
+                    const memberName = `${capitalizeFirstLetter(targetMember.firstName)} ${capitalizeFirstLetter(targetMember.lastName)}`;
+                    for (const benefit of benefits) {
+                        if (targetMember[benefit]) {
+                            targetMember[benefit].screeningInProgress = false;
+                            targetMember[benefit].screeningCloseReason = reason;
+                        }
                     }
+                    noteLines.push(`<br><strong>${memberName}:</strong><br> ${benefits.join('<br>')}`);
                 }
             }
 
@@ -538,10 +695,13 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
 
             if (saveResponse.ok) {
                 modal.style.display = 'none';
-                const benefitList = selectedBenefits.join('<br>');
-                await addNoteToClient(clientId, `<strong>Screening(s) closed for ${memberName}.</strong><br><br>${benefitList} <br><br> Reason: ${reason}`);
+                const noteText = `<strong>Screening(s) closed.</strong><br>${noteLines.join('<br>')}<br><br>Reason: ${reason}`;
+                await addNoteToClient(clientId, noteText);
                 await renderNotesContainer();
-                await refreshAllDisplays();
+                await displayHouseholdMembers();
+                // Check if all screenings are now closed
+                const freshMembers = await loadHouseholdMembers();
+                await checkAndAutoTerminateScreening(freshMembers);
             } else {
                 console.error('Failed to close screening.');
             }
@@ -582,7 +742,7 @@ async function displaySNAPHouseholds(prefetchedMembers, prefetchedClient) {
             reopenDiv.innerHTML = `
                 <h3>SNAP HOUSEHOLD</h3>
                 <p><strong>Members:</strong> ${snapMembers.map(m => `${capitalizeFirstLetter(m.firstName)} ${capitalizeFirstLetter(m.lastName)}`).join(', ')}</p>
-                <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center;">
+                        <div style="background-color:rgb(212, 212, 212); border: 1px solid rgb(0, 0, 0); padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center; width: 100%; box-sizing: border-box;">
                     <p style="margin: 0 0 6px 0;"><strong>SNAP Screening Closed</strong></p>
                     <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${snapMembers[0]?.SNAP?.screeningCloseReason || 'N/A'}</p>
                     <button id="reopen-snap-screening-btn" 
@@ -663,6 +823,15 @@ async function displaySNAPHouseholds(prefetchedMembers, prefetchedClient) {
             const isAlreadyEnrolled = currentClient?.snap === 'yes';
             const isNotInterested = currentClient?.snap === 'notinterested';
 
+            // Apply background color based on state
+            if (isAlreadyEnrolled || isNotInterested) {
+                noHouseholdsDiv.style.backgroundColor = '#f8d7da'; // Red for already enrolled / not interested
+                noHouseholdsDiv.style.borderColor = '#f5c6cb';
+            } else {
+                noHouseholdsDiv.style.backgroundColor = '#fff3cd'; // Yellow for no households found
+                noHouseholdsDiv.style.borderColor = '#ffc107';
+            }
+
             noHouseholdsDiv.innerHTML = `
                 <h3>SNAP HOUSEHOLD</h3>
                 ${isAlreadyEnrolled ? `
@@ -670,7 +839,7 @@ async function displaySNAPHouseholds(prefetchedMembers, prefetchedClient) {
                 ` : isNotInterested ? `
                     <p>NOT INTERESTED</p>
                 ` : `
-                    <p>NO SNAP HOUSEHOLDS FOUND.</p>
+                    <p>NO SNAP HOUSEHOLD MEMBERS FOUND.</p>
                 `}
                 ${anySnapScreeningActive || isAlreadyEnrolled || isNotInterested ? `
                     <button class="btn-close-snap-screening" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Close SNAP Screening</button>
@@ -703,8 +872,28 @@ async function displaySNAPHouseholds(prefetchedMembers, prefetchedClient) {
                 const combinedAssets = household[0]?.SNAP?.combinedAssets || 0;
     
                 const isLikelyEligible = Array.isArray(eligibility)
-                    ? !eligibility.some(item => item.includes("NOT"))
-                    : !String(eligibility).includes("NOT");
+                    ? !eligibility.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED") || item.includes("NEEDS") || item.includes("DETERMINATION PENDING"))
+                    : !String(eligibility).includes("NOT") && !String(eligibility).includes("ALREADY ENROLLED") && !String(eligibility).includes("NOT INTERESTED") && !String(eligibility).includes("NEEDS") && !String(eligibility).includes("DETERMINATION PENDING");
+
+                const isNotEligible = Array.isArray(eligibility)
+                    ? eligibility.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED"))
+                    : String(eligibility).includes("NOT") || String(eligibility).includes("ALREADY ENROLLED") || String(eligibility).includes("NOT INTERESTED");
+
+                const needsMoreInfo = Array.isArray(eligibility)
+                    ? eligibility.some(item => item.includes("NEEDS") || item.includes("DETERMINATION PENDING"))
+                    : String(eligibility).includes("NEEDS") || String(eligibility).includes("DETERMINATION PENDING");
+
+                // Apply color coding based on eligibility
+                if (isNotEligible) {
+                    householdDiv.style.backgroundColor = '#f8d7da'; // Red background
+                    householdDiv.style.borderColor = '#f5c6cb';
+                } else if (needsMoreInfo) {
+                    householdDiv.style.backgroundColor = '#fff3cd'; // Yellow background
+                    householdDiv.style.borderColor = '#ffc107';
+                } else if (isLikelyEligible) {
+                    householdDiv.style.backgroundColor = '#d4edda'; // Green background
+                    householdDiv.style.borderColor = '#c3e6cb';
+                }
     
                 householdDiv.innerHTML = `
     <details class="custom-details">
@@ -935,18 +1124,6 @@ async function checkAndAutoTerminateScreening(members) {
             });
 
             if (updateResponse.ok) {
-                // Add a note
-                const note = {
-                    text: '<strong>Screening automatically terminated — all benefits closed.</strong>',
-                    timestamp: new Date().toLocaleString(),
-                    username: activeUser
-                };
-                await fetch('/add-note-to-client', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ clientId, note })
-                });
-
                 if (typeof window.renderNotes === 'function') {
                     await window.renderNotes(clientId);
                 }
@@ -997,34 +1174,37 @@ async function checkAndAutoTerminateScreening(members) {
             const isLiheapAlreadyEnrolled = client?.liheapEnrollment === 'yes' && client?.heatingCrisis === 'no';
             const isLiheapNotInterested = client?.liheapEnrollment === 'notinterested';
 
-        if (isLiheapAlreadyEnrolled || isLiheapNotInterested) {
-            const noHouseholdsDiv = document.createElement('div');
-            noHouseholdsDiv.classList.add('household-member-box');
+// ...existing code...
+if (isLiheapAlreadyEnrolled || isLiheapNotInterested) {
+    const noHouseholdsDiv = document.createElement('div');
+    noHouseholdsDiv.classList.add('household-member-box');
+    noHouseholdsDiv.style.backgroundColor = '#f8d7da'; // Red for already enrolled / not interested
+    noHouseholdsDiv.style.borderColor = '#f5c6cb';
 
-            const anyLiheapScreeningActive = members.some(m => m.LIHEAP?.screeningInProgress === true);
+    const anyLiheapScreeningActive = members.some(m => m.LIHEAP?.screeningInProgress === true);
 
-            noHouseholdsDiv.innerHTML = `
-                <h3>LIHEAP HOUSEHOLD</h3>
-                ${isLiheapAlreadyEnrolled ? `
-                    <p>ALREADY ENROLLED</p>
-                ` : `
-                    <p>NOT INTERESTED</p>
-                `}
-                ${anyLiheapScreeningActive || isLiheapAlreadyEnrolled || isLiheapNotInterested ? `
-                    <button class="btn-close-liheap-screening" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Close LIHEAP Screening</button>
-                ` : ''}
-            `;
-            liheapHouseholdContainer.appendChild(noHouseholdsDiv);
+    noHouseholdsDiv.innerHTML = `
+        <h3>LIHEAP HOUSEHOLD</h3>
+        ${isLiheapAlreadyEnrolled ? `
+            <p>ALREADY ENROLLED</p>
+        ` : `
+            <p>NOT INTERESTED</p>
+        `}
+        ${anyLiheapScreeningActive || isLiheapAlreadyEnrolled || isLiheapNotInterested ? `
+            <button class="btn-close-liheap-screening" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Close LIHEAP Screening</button>
+        ` : ''}
+    `;
+    liheapHouseholdContainer.appendChild(noHouseholdsDiv);
 
-            if (anyLiheapScreeningActive || isLiheapAlreadyEnrolled || isLiheapNotInterested) {
-                const closeBtn = noHouseholdsDiv.querySelector('.btn-close-liheap-screening');
-                closeBtn.addEventListener('click', () => {
-                    const liheapMembers = members.filter(m => m.LIHEAP?.screeningInProgress === true);
-                    openCloseLiheapModal(clientId, members, liheapMembers);
-                });
-            }
-            return;
-        }
+    if (anyLiheapScreeningActive || isLiheapAlreadyEnrolled || isLiheapNotInterested) {
+        const closeBtn = noHouseholdsDiv.querySelector('.btn-close-liheap-screening');
+        closeBtn.addEventListener('click', () => {
+            const liheapMembers = members.filter(m => m.LIHEAP?.screeningInProgress === true);
+            openCloseLiheapModal(clientId, members, liheapMembers);
+        });
+    }
+    return;
+}
 
         // Check if LIHEAP screening is closed
         const liheapScreeningClosed = activeMembersForLIHEAP.length > 0 && activeMembersForLIHEAP[0]?.LIHEAP?.screeningInProgress === false;
@@ -1034,8 +1214,7 @@ async function checkAndAutoTerminateScreening(members) {
             reopenDiv.classList.add('household-member-box');
             reopenDiv.innerHTML = `
                 <h3>LIHEAP HOUSEHOLD</h3>
-                <p><strong>Members:</strong> ${activeMembersForLIHEAP.map(m => `${capitalizeFirstLetter(m.firstName)} ${capitalizeFirstLetter(m.lastName)}`).join(', ')}</p>
-                <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center;">
+                        <div style="background-color:rgb(212, 212, 212); border: 1px solid rgb(0, 0, 0); padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center; width: 100%; box-sizing: border-box;">
                     <p style="margin: 0 0 6px 0;"><strong>LIHEAP Screening Closed</strong></p>
                     <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${activeMembersForLIHEAP[0]?.LIHEAP?.screeningCloseReason || 'N/A'}</p>
                     <button id="reopen-liheap-screening-btn" 
@@ -1079,9 +1258,15 @@ async function checkAndAutoTerminateScreening(members) {
         }
     
         if (activeMembersForLIHEAP.length === 0) {
-            const noHouseholdsMessage = document.createElement('p');
-            noHouseholdsMessage.textContent = 'NO LIHEAP HOUSEHOLDS FOUND.';
-            liheapHouseholdContainer.appendChild(noHouseholdsMessage);
+            const noHouseholdsDiv = document.createElement('div');
+            noHouseholdsDiv.classList.add('household-member-box');
+            noHouseholdsDiv.style.backgroundColor = '#fff3cd'; // Yellow for no households found
+            noHouseholdsDiv.style.borderColor = '#ffc107';
+            noHouseholdsDiv.innerHTML = `
+                <h3>LIHEAP HOUSEHOLD</h3>
+                <p>NO LIHEAP HOUSEHOLDS FOUND.</p>
+            `;
+            liheapHouseholdContainer.appendChild(noHouseholdsDiv);
             return;
         }
     
@@ -1091,7 +1276,31 @@ async function checkAndAutoTerminateScreening(members) {
     
         // Create a container for the LIHEAP household details
         const householdDiv = document.createElement('div');
-        householdDiv.classList.add('household-member-box'); // Add a class for styling
+        householdDiv.classList.add('household-member-box');
+
+        const isLikelyEligible = Array.isArray(eligibility)
+            ? !eligibility.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED")) || eligibility.some(item => item.includes("RECOMMENDED"))
+            : !String(eligibility).includes("NOT") && !String(eligibility).includes("ALREADY ENROLLED") && !String(eligibility).includes("NOT INTERESTED") || String(eligibility).includes("RECOMMENDED");
+
+        const isNotEligible = Array.isArray(eligibility)
+            ? eligibility.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED")) && !eligibility.some(item => item.includes("RECOMMENDED"))
+            : (String(eligibility).includes("NOT") || String(eligibility).includes("ALREADY ENROLLED") || String(eligibility).includes("NOT INTERESTED")) && !String(eligibility).includes("RECOMMENDED");
+
+        const needsMoreInfo = Array.isArray(eligibility)
+            ? eligibility.some(item => item.includes("NEEDS"))
+            : String(eligibility).includes("NEEDS");
+
+        // Apply color coding based on eligibility
+        if (isNotEligible) {
+            householdDiv.style.backgroundColor = '#f8d7da'; // Red background
+            householdDiv.style.borderColor = '#f5c6cb';
+        } else if (needsMoreInfo) {
+            householdDiv.style.backgroundColor = '#fff3cd'; // Yellow background
+            householdDiv.style.borderColor = '#ffc107';
+        } else if (isLikelyEligible) {
+            householdDiv.style.backgroundColor = '#d4edda'; // Green background
+            householdDiv.style.borderColor = '#c3e6cb';
+        }
     
         // Populate household details
         householdDiv.innerHTML = `
@@ -2608,8 +2817,10 @@ async function LIHEAPEligibilityCheck() {
             eligibility.push("Needs Heating Cost Responsibility Status");
         } else if (client.subsidizedHousing === 'yes' && client.heatingCost === 'yes') {
             eligibility.push("Not Likely Eligible for LIHEAP (Heating cost included in rent, household rent is subsidized)");
-        } else if (client.heatingCrisis === 'yes') {
+        } else if (client.heatingCrisis === 'yes' && combinedYearlyIncome <= incomeLimit) {
             eligibility.push("Likely Eligible for LIHEAP (Crisis)");
+        } else if (client.heatingCrisis === 'yes' && combinedYearlyIncome > incomeLimit) {
+            eligibility.push("Not Likely Eligible for LIHEAP but Submission Recommended");
         } else if (combinedYearlyIncome <= incomeLimit) {
             eligibility.push("Likely Eligible for LIHEAP");
         } else {

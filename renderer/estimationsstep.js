@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     const benefitObj = member[benefit];
                     if (!benefitObj || benefitObj.screeningInProgress !== false) return '';
                     return `
-                        <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center;">
+                        <div style="background-color:rgb(212, 212, 212); border: 1px solid rgb(0, 0, 0); padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center; width: 100%; box-sizing: border-box;">
                             <p style="margin: 0 0 6px 0;"><strong>${benefit} Screening Closed</strong></p>
                             <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${benefitObj.screeningCloseReason || 'N/A'}</p>
                             <button class="reopen-benefit-btn" 
@@ -118,116 +118,144 @@ document.addEventListener('DOMContentLoaded', async function () {
                     `;
                 }
 
-                // Helper to render open benefit section
-                function benefitOpenSection(benefit) {
-                    const bObj = member[benefit];
-                    if (!bObj) return '';
-
-                    if (benefit === 'PACE') {
-                        if (bObj.eligibility?.includes('Not Checked') || bObj.eligibility?.includes('Age Criteria Not Met')) return '';
-                        return `
-                            <details class="custom-details">
-                                <summary><br><strong>PACE</strong><br> 
-                                <p><strong></strong> ${
-                                    bObj.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
-                                }<br>
-                                <button class="benefit-apply-button" data-benefit="PACE" data-member-id="${member.householdMemberId}" 
-                                    style="display: ${
-                                        bObj.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('already'))
-                                            ? 'none'
-                                            : 'block'
-                                    }; margin: 0 auto">
-                                    ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for PACE'}
-                                </button>
-                                <br>
-                                </summary></p>
-                                <hr class="separator-bar">
-                                <p><strong>Gross Adjusted Income:</strong> $${bObj.combinedIncome?.toFixed(2) || 'N/A'}</p>
-                            </details>
-                        `;
-                    }
-
-                    if (benefit === 'LIS') {
-                        if (bObj.eligibility?.includes('Not Checked')) return '';
-                        return `
-                            <details class="custom-details">
-                                <summary><br><strong>LIS</strong><br>
-                                <p><strong></strong> ${
-                                    bObj.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
-                                }<br>
-                                <button class="benefit-apply-button" data-benefit="LIS" data-member-id="${member.householdMemberId}" 
-                                    style="display: ${
-                                        bObj.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('already'))
-                                            ? 'none'
-                                            : 'block'
-                                    }; margin: 0 auto">
-                                    ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for LIS'}
-                                </button>
-                                <br>
-                                </summary></p>
-                                <hr class="separator-bar">
-                                <p><strong>Gross Income:</strong> $${bObj.combinedIncome?.toFixed(2) || 'N/A'}</p>
-                                <p><strong>Combined Assets:</strong> $${bObj.combinedAssets?.toFixed(2) || 'N/A'}</p>
-                            </details>
-                        `;
-                    }
-
-                    if (benefit === 'MSP') {
-                        if (bObj.eligibility?.includes('Not Checked')) return '';
-                        return `
-                            <details class="custom-details">
-                                <summary><br><strong>MSP</strong>
-                                <p><strong></strong> ${
-                                    bObj.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
-                                }<br>
-                                <button class="benefit-apply-button" data-benefit="MSP" data-member-id="${member.householdMemberId}" 
-                                    style="display: ${
-                                        Array.isArray(bObj.eligibility) &&
-                                        bObj.eligibility.some(e => 
-                                            e?.toLowerCase().includes('not') || 
-                                            e?.toLowerCase().includes('needs') || 
-                                            e?.toLowerCase().includes('already')
-                                        )
-                                            ? 'none'
-                                            : 'block'
-                                    }; margin: 0 auto;">
-                                    ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for MSP'}
-                                </button>
-                                <br>
-                                </summary></p>
-                                <hr class="separator-bar">
-                                <p><strong>Gross Adjusted Income:</strong> $${bObj.combinedIncome?.toFixed(2) || 'N/A'}</p>
-                                <p><strong>Combined Assets:</strong> $${bObj.combinedAssets?.toFixed(2) || 'N/A'}</p>
-                            </details>
-                        `;
-                    }
-
-                    if (benefit === 'PTRR') {
-                        if (bObj.eligibility?.includes('Not Checked')) return '';
-                        return `
-                            <details class="custom-details">
-                                <summary><br><strong>PTRR</strong>
-                                <p><strong></strong> ${
-                                    bObj.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
-                                }<br>
-                                <button class="benefit-apply-button" data-benefit="PTRR" data-member-id="${member.householdMemberId}" 
-                                    style="display: ${
-                                        bObj.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('no') || e.toLowerCase().includes('already'))
-                                            ? 'none'
-                                            : 'block'
-                                    }; margin: 0 auto">
-                                    ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for PTRR'}
-                                </button>
-                                <br>
-                                </summary></p>
-                                <hr class="separator-bar">
-                                <p><strong>Gross Income:</strong> $${bObj.combinedIncome?.toFixed(2) || 'N/A'}</p>
-                            </details>
-                        `;
-                    }
-
-                    return '';
-                }
+                                // Helper to render open benefit section
+                                function benefitOpenSection(benefit) {
+                                    const bObj = member[benefit];
+                                    if (!bObj) return '';
+                
+                                    if (benefit === 'PACE') {
+                                        if (bObj.eligibility?.includes('Not Checked') || bObj.eligibility?.includes('Age Criteria Not Met')) return '';
+                                        const paceElig = bObj.eligibility?.map(capitalizeFirstLetter) || [];
+                                        const paceIsNot = paceElig.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED") || item.includes("AGE CRITERIA NOT MET") || item.includes("ENROLLED IN MEDICAID") || item.includes("RESIDENCY NOT MET"));
+                                        const paceNeedsInfo = paceElig.some(item => item.includes("NEEDS") || item.includes("DETERMINATION PENDING"));
+                                        const paceIsLikely = !paceIsNot && !paceNeedsInfo;
+                                        const paceBgColor = paceIsNot ? '#f8d7da' : paceNeedsInfo ? '#fff3cd' : paceIsLikely ? '#d4edda' : 'transparent';
+                                        const paceBorderColor = paceIsNot ? '#f5c6cb' : paceNeedsInfo ? '#ffc107' : paceIsLikely ? '#c3e6cb' : '#ccc';
+                
+                                        return `
+                                            <details class="custom-details" style="background-color: ${paceBgColor}; border: 1px solid ${paceBorderColor}; border-radius: 4px; padding: 8px; margin: 8px 0; width: 100%; box-sizing: border-box;">
+                                                <summary><br><strong>PACE</strong><br> 
+                                                <p><strong></strong> ${
+                                                    bObj.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+                                                }<br>
+                                                <button class="benefit-apply-button" data-benefit="PACE" data-member-id="${member.householdMemberId}" 
+                                                    style="display: ${
+                                                        bObj.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('already'))
+                                                            ? 'none'
+                                                            : 'block'
+                                                    }; margin: 0 auto">
+                                                    ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for PACE'}
+                                                </button>
+                                                <br>
+                                                </summary></p>
+                                                <hr class="separator-bar">
+                                                <p><strong>Gross Adjusted Income:</strong> $${bObj.combinedIncome?.toFixed(2) || 'N/A'}</p>
+                                            </details>
+                                        `;
+                                    }
+                
+                                    if (benefit === 'LIS') {
+                                        if (bObj.eligibility?.includes('Not Checked')) return '';
+                                        const lisElig = bObj.eligibility?.map(capitalizeFirstLetter) || [];
+                                        const lisIsNot = lisElig.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED") || item.includes("NOT ENROLLED IN MEDICARE") || item.includes("ENROLLED IN MEDICAID"));
+                                        const lisNeedsInfo = lisElig.some(item => item.includes("NEEDS") || item.includes("DETERMINATION PENDING"));
+                                        const lisIsLikely = !lisIsNot && !lisNeedsInfo;
+                                        const lisBgColor = lisIsNot ? '#f8d7da' : lisNeedsInfo ? '#fff3cd' : lisIsLikely ? '#d4edda' : 'transparent';
+                                        const lisBorderColor = lisIsNot ? '#f5c6cb' : lisNeedsInfo ? '#ffc107' : lisIsLikely ? '#c3e6cb' : '#ccc';
+                
+                                        return `
+                                            <details class="custom-details" style="background-color: ${lisBgColor}; border: 1px solid ${lisBorderColor}; border-radius: 4px; padding: 8px; margin: 8px 0; width: 100%; box-sizing: border-box;">
+                                                <summary><br><strong>LIS</strong><br>
+                                                <p><strong></strong> ${
+                                                    bObj.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+                                                }<br>
+                                                <button class="benefit-apply-button" data-benefit="LIS" data-member-id="${member.householdMemberId}" 
+                                                    style="display: ${
+                                                        bObj.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('already'))
+                                                            ? 'none'
+                                                            : 'block'
+                                                    }; margin: 0 auto">
+                                                    ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for LIS'}
+                                                </button>
+                                                <br>
+                                                </summary></p>
+                                                <hr class="separator-bar">
+                                                <p><strong>Gross Income:</strong> $${bObj.combinedIncome?.toFixed(2) || 'N/A'}</p>
+                                                <p><strong>Combined Assets:</strong> $${bObj.combinedAssets?.toFixed(2) || 'N/A'}</p>
+                                            </details>
+                                        `;
+                                    }
+                
+                                    if (benefit === 'MSP') {
+                                        if (bObj.eligibility?.includes('Not Checked')) return '';
+                                        const mspElig = bObj.eligibility?.map(capitalizeFirstLetter) || [];
+                                        const mspIsNot = mspElig.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED") || item.includes("NOT ENROLLED IN MEDICARE") || item.includes("ENROLLED IN MEDICAID"));
+                                        const mspNeedsInfo = mspElig.some(item => item.includes("NEEDS") || item.includes("DETERMINATION PENDING"));
+                                        const mspIsLikely = !mspIsNot && !mspNeedsInfo;
+                                        const mspBgColor = mspIsNot ? '#f8d7da' : mspNeedsInfo ? '#fff3cd' : mspIsLikely ? '#d4edda' : 'transparent';
+                                        const mspBorderColor = mspIsNot ? '#f5c6cb' : mspNeedsInfo ? '#ffc107' : mspIsLikely ? '#c3e6cb' : '#ccc';
+                
+                                        return `
+                                            <details class="custom-details" style="background-color: ${mspBgColor}; border: 1px solid ${mspBorderColor}; border-radius: 4px; padding: 8px; margin: 8px 0; width: 100%; box-sizing: border-box;">
+                                                <summary><br><strong>MSP</strong>
+                                                <p><strong></strong> ${
+                                                    bObj.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+                                                }<br>
+                                                <button class="benefit-apply-button" data-benefit="MSP" data-member-id="${member.householdMemberId}" 
+                                                    style="display: ${
+                                                        Array.isArray(bObj.eligibility) &&
+                                                        bObj.eligibility.some(e => 
+                                                            e?.toLowerCase().includes('not') || 
+                                                            e?.toLowerCase().includes('needs') || 
+                                                            e?.toLowerCase().includes('already')
+                                                        )
+                                                            ? 'none'
+                                                            : 'block'
+                                                    }; margin: 0 auto;">
+                                                    ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for MSP'}
+                                                </button>
+                                                <br>
+                                                </summary></p>
+                                                <hr class="separator-bar">
+                                                <p><strong>Gross Adjusted Income:</strong> $${bObj.combinedIncome?.toFixed(2) || 'N/A'}</p>
+                                                <p><strong>Combined Assets:</strong> $${bObj.combinedAssets?.toFixed(2) || 'N/A'}</p>
+                                            </details>
+                                        `;
+                                    }
+                
+                                    if (benefit === 'PTRR') {
+                                        if (bObj.eligibility?.includes('Not Checked')) return '';
+                                        const ptrrElig = bObj.eligibility?.map(capitalizeFirstLetter) || [];
+                                        const ptrrIsNot = ptrrElig.some(item => item.includes("NOT") || item.includes("ALREADY APPLIED") || item.includes("NOT INTERESTED") || item.includes("NO FORMAL LEASE") || item.includes("AGE") || item.includes("CRITERIA NOT MET"));
+                                        const ptrrNeedsInfo = ptrrElig.some(item => item.includes("NEEDS") || item.includes("DETERMINATION PENDING"));
+                                        const ptrrIsLikely = !ptrrIsNot && !ptrrNeedsInfo;
+                                        const ptrrBgColor = ptrrIsNot ? '#f8d7da' : ptrrNeedsInfo ? '#fff3cd' : ptrrIsLikely ? '#d4edda' : 'transparent';
+                                        const ptrrBorderColor = ptrrIsNot ? '#f5c6cb' : ptrrNeedsInfo ? '#ffc107' : ptrrIsLikely ? '#c3e6cb' : '#ccc';
+                
+                                        return `
+                                            <details class="custom-details" style="background-color: ${ptrrBgColor}; border: 1px solid ${ptrrBorderColor}; border-radius: 4px; padding: 8px; margin: 8px 0; width: 100%; box-sizing: border-box;">
+                                                <summary><br><strong>PTRR</strong>
+                                                <p><strong></strong> ${
+                                                    bObj.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+                                                }<br>
+                                                <button class="benefit-apply-button" data-benefit="PTRR" data-member-id="${member.householdMemberId}" 
+                                                    style="display: ${
+                                                        bObj.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('no') || e.toLowerCase().includes('already'))
+                                                            ? 'none'
+                                                            : 'block'
+                                                    }; margin: 0 auto">
+                                                    ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for PTRR'}
+                                                </button>
+                                                <br>
+                                                </summary></p>
+                                                <hr class="separator-bar">
+                                                <p><strong>Gross Income:</strong> $${bObj.combinedIncome?.toFixed(2) || 'N/A'}</p>
+                                            </details>
+                                        `;
+                                    }
+                
+                                    return '';
+                                }
 
                 // Build benefit sections dynamically and sort open first, closed last
                 const benefitSections = [];
@@ -377,18 +405,21 @@ document.addEventListener('DOMContentLoaded', async function () {
                 });
             });
 
-            // Add event listeners to reopen-benefit buttons
-            const reopenBenefitBtns = document.querySelectorAll('.reopen-benefit-btn');
-            reopenBenefitBtns.forEach(btn => {
-                btn.addEventListener('click', async (event) => {
-                    const benefit = event.target.dataset.benefit;
-                    const memberIds = event.target.dataset.memberIds.split(',');
-                    const displayName = event.target.dataset.displayName;
-                    await reopenBenefitScreening(benefit, memberIds, displayName);
-                });
-            });
-        }
-    }
+    // Add event listeners to reopen-benefit buttons
+    const reopenBenefitBtns = document.querySelectorAll('.reopen-benefit-btn');
+    reopenBenefitBtns.forEach(btn => {
+        btn.addEventListener('click', async (event) => {
+            const benefit = event.target.dataset.benefit;
+            const memberIds = event.target.dataset.memberIds.split(',');
+            const displayName = event.target.dataset.displayName;
+            await reopenBenefitScreening(benefit, memberIds, displayName);
+        });
+    });
+}
+
+// Check if all screenings are now closed across all members
+await checkAndAutoTerminateScreening(members);
+}
 
     // ===== updateMemberBenefits (handles ALL benefit types) =====
     async function updateMemberBenefits(members, benefit, newApplyingState, memberId = null) {
@@ -601,28 +632,129 @@ function updateReasonDropdown(selectedBenefits) {
     });
 }
 
-    function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
-        createCloseMemberModal();
-        const modal = document.getElementById('close-member-modal');
-        const checkboxContainer = document.getElementById('close-member-benefits-checkboxes');
-        const select = document.getElementById('close-member-reason-select');
-        const confirmBtn = document.getElementById('close-member-confirm-btn');
-        const title = document.getElementById('close-member-modal-title');
-    
-        const targetMember = allMembers.find(m => m.householdMemberId === memberId);
-        const memberName = targetMember
-            ? `${capitalizeFirstLetter(targetMember.firstName)} ${capitalizeFirstLetter(targetMember.lastName)}`
-            : 'Unknown';
-    
-        title.textContent = `Close Screening for ${memberName}`;
-    
-    // ...existing code...
-        // Build selectable benefit tiles (click to toggle selection)
-        checkboxContainer.innerHTML = '<p style="margin-bottom: 10px;"><strong>Select benefits to close:</strong></p>';
-        openBenefits.forEach(benefit => {
+function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
+    createCloseMemberModal();
+    const modal = document.getElementById('close-member-modal');
+    const checkboxContainer = document.getElementById('close-member-benefits-checkboxes');
+    const select = document.getElementById('close-member-reason-select');
+    const confirmBtn = document.getElementById('close-member-confirm-btn');
+    const title = document.getElementById('close-member-modal-title');
+
+    title.textContent = `Close Screening(s)`;
+
+    // Build a list of all open benefits across all members (excluding SNAP and LIHEAP)
+    const benefitKeys = ['PACE', 'LIS', 'MSP', 'PTRR'];
+    const allOpenBenefitEntries = []; // { memberId, memberName, benefit }
+
+    allMembers.forEach(member => {
+        const isDeceased = (member.deceased ?? '').toLowerCase() === 'yes';
+        const memberName = `${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.lastName)}`;
+
+        benefitKeys.forEach(benefit => {
+            if (isDeceased && benefit !== 'PTRR') return;
+            if (benefit === 'PTRR' && !member.headOfHousehold) return;
+            if (isDeceased && benefit === 'PTRR') return;
+
+            const benefitObj = member[benefit];
+            if (!benefitObj) return;
+            if (benefitObj.screeningInProgress === false) return;
+            if (benefitObj.eligibility?.includes('Not Checked')) return;
+            if (benefit === 'PACE' && benefitObj.eligibility?.includes('Age Criteria Not Met')) return;
+
+            if (benefitObj.eligibility && benefitObj.eligibility.length > 0) {
+                allOpenBenefitEntries.push({
+                    memberId: member.householdMemberId,
+                    memberName,
+                    benefit
+                });
+            }
+        });
+    });
+
+    // Group entries by member for display
+    const groupedByMember = {};
+    allOpenBenefitEntries.forEach(entry => {
+        if (!groupedByMember[entry.memberId]) {
+            groupedByMember[entry.memberId] = {
+                memberName: entry.memberName,
+                benefits: []
+            };
+        }
+        groupedByMember[entry.memberId].benefits.push(entry.benefit);
+    });
+
+    // Build selectable benefit tiles grouped by member
+    checkboxContainer.innerHTML = '<p style="margin-bottom: 10px;"><strong>Select benefits to close:</strong></p>';
+
+    // Add "Select All" / "Deselect All" toggle
+    const selectAllContainer = document.createElement('div');
+    selectAllContainer.style.cssText = 'margin-bottom: 12px; padding: 8px 0; border-bottom: 1px solid #ddd;';
+    const selectAllBtn = document.createElement('button');
+    selectAllBtn.textContent = 'Select All';
+    selectAllBtn.style.cssText = `
+        padding: 6px 14px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        margin-right: 8px;
+        transition: background-color 0.3s;
+    `;
+    const deselectAllBtn = document.createElement('button');
+    deselectAllBtn.textContent = 'Deselect All';
+    deselectAllBtn.style.cssText = `
+        padding: 6px 14px;
+        background-color: #6c757d;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        transition: background-color 0.3s;
+    `;
+
+    const toggleAllTiles = (selected) => {
+        const allTiles = checkboxContainer.querySelectorAll('.close-member-benefit-tile');
+        allTiles.forEach(tile => {
+            tile.dataset.selected = selected ? 'true' : 'false';
+            if (selected) {
+                tile.style.borderColor = 'black';
+                tile.style.backgroundColor = '#007bff';
+                tile.style.color = 'white';
+            } else {
+                tile.style.borderColor = '#ccc';
+                tile.style.backgroundColor = '#f9f9f9';
+                tile.style.color = '#333';
+            }
+        });
+        const selectedBenefits = selected
+            ? allOpenBenefitEntries.map(e => e.benefit)
+            : [];
+        updateReasonDropdown([...new Set(selectedBenefits)]);
+    };
+
+    selectAllBtn.addEventListener('click', () => toggleAllTiles(true));
+    deselectAllBtn.addEventListener('click', () => toggleAllTiles(false));
+    selectAllContainer.appendChild(selectAllBtn);
+    selectAllContainer.appendChild(deselectAllBtn);
+    checkboxContainer.appendChild(selectAllContainer);
+
+    Object.keys(groupedByMember).forEach(mId => {
+        const group = groupedByMember[mId];
+
+        // Member name header
+        const memberHeader = document.createElement('p');
+        memberHeader.style.cssText = 'margin: 12px 0 4px 0; font-weight: 600; font-size: 14px; color: #555;';
+        memberHeader.textContent = group.memberName;
+        checkboxContainer.appendChild(memberHeader);
+
+        group.benefits.forEach(benefit => {
             const tile = document.createElement('div');
             tile.className = 'close-member-benefit-tile';
             tile.dataset.benefit = benefit;
+            tile.dataset.memberId = mId;
             tile.dataset.selected = 'false';
             tile.textContent = benefit;
             tile.style.cssText = `
@@ -639,25 +771,25 @@ function updateReasonDropdown(selectedBenefits) {
                 transition: all 0.2s ease;
                 user-select: none;
             `;
-    
+
             tile.addEventListener('mouseover', () => {
                 if (tile.dataset.selected === 'false') {
                     tile.style.borderColor = '#337ab7';
                     tile.style.backgroundColor = '#e8f0fe';
                 }
             });
-    
+
             tile.addEventListener('mouseout', () => {
                 if (tile.dataset.selected === 'false') {
                     tile.style.borderColor = '#ccc';
                     tile.style.backgroundColor = '#f9f9f9';
                 }
             });
-    
+
             tile.addEventListener('click', () => {
                 const isSelected = tile.dataset.selected === 'true';
                 tile.dataset.selected = isSelected ? 'false' : 'true';
-    
+
                 if (tile.dataset.selected === 'true') {
                     tile.style.borderColor = 'black';
                     tile.style.backgroundColor = '#007bff';
@@ -667,65 +799,154 @@ function updateReasonDropdown(selectedBenefits) {
                     tile.style.backgroundColor = '#f9f9f9';
                     tile.style.color = '#333';
                 }
-    
-                // Update reason dropdown based on selected benefits
-                const selected = Array.from(checkboxContainer.querySelectorAll('.close-member-benefit-tile[data-selected="true"]')).map(t => t.dataset.benefit);
-                updateReasonDropdown(selected);
+
+                // Update reason dropdown based on unique selected benefits
+                const selectedBenefitNames = Array.from(
+                    checkboxContainer.querySelectorAll('.close-member-benefit-tile[data-selected="true"]')
+                ).map(t => t.dataset.benefit);
+                updateReasonDropdown([...new Set(selectedBenefitNames)]);
             });
-    
+
             checkboxContainer.appendChild(tile);
         });
-    
-        // Initialize with no reasons (nothing checked yet)
-        select.innerHTML = '<option value="">-- Select a reason --</option>';
-        modal.style.display = 'flex';
-    
-        // Remove old listener by cloning
-        const newConfirmBtn = confirmBtn.cloneNode(true);
-        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-    
-        newConfirmBtn.addEventListener('click', async () => {
-            const selectedBenefits = Array.from(checkboxContainer.querySelectorAll('.close-member-benefit-tile[data-selected="true"]')).map(t => t.dataset.benefit);
-            const reason = select.value;
-    
-            if (selectedBenefits.length === 0) {
-                alert('Please select at least one benefit to close.');
-                return;
-            }
-            if (!reason) {
-                alert('Please select a reason.');
-                return;
-            }
-    
-            try {
+    });
+
+    // Initialize reason dropdown — nothing pre-selected
+    select.innerHTML = '<option value="">-- Select a reason --</option>';
+    modal.style.display = 'flex';
+
+    // Remove old listener by cloning
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+    newConfirmBtn.addEventListener('click', async () => {
+        const selectedTiles = Array.from(
+            checkboxContainer.querySelectorAll('.close-member-benefit-tile[data-selected="true"]')
+        );
+        const reason = select.value;
+
+        if (selectedTiles.length === 0) {
+            alert('Please select at least one benefit to close.');
+            return;
+        }
+        if (!reason) {
+            alert('Please select a reason.');
+            return;
+        }
+
+        try {
+            // Group selected tiles by member
+            const closuresByMember = {};
+            selectedTiles.forEach(tile => {
+                const mId = tile.dataset.memberId;
+                const benefit = tile.dataset.benefit;
+                if (!closuresByMember[mId]) closuresByMember[mId] = [];
+                closuresByMember[mId].push(benefit);
+            });
+
+            // Apply closures to each member
+            const noteLines = [];
+            for (const [mId, benefits] of Object.entries(closuresByMember)) {
+                const targetMember = allMembers.find(m => String(m.householdMemberId) === String(mId));
                 if (targetMember) {
-                    for (const benefit of selectedBenefits) {
+                    const memberName = `${capitalizeFirstLetter(targetMember.firstName)} ${capitalizeFirstLetter(targetMember.lastName)}`;
+                    for (const benefit of benefits) {
                         if (targetMember[benefit]) {
                             targetMember[benefit].screeningInProgress = false;
                             targetMember[benefit].screeningCloseReason = reason;
                         }
                     }
+                    noteLines.push(`<br><strong>${memberName}:</strong><br> ${benefits.join('<br>')}`);
                 }
-    
-                const saveResponse = await fetch(`/save-household-members`, {
-                    method: 'POST',
+            }
+
+            const saveResponse = await fetch(`/save-household-members`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, householdMembers: allMembers })
+            });
+
+            if (saveResponse.ok) {
+                modal.style.display = 'none';
+                const noteText = `<strong>Screening(s) closed.</strong><br>${noteLines.join('<br>')}<br><br>Reason: ${reason}`;
+                await addNoteToClient(clientId, noteText);
+                await renderNotesContainer();
+                await displayHouseholdMembers();
+                // Check if all screenings are now closed
+                const freshMembers = await loadHouseholdMembers();
+                await checkAndAutoTerminateScreening(freshMembers);
+            } else {
+                console.error('Failed to close screening.');
+            }
+        } catch (error) {
+            console.error('Error closing screening:', error);
+        }
+    });
+}
+
+    async function checkAndAutoTerminateScreening(members) {
+        // Fetch latest client data to check screeningInProgress
+        let currentClient;
+        try {
+            const clientRes = await fetch(`/get-client/${clientId}`);
+            if (clientRes.ok) {
+                currentClient = await clientRes.json();
+            } else {
+                console.error('Failed to fetch client for auto-terminate check.');
+                return;
+            }
+        } catch (error) {
+            console.error('Error fetching client for auto-terminate check:', error);
+            return;
+        }
+
+        // Only check if screening is currently in progress
+        if (currentClient.screeningInProgress !== true) return;
+
+        const allBenefits = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
+
+        // Check if every member has all their benefits either closed (screeningInProgress === false) or not checked
+        const allClosed = members.every(member => {
+            return allBenefits.every(benefit => {
+                const benefitObj = member[benefit];
+                if (!benefitObj) return true; // No benefit object = not applicable
+                if (benefitObj.eligibility?.includes('Not Checked')) return true;
+                if (benefitObj.eligibility?.includes('Not Enrolled in Medicare')) return true;
+                if (benefitObj.eligibility?.includes('Enrolled in Medicaid')) return true;
+                if (benefitObj.eligibility?.includes('Age Criteria Not Met')) return true;
+                if (benefitObj.eligibility?.includes('No Formal Lease')) return true;
+                if (benefitObj.eligibility?.includes('Not Interested')) return true;
+                if (benefitObj.eligibility?.includes('Already Enrolled')) return true;
+                if (benefitObj.eligibility?.includes('Already Applied')) return true;
+                return benefitObj.screeningInProgress === false;
+            });
+        });
+
+        if (allClosed) {
+            try {
+                // Update client-level screeningInProgress to false
+                const updateResponse = await fetch(`/update-client`, {
+                    method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ clientId, householdMembers: allMembers })
+                    body: JSON.stringify({ clientId, clientData: { screeningInProgress: false } })
                 });
-    
-                if (saveResponse.ok) {
-                    modal.style.display = 'none';
-                    const benefitList = selectedBenefits.join('<br>');
-                    await addNoteToClient(clientId, `<strong>Screening(s) closed for ${memberName}.</strong><br><br>${benefitList} <br><br> Reason: ${reason}`);
+
+                if (updateResponse.ok) {
                     await renderNotesContainer();
-                    await displayHouseholdMembers();
+
+                    // Refresh the screening control buttons if available
+                    if (typeof loadScreeningButtons === 'function') {
+                        loadScreeningButtons();
+                    }
+
+                    console.log('All screenings closed — screening auto-terminated.');
                 } else {
-                    console.error('Failed to close screening.');
+                    console.error('Failed to auto-terminate screening:', updateResponse.statusText);
                 }
             } catch (error) {
-                console.error('Error closing screening:', error);
+                console.error('Error auto-terminating screening:', error);
             }
-        });
+        }
     }
 
     // ===== SNAP Households Display =====
@@ -764,9 +985,26 @@ function updateReasonDropdown(selectedBenefits) {
         }
 
         if (snapHouseholds.length === 0) {
-            const noHouseholdsMessage = document.createElement('p');
-            noHouseholdsMessage.textContent = 'NO SNAP HOUSEHOLDS FOUND.';
-            snapHouseholdContainer.appendChild(noHouseholdsMessage);
+            const noHouseholdsDiv = document.createElement('div');
+            noHouseholdsDiv.classList.add('household-member-box');
+
+            const clientResponse = await fetch(`/get-client/${clientId}`).then(r => r.json()).catch(() => null);
+            const isAlreadyEnrolled = clientResponse?.snap === 'yes';
+            const isNotInterested = clientResponse?.snap === 'notinterested';
+
+            if (isAlreadyEnrolled || isNotInterested) {
+                noHouseholdsDiv.style.backgroundColor = '#f8d7da';
+                noHouseholdsDiv.style.borderColor = '#f5c6cb';
+            } else {
+                noHouseholdsDiv.style.backgroundColor = '#fff3cd';
+                noHouseholdsDiv.style.borderColor = '#ffc107';
+            }
+
+            noHouseholdsDiv.innerHTML = `
+                <h3>SNAP HOUSEHOLD</h3>
+                ${isAlreadyEnrolled ? '<p>ALREADY ENROLLED</p>' : isNotInterested ? '<p>NOT INTERESTED</p>' : '<p>NO SNAP HOUSEHOLDS FOUND.</p>'}
+            `;
+            snapHouseholdContainer.appendChild(noHouseholdsDiv);
             return;
         }
 
@@ -784,9 +1022,8 @@ function updateReasonDropdown(selectedBenefits) {
                 householdDiv.innerHTML = `
                     <h3>SNAP HOUSEHOLD</h3>
                     <p><strong>Members:</strong> ${snapMemberNames}</p>
-                    <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center;">
-                        <p style="margin: 0 0 6px 0;"><strong>SNAP Screening Closed</strong></p>
-                        <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${snapCloseReason}</p>
+                        <div style="background-color:rgb(212, 212, 212); border: 1px solid rgb(0, 0, 0); padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center; width: 100%; box-sizing: border-box;">
+                    <p style="margin: 0 0 6px 0;"><strong>SNAP Screening Closed</strong></p>                        <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${snapCloseReason}</p>
                         <button class="reopen-benefit-btn" 
                             data-benefit="SNAP" 
                             data-member-ids="${snapMemberIds.join(',')}" 
@@ -828,6 +1065,27 @@ function updateReasonDropdown(selectedBenefits) {
                 : !String(eligibility).toLowerCase().includes("not") &&
                   !String(eligibility).toLowerCase().includes("needs") &&
                   !String(eligibility).toLowerCase().includes("already");
+
+            const snapIsNot = Array.isArray(eligibility)
+                ? eligibility.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED"))
+                : String(eligibility).includes("NOT") || String(eligibility).includes("ALREADY ENROLLED") || String(eligibility).includes("NOT INTERESTED");
+
+            const snapNeedsInfo = Array.isArray(eligibility)
+                ? eligibility.some(item => item.includes("NEEDS") || item.includes("DETERMINATION PENDING"))
+                : String(eligibility).includes("NEEDS") || String(eligibility).includes("DETERMINATION PENDING");
+
+            const snapIsLikelyGreen = !snapIsNot && !snapNeedsInfo;
+
+            if (snapIsNot) {
+                householdDiv.style.backgroundColor = '#f8d7da';
+                householdDiv.style.borderColor = '#f5c6cb';
+            } else if (snapNeedsInfo) {
+                householdDiv.style.backgroundColor = '#fff3cd';
+                householdDiv.style.borderColor = '#ffc107';
+            } else if (snapIsLikelyGreen) {
+                householdDiv.style.backgroundColor = '#d4edda';
+                householdDiv.style.borderColor = '#c3e6cb';
+            }
 
             householdDiv.innerHTML = `
                 <details class="custom-details">
@@ -919,19 +1177,25 @@ function updateReasonDropdown(selectedBenefits) {
                 return null;
             });
 
-        if (clientResponse && clientResponse.liheapEnrollment === 'notinterested') {
-            const notInterestedMessage = document.createElement('p');
-            notInterestedMessage.textContent = 'NO LIHEAP HOUSEHOLDS FOUND.';
-            liheapHouseholdContainer.appendChild(notInterestedMessage);
-            return;
-        }
-
-        if (activeMembersForLIHEAP.length === 0) {
-            const noHouseholdsMessage = document.createElement('p');
-            noHouseholdsMessage.textContent = 'NO LIHEAP HOUSEHOLDS FOUND.';
-            liheapHouseholdContainer.appendChild(noHouseholdsMessage);
-            return;
-        }
+            if (clientResponse && clientResponse.liheapEnrollment === 'notinterested') {
+                const notInterestedDiv = document.createElement('div');
+                notInterestedDiv.classList.add('household-member-box');
+                notInterestedDiv.style.backgroundColor = '#f8d7da';
+                notInterestedDiv.style.borderColor = '#f5c6cb';
+                notInterestedDiv.innerHTML = '<h3>LIHEAP HOUSEHOLD</h3><p>NOT INTERESTED</p>';
+                liheapHouseholdContainer.appendChild(notInterestedDiv);
+                return;
+            }
+    
+            if (activeMembersForLIHEAP.length === 0) {
+                const noHouseholdsDiv = document.createElement('div');
+                noHouseholdsDiv.classList.add('household-member-box');
+                noHouseholdsDiv.style.backgroundColor = '#fff3cd';
+                noHouseholdsDiv.style.borderColor = '#ffc107';
+                noHouseholdsDiv.innerHTML = '<h3>LIHEAP HOUSEHOLD</h3><p>NO LIHEAP HOUSEHOLDS FOUND.</p>';
+                liheapHouseholdContainer.appendChild(noHouseholdsDiv);
+                return;
+            }
 
         const liheapMemberIds = activeMembersForLIHEAP.map(m => String(m.householdMemberId));
         const liheapMemberNames = activeMembersForLIHEAP.map(m => `${capitalizeFirstLetter(m.firstName)} ${capitalizeFirstLetter(m.lastName)}`).join(', ');
@@ -945,7 +1209,7 @@ function updateReasonDropdown(selectedBenefits) {
             householdDiv.innerHTML = `
                 <h3>LIHEAP HOUSEHOLD</h3>
                 <p><strong>Members:</strong> ${liheapMemberNames}</p>
-                <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center;">
+                        <div style="background-color:rgb(212, 212, 212); border: 1px solid rgb(0, 0, 0); padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center; width: 100%; box-sizing: border-box;">
                     <p style="margin: 0 0 6px 0;"><strong>LIHEAP Screening Closed</strong></p>
                     <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${liheapCloseReason}</p>
                     <button class="reopen-liheap-btn" 
@@ -972,6 +1236,29 @@ function updateReasonDropdown(selectedBenefits) {
 
         const householdDiv = document.createElement('div');
         householdDiv.classList.add('household-member-box');
+
+        const liheapIsNotEligible = Array.isArray(eligibility)
+            ? eligibility.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED")) && !eligibility.some(item => item.includes("RECOMMENDED"))
+            : (String(eligibility).includes("NOT") || String(eligibility).includes("ALREADY ENROLLED") || String(eligibility).includes("NOT INTERESTED")) && !String(eligibility).includes("RECOMMENDED");
+
+        const liheapNeedsInfo = Array.isArray(eligibility)
+            ? eligibility.some(item => item.includes("NEEDS"))
+            : String(eligibility).includes("NEEDS");
+
+        const liheapIsLikely = Array.isArray(eligibility)
+            ? !eligibility.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED")) || eligibility.some(item => item.includes("RECOMMENDED"))
+            : !String(eligibility).includes("NOT") && !String(eligibility).includes("ALREADY ENROLLED") && !String(eligibility).includes("NOT INTERESTED") || String(eligibility).includes("RECOMMENDED");
+
+        if (liheapIsNotEligible) {
+            householdDiv.style.backgroundColor = '#f8d7da';
+            householdDiv.style.borderColor = '#f5c6cb';
+        } else if (liheapNeedsInfo) {
+            householdDiv.style.backgroundColor = '#fff3cd';
+            householdDiv.style.borderColor = '#ffc107';
+        } else if (liheapIsLikely) {
+            householdDiv.style.backgroundColor = '#d4edda';
+            householdDiv.style.borderColor = '#c3e6cb';
+        }
 
         householdDiv.innerHTML = `
             <details class="custom-details">
@@ -2391,8 +2678,10 @@ async function LIHEAPEligibilityCheck() {
             eligibility.push("Needs Heating Cost Responsibility Status");
         } else if (client.subsidizedHousing === 'yes' && client.heatingCost === 'yes') {
             eligibility.push("Not Likely Eligible for LIHEAP (Heating cost included in rent, household rent is subsidized)");
-        } else if (client.heatingCrisis === 'yes') {
+        } else if (client.heatingCrisis === 'yes' && combinedYearlyIncome <= incomeLimit) {
             eligibility.push("Likely Eligible for LIHEAP (Crisis)");
+        } else if (client.heatingCrisis === 'yes' && combinedYearlyIncome > incomeLimit) {
+            eligibility.push("Not Likely Eligible for LIHEAP but Submission Recommended");
         } else if (combinedYearlyIncome <= incomeLimit) {
             eligibility.push("Likely Eligible for LIHEAP");
         } else {
@@ -2779,6 +3068,9 @@ function openCloseIndividualModal(memberIds, benefit, displayName) {
                 await displayHouseholdMembers();
                 await displaySNAPHouseholds();
                 await displayLIHEAPHouseholds();
+                // Check if all screenings are now closed
+                const freshMembers = await loadHouseholdMembers();
+                await checkAndAutoTerminateScreening(freshMembers);
             } else {
                 console.error(`Failed to close ${benefit} screening.`);
             }
@@ -2834,6 +3126,9 @@ function openCloseSnapModal(memberIds) {
                 await addNoteToClient(clientId, `<strong>SNAP screening closed.</strong><br><br> Reason: ${reason}`);
                 await renderNotesContainer();
                 await displaySNAPHouseholds();
+                // Check if all screenings are now closed
+                const freshMembers = await loadHouseholdMembers();
+                await checkAndAutoTerminateScreening(freshMembers);
             } else {
                 console.error('Failed to close SNAP screening.');
             }
@@ -2889,6 +3184,9 @@ function openCloseLiheapModal(memberIds) {
                 await addNoteToClient(clientId, `<strong>LIHEAP screening closed.</strong><br><br> Reason: ${reason}`);
                 await renderNotesContainer();
                 await displayLIHEAPHouseholds();
+                // Check if all screenings are now closed
+                const freshMembers = await loadHouseholdMembers();
+                await checkAndAutoTerminateScreening(freshMembers);
             } else {
                 console.error('Failed to close LIHEAP screening.');
             }
@@ -2926,6 +3224,26 @@ async function reopenBenefitScreening(benefit, memberIds, displayName) {
             return;
         }
 
+        // Set client-level screeningInProgress to true since we're now screening again
+        try {
+            const updateClientResponse = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    clientId,
+                    clientData: { screeningInProgress: true }
+                })
+            });
+
+            if (updateClientResponse.ok) {
+                console.log('Client screeningInProgress set to true.');
+            } else {
+                console.error('Failed to update client screeningInProgress:', updateClientResponse.statusText);
+            }
+        } catch (err) {
+            console.error('Error updating client screeningInProgress:', err);
+        }
+
         // Use benefit-specific note format matching estimations.js
         let noteText;
         if (benefit === 'SNAP') {
@@ -2940,6 +3258,11 @@ async function reopenBenefitScreening(benefit, memberIds, displayName) {
         await renderNotesContainer();
 
         console.log(`${benefit} screening reopened for ${displayName}.`);
+
+        // Refresh the screening control buttons (Terminate Screening / No Screening in Progress)
+        if (typeof loadScreeningButtons === 'function') {
+            loadScreeningButtons();
+        }
 
         // Refresh displays
         await displayHouseholdMembers();
