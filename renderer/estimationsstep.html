@@ -12,7 +12,7 @@
     <style>
 
         /* SNAP Flip Card Styles */
-.snap-flip-card {
+        .snap-flip-card {
     perspective: 1000px;
 }
 
@@ -98,52 +98,15 @@
             color: #444;
         }
         
-        #household-members-container {
-            display: absolute;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-            min-width: 500px;
-            max-width: 500px;
-            padding: 20px;
-            background: #f9f9f9;
-            border-radius: 8px;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        
-        .household-member-box {
-            border: none;
-            align-self: center;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            background: #f4f4f4;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        #household-row {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 20px;
         }
 
-        .household-member-box:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        }
-
-        .household-member-box h3 {
-            margin: 0 0 10px;
-            font-size: 1.2em;
-            color: #333;
-        }
-        
-        .household-member-box p {
-            margin: 5px 0;
-            font-size: 0.9em;
-            color: #555;
-        }
-        
-        .household-member-box p span {
-            font-weight: bold;
-            color: #444;
-        }
-        
         #snap-household-container {
             display: flex;
             flex-direction: column;
@@ -154,7 +117,7 @@
             background: #f9f9f9;
             border-radius: 8px;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
-            margin-top: 20px;
+            margin-top: 0;
         }
  
         #liheap-household-container {
@@ -167,7 +130,35 @@
             background: #f9f9f9;
             border-radius: 8px;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
-            margin-top: 20px;
+            margin-top: 0;
+        }
+        
+        #household-members-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            min-width: unset;
+            max-width: 1600px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .household-member-box {
+            border: none;
+            align-self: flex-start;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            background: #f4f4f4;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            min-width: 500px;
+            max-width: 500px;
+            box-sizing: border-box;
         }
         
         .snap-household-box h3 {
@@ -222,8 +213,10 @@
         <div id="notes-list"></div>
     </div>
 
-    <div id="snap-household-container"></div>
-    <div id="liheap-household-container"></div>
+    <div id="household-row">
+        <div id="snap-household-container"></div>
+        <div id="liheap-household-container"></div>
+    </div>
 
     <div id="household-members-container" class="household-member-container"></div>
 

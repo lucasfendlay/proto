@@ -12,6 +12,51 @@ document.addEventListener('DOMContentLoaded', async function () {
         return urlParams.get(name);
     }
 
+    function syncFlipCardHeights() {
+        document.querySelectorAll('.snap-flip-card').forEach(card => {
+            const inner = card.querySelector('.snap-flip-card-inner');
+            const front = card.querySelector('.snap-flip-card-front');
+            const back = card.querySelector('.snap-flip-card-back');
+            if (!inner || !front || !back) return;
+    
+            // Temporarily make back visible in flow to measure it
+            const backPrevPosition = back.style.position;
+            back.style.position = 'relative';
+            back.style.transform = 'none';
+            back.style.visibility = 'hidden';
+    
+            const frontHeight = front.scrollHeight;
+            const backHeight = back.scrollHeight;
+    
+            // Restore back styles
+            back.style.position = backPrevPosition || '';
+            back.style.transform = '';
+            back.style.visibility = '';
+    
+            inner.style.height = Math.max(frontHeight, backHeight) + 'px';
+        });
+    }
+    
+    // Run after DOM is ready and whenever content changes
+    window.addEventListener('DOMContentLoaded', () => {
+        // Use a MutationObserver to re-sync whenever card content changes
+        const observer = new MutationObserver(() => {
+            syncFlipCardHeights();
+        });
+    
+        document.querySelectorAll('.snap-flip-card').forEach(card => {
+            observer.observe(card, { childList: true, subtree: true, attributes: true });
+        });
+    
+        // Also listen for <details> toggle events anywhere in the page
+        document.addEventListener('toggle', () => {
+            syncFlipCardHeights();
+        }, true);
+    
+        // Initial sync (slight delay to let other scripts render cards)
+        setTimeout(syncFlipCardHeights, 300);
+    });
+
     // Load household members
     async function loadHouseholdMembers() {
         const clientId = getQueryParameter('id');
@@ -92,8 +137,6 @@ document.addEventListener('DOMContentLoaded', async function () {
                     const bObj = member[benefit];
                     if (!bObj) return;
                     if (bObj.screeningInProgress === false) return;
-                    if (bObj.eligibility?.includes('Not Checked')) return;
-                    if (benefit === 'PACE' && bObj.eligibility?.includes('Age Criteria Not Met')) return;
                     if (bObj.eligibility && bObj.eligibility.length > 0) openBenefits.push(benefit);
                 });
 
@@ -136,7 +179,6 @@ document.addEventListener('DOMContentLoaded', async function () {
                         : false;
 
                     if (benefit === 'PACE') {
-                        if (bObj.eligibility?.includes('Not Checked') || bObj.eligibility?.includes('Age Criteria Not Met')) return '';
                         const paceElig = bObj.eligibility?.map(capitalizeFirstLetter) || [];
                         const paceIsNot = paceElig.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED") || item.includes("AGE CRITERIA NOT MET") || item.includes("ENROLLED IN MEDICAID") || item.includes("RESIDENCY NOT MET"));
                         const paceNeedsInfo = paceElig.some(item => item.includes("NEEDS") || item.includes("DETERMINATION PENDING"));
@@ -662,23 +704,42 @@ document.addEventListener('DOMContentLoaded', async function () {
                 let isFlipped = false;
 
                 function syncCardHeight() {
-                    if (!isFlipped) {
-                        flipInner.style.height = frontSide.offsetHeight + 'px';
-                    } else {
-                        flipInner.style.height = backSide.offsetHeight + 'px';
-                    }
+                    // Reset heights before measuring so stale values don't inflate scrollHeight
+                    flipInner.style.height = 'auto';
+                    frontSide.style.minHeight = '0';
+                    backSide.style.height = 'auto';
+
+                    // Temporarily measure the back side by pulling it into flow
+                    const origPosition = backSide.style.position;
+                    const origTransform = backSide.style.transform;
+                    const origVisibility = backSide.style.visibility;
+                    backSide.style.position = 'relative';
+                    backSide.style.transform = 'none';
+                    backSide.style.visibility = 'hidden';
+
+                    const frontHeight = frontSide.scrollHeight;
+                    const backHeight = backSide.scrollHeight;
+
+                    // Restore back side styles
+                    backSide.style.position = origPosition;
+                    backSide.style.transform = origTransform;
+                    backSide.style.visibility = origVisibility;
+
+                    const maxHeight = Math.max(frontHeight, backHeight);
+                    flipInner.style.height = maxHeight + 'px';
+                    backSide.style.height = maxHeight + 'px';
+                    frontSide.style.minHeight = maxHeight + 'px';
                 }
 
                 requestAnimationFrame(() => syncCardHeight());
 
                 function doFlip() {
                     isFlipped = !isFlipped;
+                    syncCardHeight();
                     if (isFlipped) {
                         flipInner.style.transform = 'rotateY(180deg)';
-                        flipInner.style.height = backSide.offsetHeight + 'px';
                     } else {
                         flipInner.style.transform = 'rotateY(0deg)';
-                        flipInner.style.height = frontSide.offsetHeight + 'px';
                     }
                 }
 
@@ -921,6 +982,7 @@ function getCloseReasonsForBenefits(selectedBenefits) {
 
     const benefitReasons = {
         'PACE': [
+            { value: "Hard Determination", label: "Use Hard Determination Closeout Reasons" },
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Age Criteria Not Met", label: "Age Criteria Not Met" },
@@ -929,6 +991,7 @@ function getCloseReasonsForBenefits(selectedBenefits) {
             ...commonReasons
         ],
         'LIS': [
+            { value: "Hard Determination", label: "Use Hard Determination Closeout Reasons" },
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Ineligible - Assets", label: "Ineligible - Assets" },
@@ -937,6 +1000,7 @@ function getCloseReasonsForBenefits(selectedBenefits) {
             ...commonReasons
         ],
         'MSP': [
+            { value: "Hard Determination", label: "Use Hard Determination Closeout Reasons" },
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Ineligible - Assets", label: "Ineligible - Assets" },
@@ -945,6 +1009,7 @@ function getCloseReasonsForBenefits(selectedBenefits) {
             ...commonReasons
         ],
         'PTRR': [
+            { value: "Hard Determination", label: "Use Hard Determination Closeout Reasons" },
             { value: "Already Applied", label: "Already Applied This Year" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Age/Disability/Widow Criteria Not Met", label: "Age/Disability/Widow Criteria Not Met" },
@@ -959,6 +1024,7 @@ function getCloseReasonsForBenefits(selectedBenefits) {
     if (selectedBenefits.length === 1) {
         const benefit = selectedBenefits[0];
         return benefitReasons[benefit] || [
+            { value: "Hard Determination", label: "Use Hard Determination Closeout Reasons" },
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Ineligible - Assets", label: "Ineligible - Assets" },
@@ -1011,7 +1077,7 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
 
     // Build a list of all open benefits across all members (excluding SNAP and LIHEAP)
     const benefitKeys = ['PACE', 'LIS', 'MSP', 'PTRR'];
-    const allOpenBenefitEntries = []; // { memberId, memberName, benefit }
+    const allOpenBenefitEntries = []; // { memberId, memberName, benefit, isNotEligible, ineligibilityReason }
 
     allMembers.forEach(member => {
         const isDeceased = (member.deceased ?? '').toLowerCase() === 'yes';
@@ -1026,13 +1092,46 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
             if (!benefitObj) return;
             if (benefitObj.screeningInProgress === false) return;
             if (benefitObj.eligibility?.includes('Not Checked')) return;
-            if (benefit === 'PACE' && benefitObj.eligibility?.includes('Age Criteria Not Met')) return;
 
             if (benefitObj.eligibility && benefitObj.eligibility.length > 0) {
+
+                // Determine if this benefit is "not likely eligible" (red card)
+                const eligArray = benefitObj.eligibility.map(e => (e || '').toUpperCase());
+                const isNotEligible = eligArray.some(item =>
+                    item.includes("NOT") ||
+                    item.includes("ALREADY ENROLLED") ||
+                    item.includes("ALREADY APPLIED") ||
+                    item.includes("NOT INTERESTED") ||
+                    item.includes("AGE CRITERIA NOT MET") ||
+                    item.includes("ENROLLED IN MEDICAID") ||
+                    item.includes("NO FORMAL LEASE") ||
+                    item.includes("RESIDENCY NOT MET") ||
+                    item.includes("NOT ENROLLED IN MEDICARE")
+                );
+
+                // Extract the specific ineligibility reason for hard determination mapping
+                let ineligibilityReason = '';
+                if (isNotEligible) {
+                    ineligibilityReason = benefitObj.eligibility.find(e => {
+                        const upper = (e || '').toUpperCase();
+                        return upper.includes("NOT") ||
+                            upper.includes("ALREADY ENROLLED") ||
+                            upper.includes("ALREADY APPLIED") ||
+                            upper.includes("AGE") ||
+                            upper.includes("ENROLLED IN MEDICAID") ||
+                            upper.includes("NO FORMAL LEASE") ||
+                            upper.includes("RESIDENCY") ||
+                            upper.includes("NOT ENROLLED IN MEDICARE") ||
+                            upper.includes("NOT INTERESTED");
+                    }) || '';
+                }
+
                 allOpenBenefitEntries.push({
                     memberId: member.householdMemberId,
                     memberName,
-                    benefit
+                    benefit,
+                    isNotEligible,
+                    ineligibilityReason
                 });
             }
         });
@@ -1047,7 +1146,11 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
                 benefits: []
             };
         }
-        groupedByMember[entry.memberId].benefits.push(entry.benefit);
+        groupedByMember[entry.memberId].benefits.push({
+            benefit: entry.benefit,
+            isNotEligible: entry.isNotEligible,
+            ineligibilityReason: entry.ineligibilityReason
+        });
     });
 
     // Build selectable benefit tiles grouped by member
@@ -1117,13 +1220,15 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
         memberHeader.textContent = group.memberName;
         checkboxContainer.appendChild(memberHeader);
 
-        group.benefits.forEach(benefit => {
+        group.benefits.forEach(benefitEntry => {
             const tile = document.createElement('div');
             tile.className = 'close-member-benefit-tile';
-            tile.dataset.benefit = benefit;
+            tile.dataset.benefit = benefitEntry.benefit;
             tile.dataset.memberId = mId;
             tile.dataset.selected = 'false';
-            tile.textContent = benefit;
+            tile.dataset.isNotEligible = benefitEntry.isNotEligible ? 'true' : 'false';
+            tile.dataset.ineligibilityReason = benefitEntry.ineligibilityReason || '';
+            tile.textContent = benefitEntry.benefit;
             tile.style.cssText = `
                 display: block;
                 padding: 10px 16px;
@@ -1139,17 +1244,36 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
                 user-select: none;
             `;
 
+            // If this benefit is not eligible (red), add a visual indicator
+            if (benefitEntry.isNotEligible) {
+                tile.style.borderColor = '#f5c6cb';
+                tile.style.backgroundColor = '#f8d7da';
+                tile.style.color = '#721c24';
+            }
+
             tile.addEventListener('mouseover', () => {
                 if (tile.dataset.selected === 'false') {
-                    tile.style.borderColor = '#337ab7';
-                    tile.style.backgroundColor = '#e8f0fe';
+                    if (benefitEntry.isNotEligible) {
+                        tile.style.borderColor = '#c82333';
+                        tile.style.backgroundColor = '#f1b0b7';
+                    } else {
+                        tile.style.borderColor = '#337ab7';
+                        tile.style.backgroundColor = '#e8f0fe';
+                    }
                 }
             });
 
             tile.addEventListener('mouseout', () => {
                 if (tile.dataset.selected === 'false') {
-                    tile.style.borderColor = '#ccc';
-                    tile.style.backgroundColor = '#f9f9f9';
+                    if (benefitEntry.isNotEligible) {
+                        tile.style.borderColor = '#f5c6cb';
+                        tile.style.backgroundColor = '#f8d7da';
+                        tile.style.color = '#721c24';
+                    } else {
+                        tile.style.borderColor = '#ccc';
+                        tile.style.backgroundColor = '#f9f9f9';
+                        tile.style.color = '#333';
+                    }
                 }
             });
 
@@ -1162,9 +1286,15 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
                     tile.style.backgroundColor = '#007bff';
                     tile.style.color = 'white';
                 } else {
-                    tile.style.borderColor = '#ccc';
-                    tile.style.backgroundColor = '#f9f9f9';
-                    tile.style.color = '#333';
+                    if (benefitEntry.isNotEligible) {
+                        tile.style.borderColor = '#f5c6cb';
+                        tile.style.backgroundColor = '#f8d7da';
+                        tile.style.color = '#721c24';
+                    } else {
+                        tile.style.borderColor = '#ccc';
+                        tile.style.backgroundColor = '#f9f9f9';
+                        tile.style.color = '#333';
+                    }
                 }
 
                 // Update reason dropdown based on unique selected benefits
@@ -1178,8 +1308,32 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
         });
     });
 
-    // Initialize reason dropdown — nothing pre-selected
-    select.innerHTML = '<option value="">-- Select a reason --</option>';
+    // Auto-select tiles that are "not eligible" (red cards)
+    const hasAnyNotEligible = allOpenBenefitEntries.some(e => e.isNotEligible);
+    if (hasAnyNotEligible) {
+        const allTiles = checkboxContainer.querySelectorAll('.close-member-benefit-tile');
+        allTiles.forEach(tile => {
+            if (tile.dataset.isNotEligible === 'true') {
+                tile.dataset.selected = 'true';
+                tile.style.borderColor = 'black';
+                tile.style.backgroundColor = '#007bff';
+                tile.style.color = 'white';
+            }
+        });
+
+        // Update reason dropdown based on auto-selected benefits
+        const autoSelectedBenefitNames = Array.from(
+            checkboxContainer.querySelectorAll('.close-member-benefit-tile[data-selected="true"]')
+        ).map(t => t.dataset.benefit);
+        updateReasonDropdown([...new Set(autoSelectedBenefitNames)]);
+
+        // Auto-select "Hard Determination" in the dropdown
+        select.value = 'Hard Determination';
+    } else {
+        // Initialize reason dropdown — nothing pre-selected
+        select.innerHTML = '<option value="">-- Select a reason --</option>';
+    }
+
     modal.style.display = 'flex';
 
     // Remove old listener by cloning
@@ -1207,23 +1361,33 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
             selectedTiles.forEach(tile => {
                 const mId = tile.dataset.memberId;
                 const benefit = tile.dataset.benefit;
+                const ineligibilityReason = tile.dataset.ineligibilityReason || '';
                 if (!closuresByMember[mId]) closuresByMember[mId] = [];
-                closuresByMember[mId].push(benefit);
+                closuresByMember[mId].push({ benefit, ineligibilityReason });
             });
 
             // Apply closures to each member
             const noteLines = [];
-            for (const [mId, benefits] of Object.entries(closuresByMember)) {
+            for (const [mId, benefitEntries] of Object.entries(closuresByMember)) {
                 const targetMember = allMembers.find(m => String(m.householdMemberId) === String(mId));
                 if (targetMember) {
                     const memberName = `${capitalizeFirstLetter(targetMember.firstName)} ${capitalizeFirstLetter(targetMember.lastName)}`;
-                    for (const benefit of benefits) {
-                        if (targetMember[benefit]) {
-                            targetMember[benefit].screeningInProgress = false;
-                            targetMember[benefit].screeningCloseReason = reason;
+                    const benefitNoteLines = [];
+                    for (const entry of benefitEntries) {
+                        if (targetMember[entry.benefit]) {
+                            // Determine the actual close reason
+                            let closeReason;
+                            if (reason === 'Hard Determination') {
+                                closeReason = mapHardDeterminationReason(entry.benefit, entry.ineligibilityReason);
+                            } else {
+                                closeReason = reason;
+                            }
+                            targetMember[entry.benefit].screeningInProgress = false;
+                            targetMember[entry.benefit].screeningCloseReason = closeReason;
+                            benefitNoteLines.push(`${entry.benefit} — ${closeReason}`);
                         }
                     }
-                    noteLines.push(`<br><strong>${memberName}:</strong><br> ${benefits.join('<br>')}`);
+                    noteLines.push(`<br><strong>${memberName}:</strong><br> ${benefitNoteLines.join('<br>')}`);
                 }
             }
 
@@ -1235,7 +1399,7 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
 
             if (saveResponse.ok) {
                 modal.style.display = 'none';
-                const noteText = `<strong>Screening(s) closed.</strong><br>${noteLines.join('<br>')}<br><br>Reason: ${reason}`;
+                const noteText = `<strong>Screening(s) closed.</strong><br>${noteLines.join('<br>')}`;
                 await addNoteToClient(clientId, noteText);
                 await renderNotesContainer();
                 await displayHouseholdMembers();
@@ -1249,6 +1413,56 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
             console.error('Error closing screening:', error);
         }
     });
+}
+
+// Maps the ineligibility reason from the eligibility array to an appropriate close reason
+function mapHardDeterminationReason(benefit, ineligibilityReason) {
+    const upper = (ineligibilityReason || '').toUpperCase();
+
+    // Common patterns across benefits
+    if (upper.includes('ALREADY ENROLLED')) return 'Already Enrolled';
+    if (upper.includes('ALREADY APPLIED')) return 'Already Applied';
+    if (upper.includes('NOT INTERESTED')) return 'Client Not Interested';
+    if (upper.includes('ENROLLED IN MEDICAID')) return 'Enrolled in Medicaid';
+    if (upper.includes('NOT ENROLLED IN MEDICARE')) return 'Not Enrolled in Medicare';
+
+    // Benefit-specific mappings
+    switch (benefit) {
+        case 'PACE':
+            if (upper.includes('AGE CRITERIA')) return 'Age Criteria Not Met';
+            if (upper.includes('RESIDENCY')) return 'Residency Not Met';
+            if (upper.includes('INCOME')) return 'Ineligible - Income';
+            if (upper.includes('INELIGIBLE') || upper.includes('NOT LIKELY')) return 'Ineligible - Income';
+            break;
+        case 'LIS':
+            if (upper.includes('INCOME')) return 'Ineligible - Income';
+            if (upper.includes('ASSETS') || upper.includes('ASSET')) return 'Ineligible - Assets';
+            if (upper.includes('NOT LIKELY')) {
+                if (upper.includes('INCOME')) return 'Ineligible - Income';
+                if (upper.includes('ASSETS') || upper.includes('ASSET')) return 'Ineligible - Assets';
+                return 'Ineligible - Income';
+            }
+            break;
+        case 'MSP':
+            if (upper.includes('INCOME')) return 'Ineligible - Income';
+            if (upper.includes('ASSETS') || upper.includes('ASSET')) return 'Ineligible - Assets';
+            if (upper.includes('NOT LIKELY')) {
+                if (upper.includes('INCOME')) return 'Ineligible - Income';
+                if (upper.includes('ASSETS') || upper.includes('ASSET')) return 'Ineligible - Assets';
+                return 'Ineligible - Income';
+            }
+            break;
+        case 'PTRR':
+            if (upper.includes('AGE') || upper.includes('DISABILITY') || upper.includes('WIDOW')) return 'Age/Disability/Widow Criteria Not Met';
+            if (upper.includes('NO FORMAL LEASE')) return 'No Formal Lease';
+            if (upper.includes('NO RELEVANT EXPENSES')) return 'No Relevant Expenses';
+            if (upper.includes('INCOME')) return 'Ineligible - Income';
+            if (upper.includes('NOT LIKELY')) return 'Ineligible - Income';
+            break;
+    }
+
+    // Fallback: use the raw ineligibility reason or a generic one
+    return ineligibilityReason || 'Ineligible - Hard Determination';
 }
 
     async function checkAndAutoTerminateScreening(members) {
@@ -1562,8 +1776,20 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
                         ">↻</div>
                         <h3>SNAP HOUSEHOLD</h3>
                         <hr class="separator-bar">
-                        <p><em>ESTIMATED ELIGIBILITY SCRIPTING</em></p>
+                        <p><em>
+                        
+                        ${benefitAmount <= 24 
+                            ? `Your household looks likely eligible for the Supplemental Nutrition Assistance Program (SNAP) benefits. If approved, you would receive an EBT card loaded with your benefit amount each month, which you can use at any participating grocery stores and farmers markets to buy eligible food items.`
+                            : `Your household looks likely eligible for up to $${benefitAmount.toFixed(2)} per month in the Supplemental Nutrition Assistance Program (SNAP) benefits. If approved, you would receive an EBT card loaded with your benefit amount each month, which you can use at any participating grocery stores and farmers markets to buy eligible food items.`
+                        }
+                        
+                        </em></p>
+                        ${household[0]?.SNAP?.expeditedEligibility && household[0]?.SNAP?.expeditedEligibility.toLowerCase().startsWith('yes') 
+                            ? `<p><em>In addition, your household may also qualify for expedited SNAP processing. This means your application could be processed within 7 days instead of the standard 30-day timeline, so you can start receiving benefits sooner.</em></p>`
+                            : ''
+                        }
                         <br>
+
                         <button class="benefit-apply-button" data-benefit="SNAP" style="display: ${isLikelyEligible ? 'block' : 'none'}; margin: 0 auto;">
                             ${household.every(member => member.SNAP?.application?.some(app => app.applying)) ? 'Stop Applying' : 'Apply for SNAP'}
                         </button>
@@ -1590,23 +1816,42 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
             let isFlipped = false;
 
             function syncCardHeight() {
-                if (!isFlipped) {
-                    flipInner.style.height = frontSide.offsetHeight + 'px';
-                } else {
-                    flipInner.style.height = backSide.offsetHeight + 'px';
-                }
+                // Reset heights before measuring so stale values don't inflate scrollHeight
+                flipInner.style.height = 'auto';
+                frontSide.style.minHeight = '0';
+                backSide.style.height = 'auto';
+
+                // Temporarily measure the back side by pulling it into flow
+                const origPosition = backSide.style.position;
+                const origTransform = backSide.style.transform;
+                const origVisibility = backSide.style.visibility;
+                backSide.style.position = 'relative';
+                backSide.style.transform = 'none';
+                backSide.style.visibility = 'hidden';
+
+                const frontHeight = frontSide.scrollHeight;
+                const backHeight = backSide.scrollHeight;
+
+                // Restore back side styles
+                backSide.style.position = origPosition;
+                backSide.style.transform = origTransform;
+                backSide.style.visibility = origVisibility;
+
+                const maxHeight = Math.max(frontHeight, backHeight);
+                flipInner.style.height = maxHeight + 'px';
+                backSide.style.height = maxHeight + 'px';
+                frontSide.style.minHeight = maxHeight + 'px';
             }
 
             requestAnimationFrame(() => syncCardHeight());
 
             function doFlip() {
                 isFlipped = !isFlipped;
+                syncCardHeight();
                 if (isFlipped) {
                     flipInner.style.transform = 'rotateY(180deg)';
-                    flipInner.style.height = backSide.offsetHeight + 'px';
                 } else {
                     flipInner.style.transform = 'rotateY(0deg)';
-                    flipInner.style.height = frontSide.offsetHeight + 'px';
                 }
             }
 
@@ -1875,23 +2120,42 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
         let isFlipped = false;
 
         function syncCardHeight() {
-            if (!isFlipped) {
-                flipInner.style.height = frontSide.offsetHeight + 'px';
-            } else {
-                flipInner.style.height = backSide.offsetHeight + 'px';
-            }
+            // Reset heights before measuring so stale values don't inflate scrollHeight
+            flipInner.style.height = 'auto';
+            frontSide.style.minHeight = '0';
+            backSide.style.height = 'auto';
+
+            // Temporarily measure the back side by pulling it into flow
+            const origPosition = backSide.style.position;
+            const origTransform = backSide.style.transform;
+            const origVisibility = backSide.style.visibility;
+            backSide.style.position = 'relative';
+            backSide.style.transform = 'none';
+            backSide.style.visibility = 'hidden';
+
+            const frontHeight = frontSide.scrollHeight;
+            const backHeight = backSide.scrollHeight;
+
+            // Restore back side styles
+            backSide.style.position = origPosition;
+            backSide.style.transform = origTransform;
+            backSide.style.visibility = origVisibility;
+
+            const maxHeight = Math.max(frontHeight, backHeight);
+            flipInner.style.height = maxHeight + 'px';
+            backSide.style.height = maxHeight + 'px';
+            frontSide.style.minHeight = maxHeight + 'px';
         }
 
         requestAnimationFrame(() => syncCardHeight());
 
         function doFlip() {
             isFlipped = !isFlipped;
+            syncCardHeight();
             if (isFlipped) {
                 flipInner.style.transform = 'rotateY(180deg)';
-                flipInner.style.height = backSide.offsetHeight + 'px';
             } else {
                 flipInner.style.transform = 'rotateY(0deg)';
-                flipInner.style.height = frontSide.offsetHeight + 'px';
             }
         }
 

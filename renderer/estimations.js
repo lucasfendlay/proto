@@ -367,7 +367,8 @@ function getCloseReasonsForBenefits(selectedBenefits) {
     const commonReasons = [
         { value: "Client Not Interested", label: "Not Interested" },
         { value: "Too Confusing", label: "Too Confusing" },
-        { value: "Will Call Back", label: "Will Call Back" }
+        { value: "Will Call Back", label: "Will Call Back" },
+        { value: "Hard Determination", label: "Use Hard Determination Closeout Reasons" }
     ];
 
     const benefitReasons = {
@@ -448,6 +449,70 @@ function updateReasonDropdown(selectedBenefits) {
         option.textContent = reason.label;
         select.appendChild(option);
     });
+}
+
+// Map "Hard Determination" to auto-resolved reasons per benefit based on eligibility
+function mapHardDeterminationReason(benefit, member) {
+    const eligibility = member[benefit]?.eligibility || [];
+    const eligStr = eligibility.join(' ').toUpperCase();
+
+    if (benefit === 'PACE') {
+        if (eligStr.includes('AGE CRITERIA NOT MET')) return 'Age Criteria Not Met';
+        if (eligStr.includes('ENROLLED IN MEDICAID')) return 'Enrolled in Medicaid';
+        if (eligStr.includes('RESIDENCY NOT MET')) return 'Residency Not Met';
+        if (eligStr.includes('ALREADY ENROLLED')) return 'Already Enrolled';
+        if (eligStr.includes('NOT INTERESTED')) return 'Client Not Interested';
+        if (eligStr.includes('NOT LIKELY ELIGIBLE') && eligStr.includes('INCOME')) return 'Ineligible - Income';
+    }
+    if (benefit === 'LIS') {
+        if (eligStr.includes('NOT ENROLLED IN MEDICARE')) return 'Not Enrolled in Medicare';
+        if (eligStr.includes('ENROLLED IN MEDICAID')) return 'Enrolled in Medicaid';
+        if (eligStr.includes('ALREADY ENROLLED')) return 'Already Enrolled';
+        if (eligStr.includes('NOT INTERESTED')) return 'Client Not Interested';
+        if (eligStr.includes('NOT LIKELY ELIGIBLE') && eligStr.includes('INCOME')) return 'Ineligible - Income';
+        if (eligStr.includes('NOT LIKELY ELIGIBLE') && eligStr.includes('ASSETS')) return 'Ineligible - Assets';
+    }
+    if (benefit === 'MSP') {
+        if (eligStr.includes('NOT ENROLLED IN MEDICARE')) return 'Not Enrolled in Medicare';
+        if (eligStr.includes('ENROLLED IN MEDICAID')) return 'Enrolled in Medicaid';
+        if (eligStr.includes('ALREADY ENROLLED')) return 'Already Enrolled';
+        if (eligStr.includes('NOT INTERESTED')) return 'Client Not Interested';
+        if (eligStr.includes('NOT LIKELY ELIGIBLE') && eligStr.includes('INCOME')) return 'Ineligible - Income';
+        if (eligStr.includes('NOT LIKELY ELIGIBLE') && eligStr.includes('ASSETS')) return 'Ineligible - Assets';
+    }
+    if (benefit === 'PTRR') {
+        if (eligStr.includes('NO FORMAL LEASE')) return 'No Formal Lease';
+        if (eligStr.includes('ALREADY APPLIED')) return 'Already Applied';
+        if (eligStr.includes('NOT INTERESTED')) return 'Client Not Interested';
+        if (eligStr.includes('AGE') || eligStr.includes('DISABILITY') || eligStr.includes('WIDOW') || eligStr.includes('CRITERIA NOT MET')) return 'Age/Disability/Widow Criteria Not Met';
+        if (eligStr.includes('NOT LIKELY ELIGIBLE') && eligStr.includes('INCOME')) return 'Ineligible - Income';
+        if (eligStr.includes('NO RELEVANT EXPENSES')) return 'No Relevant Expenses';
+    }
+
+    return null; // No auto-mapping found
+}
+
+// Check if a benefit for a member is "red" (not eligible / hard closeout candidate)
+function isBenefitNotEligible(benefit, member) {
+    const eligibility = member[benefit]?.eligibility || [];
+    const eligStr = eligibility.join(' ').toUpperCase();
+
+    // Hard closeout statuses — these should always be auto-selected
+    const hardCloseouts = [
+        'ALREADY ENROLLED', 'ALREADY APPLIED',
+        'NOT ENROLLED IN MEDICARE', 'ENROLLED IN MEDICAID',
+        'AGE CRITERIA NOT MET', 'RESIDENCY NOT MET',
+        'NO FORMAL LEASE', 'NOT INTERESTED'
+    ];
+
+    for (const status of hardCloseouts) {
+        if (eligStr.includes(status)) return true;
+    }
+
+    // Also check for red (NOT LIKELY ELIGIBLE)
+    if (eligStr.includes('NOT LIKELY ELIGIBLE') || eligStr.includes('NOT ELIGIBLE')) return true;
+
+    return false;
 }
 
 function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
@@ -567,6 +632,9 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
     // Pre-select the tiles for the member who initiated the modal
     const initiatingMemberId = memberId;
 
+    // Track which tiles should be auto-selected (red/hard closeout)
+    const autoSelectEntries = [];
+
     Object.keys(groupedByMember).forEach(mId => {
         const group = groupedByMember[mId];
 
@@ -577,23 +645,32 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
         checkboxContainer.appendChild(memberHeader);
 
         group.benefits.forEach(benefit => {
+            const member = allMembers.find(m => m.householdMemberId === mId);
+            const isRedBenefit = member ? isBenefitNotEligible(benefit, member) : false;
+
             const tile = document.createElement('div');
             tile.className = 'close-member-benefit-tile';
             tile.dataset.benefit = benefit;
             tile.dataset.memberId = mId;
-            tile.dataset.selected = 'false';
+            // Auto-select red/hard-closeout benefits
+            tile.dataset.selected = isRedBenefit ? 'true' : 'false';
             tile.textContent = benefit;
+
+            if (isRedBenefit) {
+                autoSelectEntries.push({ memberId: mId, benefit });
+            }
+
             tile.style.cssText = `
                 display: block;
                 padding: 10px 16px;
                 margin: 6px 0;
-                border: 2px solid #ccc;
+                border: 2px solid ${isRedBenefit ? 'black' : '#ccc'};
                 border-radius: 6px;
                 cursor: pointer;
                 font-size: 14px;
                 font-weight: 500;
-                color: #333;
-                background-color: #f9f9f9;
+                color: ${isRedBenefit ? 'white' : '#333'};
+                background-color: ${isRedBenefit ? '#007bff' : '#f9f9f9'};
                 transition: all 0.2s ease;
                 user-select: none;
             `;
@@ -637,8 +714,22 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
         });
     });
 
-    // Initialize reason dropdown — nothing pre-selected
-    select.innerHTML = '<option value="">-- Select a reason --</option>';
+    // Initialize reason dropdown based on auto-selected benefits
+    if (autoSelectEntries.length > 0) {
+        const autoSelectedBenefitNames = [...new Set(autoSelectEntries.map(e => e.benefit))];
+        updateReasonDropdown(autoSelectedBenefitNames);
+
+        // If all auto-selected benefits are red, pre-select "Hard Determination"
+        const allAutoSelectedAreRed = autoSelectEntries.every(entry => {
+            const member = allMembers.find(m => m.householdMemberId === entry.memberId);
+            return member ? isBenefitNotEligible(entry.benefit, member) : false;
+        });
+        if (allAutoSelectedAreRed) {
+            select.value = 'Hard Determination';
+        }
+    } else {
+        select.innerHTML = '<option value="">-- Select a reason --</option>';
+    }
 
     modal.style.display = 'flex';
 
@@ -671,19 +762,32 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
                 closuresByMember[mId].push(benefit);
             });
 
-            // Apply closures to each member
+            // Apply closures to each member — handle "Hard Determination" per-benefit mapping
             const noteLines = [];
             for (const [mId, benefits] of Object.entries(closuresByMember)) {
                 const targetMember = allMembers.find(m => m.householdMemberId === mId);
                 if (targetMember) {
                     const memberName = `${capitalizeFirstLetter(targetMember.firstName)} ${capitalizeFirstLetter(targetMember.lastName)}`;
+                    const benefitNoteDetails = [];
+
                     for (const benefit of benefits) {
                         if (targetMember[benefit]) {
+                            let closeReason = reason;
+
+                            // If "Hard Determination", map to the specific reason per benefit
+                            if (reason === 'Hard Determination') {
+                                const mappedReason = mapHardDeterminationReason(benefit, targetMember);
+                                if (mappedReason) {
+                                    closeReason = mappedReason;
+                                }
+                            }
+
                             targetMember[benefit].screeningInProgress = false;
-                            targetMember[benefit].screeningCloseReason = reason;
+                            targetMember[benefit].screeningCloseReason = closeReason;
+                            benefitNoteDetails.push(`${benefit} (${closeReason})`);
                         }
                     }
-                    noteLines.push(`<br><strong>${memberName}:</strong><br> ${benefits.join('<br>')}`);
+                    noteLines.push(`<br><strong>${memberName}:</strong><br> ${benefitNoteDetails.join('<br>')}`);
                 }
             }
 
@@ -695,7 +799,9 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
 
             if (saveResponse.ok) {
                 modal.style.display = 'none';
-                const noteText = `<strong>Screening(s) closed.</strong><br>${noteLines.join('<br>')}<br><br>Reason: ${reason}`;
+                const noteText = reason === 'Hard Determination'
+                    ? `<strong>Screening(s) closed (Hard Determination).</strong><br>${noteLines.join('<br>')}`
+                    : `<strong>Screening(s) closed.</strong><br>${noteLines.join('<br>')}<br><br>Reason: ${reason}`;
                 await addNoteToClient(clientId, noteText);
                 await renderNotesContainer();
                 await displayHouseholdMembers();
