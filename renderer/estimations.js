@@ -388,7 +388,7 @@ function getCloseReasonsForBenefits(selectedBenefits) {
             ...commonReasons
         ],
         'MSP': [
-            { value: "Already Enrolled", label: "Already Enrolled in MSP" },
+            { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Ineligible - Assets", label: "Ineligible - Assets" },
             { value: "Not Enrolled in Medicare", label: "Not Enrolled in Medicare" },
@@ -2914,7 +2914,7 @@ function createStopScreeningButton() {
         snapHouseholdContainer.parentNode.insertBefore(stoppedContainer, snapHouseholdContainer);
 
         document.getElementById('reopen-all-screening-btn').addEventListener('click', async () => {
-            const confirmAction = confirm("Are you sure you want to reopen screenings for all benefits?");
+            const confirmAction = confirm("Are you sure you want to start a new screening?");
             if (!confirmAction) return;
 
             const activeUser = sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User';

@@ -118,144 +118,458 @@ document.addEventListener('DOMContentLoaded', async function () {
                     `;
                 }
 
-                                // Helper to render open benefit section
-                                function benefitOpenSection(benefit) {
-                                    const bObj = member[benefit];
-                                    if (!bObj) return '';
-                
-                                    if (benefit === 'PACE') {
-                                        if (bObj.eligibility?.includes('Not Checked') || bObj.eligibility?.includes('Age Criteria Not Met')) return '';
-                                        const paceElig = bObj.eligibility?.map(capitalizeFirstLetter) || [];
-                                        const paceIsNot = paceElig.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED") || item.includes("AGE CRITERIA NOT MET") || item.includes("ENROLLED IN MEDICAID") || item.includes("RESIDENCY NOT MET"));
-                                        const paceNeedsInfo = paceElig.some(item => item.includes("NEEDS") || item.includes("DETERMINATION PENDING"));
-                                        const paceIsLikely = !paceIsNot && !paceNeedsInfo;
-                                        const paceBgColor = paceIsNot ? '#f8d7da' : paceNeedsInfo ? '#fff3cd' : paceIsLikely ? '#d4edda' : 'transparent';
-                                        const paceBorderColor = paceIsNot ? '#f5c6cb' : paceNeedsInfo ? '#ffc107' : paceIsLikely ? '#c3e6cb' : '#ccc';
-                
-                                        return `
-                                            <details class="custom-details" style="background-color: ${paceBgColor}; border: 1px solid ${paceBorderColor}; border-radius: 4px; padding: 8px; margin: 8px 0; width: 100%; box-sizing: border-box;">
-                                                <summary><br><strong>PACE</strong><br> 
-                                                <p><strong></strong> ${
-                                                    bObj.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
-                                                }<br>
-                                                <button class="benefit-apply-button" data-benefit="PACE" data-member-id="${member.householdMemberId}" 
-                                                    style="display: ${
-                                                        bObj.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('already'))
-                                                            ? 'none'
-                                                            : 'block'
-                                                    }; margin: 0 auto">
-                                                    ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for PACE'}
-                                                </button>
-                                                <br>
-                                                </summary></p>
-                                                <hr class="separator-bar">
-                                                <p><strong>Gross Adjusted Income:</strong> $${bObj.combinedIncome?.toFixed(2) || 'N/A'}</p>
-                                            </details>
-                                        `;
-                                    }
-                
-                                    if (benefit === 'LIS') {
-                                        if (bObj.eligibility?.includes('Not Checked')) return '';
-                                        const lisElig = bObj.eligibility?.map(capitalizeFirstLetter) || [];
-                                        const lisIsNot = lisElig.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED") || item.includes("NOT ENROLLED IN MEDICARE") || item.includes("ENROLLED IN MEDICAID"));
-                                        const lisNeedsInfo = lisElig.some(item => item.includes("NEEDS") || item.includes("DETERMINATION PENDING"));
-                                        const lisIsLikely = !lisIsNot && !lisNeedsInfo;
-                                        const lisBgColor = lisIsNot ? '#f8d7da' : lisNeedsInfo ? '#fff3cd' : lisIsLikely ? '#d4edda' : 'transparent';
-                                        const lisBorderColor = lisIsNot ? '#f5c6cb' : lisNeedsInfo ? '#ffc107' : lisIsLikely ? '#c3e6cb' : '#ccc';
-                
-                                        return `
-                                            <details class="custom-details" style="background-color: ${lisBgColor}; border: 1px solid ${lisBorderColor}; border-radius: 4px; padding: 8px; margin: 8px 0; width: 100%; box-sizing: border-box;">
-                                                <summary><br><strong>LIS</strong><br>
-                                                <p><strong></strong> ${
-                                                    bObj.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
-                                                }<br>
-                                                <button class="benefit-apply-button" data-benefit="LIS" data-member-id="${member.householdMemberId}" 
-                                                    style="display: ${
-                                                        bObj.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('already'))
-                                                            ? 'none'
-                                                            : 'block'
-                                                    }; margin: 0 auto">
-                                                    ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for LIS'}
-                                                </button>
-                                                <br>
-                                                </summary></p>
-                                                <hr class="separator-bar">
-                                                <p><strong>Gross Income:</strong> $${bObj.combinedIncome?.toFixed(2) || 'N/A'}</p>
-                                                <p><strong>Combined Assets:</strong> $${bObj.combinedAssets?.toFixed(2) || 'N/A'}</p>
-                                            </details>
-                                        `;
-                                    }
-                
-                                    if (benefit === 'MSP') {
-                                        if (bObj.eligibility?.includes('Not Checked')) return '';
-                                        const mspElig = bObj.eligibility?.map(capitalizeFirstLetter) || [];
-                                        const mspIsNot = mspElig.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED") || item.includes("NOT ENROLLED IN MEDICARE") || item.includes("ENROLLED IN MEDICAID"));
-                                        const mspNeedsInfo = mspElig.some(item => item.includes("NEEDS") || item.includes("DETERMINATION PENDING"));
-                                        const mspIsLikely = !mspIsNot && !mspNeedsInfo;
-                                        const mspBgColor = mspIsNot ? '#f8d7da' : mspNeedsInfo ? '#fff3cd' : mspIsLikely ? '#d4edda' : 'transparent';
-                                        const mspBorderColor = mspIsNot ? '#f5c6cb' : mspNeedsInfo ? '#ffc107' : mspIsLikely ? '#c3e6cb' : '#ccc';
-                
-                                        return `
-                                            <details class="custom-details" style="background-color: ${mspBgColor}; border: 1px solid ${mspBorderColor}; border-radius: 4px; padding: 8px; margin: 8px 0; width: 100%; box-sizing: border-box;">
-                                                <summary><br><strong>MSP</strong>
-                                                <p><strong></strong> ${
-                                                    bObj.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
-                                                }<br>
-                                                <button class="benefit-apply-button" data-benefit="MSP" data-member-id="${member.householdMemberId}" 
-                                                    style="display: ${
-                                                        Array.isArray(bObj.eligibility) &&
-                                                        bObj.eligibility.some(e => 
-                                                            e?.toLowerCase().includes('not') || 
-                                                            e?.toLowerCase().includes('needs') || 
-                                                            e?.toLowerCase().includes('already')
-                                                        )
-                                                            ? 'none'
-                                                            : 'block'
-                                                    }; margin: 0 auto;">
-                                                    ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for MSP'}
-                                                </button>
-                                                <br>
-                                                </summary></p>
-                                                <hr class="separator-bar">
-                                                <p><strong>Gross Adjusted Income:</strong> $${bObj.combinedIncome?.toFixed(2) || 'N/A'}</p>
-                                                <p><strong>Combined Assets:</strong> $${bObj.combinedAssets?.toFixed(2) || 'N/A'}</p>
-                                            </details>
-                                        `;
-                                    }
-                
-                                    if (benefit === 'PTRR') {
-                                        if (bObj.eligibility?.includes('Not Checked')) return '';
-                                        const ptrrElig = bObj.eligibility?.map(capitalizeFirstLetter) || [];
-                                        const ptrrIsNot = ptrrElig.some(item => item.includes("NOT") || item.includes("ALREADY APPLIED") || item.includes("NOT INTERESTED") || item.includes("NO FORMAL LEASE") || item.includes("AGE") || item.includes("CRITERIA NOT MET"));
-                                        const ptrrNeedsInfo = ptrrElig.some(item => item.includes("NEEDS") || item.includes("DETERMINATION PENDING"));
-                                        const ptrrIsLikely = !ptrrIsNot && !ptrrNeedsInfo;
-                                        const ptrrBgColor = ptrrIsNot ? '#f8d7da' : ptrrNeedsInfo ? '#fff3cd' : ptrrIsLikely ? '#d4edda' : 'transparent';
-                                        const ptrrBorderColor = ptrrIsNot ? '#f5c6cb' : ptrrNeedsInfo ? '#ffc107' : ptrrIsLikely ? '#c3e6cb' : '#ccc';
-                
-                                        return `
-                                            <details class="custom-details" style="background-color: ${ptrrBgColor}; border: 1px solid ${ptrrBorderColor}; border-radius: 4px; padding: 8px; margin: 8px 0; width: 100%; box-sizing: border-box;">
-                                                <summary><br><strong>PTRR</strong>
-                                                <p><strong></strong> ${
-                                                    bObj.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
-                                                }<br>
-                                                <button class="benefit-apply-button" data-benefit="PTRR" data-member-id="${member.householdMemberId}" 
-                                                    style="display: ${
-                                                        bObj.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('no') || e.toLowerCase().includes('already'))
-                                                            ? 'none'
-                                                            : 'block'
-                                                    }; margin: 0 auto">
-                                                    ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for PTRR'}
-                                                </button>
-                                                <br>
-                                                </summary></p>
-                                                <hr class="separator-bar">
-                                                <p><strong>Gross Income:</strong> $${bObj.combinedIncome?.toFixed(2) || 'N/A'}</p>
-                                            </details>
-                                        `;
-                                    }
-                
-                                    return '';
-                                }
+                // Helper to render open benefit section
+                function benefitOpenSection(benefit) {
+                    const bObj = member[benefit];
+                    if (!bObj) return '';
+
+                    const isEligible = Array.isArray(bObj.eligibility)
+                        ? !bObj.eligibility.some(item =>
+                            item.toLowerCase().includes("not") ||
+                            item.toLowerCase().includes("needs") ||
+                            item.toLowerCase().includes("already") ||
+                            item.toLowerCase().includes("age criteria") ||
+                            item.toLowerCase().includes("enrolled in medicaid") ||
+                            item.toLowerCase().includes("no formal lease") ||
+                            item.toLowerCase().includes("residency")
+                        )
+                        : false;
+
+                    if (benefit === 'PACE') {
+                        if (bObj.eligibility?.includes('Not Checked') || bObj.eligibility?.includes('Age Criteria Not Met')) return '';
+                        const paceElig = bObj.eligibility?.map(capitalizeFirstLetter) || [];
+                        const paceIsNot = paceElig.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED") || item.includes("AGE CRITERIA NOT MET") || item.includes("ENROLLED IN MEDICAID") || item.includes("RESIDENCY NOT MET"));
+                        const paceNeedsInfo = paceElig.some(item => item.includes("NEEDS") || item.includes("DETERMINATION PENDING"));
+                        const paceIsLikely = !paceIsNot && !paceNeedsInfo;
+                        const paceBgColor = paceIsNot ? '#f8d7da' : paceNeedsInfo ? '#fff3cd' : paceIsLikely ? '#d4edda' : 'transparent';
+                        const paceBorderColor = paceIsNot ? '#f5c6cb' : paceNeedsInfo ? '#ffc107' : paceIsLikely ? '#c3e6cb' : '#ccc';
+
+                        return `
+                            <div class="benefit-flip-card" data-benefit="PACE" data-member-id="${member.householdMemberId}" style="
+                                perspective: 1000px;
+                                width: 100%;
+                                margin: 8px 0;
+                            ">
+                                <div class="benefit-flip-card-inner" style="
+                                    position: relative;
+                                    width: 100%;
+                                    transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+                                    transform-style: preserve-3d;
+                                ">
+                                    <!-- FRONT SIDE -->
+                                    <div class="benefit-flip-card-front" style="
+                                        backface-visibility: hidden;
+                                        -webkit-backface-visibility: hidden;
+                                        background-color: ${paceBgColor};
+                                        border: 1px solid ${paceBorderColor};
+                                        border-radius: 4px;
+                                        padding: 8px;
+                                        position: relative;
+                                        z-index: 1;
+                                        width: 100%;
+                                        box-sizing: border-box;
+                                    ">
+                                        <div class="benefit-flip-hint" style="
+                                            position: absolute;
+                                            top: 4px;
+                                            right: 8px;
+                                            font-size: 32px;
+                                            color: #000;
+                                            cursor: pointer;
+                                            display: ${isEligible ? 'block' : 'none'};
+                                        ">↻</div>
+                                        <details class="custom-details" style="background-color: ${paceBgColor}; border-radius: 4px; padding: 8px; width: 100%; box-sizing: border-box;">
+                                            <summary><br><strong>PACE</strong><br> 
+                                            <p><strong></strong> ${
+                                                bObj.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+                                            }<br>
+
+                                            <br>
+                                            </summary></p>
+                                            <hr class="separator-bar">
+                                            <p><strong>Gross Adjusted Income:</strong> $${bObj.combinedIncome?.toFixed(2) || 'N/A'}</p>
+                                        </details>
+                                                                                    <button class="benefit-apply-button" data-benefit="PACE" data-member-id="${member.householdMemberId}" 
+                                                style="display: ${
+                                                    bObj.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('already'))
+                                                        ? 'none'
+                                                        : 'block'
+                                                }; margin: 0 auto">
+                                                ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for PACE'}
+                                            </button>
+                                    </div>
+
+                                    <!-- BACK SIDE -->
+                                    <div class="benefit-flip-card-back" style="
+                                        backface-visibility: hidden;
+                                        -webkit-backface-visibility: hidden;
+                                        transform: rotateY(180deg);
+                                        position: absolute;
+                                        top: 0;
+                                        left: 0;
+                                        width: 100%;
+                                        box-sizing: border-box;
+                                        background-color: ${paceBgColor};
+                                        border: 1px solid ${paceBorderColor};
+                                        border-radius: 4px;
+                                        padding: 8px;
+                                    ">
+                                        <div class="benefit-flip-hint benefit-flip-back-hint" style="
+                                            position: absolute;
+                                            top: 4px;
+                                            right: 8px;
+                                            font-size: 32px;
+                                            color: #000;
+                                            cursor: pointer;
+                                            display: ${isEligible ? 'block' : 'none'};
+                                        ">↻</div>
+                                        <br><strong>PACE</strong>
+                                        <hr class="separator-bar">
+                                        <p><em>ESTIMATED ELIGIBILITY SCRIPTING</em></p>
+                                        <br>
+                                        <button class="benefit-apply-button" data-benefit="PACE" data-member-id="${member.householdMemberId}" 
+                                            style="display: ${
+                                                bObj.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('already'))
+                                                    ? 'none'
+                                                    : 'block'
+                                            }; margin: 0 auto">
+                                            ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for PACE'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    if (benefit === 'LIS') {
+                        if (bObj.eligibility?.includes('Not Checked')) return '';
+                        const lisElig = bObj.eligibility?.map(capitalizeFirstLetter) || [];
+                        const lisIsNot = lisElig.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED") || item.includes("NOT ENROLLED IN MEDICARE") || item.includes("ENROLLED IN MEDICAID"));
+                        const lisNeedsInfo = lisElig.some(item => item.includes("NEEDS") || item.includes("DETERMINATION PENDING"));
+                        const lisIsLikely = !lisIsNot && !lisNeedsInfo;
+                        const lisBgColor = lisIsNot ? '#f8d7da' : lisNeedsInfo ? '#fff3cd' : lisIsLikely ? '#d4edda' : 'transparent';
+                        const lisBorderColor = lisIsNot ? '#f5c6cb' : lisNeedsInfo ? '#ffc107' : lisIsLikely ? '#c3e6cb' : '#ccc';
+
+                        return `
+                            <div class="benefit-flip-card" data-benefit="LIS" data-member-id="${member.householdMemberId}" style="
+                                perspective: 1000px;
+                                width: 100%;
+                                margin: 8px 0;
+                            ">
+                                <div class="benefit-flip-card-inner" style="
+                                    position: relative;
+                                    width: 100%;
+                                    transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+                                    transform-style: preserve-3d;
+                                ">
+                                    <!-- FRONT SIDE -->
+                                    <div class="benefit-flip-card-front" style="
+                                        backface-visibility: hidden;
+                                        -webkit-backface-visibility: hidden;
+                                        background-color: ${lisBgColor};
+                                        border: 1px solid ${lisBorderColor};
+                                        border-radius: 4px;
+                                        padding: 8px;
+                                        position: relative;
+                                        z-index: 1;
+                                        width: 100%;
+                                        box-sizing: border-box;
+                                    ">
+                                        <div class="benefit-flip-hint" style="
+                                            position: absolute;
+                                            top: 4px;
+                                            right: 8px;
+                                            font-size: 32px;
+                                            color: #000;
+                                            cursor: pointer;
+                                            display: ${isEligible ? 'block' : 'none'};
+                                        ">↻</div>
+                                        <details class="custom-details" style="background-color: ${lisBgColor}; border-radius: 4px; padding: 8px; width: 100%; box-sizing: border-box;">
+                                            <summary><br><strong>LIS</strong><br>
+                                            <p><strong></strong> ${
+                                                bObj.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+                                            }<br>
+                                            <br>
+                                            </summary></p>
+                                            <hr class="separator-bar">
+                                            <p><strong>Gross Income:</strong> $${bObj.combinedIncome?.toFixed(2) || 'N/A'}</p>
+                                            <p><strong>Combined Assets:</strong> $${bObj.combinedAssets?.toFixed(2) || 'N/A'}</p>
+                                        </details>
+                                                                                    <button class="benefit-apply-button" data-benefit="LIS" data-member-id="${member.householdMemberId}" 
+                                                style="display: ${
+                                                    bObj.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('already'))
+                                                        ? 'none'
+                                                        : 'block'
+                                                }; margin: 0 auto">
+                                                ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for LIS'}
+                                            </button>
+                                    </div>
+
+                                    <!-- BACK SIDE -->
+                                    <div class="benefit-flip-card-back" style="
+                                        backface-visibility: hidden;
+                                        -webkit-backface-visibility: hidden;
+                                        transform: rotateY(180deg);
+                                        position: absolute;
+                                        top: 0;
+                                        left: 0;
+                                        width: 100%;
+                                        box-sizing: border-box;
+                                        background-color: ${lisBgColor};
+                                        border: 1px solid ${lisBorderColor};
+                                        border-radius: 4px;
+                                        padding: 8px;
+                                    ">
+                                        <div class="benefit-flip-hint benefit-flip-back-hint" style="
+                                            position: absolute;
+                                            top: 4px;
+                                            right: 8px;
+                                            font-size: 32px;
+                                            color: #000;
+                                            cursor: pointer;
+                                            display: ${isEligible ? 'block' : 'none'};
+                                        ">↻</div>
+                                        <br><strong>LIS</strong>
+                                        <hr class="separator-bar">
+                                        <p><em>ESTIMATED ELIGIBILITY SCRIPTING</em></p>
+                                        <br>
+                                        <button class="benefit-apply-button" data-benefit="LIS" data-member-id="${member.householdMemberId}" 
+                                            style="display: ${
+                                                bObj.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('already'))
+                                                    ? 'none'
+                                                    : 'block'
+                                            }; margin: 0 auto">
+                                            ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for LIS'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    if (benefit === 'MSP') {
+                        if (bObj.eligibility?.includes('Not Checked')) return '';
+                        const mspElig = bObj.eligibility?.map(capitalizeFirstLetter) || [];
+                        const mspIsNot = mspElig.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED") || item.includes("NOT ENROLLED IN MEDICARE") || item.includes("ENROLLED IN MEDICAID"));
+                        const mspNeedsInfo = mspElig.some(item => item.includes("NEEDS") || item.includes("DETERMINATION PENDING"));
+                        const mspIsLikely = !mspIsNot && !mspNeedsInfo;
+                        const mspBgColor = mspIsNot ? '#f8d7da' : mspNeedsInfo ? '#fff3cd' : mspIsLikely ? '#d4edda' : 'transparent';
+                        const mspBorderColor = mspIsNot ? '#f5c6cb' : mspNeedsInfo ? '#ffc107' : mspIsLikely ? '#c3e6cb' : '#ccc';
+
+                        return `
+                            <div class="benefit-flip-card" data-benefit="MSP" data-member-id="${member.householdMemberId}" style="
+                                perspective: 1000px;
+                                width: 100%;
+                                margin: 8px 0;
+                            ">
+                                <div class="benefit-flip-card-inner" style="
+                                    position: relative;
+                                    width: 100%;
+                                    transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+                                    transform-style: preserve-3d;
+                                ">
+                                    <!-- FRONT SIDE -->
+                                    <div class="benefit-flip-card-front" style="
+                                        backface-visibility: hidden;
+                                        -webkit-backface-visibility: hidden;
+                                        background-color: ${mspBgColor};
+                                        border: 1px solid ${mspBorderColor};
+                                        border-radius: 4px;
+                                        padding: 8px;
+                                        position: relative;
+                                        z-index: 1;
+                                        width: 100%;
+                                        box-sizing: border-box;
+                                    ">
+                                        <div class="benefit-flip-hint" style="
+                                            position: absolute;
+                                            top: 4px;
+                                            right: 8px;
+                                            font-size: 32px;
+                                            color: #000;
+                                            cursor: pointer;
+                                            display: ${isEligible ? 'block' : 'none'};
+                                        ">↻</div>
+                                        <details class="custom-details" style="background-color: ${mspBgColor}; border-radius: 4px; padding: 8px; width: 100%; box-sizing: border-box;">
+                                            <summary><br><strong>MSP</strong>
+                                            <p><strong></strong> ${
+                                                bObj.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+                                            }<br>
+                                            <br>
+                                            </summary></p>
+                                            <hr class="separator-bar">
+                                            <p><strong>Gross Adjusted Income:</strong> $${bObj.combinedIncome?.toFixed(2) || 'N/A'}</p>
+                                            <p><strong>Combined Assets:</strong> $${bObj.combinedAssets?.toFixed(2) || 'N/A'}</p>
+                                        </details>
+                                                                                    <button class="benefit-apply-button" data-benefit="MSP" data-member-id="${member.householdMemberId}" 
+                                                style="display: ${
+                                                    Array.isArray(bObj.eligibility) &&
+                                                    bObj.eligibility.some(e => 
+                                                        e?.toLowerCase().includes('not') || 
+                                                        e?.toLowerCase().includes('needs') || 
+                                                        e?.toLowerCase().includes('already')
+                                                    )
+                                                        ? 'none'
+                                                        : 'block'
+                                                }; margin: 0 auto;">
+                                                ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for MSP'}
+                                            </button>
+                                    </div>
+
+                                    <!-- BACK SIDE -->
+                                    <div class="benefit-flip-card-back" style="
+                                        backface-visibility: hidden;
+                                        -webkit-backface-visibility: hidden;
+                                        transform: rotateY(180deg);
+                                        position: absolute;
+                                        top: 0;
+                                        left: 0;
+                                        width: 100%;
+                                        box-sizing: border-box;
+                                        background-color: ${mspBgColor};
+                                        border: 1px solid ${mspBorderColor};
+                                        border-radius: 4px;
+                                        padding: 8px;
+                                    ">
+                                        <div class="benefit-flip-hint benefit-flip-back-hint" style="
+                                            position: absolute;
+                                            top: 4px;
+                                            right: 8px;
+                                            font-size: 32px;
+                                            color: #000;
+                                            cursor: pointer;
+                                            display: ${isEligible ? 'block' : 'none'};
+                                        ">↻</div>
+                                        <br><strong>MSP</strong>
+                                        <hr class="separator-bar">
+                                        <p><em>ESTIMATED ELIGIBILITY SCRIPTING</em></p>
+                                        <br>
+                                        <button class="benefit-apply-button" data-benefit="MSP" data-member-id="${member.householdMemberId}" 
+                                            style="display: ${
+                                                Array.isArray(bObj.eligibility) &&
+                                                bObj.eligibility.some(e => 
+                                                    e?.toLowerCase().includes('not') || 
+                                                    e?.toLowerCase().includes('needs') || 
+                                                    e?.toLowerCase().includes('already')
+                                                )
+                                                    ? 'none'
+                                                    : 'block'
+                                            }; margin: 0 auto;">
+                                            ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for MSP'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    if (benefit === 'PTRR') {
+                        if (bObj.eligibility?.includes('Not Checked')) return '';
+                        const ptrrElig = bObj.eligibility?.map(capitalizeFirstLetter) || [];
+                        const ptrrIsNot = ptrrElig.some(item => item.includes("NOT") || item.includes("ALREADY APPLIED") || item.includes("NOT INTERESTED") || item.includes("NO FORMAL LEASE") || item.includes("AGE") || item.includes("CRITERIA NOT MET"));
+                        const ptrrNeedsInfo = ptrrElig.some(item => item.includes("NEEDS") || item.includes("DETERMINATION PENDING"));
+                        const ptrrIsLikely = !ptrrIsNot && !ptrrNeedsInfo;
+                        const ptrrBgColor = ptrrIsNot ? '#f8d7da' : ptrrNeedsInfo ? '#fff3cd' : ptrrIsLikely ? '#d4edda' : 'transparent';
+                        const ptrrBorderColor = ptrrIsNot ? '#f5c6cb' : ptrrNeedsInfo ? '#ffc107' : ptrrIsLikely ? '#c3e6cb' : '#ccc';
+
+                        return `
+                            <div class="benefit-flip-card" data-benefit="PTRR" data-member-id="${member.householdMemberId}" style="
+                                perspective: 1000px;
+                                width: 100%;
+                                margin: 8px 0;
+                            ">
+                                <div class="benefit-flip-card-inner" style="
+                                    position: relative;
+                                    width: 100%;
+                                    transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+                                    transform-style: preserve-3d;
+                                ">
+                                    <!-- FRONT SIDE -->
+                                    <div class="benefit-flip-card-front" style="
+                                        backface-visibility: hidden;
+                                        -webkit-backface-visibility: hidden;
+                                        background-color: ${ptrrBgColor};
+                                        border: 1px solid ${ptrrBorderColor};
+                                        border-radius: 4px;
+                                        padding: 8px;
+                                        position: relative;
+                                        z-index: 1;
+                                        width: 100%;
+                                        box-sizing: border-box;
+                                    ">
+                                        <div class="benefit-flip-hint" style="
+                                            position: absolute;
+                                            top: 4px;
+                                            right: 8px;
+                                            font-size: 32px;
+                                            color: #000;
+                                            cursor: pointer;
+                                            display: ${isEligible ? 'block' : 'none'};
+                                        ">↻</div>
+                                        <details class="custom-details" style="background-color: ${ptrrBgColor}; border-radius: 4px; padding: 8px; width: 100%; box-sizing: border-box;">
+                                            <summary><br><strong>PTRR</strong>
+                                            <p><strong></strong> ${
+                                                bObj.eligibility?.map(capitalizeFirstLetter).join(', ') || 'Not Available'
+                                            }<br>
+                                            <br>
+                                            </summary></p>
+                                            <hr class="separator-bar">
+                                            <p><strong>Gross Income:</strong> $${bObj.combinedIncome?.toFixed(2) || 'N/A'}</p>
+                                        </details>
+                                                                                    <button class="benefit-apply-button" data-benefit="PTRR" data-member-id="${member.householdMemberId}" 
+                                                style="display: ${
+                                                    bObj.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('no') || e.toLowerCase().includes('already'))
+                                                        ? 'none'
+                                                        : 'block'
+                                                }; margin: 0 auto">
+                                                ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for PTRR'}
+                                            </button>
+                                    </div>
+
+                                    <!-- BACK SIDE -->
+                                    <div class="benefit-flip-card-back" style="
+                                        backface-visibility: hidden;
+                                        -webkit-backface-visibility: hidden;
+                                        transform: rotateY(180deg);
+                                        position: absolute;
+                                        top: 0;
+                                        left: 0;
+                                        width: 100%;
+                                        box-sizing: border-box;
+                                        background-color: ${ptrrBgColor};
+                                        border: 1px solid ${ptrrBorderColor};
+                                        border-radius: 4px;
+                                        padding: 8px;
+                                    ">
+                                        <div class="benefit-flip-hint benefit-flip-back-hint" style="
+                                            position: absolute;
+                                            top: 4px;
+                                            right: 8px;
+                                            font-size: 32px;
+                                            color: #000;
+                                            cursor: pointer;
+                                            display: ${isEligible ? 'block' : 'none'};
+                                        ">↻</div>
+                                        <br><strong>PTRR</strong>
+                                        <hr class="separator-bar">
+                                        <p><em>ESTIMATED ELIGIBILITY SCRIPTING</em></p>
+                                        <br>
+                                        <button class="benefit-apply-button" data-benefit="PTRR" data-member-id="${member.householdMemberId}" 
+                                            style="display: ${
+                                                bObj.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('no') || e.toLowerCase().includes('already'))
+                                                    ? 'none'
+                                                    : 'block'
+                                            }; margin: 0 auto">
+                                            ${bObj.application?.some(app => app.applying) ? 'Stop Applying' : 'Apply for PTRR'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    return '';
+                }
 
                 // Build benefit sections dynamically and sort open first, closed last
                 const benefitSections = [];
@@ -331,8 +645,60 @@ document.addEventListener('DOMContentLoaded', async function () {
                     " onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Close Screening(s)</button>
                 ` : ''}
             `;
-                householdMemberContainer.appendChild(memberDiv);
+            householdMemberContainer.appendChild(memberDiv);
 
+            // Initialize flip card logic for individual benefit cards
+            const benefitFlipCards = memberDiv.querySelectorAll('.benefit-flip-card');
+            benefitFlipCards.forEach(flipCard => {
+                const flipInner = flipCard.querySelector('.benefit-flip-card-inner');
+                const frontSide = flipCard.querySelector('.benefit-flip-card-front');
+                const backSide = flipCard.querySelector('.benefit-flip-card-back');
+                const frontHint = frontSide?.querySelector('.benefit-flip-hint');
+                const backHint = backSide?.querySelector('.benefit-flip-back-hint');
+
+                if (!flipInner || !frontSide || !backSide || !frontHint || !backHint) return;
+
+                let isFlipped = false;
+
+                function syncCardHeight() {
+                    if (!isFlipped) {
+                        flipInner.style.height = frontSide.offsetHeight + 'px';
+                    } else {
+                        flipInner.style.height = backSide.offsetHeight + 'px';
+                    }
+                }
+
+                requestAnimationFrame(() => syncCardHeight());
+
+                function doFlip() {
+                    isFlipped = !isFlipped;
+                    if (isFlipped) {
+                        flipInner.style.transform = 'rotateY(180deg)';
+                        flipInner.style.height = backSide.offsetHeight + 'px';
+                    } else {
+                        flipInner.style.transform = 'rotateY(0deg)';
+                        flipInner.style.height = frontSide.offsetHeight + 'px';
+                    }
+                }
+
+                frontHint.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    doFlip();
+                });
+                backHint.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    doFlip();
+                });
+
+                // Sync height when details is toggled open/closed
+                const detailsEl = frontSide.querySelector('details');
+                if (detailsEl) {
+                    detailsEl.addEventListener('toggle', () => {
+                        requestAnimationFrame(() => syncCardHeight());
+                    });
+                }
+            });
+            
                 // PTRR button visibility check — clean up application state
                 const ptrrButton = memberDiv.querySelector(`.benefit-apply-button[data-benefit="PTRR"][data-member-id="${member.householdMemberId}"]`);
                 const isPtrrButtonDisplayed = ptrrButton && ptrrButton.style.display !== 'none';
@@ -570,7 +936,7 @@ function getCloseReasonsForBenefits(selectedBenefits) {
             ...commonReasons
         ],
         'MSP': [
-            { value: "Already Enrolled", label: "Already Enrolled in MSP" },
+            { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Ineligible - Assets", label: "Ineligible - Assets" },
             { value: "Not Enrolled in Medicare", label: "Not Enrolled in Medicare" },
@@ -1076,83 +1442,211 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
 
             const snapIsLikelyGreen = !snapIsNot && !snapNeedsInfo;
 
+            // Determine colors for both sides
+            let cardBgColor = 'white';
+            let cardBorderColor = '#ccc';
             if (snapIsNot) {
-                householdDiv.style.backgroundColor = '#f8d7da';
-                householdDiv.style.borderColor = '#f5c6cb';
+                cardBgColor = '#f8d7da';
+                cardBorderColor = '#f5c6cb';
             } else if (snapNeedsInfo) {
-                householdDiv.style.backgroundColor = '#fff3cd';
-                householdDiv.style.borderColor = '#ffc107';
+                cardBgColor = '#fff3cd';
+                cardBorderColor = '#ffc107';
             } else if (snapIsLikelyGreen) {
-                householdDiv.style.backgroundColor = '#d4edda';
-                householdDiv.style.borderColor = '#c3e6cb';
+                cardBgColor = '#d4edda';
+                cardBorderColor = '#c3e6cb';
             }
 
+            // Replace the simple householdDiv with a flip card wrapper
+            householdDiv.classList.remove('household-member-box');
+            householdDiv.classList.add('snap-flip-card');
+            householdDiv.style.cssText = `
+                perspective: 1000px;
+                width: 100%;
+                margin-bottom: 16px;
+            `;
+
             householdDiv.innerHTML = `
-                <details class="custom-details">
-                    <summary><h3>SNAP HOUSEHOLD</h3></summary>
-                    <p><strong>Total Gross Income:</strong> $${combinedMonthlyIncome.toFixed(2)}</p>
-                    <p><strong>Shelter Deduction:</strong> $${excessShelterCost.toFixed(2)}</p>
-                    <p><strong>Medical Expense Deductions:</strong> $${totalMedicalExpenses.toFixed(2)}</p>
-                    <p><strong>Other Expense Deductions:</strong> $${totalOtherExpenses.toFixed(2)}</p>
-                    <p><strong>Adjusted Net Income:</strong> $${totalNetIncome.toFixed(2)}</p>
-                    <p><strong>Combined Assets:</strong> $${combinedAssets.toFixed(2)}</p>
-                    <hr class="separator-bar">
-                </details>
-                <p><strong>Members:</strong> ${snapMemberNames}</p>
-                <p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
-                ${
-                    isLikelyEligible && benefitAmount >= 0
-                        ? `
-                        <p><strong>Estimated Benefit Amount:</strong> ${
-                            benefitAmount < 24 ? "Up to $24.00" : `Up to $24.00 - $${benefitAmount.toFixed(2)}`
-                        }</p>
-                        <p><strong>Expedited Eligibility:</strong> ${
-                            capitalizeFirstLetter(household[0]?.SNAP?.expeditedEligibility || 'N/A')
-                        }</p>
-                        `
-                        : ''
-                }
-                <button class="benefit-apply-button" data-benefit="SNAP" style="display: ${isLikelyEligible ? 'block' : 'none'};">
-                    ${household.every(member => member.SNAP?.application?.some(app => app.applying)) ? 'Stop Applying' : 'Apply for SNAP'}
-                </button>
-                <button class="close-benefit-btn" 
-                    data-benefit="SNAP" 
-                    data-member-ids="${snapMemberIds.join(',')}" 
-                    data-display-name="SNAP Household"
-                    style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 11px; cursor: pointer; margin: 8px 0; transition: background-color 0.3s;"
-                    onmouseover="this.style.backgroundColor='#a71d2a'" 
-                    onmouseout="this.style.backgroundColor='#dc3545'">
-                    Close SNAP Screening
-                </button>
+                <div class="snap-flip-card-inner" style="
+                    position: relative;
+                    width: 100%;
+                    transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+                    transform-style: preserve-3d;
+                ">
+                    <!-- FRONT SIDE -->
+                    <div class="snap-flip-card-front household-member-box" style="
+                        backface-visibility: hidden;
+                        -webkit-backface-visibility: hidden;
+                        background-color: ${cardBgColor};
+                        border-color: ${cardBorderColor};
+                        cursor: default;
+                        position: relative;
+                        z-index: 1;
+                    ">
+                        <div class="snap-flip-hint" style="
+                            position: absolute;
+                            top: 8px;
+                            right: 12px;
+                            font-size: 44px;
+                            color: #000;
+                            cursor: pointer;
+                            display: ${isLikelyEligible ? 'block' : 'none'};
+                        ">↻</div>
+                        <details class="custom-details" style="background-color: ${cardBgColor}; border-radius: 4px; padding: 8px; margin: 8px 0; width: 100%; box-sizing: border-box;">
+                            <summary><br><strong>SNAP HOUSEHOLD</strong><br>
+                            <p><strong>Members:</strong> ${snapMemberNames}</p>
+                            <p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
+                            ${
+                                isLikelyEligible && benefitAmount >= 0
+                                    ? `
+                                    <p><strong>Estimated Benefit Amount:</strong> ${
+                                        benefitAmount < 24 ? "Up to $24.00" : `Up to $24.00 - $${benefitAmount.toFixed(2)}`
+                                    }</p>
+                                    <p><strong>Expedited Eligibility:</strong> ${
+                                        capitalizeFirstLetter(household[0]?.SNAP?.expeditedEligibility || 'N/A')
+                                    }</p>
+                                    `
+                                    : ''
+                            }
+                        
+                            </summary>
+                            <hr class="separator-bar">
+                            <p><strong>Household Size:</strong> ${household[0]?.SNAP?.householdSize || household.length}</p>
+                            <p><strong>Total Gross Income:</strong> $${combinedMonthlyIncome.toFixed(2)}</p>
+                            <p><strong>Standard Deduction:</strong> $${(household[0]?.SNAP?.standardDeduction || 0).toFixed(2)}</p>
+
+                            <p><strong>Shelter Deduction:</strong> $${excessShelterCost.toFixed(2)}</p>
+                            <p><strong>Utility Allowance:</strong> $${totalUtilityAllowance.toFixed(2)}</p>
+                            <p><strong>Medical Expense Deductions:</strong> $${totalMedicalExpenses.toFixed(2)}</p>
+                            <p><strong>Other Expense Deductions:</strong> $${totalOtherExpenses.toFixed(2)}</p>
+                            <p><strong>Adjusted Net Income:</strong> $${totalNetIncome.toFixed(2)}</p>
+                            <p><strong>Combined Assets:</strong> $${combinedAssets.toFixed(2)}</p>
+                        </details>
+                        <button class="benefit-apply-button" data-benefit="SNAP" style="display: ${isLikelyEligible ? 'block' : 'none'}; margin: 0 auto;">
+                                ${household.every(member => member.SNAP?.application?.some(app => app.applying)) ? 'Stop Applying' : 'Apply for SNAP'}
+                            </button>
+                        
+                        <button class="close-benefit-btn" 
+                            data-benefit="SNAP" 
+                            data-member-ids="${snapMemberIds.join(',')}" 
+                            data-display-name="SNAP Household"
+                            style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 11px; cursor: pointer; margin: 8px 0; transition: background-color 0.3s;"
+                            onmouseover="this.style.backgroundColor='#a71d2a'" 
+                            onmouseout="this.style.backgroundColor='#dc3545'">
+                            Close SNAP Screening
+                        </button>
+                    </div>
+
+                    <!-- BACK SIDE -->
+                    <div class="snap-flip-card-back household-member-box" style="
+                        backface-visibility: hidden;
+                        -webkit-backface-visibility: hidden;
+                        transform: rotateY(180deg);
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        box-sizing: border-box;
+                        background-color: ${cardBgColor};
+                        border-color: ${cardBorderColor};
+                        cursor: default;
+                    ">
+                        <div class="snap-flip-hint snap-flip-back-hint" style="
+                            position: absolute;
+                            top: 8px;
+                            right: 12px;
+                            font-size: 44px;
+                            color: #000;
+                            cursor: pointer;
+                            display: ${isLikelyEligible ? 'block' : 'none'};
+                        ">↻</div>
+                        <h3>SNAP HOUSEHOLD</h3>
+                        <hr class="separator-bar">
+                        <p><em>ESTIMATED ELIGIBILITY SCRIPTING</em></p>
+                        <br>
+                        <button class="benefit-apply-button" data-benefit="SNAP" style="display: ${isLikelyEligible ? 'block' : 'none'}; margin: 0 auto;">
+                            ${household.every(member => member.SNAP?.application?.some(app => app.applying)) ? 'Stop Applying' : 'Apply for SNAP'}
+                        </button>
+                        <button class="close-benefit-btn" 
+                            data-benefit="SNAP" 
+                            data-member-ids="${snapMemberIds.join(',')}" 
+                            data-display-name="SNAP Household"
+                            style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 11px; cursor: pointer; margin: 8px 0; transition: background-color 0.3s;"
+                            onmouseover="this.style.backgroundColor='#a71d2a'" 
+                            onmouseout="this.style.backgroundColor='#dc3545'">
+                            Close SNAP Screening
+                        </button>
+                    </div>
             `;
 
             snapHouseholdContainer.appendChild(householdDiv);
 
-            const benefitButton = householdDiv.querySelector('.benefit-apply-button');
-            benefitButton.addEventListener('click', async (event) => {
-                const benefit = event.target.dataset.benefit;
-                const buttonLabel = event.target.textContent.trim();
-                const newApplyingState = buttonLabel.startsWith('Apply');
+            // Flip card logic — only triggered by the hint text
+            const flipInner = householdDiv.querySelector('.snap-flip-card-inner');
+            const frontSide = householdDiv.querySelector('.snap-flip-card-front');
+            const backSide = householdDiv.querySelector('.snap-flip-card-back');
+            const frontHint = frontSide.querySelector('.snap-flip-hint');
+            const backHint = backSide.querySelector('.snap-flip-back-hint');
+            let isFlipped = false;
 
-                const freshMembers = await loadHouseholdMembers();
-                await updateMemberBenefits(freshMembers, benefit, newApplyingState);
-
-                if (benefit === 'SNAP') {
-                    await displaySNAPHouseholds();
-                } else if (benefit === 'LIHEAP') {
-                    await displayLIHEAPHouseholds();
+            function syncCardHeight() {
+                if (!isFlipped) {
+                    flipInner.style.height = frontSide.offsetHeight + 'px';
+                } else {
+                    flipInner.style.height = backSide.offsetHeight + 'px';
                 }
-                await updateSaveContinueButtonVisibility();
-            });
+            }
 
-            const closeBtn = householdDiv.querySelector('.close-benefit-btn');
-            if (closeBtn) {
-                closeBtn.addEventListener('click', () => {
-                    openBenefitScreeningCloseModal('SNAP', snapMemberIds, 'SNAP Household');
+            requestAnimationFrame(() => syncCardHeight());
+
+            function doFlip() {
+                isFlipped = !isFlipped;
+                if (isFlipped) {
+                    flipInner.style.transform = 'rotateY(180deg)';
+                    flipInner.style.height = backSide.offsetHeight + 'px';
+                } else {
+                    flipInner.style.transform = 'rotateY(0deg)';
+                    flipInner.style.height = frontSide.offsetHeight + 'px';
+                }
+            }
+
+            frontHint.addEventListener('click', doFlip);
+            backHint.addEventListener('click', doFlip);
+
+            // Sync height when details is toggled open/closed
+            const detailsEl = frontSide.querySelector('details');
+            if (detailsEl) {
+                detailsEl.addEventListener('toggle', () => {
+                    requestAnimationFrame(() => syncCardHeight());
                 });
             }
+
+            const benefitButtons = householdDiv.querySelectorAll('.benefit-apply-button');
+            benefitButtons.forEach(btn => {
+                btn.addEventListener('click', async (event) => {
+                    const benefit = event.target.dataset.benefit;
+                    const buttonLabel = event.target.textContent.trim();
+                    const newApplyingState = buttonLabel.startsWith('Apply');
+
+                    const freshMembers = await loadHouseholdMembers();
+                    await updateMemberBenefits(freshMembers, benefit, newApplyingState);
+
+                    if (benefit === 'SNAP') {
+                        await displaySNAPHouseholds();
+                    } else if (benefit === 'LIHEAP') {
+                        await displayLIHEAPHouseholds();
+                    }
+                    await updateSaveContinueButtonVisibility();
+                });
+            });
+
+            const closeBtns = householdDiv.querySelectorAll('.close-benefit-btn');
+            closeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    openBenefitScreeningCloseModal('SNAP', snapMemberIds, 'SNAP Household');
+                });
+            });
         });
-    }
+    }   
 
     // ===== LIHEAP Households Display =====
     async function displayLIHEAPHouseholds() {
@@ -1249,47 +1743,172 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
             ? !eligibility.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED")) || eligibility.some(item => item.includes("RECOMMENDED"))
             : !String(eligibility).includes("NOT") && !String(eligibility).includes("ALREADY ENROLLED") && !String(eligibility).includes("NOT INTERESTED") || String(eligibility).includes("RECOMMENDED");
 
+        const isLikelyEligible = Array.isArray(eligibility)
+            ? !eligibility.some(item => 
+                item.toLowerCase().includes("not") || 
+                item.toLowerCase().includes("needs") || 
+                item.toLowerCase().includes("already")
+            )
+            : !String(eligibility).toLowerCase().includes("not") &&
+              !String(eligibility).toLowerCase().includes("needs") &&
+              !String(eligibility).toLowerCase().includes("already");
+
+        // Determine colors for both sides
+        let cardBgColor = 'white';
+        let cardBorderColor = '#ccc';
         if (liheapIsNotEligible) {
-            householdDiv.style.backgroundColor = '#f8d7da';
-            householdDiv.style.borderColor = '#f5c6cb';
+            cardBgColor = '#f8d7da';
+            cardBorderColor = '#f5c6cb';
         } else if (liheapNeedsInfo) {
-            householdDiv.style.backgroundColor = '#fff3cd';
-            householdDiv.style.borderColor = '#ffc107';
+            cardBgColor = '#fff3cd';
+            cardBorderColor = '#ffc107';
         } else if (liheapIsLikely) {
-            householdDiv.style.backgroundColor = '#d4edda';
-            householdDiv.style.borderColor = '#c3e6cb';
+            cardBgColor = '#d4edda';
+            cardBorderColor = '#c3e6cb';
         }
 
+        // Replace the simple householdDiv with a flip card wrapper
+        householdDiv.classList.remove('household-member-box');
+        householdDiv.classList.add('liheap-flip-card');
+        householdDiv.style.cssText = `
+            perspective: 1000px;
+            width: 100%;
+            margin-bottom: 16px;
+        `;
+
         householdDiv.innerHTML = `
-            <details class="custom-details">
-                <summary><h3>LIHEAP HOUSEHOLD</h3></summary>
-                <p><strong>Combined Yearly Income:</strong> $${combinedYearlyIncome.toFixed(2)}</p>
-                <hr class="separator-bar">
-            </details>
-            <p><strong>Members:</strong> ${liheapMemberNames}</p>
-            <p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
-            <button class="benefit-apply-button" data-benefit="LIHEAP" style="display: ${
-                Array.isArray(eligibility) && !eligibility.some(e => e.toLowerCase().includes('not') || e.toLowerCase().includes('already') || e.toLowerCase().includes('needs'))
-                    ? 'block' : 'none'
-            };">
-                ${
-                    activeMembersForLIHEAP.every(m => m.LIHEAP?.application?.some(app => app.applying))
-                        ? 'Stop Applying' : 'Apply for LIHEAP'
-                }
-            </button>
-            <button class="close-liheap-btn" 
-                style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 11px; cursor: pointer; margin: 8px 0; transition: background-color 0.3s;"
-                onmouseover="this.style.backgroundColor='#a71d2a'" 
-                onmouseout="this.style.backgroundColor='#dc3545'">
-                Close LIHEAP Screening
-            </button>
+            <div class="liheap-flip-card-inner" style="
+                position: relative;
+                width: 100%;
+                transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+                transform-style: preserve-3d;
+            ">
+                <!-- FRONT SIDE -->
+                <div class="liheap-flip-card-front household-member-box" style="
+                    backface-visibility: hidden;
+                    -webkit-backface-visibility: hidden;
+                    background-color: ${cardBgColor};
+                    border-color: ${cardBorderColor};
+                    cursor: default;
+                    position: relative;
+                    z-index: 1;
+                ">
+                    <div class="liheap-flip-hint" style="
+                        position: absolute;
+                        top: 8px;
+                        right: 12px;
+                        font-size: 44px;
+                        color: #000;
+                        cursor: pointer;
+                        display: ${isLikelyEligible ? 'block' : 'none'};
+                    ">↻</div>
+                    <details class="custom-details" style="background-color: ${cardBgColor}; border-radius: 4px; padding: 8px; margin: 8px 0; width: 100%; box-sizing: border-box;">
+                        <summary><br><strong>LIHEAP HOUSEHOLD</strong><br>
+                        <p><strong>Members:</strong> ${liheapMemberNames}</p>
+                        <p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
+                        </summary>
+                        <hr class="separator-bar">
+                        <p><strong>Combined Yearly Income:</strong> $${combinedYearlyIncome.toFixed(2)}</p>
+                    </details>
+                    <button class="benefit-apply-button" data-benefit="LIHEAP" style="display: ${isLikelyEligible ? 'block' : 'none'}; margin: 0 auto;">
+                        ${activeMembersForLIHEAP.every(m => m.LIHEAP?.application?.some(app => app.applying)) ? 'Stop Applying' : 'Apply for LIHEAP'}
+                    </button>
+                    <button class="close-liheap-btn" 
+                        data-member-ids="${liheapMemberIds.join(',')}"
+                        style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 11px; cursor: pointer; margin: 8px 0; transition: background-color 0.3s;"
+                        onmouseover="this.style.backgroundColor='#a71d2a'" 
+                        onmouseout="this.style.backgroundColor='#dc3545'">
+                        Close LIHEAP Screening
+                    </button>
+                </div>
+
+                <!-- BACK SIDE -->
+                <div class="liheap-flip-card-back household-member-box" style="
+                    backface-visibility: hidden;
+                    -webkit-backface-visibility: hidden;
+                    transform: rotateY(180deg);
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    box-sizing: border-box;
+                    background-color: ${cardBgColor};
+                    border-color: ${cardBorderColor};
+                    cursor: default;
+                ">
+                    <div class="liheap-flip-hint liheap-flip-back-hint" style="
+                        position: absolute;
+                        top: 8px;
+                        right: 12px;
+                        font-size: 44px;
+                        color: #000;
+                        cursor: pointer;
+                        display: ${isLikelyEligible ? 'block' : 'none'};
+                    ">↻</div>
+                    <h3>LIHEAP HOUSEHOLD</h3>
+                    <hr class="separator-bar">
+                    <p><em>ESTIMATED ELIGIBILITY SCRIPTING</em></p>
+                    <br>
+                    <button class="benefit-apply-button" data-benefit="LIHEAP" style="display: ${isLikelyEligible ? 'block' : 'none'}; margin: 0 auto;">
+                        ${activeMembersForLIHEAP.every(m => m.LIHEAP?.application?.some(app => app.applying)) ? 'Stop Applying' : 'Apply for LIHEAP'}
+                    </button>
+                    <button class="close-liheap-btn" 
+                        data-member-ids="${liheapMemberIds.join(',')}"
+                        style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 11px; cursor: pointer; margin: 8px 0; transition: background-color 0.3s;"
+                        onmouseover="this.style.backgroundColor='#a71d2a'" 
+                        onmouseout="this.style.backgroundColor='#dc3545'">
+                        Close LIHEAP Screening
+                    </button>
+                </div>
+            </div>
         `;
 
         liheapHouseholdContainer.appendChild(householdDiv);
 
-        const liheapButton = householdDiv.querySelector('.benefit-apply-button[data-benefit="LIHEAP"]');
-        if (liheapButton) {
-            liheapButton.addEventListener('click', async (event) => {
+        // Flip card logic — only triggered by the hint text
+        const flipInner = householdDiv.querySelector('.liheap-flip-card-inner');
+        const frontSide = householdDiv.querySelector('.liheap-flip-card-front');
+        const backSide = householdDiv.querySelector('.liheap-flip-card-back');
+        const frontHint = frontSide.querySelector('.liheap-flip-hint');
+        const backHint = backSide.querySelector('.liheap-flip-back-hint');
+        let isFlipped = false;
+
+        function syncCardHeight() {
+            if (!isFlipped) {
+                flipInner.style.height = frontSide.offsetHeight + 'px';
+            } else {
+                flipInner.style.height = backSide.offsetHeight + 'px';
+            }
+        }
+
+        requestAnimationFrame(() => syncCardHeight());
+
+        function doFlip() {
+            isFlipped = !isFlipped;
+            if (isFlipped) {
+                flipInner.style.transform = 'rotateY(180deg)';
+                flipInner.style.height = backSide.offsetHeight + 'px';
+            } else {
+                flipInner.style.transform = 'rotateY(0deg)';
+                flipInner.style.height = frontSide.offsetHeight + 'px';
+            }
+        }
+
+        frontHint.addEventListener('click', doFlip);
+        backHint.addEventListener('click', doFlip);
+
+        // Sync height when details is toggled open/closed
+        const detailsEl = frontSide.querySelector('details');
+        if (detailsEl) {
+            detailsEl.addEventListener('toggle', () => {
+                requestAnimationFrame(() => syncCardHeight());
+            });
+        }
+
+        // Apply button listeners (both front and back)
+        const benefitButtons = householdDiv.querySelectorAll('.benefit-apply-button');
+        benefitButtons.forEach(btn => {
+            btn.addEventListener('click', async (event) => {
                 const benefit = event.target.dataset.benefit;
                 const buttonLabel = event.target.textContent.trim();
                 const newApplyingState = buttonLabel.startsWith('Apply');
@@ -1300,14 +1919,15 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
                 await displayLIHEAPHouseholds();
                 await updateSaveContinueButtonVisibility();
             });
-        }
+        });
 
-        const closeBtn = householdDiv.querySelector('.close-liheap-btn');
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => {
+        // Close button listeners (both front and back)
+        const closeBtns = householdDiv.querySelectorAll('.close-liheap-btn');
+        closeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
                 openBenefitScreeningCloseModal('LIHEAP', liheapMemberIds, 'LIHEAP Household');
             });
-        }
+        });
     }
 
     async function updateSaveContinueButtonVisibility() {
@@ -2794,7 +3414,7 @@ function getCloseReasonsForBenefit(benefit) {
             ];
         case 'MSP':
             return [
-                { value: "Already Enrolled", label: "Already Enrolled in MSP" },
+                { value: "Already Enrolled", label: "Already Enrolled" },
                 { value: "Ineligible - Income", label: "Ineligible - Income" },
                 { value: "Ineligible - Assets", label: "Ineligible - Assets" },
                 { value: "Not Enrolled in Medicare", label: "Not Enrolled in Medicare" },

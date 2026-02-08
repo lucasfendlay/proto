@@ -11,6 +11,49 @@
 
     <style>
 
+        /* SNAP Flip Card Styles */
+.snap-flip-card {
+    perspective: 1000px;
+}
+
+.snap-flip-card-inner {
+    position: relative;
+    width: 100%;
+    transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1), height 0.4s ease;
+    transform-style: preserve-3d;
+    overflow: visible;
+}
+
+.snap-flip-card-front,
+.snap-flip-card-back {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+.snap-flip-card-front {
+    position: relative;
+    z-index: 2;
+}
+
+.snap-flip-card-back {
+    transform: rotateY(180deg);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1;
+}
+
+.snap-flip-hint {
+    user-select: none;
+    opacity: 0.6;
+    transition: opacity 0.3s;
+}
+
+.snap-flip-card:hover .snap-flip-hint {
+    opacity: 1;
+}
+
         #save-continue {
             display: none; /* Default to block, will be toggled by JS */
         }
@@ -371,7 +414,7 @@ async function openStopScreeningModal() {
                         if (typeof window.renderNotes === 'function') {
                 await window.renderNotes(clientId);
             }
-            loadScreeningButtons(); // Refresh buttons and hide containers
+            location.reload(); // Refresh the page to reflect all changes
         } catch (error) {
             console.error('Error closing all screening:', error);
         }
