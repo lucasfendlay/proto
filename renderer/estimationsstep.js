@@ -630,9 +630,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                           }</p>`
                         : ''
                 }
-                ${benefitSections.map(s => s.html).join('')}
-                ${openBenefits.length > 0 ? `
-                    <br>
+                                    <br>
                     <button class="btn-close-member-screening" data-member-id="${member.householdMemberId}" style="
                         background-color: #dc3545;
                         color: white;
@@ -643,6 +641,9 @@ document.addEventListener('DOMContentLoaded', async function () {
                         cursor: pointer;
                         transition: background-color 0.3s;
                     " onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Close Screening(s)</button>
+                    
+                ${benefitSections.map(s => s.html).join('')}
+                ${openBenefits.length > 0 ? `
                 ` : ''}
             `;
             householdMemberContainer.appendChild(memberDiv);
