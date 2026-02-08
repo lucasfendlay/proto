@@ -552,35 +552,38 @@ window.onload = function () {
         return;
     }
 
-    try {
-        // Fetch client data from the backend
-        const response = await fetch(`${BACKEND_URL}/get-client/${clientId}`);
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Failed to fetch client data: ${errorText}`);
+    // Define the function to check and update farmworker question visibility
+    async function refreshFarmworkerVisibility() {
+        try {
+            const response = await fetch(`${BACKEND_URL}/get-client/${clientId}`);
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to fetch client data: ${errorText}`);
+            }
+
+            const client = await response.json();
+            const householdMembers = client.householdMembers || [];
+
+            const hasMealsAndSnapScreening = householdMembers.some(
+                member => member.meals === 'yes' && member.SNAP?.screeningInProgress === true
+            );
+            console.log('Has Meals and SNAP Screening:', hasMealsAndSnapScreening);
+
+            if (hasMealsAndSnapScreening) {
+                farmworkerQuestion.style.display = 'block';
+            } else {
+                farmworkerQuestion.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error refreshing farmworker visibility:', error);
         }
-
-        const client = await response.json();
-        console.log('Client Data:', client); // Debugging
-
-        // Extract household members
-        const householdMembers = client.householdMembers || [];
-        console.log('Household Members:', householdMembers); // Debugging
-
-        // Check if at least one member has meals: yes
-        const hasMeals = householdMembers.some(member => member.meals === 'yes');
-        console.log('Has Meals:', hasMeals); // Debugging
-
-        // Show or hide the question based on the condition
-        if (hasMeals) {
-            farmworkerQuestion.style.display = 'block'; // Show the question
-        } else {
-            farmworkerQuestion.style.display = 'none'; // Hide the question
-        }
-        console.log('Farmworker Question Element:', farmworkerQuestion); // Debugging
-    } catch (error) {
-        console.error('Error fetching client data:', error);
     }
+
+    // Expose globally so income.js and other scripts can call it after changes
+    window.refreshFarmworkerVisibility = refreshFarmworkerVisibility;
+
+    // Run on initial page load
+    await refreshFarmworkerVisibility();
 });
 
 async function setCheckedOutStatus(clientId, status) {

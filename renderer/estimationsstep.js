@@ -647,19 +647,23 @@ document.addEventListener('DOMContentLoaded', async function () {
                 }
 
                 // PTRR section
-                if (member.PTRR?.screeningInProgress === false) {
-                    benefitSections.push({ closed: true, html: benefitScreeningClosedBox('PTRR') });
-                } else {
-                    const html = benefitOpenSection('PTRR');
-                    if (html) benefitSections.push({ closed: false, html });
+                if (member.headOfHousehold) {
+                    if (member.PTRR?.screeningInProgress === false) {
+                        benefitSections.push({ closed: true, html: benefitScreeningClosedBox('PTRR') });
+                    } else {
+                        const html = benefitOpenSection('PTRR');
+                        if (html) benefitSections.push({ closed: false, html });
+                    }
                 }
 
                 // Sort: open benefits first, closed benefits last
                 benefitSections.sort((a, b) => a.closed - b.closed);
 
                 memberDiv.innerHTML = `
-                ${member.headOfHousehold ? `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block;"><strong>Head of Household</strong></p>` : ''}
-                ${isDeceased ? `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block;"><strong>Deceased</strong></p>` : ''}
+                <div class="member-badge-area" style="min-height: 40px; display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap;">
+                    ${member.headOfHousehold ? `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block; margin: 0;"><strong>Head of Household</strong></p>` : ''}
+                    ${isDeceased ? `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block; margin: 0;"><strong>Deceased</strong></p>` : ''}
+                </div>
                 <h3>${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.middleInitial || '')} ${capitalizeFirstLetter(member.lastName)}</h3>
                 <p><strong>Age:</strong> ${member.age?.split('Y')[0] || 'N/A'}</p>
                 <p><strong>Marital Status:</strong> ${capitalizeFirstLetter(member.maritalStatus || 'N/A')}</p>
@@ -1780,7 +1784,7 @@ function mapHardDeterminationReason(benefit, ineligibilityReason) {
                         
                         ${benefitAmount <= 24 
                             ? `Your household looks likely eligible for the Supplemental Nutrition Assistance Program (SNAP) benefits. If approved, you would receive an EBT card loaded with your benefit amount each month, which you can use at any participating grocery stores and farmers markets to buy eligible food items.`
-                            : `Your household looks likely eligible for up to $${benefitAmount.toFixed(2)} per month in the Supplemental Nutrition Assistance Program (SNAP) benefits. If approved, you would receive an EBT card loaded with your benefit amount each month, which you can use at any participating grocery stores and farmers markets to buy eligible food items.`
+                            : `Your household looks likely eligible for up to $${benefitAmount.toFixed(2)} per month in Supplemental Nutrition Assistance Program (SNAP) benefits. If approved, you would receive an EBT card loaded with your benefit amount each month, which you can use at any participating grocery stores and farmers markets to buy eligible food items.`
                         }
                         
                         </em></p>

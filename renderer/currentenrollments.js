@@ -117,8 +117,18 @@ console.log('Residence Status:', member.residenceStatus, 'Processed Residence St
 
         let hasQuestions = false;
 
-        // Conditional logic for Pennsylvania residency question
-        if ((years >= 65 || (years === 64 && months === 11 && days > 0)) && !isOnMedicaid) {    hasQuestions = true;
+        // Check if PACE screening is already closed
+        const paceIsClosed = member.PACE && member.PACE.screeningInProgress === false;
+        // Check if LIS screening is already closed
+        const lisIsClosed = member.LIS && member.LIS.screeningInProgress === false;
+        // Check if MSP screening is already closed
+        const mspIsClosed = member.MSP && member.MSP.screeningInProgress === false;
+        // Check if PTRR screening is already closed
+        const ptrrIsClosed = member.PTRR && member.PTRR.screeningInProgress === false;
+
+        // Conditional logic for Pennsylvania residency question (PACE)
+        if ((years >= 65 || (years === 64 && months === 11 && days > 0)) && !isOnMedicaid && !paceIsClosed) {
+            hasQuestions = true; // <-- THIS LINE IS MISSING
 
     // Add Pennsylvania residency question
     memberDiv.innerHTML += `
@@ -181,29 +191,39 @@ try {
 }
 
         // Conditional logic for LIS and MSP
-        if (isOnMedicare && !isOnMedicaid) {
+        const showLIS = isOnMedicare && !isOnMedicaid && !lisIsClosed;
+        const showMSP = isOnMedicare && !isOnMedicaid && !mspIsClosed;
+
+        if (showLIS || showMSP) {
             hasQuestions = true;
-            memberDiv.innerHTML += `
-                <div class="selection-box">
-                    <label>Is this person currently enrolled in LIS/ Extra Help?</label>
-                    <div data-value="yes" class="selection-option">Yes</div>
-                    <div data-value="no" class="selection-option">No</div>
-                    <div data-value="notinterested" class="selection-option">Not Interested</div>
-                </div>
-                <div class="selection-box">
-                    <label>Is this person currently enrolled in the Medicare Savings Program?</label>
-                    <div data-value="yes" class="selection-option">Yes</div>
-                    <div data-value="no" class="selection-option">No</div>
-                    <div data-value="notinterested" class="selection-option">Not Interested</div>
-                </div>
-            `;
+            if (showLIS) {
+                memberDiv.innerHTML += `
+                    <div class="selection-box">
+                        <label>Is this person currently enrolled in LIS/ Extra Help?</label>
+                        <div data-value="yes" class="selection-option">Yes</div>
+                        <div data-value="no" class="selection-option">No</div>
+                        <div data-value="notinterested" class="selection-option">Not Interested</div>
+                    </div>
+                `;
+            }
+            if (showMSP) {
+                memberDiv.innerHTML += `
+                    <div class="selection-box">
+                        <label>Is this person currently enrolled in the Medicare Savings Program?</label>
+                        <div data-value="yes" class="selection-option">Yes</div>
+                        <div data-value="no" class="selection-option">No</div>
+                        <div data-value="notinterested" class="selection-option">Not Interested</div>
+                    </div>
+                `;
+            }
         } else {
             await saveDefaultSelection(clientId, member.householdMemberId, "Is this person currently enrolled in LIS?", "Not Interested");
             await saveDefaultSelection(clientId, member.householdMemberId, "Is this person currently enrolled in MSP?", "Not Interested");
         }
 
         // Conditional logic for PTRR
-if (member.headOfHousehold === true) {
+if (member.headOfHousehold === true && !ptrrIsClosed) {
+
     let previousSpouseMeetsConditions = false;
 
     // Check if the head of household has a previous spouse
@@ -422,39 +442,50 @@ if (member.headOfHousehold === true) {
         return false; // Member has no questions
     }
 
+    let isDisplaying = false;
+
     async function displayHouseholdMembers() {
-        const householdMemberContainer = document.getElementById('householdMemberContainer');
-        householdMemberContainer.innerHTML = '';
-    
-        const members = await loadHouseholdMembers();
-        let appendedMembers = 0;
-    
-        if (members.length === 0) {
-            const noMembersMessage = document.createElement('p');
-            noMembersMessage.textContent = 'No household members found.';
-            householdMemberContainer.appendChild(noMembersMessage);
-        } else {
-            // Sort members to show headOfHousehold: true first
-            members.sort((a, b) => {
-                if (a.headOfHousehold === b.headOfHousehold) return 0;
-                return a.headOfHousehold ? -1 : 1;
-            });
+        if (isDisplaying) return; // Prevent concurrent calls
+        isDisplaying = true;
 
-            
-        // Log the previousSpouseId for the head of household
-        const headOfHousehold = members.find(member => member.headOfHousehold === true);
-        if (headOfHousehold) {
-            console.log('Head of Household Previous Spouse ID:', headOfHousehold.previousSpouseId);
-        }
+        try {
+            const householdMemberContainer = document.getElementById('householdMemberContainer');
+            householdMemberContainer.innerHTML = '';
+        
+            const members = await loadHouseholdMembers();
+            let appendedMembers = 0;
+        
+            if (members.length === 0) {
+                const noMembersMessage = document.createElement('p');
+                noMembersMessage.textContent = 'No household members found.';
+                householdMemberContainer.appendChild(noMembersMessage);
+            } else {
+                // Sort members to show headOfHousehold: true first
+                members.sort((a, b) => {
+                    if (a.headOfHousehold === b.headOfHousehold) return 0;
+                    return a.headOfHousehold ? -1 : 1;
+                });
 
-        for (const member of members) {
-            const wasAppended = await addHouseholdMemberToUI(member);
-            if (wasAppended) {
-                appendedMembers++;
+                // Log the previousSpouseId for the head of household
+                const headOfHousehold = members.find(member => member.headOfHousehold === true);
+                if (headOfHousehold) {
+                    console.log('Head of Household Previous Spouse ID:', headOfHousehold.previousSpouseId);
+                }
+
+                for (const member of members) {
+                    const wasAppended = await addHouseholdMemberToUI(member);
+                    if (wasAppended) {
+                        appendedMembers++;
+                    }
+                }
             }
+        } finally {
+            isDisplaying = false;
         }
     }
-}
+
+    // Expose displayHouseholdMembers globally so other scripts can refresh the questions
+    window.refreshCurrentEnrollments = displayHouseholdMembers;
 
     // Helper function to save default selection
     async function saveDefaultSelection(clientId, memberId, question, value) {

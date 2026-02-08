@@ -164,12 +164,26 @@ const grossIncomeLimits = [
     11482, 12380, 13278, 14176, 15074
 ];
 
-const showAddAssetButton = 
+const hasActiveScreening = 
+    member.LIS?.screeningInProgress === true || 
+    member.MSP?.screeningInProgress === true ||
+    member.SNAP?.screeningInProgress === true ||
+    member.LIHEAP?.screeningInProgress === true ||
+    (member.currentSpouseId && members.some(spouse =>
+        spouse.householdMemberId === member.currentSpouseId &&
+        (
+            spouse.LIS?.screeningInProgress === true ||
+            spouse.MSP?.screeningInProgress === true
+        )
+    ));
+
+const showAddAssetButton = hasActiveScreening && (
     member.LIS?.screeningInProgress === true || 
     member.MSP?.screeningInProgress === true ||
     (member.SNAP?.screeningInProgress === true && member.meals?.toLowerCase() === 'yes' && 
         (combinedMonthlyIncome !== undefined && parseFloat(combinedMonthlyIncome) <= 150)) ||
-    ((parseInt(member.age) >= 60 || member.disability === 'yes') &&
+    (member.SNAP?.screeningInProgress === true &&
+        (parseInt(member.age) >= 60 || member.disability === 'yes') &&
         (member.SNAP?.householdSize !== undefined && 
          member.SNAP?.combinedMonthlyIncome > grossIncomeLimits[member.SNAP.householdSize])) ||
     member.LIHEAP?.screeningInProgress === true ||
@@ -179,7 +193,8 @@ const showAddAssetButton =
             spouse.LIS?.screeningInProgress === true ||
             spouse.MSP?.screeningInProgress === true
         )
-    ));                           
+    ))
+);                           
                 if (showAddAssetButton) {
                     const addAssetButton = document.createElement('button');
                     addAssetButton.classList.add('add-asset-button');
@@ -501,7 +516,7 @@ alert('Failed to fetch asset details.');
                     if (window.eligibilityChecks && window.eligibilityChecks.refreshAllDisplays) {
                         await window.eligibilityChecks.refreshAllDisplays();
                     }
-                    
+
                 } else {
                     alert('Failed to delete asset.');
                 }
@@ -517,6 +532,9 @@ alert('Failed to fetch asset details.');
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.get(name);
     }
+
+        // Expose refresh so estimations.js can trigger re-render via refreshAllDisplays
+        window.refreshAssetDisplay = displayHouseholdMembers;
 
     // Display household members on page load
     await displayHouseholdMembers();

@@ -214,7 +214,7 @@ const memberState = {
 };
 
 // Add event listener to autofill fields based on dropdown selection
-document.getElementById('expense-kind').addEventListener('change', function () {
+document.getElementById('expense-kind').addEventListener('change', async function () {
     const selectedValue = this.value; // Get the selected dropdown value
     const expenseType = modalTitle.textContent.includes('Previous Year') ? 'Previous Year' : 'Medical'; // Determine the expense type
     const amountInput = document.getElementById('expense-amount');
@@ -233,9 +233,37 @@ document.getElementById('expense-kind').addEventListener('change', function () {
         amountInput.value = '';
         frequencyInput.value = '';
     }
-        // Show/hide and populate Lease/Deed dropdown when applicable
-        ensureLeaseDropdownVisibility();
+
+    // Show/hide SS/Pension deduction question for Medical + Medicare Part B + LIHEAP
+    await updateSSPensionDeductionVisibility(expenseType, selectedValue);
+
+    // Show/hide and populate Lease/Deed dropdown when applicable
+    ensureLeaseDropdownVisibility();
 });
+
+// Function to check if SS/Pension deduction question should be shown
+async function updateSSPensionDeductionVisibility(expenseType, kind) {
+    const container = document.getElementById('ss-pension-deduction-container');
+    const select = document.getElementById('ss-pension-deduction');
+    if (!container || !select) return;
+
+    if (expenseType === 'Medical' && (kind === 'Medicare Part B Premium' || kind === 'Medicare Part D Premium')) {
+        // Check if the current member has LIHEAP screening in progress
+        const currentMemberId = memberState.getCurrentMemberId();
+        if (currentMemberId) {
+            const members = await getHouseholdMembersCached();
+            const member = members.find(m => String(m.householdMemberId) === String(currentMemberId));
+            if (member && member.LIHEAP?.screeningInProgress === true) {
+                container.classList.remove('hidden');
+                return;
+            }
+        }
+    }
+
+    // Hide and reset if conditions not met
+    container.classList.add('hidden');
+    select.value = '';
+}
 
     // Define dropdown options for each expense type
     const dropdownOptions = {
@@ -247,6 +275,7 @@ document.getElementById('expense-kind').addEventListener('change', function () {
         ],
         Medical: [
             { value: 'Medicare Part B Premium', label: 'Medicare Part B Premium' },
+            { value: 'Medicare Part D Premium', label: 'Medicare Part D Premium' },
             { value: 'Other Insurance Premium', label: 'Other Insurance Premium' },
             { value: 'Hospital Co-Pay', label: 'Hospital Co-Pay' },
             { value: 'Doctor Co-Pay', label: 'Doctor Co-Pay' },
@@ -304,8 +333,15 @@ document.getElementById('expense-kind').addEventListener('change', function () {
         }
     }
 
+// ...existing code...
+
     // Function to display household members and their expenses
-    async function displayHouseholdMembers() {
+    let isDisplaying = false; // Guard against re-entrant calls
+    async function displayHouseholdMembers(skipEligibilityChecks = false) {
+        if (isDisplaying) return; // Prevent infinite loop
+        isDisplaying = true;
+
+        try {
         const householdMemberContainer = document.getElementById('household-member-container');
         const members = await loadHouseholdMembers();
     
@@ -357,7 +393,7 @@ document.getElementById('expense-kind').addEventListener('change', function () {
                             ${populateExpenses(member.expenses)}
                         </ul>
                     </div>
-                    <div class="add-expense-buttons">
+<div class="add-expense-buttons">
                         ${
                             member.SNAP?.screeningInProgress === true && member.meals?.toLowerCase() === "yes"
                                 ? `
@@ -374,6 +410,13 @@ document.getElementById('expense-kind').addEventListener('change', function () {
                                     }
                                     <button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Other">Add Other Expense</button>
                                 `
+                                : ''
+                        }
+                        ${
+                            // Show Medical button for LIHEAP-only members (when SNAP conditions above didn't already render it)
+                            member.LIHEAP?.screeningInProgress === true &&
+                            !(member.SNAP?.screeningInProgress === true && member.meals?.toLowerCase() === "yes" && (parseInt(member.age?.split('Y')[0]) >= 60 || member.disability?.toLowerCase() === "yes"))
+                                ? `<button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Medical" data-liheap-only="true">Add Medical Expense</button>`
                                 : ''
                         }
                         ${
@@ -396,6 +439,9 @@ document.getElementById('expense-kind').addEventListener('change', function () {
                 householdMemberContainer.appendChild(memberDiv);
             }
         }
+
+        // Skip eligibility checks if called from within eligibility flow
+        if (skipEligibilityChecks) return;
     
         // Ensure eligibilityChecks is defined
         if (!window.eligibilityChecks) {
@@ -425,16 +471,20 @@ document.getElementById('expense-kind').addEventListener('change', function () {
         // Run eligibility checks and update the UI
         const membersForEligibility = await loadHouseholdMembers();
         // Trigger eligibility checks
-        await window.eligibilityChecks.PACEEligibilityCheck(members);
-        await window.eligibilityChecks.LISEligibilityCheck(members);
-        await window.eligibilityChecks.MSPEligibilityCheck(members);
-        await window.eligibilityChecks.PTRREligibilityCheck(members);
-        await window.eligibilityChecks.SNAPEligibilityCheck(members);
-        await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
+        await window.eligibilityChecks.PACEEligibilityCheck(membersForEligibility);
+        await window.eligibilityChecks.LISEligibilityCheck(membersForEligibility);
+        await window.eligibilityChecks.MSPEligibilityCheck(membersForEligibility);
+        await window.eligibilityChecks.PTRREligibilityCheck(membersForEligibility);
+        await window.eligibilityChecks.SNAPEligibilityCheck(membersForEligibility);
+        await window.eligibilityChecks.LIHEAPEligibilityCheck(membersForEligibility);
 
         // Single refresh after all checks complete
         if (window.eligibilityChecks && window.eligibilityChecks.refreshAllDisplays) {
             await window.eligibilityChecks.refreshAllDisplays();
+        }
+
+        } finally {
+            isDisplaying = false; // Always release the guard
         }
     }
 
@@ -500,11 +550,14 @@ setupModalClose('previous-year-modal', 'previous-year-form');
                         <li data-expense-id="${expense.id}" class="${Array.isArray(expense.leasePersons) && expense.leasePersons.length > 0 ? 'has-lease' : ''}">
                             <p><strong>Type:</strong><br> ${expense.type}</p>
                             <p><strong>Kind:</strong><br> ${expense.kind}</p>
-                                                        ${Array.isArray(expense.leasePersons) && expense.leasePersons.length > 0 ? `
+                            ${Array.isArray(expense.leasePersons) && expense.leasePersons.length > 0 ? `
                                 <p><strong>Person(s) on Lease/Deed:</strong><br> ${expense.leasePersons.join(', ')}</p>
                             ` : ''}
                             <p><strong>Amount:</strong><br> $${formatAmount(expense.amount)}</p>
                             <p><strong>Frequency:</strong><br> ${expense.frequency}</p>
+                            ${expense.deductedFromSSOrPension ? `
+                                <p><strong>Deducted from SS/Pension:</strong><br> ${expense.deductedFromSSOrPension}</p>
+                            ` : ''}
                             <p><strong>Start Date:</strong><br> ${expense.startDate}</p>
                             <p><strong>End Date:</strong><br> ${expense.endDate}</p>
                             <div class="button-container">
@@ -513,7 +566,7 @@ setupModalClose('previous-year-modal', 'previous-year-form');
                             </div>
                         </li>
                     `).join('')}
-                                        </ul>
+                    </ul>
                 </div>
             `;
         };
@@ -755,9 +808,16 @@ document.addEventListener('click', async (event) => {
             placeholderOption.selected = true;
             expenseKindDropdown.appendChild(placeholderOption);
 
+            // Determine if this is a LIHEAP-only medical button
+            const isLiheapOnly = event.target.dataset.liheapOnly === 'true';
+
             // Populate dropdown options based on the expense type
             if (dropdownOptions[expenseType]) {
-                dropdownOptions[expenseType].forEach(option => {
+                const options = isLiheapOnly
+                ? dropdownOptions[expenseType].filter(opt => opt.value === 'Medicare Part B Premium' || opt.value === 'Medicare Part D Premium')
+                : dropdownOptions[expenseType];
+
+                options.forEach(option => {
                     const optionElement = document.createElement('option');
                     optionElement.value = option.value;
                     optionElement.textContent = option.label;
@@ -829,9 +889,22 @@ async function saveExpense() {
     const expenseEndDate = document.getElementById('expense-end-date').value;
     const expenseAmount = document.getElementById('expense-amount').value;
 
+    // Get SS/Pension deduction value if visible
+    const ssPensionContainer = document.getElementById('ss-pension-deduction-container');
+    const ssPensionSelect = document.getElementById('ss-pension-deduction');
+    const ssPensionDeduction = ssPensionContainer && !ssPensionContainer.classList.contains('hidden')
+        ? ssPensionSelect.value
+        : undefined;
+
     // Validate input fields
     if (!expenseKind || !expenseFrequency || !expenseStartDate || !expenseEndDate || !expenseAmount) {
         alert('Please fill out all fields.');
+        return;
+    }
+
+    // Validate SS/Pension deduction if the question is visible
+    if (ssPensionContainer && !ssPensionContainer.classList.contains('hidden') && !ssPensionDeduction) {
+        alert('Please indicate whether this expense is deducted from a Social Security or pension payment.');
         return;
     }
 
@@ -848,6 +921,11 @@ async function saveExpense() {
         return;
     }
 
+    if (expenseType === 'Previous Year' && (startYear !== 2025 || endYear !== 2025)) {
+        alert(`For ${expenseType} Expenses, both Start Date and End Date must be in 2025.`);
+        return;
+    }
+
     if (expenseType !== 'Previous Year' && (startYear !== 2026 || endYear !== 2026)) {
         alert(`For ${expenseType} Expenses, both Start Date and End Date must be in 2026.`);
         return;
@@ -858,7 +936,7 @@ async function saveExpense() {
         id: `expense-${Date.now()}`, // Generate a unique ID
         type: modalTitle.textContent.includes('Previous Year') 
         ? 'Previous Year' 
-        : modalTitle.textContent.split(' ')[1], // Extract type from modal title        kind: expenseKind,
+        : modalTitle.textContent.split(' ')[1],
         amount: parseFloat(expenseAmount),
         kind: expenseKind,
         frequency: expenseFrequency,
@@ -867,7 +945,8 @@ async function saveExpense() {
         leasePersons: shouldShowLeaseDropdown(
             modalTitle.textContent.includes('Previous Year') ? 'Previous Year' : modalTitle.textContent.split(' ')[1],
             expenseKind
-        ) ? leaseSelectedPersons.map(p => p.label) : undefined
+        ) ? leaseSelectedPersons.map(p => p.label) : undefined,
+        deductedFromSSOrPension: ssPensionDeduction || undefined
     };
 
     console.log('New Expense:', newExpense);
@@ -941,9 +1020,22 @@ async function overwriteExpense() {
     const expenseEndDate = document.getElementById('expense-end-date').value;
     const expenseAmount = document.getElementById('expense-amount').value;
 
+    // Get SS/Pension deduction value if visible
+    const ssPensionContainer = document.getElementById('ss-pension-deduction-container');
+    const ssPensionSelect = document.getElementById('ss-pension-deduction');
+    const ssPensionDeduction = ssPensionContainer && !ssPensionContainer.classList.contains('hidden')
+        ? ssPensionSelect.value
+        : undefined;
+
     // Validate input fields
     if (!expenseKind || !expenseFrequency || !expenseStartDate || !expenseEndDate || !expenseAmount) {
         alert('Please fill out all fields.');
+        return;
+    }
+
+    // Validate SS/Pension deduction if the question is visible
+    if (ssPensionContainer && !ssPensionContainer.classList.contains('hidden') && !ssPensionDeduction) {
+        alert('Please indicate whether this expense is deducted from a Social Security or pension payment.');
         return;
     }
 
@@ -976,7 +1068,7 @@ async function overwriteExpense() {
         id: currentExpenseId,
         type: modalTitle.textContent.includes('Previous Year') 
             ? 'Previous Year' 
-            : modalTitle.textContent.split(' ')[1], // Extract type from modal title
+            : modalTitle.textContent.split(' ')[1],
         kind: expenseKind,
         amount: parseFloat(expenseAmount),
         frequency: expenseFrequency,
@@ -985,7 +1077,8 @@ async function overwriteExpense() {
         leasePersons: shouldShowLeaseDropdown(
             modalTitle.textContent.includes('Previous Year') ? 'Previous Year' : modalTitle.textContent.split(' ')[1],
             expenseKind
-        ) ? leaseSelectedPersons.map(p => p.label) : undefined
+        ) ? leaseSelectedPersons.map(p => p.label) : undefined,
+        deductedFromSSOrPension: ssPensionDeduction || undefined
     };
 
     console.log('Updated Expense Payload:', updatedExpense);
@@ -1131,12 +1224,24 @@ document.addEventListener('click', async function (event) {
             // Update the modal title
             modalTitle.textContent = `Edit ${expenseType} Expense`;
 
+            // Update the modal title
+            modalTitle.textContent = `Edit ${expenseType} Expense`;
+
             // Set the current expense ID and switch to editing mode
             currentExpenseId = expense.id;
             isEditing = true;
 
             // Show the modal
             modal.classList.remove('hidden');
+
+            // Show/hide and prefill SS/Pension deduction question
+            await updateSSPensionDeductionVisibility(expenseType, expense.kind);
+            if (expense.deductedFromSSOrPension) {
+                const ssPensionSelect = document.getElementById('ss-pension-deduction');
+                if (ssPensionSelect) {
+                    ssPensionSelect.value = expense.deductedFromSSOrPension;
+                }
+            }
 
                         // Ensure Lease/Deed dropdown visibility and prefill when applicable
             try {
@@ -1354,6 +1459,9 @@ document.addEventListener('click', async (event) => {
         }
     }
 });
+
+// Expose displayHouseholdMembers globally so external code (e.g., eligibility toggles) can refresh buttons
+window.refreshExpenseButtons = displayHouseholdMembers;
 
 // Display household members on page load
 await displayHouseholdMembers();

@@ -204,36 +204,38 @@ document.addEventListener('DOMContentLoaded', async function () {
             }
 
             // PTRR section
-            if (ptrrScreeningClosed) {
-                benefitSections.push({ closed: true, html: `
-                        <div style="background-color:rgb(212, 212, 212); border: 1px solid rgb(0, 0, 0); padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center; width: 100%; box-sizing: border-box;">
-                            <p style="margin: 0 0 6px 0;"><strong>PTRR Screening Closed</strong></p>                        <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${member.PTRR?.screeningCloseReason || 'N/A'}</p>
-                        <button class="btn-reopen-individual-screening" data-benefit="PTRR" data-member-id="${member.householdMemberId}"
-                            style="background-color: #007bff; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 12px; cursor: pointer; transition: background-color 0.3s;"
-                            onmouseover="this.style.backgroundColor='#0056b3'" 
-                            onmouseout="this.style.backgroundColor='#007bff'">
-                            Reopen PTRR Screening
-                        </button>
-                    </div>
-                `});
-            } else if (!member.PTRR?.eligibility?.includes('Not Checked')) {
-                const ptrrElig = member.PTRR?.eligibility?.map(capitalizeFirstLetter) || [];
-                const ptrrIsNot = ptrrElig.some(item => item.includes("NOT") || item.includes("ALREADY APPLIED") || item.includes("NOT INTERESTED") || item.includes("NO FORMAL LEASE") || item.includes("AGE") || item.includes("CRITERIA NOT MET"));
-                const ptrrNeedsInfo = ptrrElig.some(item => item.includes("NEEDS") || item.includes("DETERMINATION PENDING"));
-                const ptrrIsLikely = !ptrrIsNot && !ptrrNeedsInfo;
-                const ptrrBgColor = ptrrIsNot ? '#f8d7da' : ptrrNeedsInfo ? '#fff3cd' : ptrrIsLikely ? '#d4edda' : 'transparent';
-                const ptrrBorderColor = ptrrIsNot ? '#f5c6cb' : ptrrNeedsInfo ? '#ffc107' : ptrrIsLikely ? '#c3e6cb' : '#ccc';
+            if (member.headOfHousehold) {
+                if (ptrrScreeningClosed) {
+                    benefitSections.push({ closed: true, html: `
+                            <div style="background-color:rgb(212, 212, 212); border: 1px solid rgb(0, 0, 0); padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center; width: 100%; box-sizing: border-box;">
+                                <p style="margin: 0 0 6px 0;"><strong>PTRR Screening Closed</strong></p>                        <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${member.PTRR?.screeningCloseReason || 'N/A'}</p>
+                            <button class="btn-reopen-individual-screening" data-benefit="PTRR" data-member-id="${member.householdMemberId}"
+                                style="background-color: #007bff; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 12px; cursor: pointer; transition: background-color 0.3s;"
+                                onmouseover="this.style.backgroundColor='#0056b3'" 
+                                onmouseout="this.style.backgroundColor='#007bff'">
+                                Reopen PTRR Screening
+                            </button>
+                        </div>
+                    `});
+                } else if (!member.PTRR?.eligibility?.includes('Not Checked')) {
+                    const ptrrElig = member.PTRR?.eligibility?.map(capitalizeFirstLetter) || [];
+                    const ptrrIsNot = ptrrElig.some(item => item.includes("NOT") || item.includes("ALREADY APPLIED") || item.includes("NOT INTERESTED") || item.includes("NO FORMAL LEASE") || item.includes("AGE") || item.includes("CRITERIA NOT MET"));
+                    const ptrrNeedsInfo = ptrrElig.some(item => item.includes("NEEDS") || item.includes("DETERMINATION PENDING"));
+                    const ptrrIsLikely = !ptrrIsNot && !ptrrNeedsInfo;
+                    const ptrrBgColor = ptrrIsNot ? '#f8d7da' : ptrrNeedsInfo ? '#fff3cd' : ptrrIsLikely ? '#d4edda' : 'transparent';
+                    const ptrrBorderColor = ptrrIsNot ? '#f5c6cb' : ptrrNeedsInfo ? '#ffc107' : ptrrIsLikely ? '#c3e6cb' : '#ccc';
 
-                benefitSections.push({ closed: false, html: `
-                    <details class="custom-details" style="background-color: ${ptrrBgColor}; border: 1px solid ${ptrrBorderColor}; border-radius: 4px; padding: 8px; margin: 8px 0; width: 100%; box-sizing: border-box;">
-                        <summary><br><strong>PTRR Eligibility</strong>
-                        <p><strong></strong> ${
-                            ptrrElig.join(', ') || 'Not Available'
-                        }</summary></p>
-                        <hr class="separator-bar">
-                        <p><strong>Gross Income:</strong> $${member.PTRR?.combinedIncome?.toFixed(2) || 'N/A'}</p>
-                    </details>
-                `});
+                    benefitSections.push({ closed: false, html: `
+                        <details class="custom-details" style="background-color: ${ptrrBgColor}; border: 1px solid ${ptrrBorderColor}; border-radius: 4px; padding: 8px; margin: 8px 0; width: 100%; box-sizing: border-box;">
+                            <summary><br><strong>PTRR Eligibility</strong>
+                            <p><strong></strong> ${
+                                ptrrElig.join(', ') || 'Not Available'
+                            }</summary></p>
+                            <hr class="separator-bar">
+                            <p><strong>Gross Income:</strong> $${member.PTRR?.combinedIncome?.toFixed(2) || 'N/A'}</p>
+                        </details>
+                    `});
+                }
             }
 
             // Sort: open benefits first, closed benefits last
@@ -451,45 +453,54 @@ function updateReasonDropdown(selectedBenefits) {
     });
 }
 
-// Map "Hard Determination" to auto-resolved reasons per benefit based on eligibility
-function mapHardDeterminationReason(benefit, member) {
-    const eligibility = member[benefit]?.eligibility || [];
-    const eligStr = eligibility.join(' ').toUpperCase();
+// Maps the ineligibility reason from the eligibility array to an appropriate close reason
+function mapHardDeterminationReason(benefit, ineligibilityReason) {
+    const upper = (ineligibilityReason || '').toUpperCase();
 
-    if (benefit === 'PACE') {
-        if (eligStr.includes('AGE CRITERIA NOT MET')) return 'Age Criteria Not Met';
-        if (eligStr.includes('ENROLLED IN MEDICAID')) return 'Enrolled in Medicaid';
-        if (eligStr.includes('RESIDENCY NOT MET')) return 'Residency Not Met';
-        if (eligStr.includes('ALREADY ENROLLED')) return 'Already Enrolled';
-        if (eligStr.includes('NOT INTERESTED')) return 'Client Not Interested';
-        if (eligStr.includes('NOT LIKELY ELIGIBLE') && eligStr.includes('INCOME')) return 'Ineligible - Income';
-    }
-    if (benefit === 'LIS') {
-        if (eligStr.includes('NOT ENROLLED IN MEDICARE')) return 'Not Enrolled in Medicare';
-        if (eligStr.includes('ENROLLED IN MEDICAID')) return 'Enrolled in Medicaid';
-        if (eligStr.includes('ALREADY ENROLLED')) return 'Already Enrolled';
-        if (eligStr.includes('NOT INTERESTED')) return 'Client Not Interested';
-        if (eligStr.includes('NOT LIKELY ELIGIBLE') && eligStr.includes('INCOME')) return 'Ineligible - Income';
-        if (eligStr.includes('NOT LIKELY ELIGIBLE') && eligStr.includes('ASSETS')) return 'Ineligible - Assets';
-    }
-    if (benefit === 'MSP') {
-        if (eligStr.includes('NOT ENROLLED IN MEDICARE')) return 'Not Enrolled in Medicare';
-        if (eligStr.includes('ENROLLED IN MEDICAID')) return 'Enrolled in Medicaid';
-        if (eligStr.includes('ALREADY ENROLLED')) return 'Already Enrolled';
-        if (eligStr.includes('NOT INTERESTED')) return 'Client Not Interested';
-        if (eligStr.includes('NOT LIKELY ELIGIBLE') && eligStr.includes('INCOME')) return 'Ineligible - Income';
-        if (eligStr.includes('NOT LIKELY ELIGIBLE') && eligStr.includes('ASSETS')) return 'Ineligible - Assets';
-    }
-    if (benefit === 'PTRR') {
-        if (eligStr.includes('NO FORMAL LEASE')) return 'No Formal Lease';
-        if (eligStr.includes('ALREADY APPLIED')) return 'Already Applied';
-        if (eligStr.includes('NOT INTERESTED')) return 'Client Not Interested';
-        if (eligStr.includes('AGE') || eligStr.includes('DISABILITY') || eligStr.includes('WIDOW') || eligStr.includes('CRITERIA NOT MET')) return 'Age/Disability/Widow Criteria Not Met';
-        if (eligStr.includes('NOT LIKELY ELIGIBLE') && eligStr.includes('INCOME')) return 'Ineligible - Income';
-        if (eligStr.includes('NO RELEVANT EXPENSES')) return 'No Relevant Expenses';
+    // Common patterns across benefits
+    if (upper.includes('ALREADY ENROLLED')) return 'Already Enrolled';
+    if (upper.includes('ALREADY APPLIED')) return 'Already Applied';
+    if (upper.includes('NOT INTERESTED')) return 'Client Not Interested';
+    if (upper.includes('ENROLLED IN MEDICAID')) return 'Enrolled in Medicaid';
+    if (upper.includes('NOT ENROLLED IN MEDICARE')) return 'Not Enrolled in Medicare';
+
+    // Benefit-specific mappings
+    switch (benefit) {
+        case 'PACE':
+            if (upper.includes('AGE CRITERIA')) return 'Age Criteria Not Met';
+            if (upper.includes('RESIDENCY')) return 'Residency Not Met';
+            if (upper.includes('INCOME')) return 'Ineligible - Income';
+            if (upper.includes('INELIGIBLE') || upper.includes('NOT LIKELY')) return 'Ineligible - Income';
+            break;
+        case 'LIS':
+            if (upper.includes('INCOME')) return 'Ineligible - Income';
+            if (upper.includes('ASSETS') || upper.includes('ASSET')) return 'Ineligible - Assets';
+            if (upper.includes('NOT LIKELY')) {
+                if (upper.includes('INCOME')) return 'Ineligible - Income';
+                if (upper.includes('ASSETS') || upper.includes('ASSET')) return 'Ineligible - Assets';
+                return 'Ineligible - Income';
+            }
+            break;
+        case 'MSP':
+            if (upper.includes('INCOME')) return 'Ineligible - Income';
+            if (upper.includes('ASSETS') || upper.includes('ASSET')) return 'Ineligible - Assets';
+            if (upper.includes('NOT LIKELY')) {
+                if (upper.includes('INCOME')) return 'Ineligible - Income';
+                if (upper.includes('ASSETS') || upper.includes('ASSET')) return 'Ineligible - Assets';
+                return 'Ineligible - Income';
+            }
+            break;
+        case 'PTRR':
+            if (upper.includes('AGE') || upper.includes('DISABILITY') || upper.includes('WIDOW')) return 'Age/Disability/Widow Criteria Not Met';
+            if (upper.includes('NO FORMAL LEASE')) return 'No Formal Lease';
+            if (upper.includes('NO RELEVANT EXPENSES')) return 'No Relevant Expenses';
+            if (upper.includes('INCOME')) return 'Ineligible - Income';
+            if (upper.includes('NOT LIKELY')) return 'Ineligible - Income';
+            break;
     }
 
-    return null; // No auto-mapping found
+    // Fallback: use the raw ineligibility reason or a generic one
+    return ineligibilityReason || 'Ineligible - Hard Determination';
 }
 
 // Check if a benefit for a member is "red" (not eligible / hard closeout candidate)
@@ -550,10 +561,43 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
 
             // Must have eligibility data
             if (benefitObj.eligibility && benefitObj.eligibility.length > 0) {
+                // Determine if this benefit is "not likely eligible" (red card)
+                const eligArray = benefitObj.eligibility.map(e => (e || '').toUpperCase());
+                const isNotEligible = eligArray.some(item =>
+                    item.includes("NOT") ||
+                    item.includes("ALREADY ENROLLED") ||
+                    item.includes("ALREADY APPLIED") ||
+                    item.includes("NOT INTERESTED") ||
+                    item.includes("AGE CRITERIA NOT MET") ||
+                    item.includes("ENROLLED IN MEDICAID") ||
+                    item.includes("NO FORMAL LEASE") ||
+                    item.includes("RESIDENCY NOT MET") ||
+                    item.includes("NOT ENROLLED IN MEDICARE")
+                );
+
+                // Extract the specific ineligibility reason for hard determination mapping
+                let ineligibilityReason = '';
+                if (isNotEligible) {
+                    ineligibilityReason = benefitObj.eligibility.find(e => {
+                        const upper = (e || '').toUpperCase();
+                        return upper.includes("NOT") ||
+                            upper.includes("ALREADY ENROLLED") ||
+                            upper.includes("ALREADY APPLIED") ||
+                            upper.includes("AGE") ||
+                            upper.includes("ENROLLED IN MEDICAID") ||
+                            upper.includes("NO FORMAL LEASE") ||
+                            upper.includes("RESIDENCY") ||
+                            upper.includes("NOT ENROLLED IN MEDICARE") ||
+                            upper.includes("NOT INTERESTED");
+                    }) || '';
+                }
+
                 allOpenBenefitEntries.push({
                     memberId: member.householdMemberId,
                     memberName,
-                    benefit
+                    benefit,
+                    isNotEligible,
+                    ineligibilityReason
                 });
             }
         });
@@ -568,72 +612,15 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
                 benefits: []
             };
         }
-        groupedByMember[entry.memberId].benefits.push(entry.benefit);
+        groupedByMember[entry.memberId].benefits.push({
+            benefit: entry.benefit,
+            isNotEligible: entry.isNotEligible,
+            ineligibilityReason: entry.ineligibilityReason
+        });
     });
 
-    // Build selectable benefit tiles grouped by member
-    checkboxContainer.innerHTML = '<p style="margin-bottom: 10px;"><strong>Select benefits to close:</strong></p>';
-
-    // Add "Select All" toggle
-    const selectAllContainer = document.createElement('div');
-    selectAllContainer.style.cssText = 'margin-bottom: 12px; padding: 8px 0; border-bottom: 1px solid #ddd;';
-    const selectAllBtn = document.createElement('button');
-    selectAllBtn.textContent = 'Select All';
-    selectAllBtn.style.cssText = `
-        padding: 6px 14px;
-        background-color: #007bff;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 13px;
-        margin-right: 8px;
-        transition: background-color 0.3s;
-    `;
-    const deselectAllBtn = document.createElement('button');
-    deselectAllBtn.textContent = 'Deselect All';
-    deselectAllBtn.style.cssText = `
-        padding: 6px 14px;
-        background-color: #6c757d;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 13px;
-        transition: background-color 0.3s;
-    `;
-
-    const toggleAllTiles = (selected) => {
-        const allTiles = checkboxContainer.querySelectorAll('.close-member-benefit-tile');
-        allTiles.forEach(tile => {
-            tile.dataset.selected = selected ? 'true' : 'false';
-            if (selected) {
-                tile.style.borderColor = 'black';
-                tile.style.backgroundColor = '#007bff';
-                tile.style.color = 'white';
-            } else {
-                tile.style.borderColor = '#ccc';
-                tile.style.backgroundColor = '#f9f9f9';
-                tile.style.color = '#333';
-            }
-        });
-        const selectedBenefits = selected
-            ? allOpenBenefitEntries.map(e => e.benefit)
-            : [];
-        updateReasonDropdown([...new Set(selectedBenefits)]);
-    };
-
-    selectAllBtn.addEventListener('click', () => toggleAllTiles(true));
-    deselectAllBtn.addEventListener('click', () => toggleAllTiles(false));
-    selectAllContainer.appendChild(selectAllBtn);
-    selectAllContainer.appendChild(deselectAllBtn);
-    checkboxContainer.appendChild(selectAllContainer);
-
-    // Pre-select the tiles for the member who initiated the modal
-    const initiatingMemberId = memberId;
-
-    // Track which tiles should be auto-selected (red/hard closeout)
-    const autoSelectEntries = [];
+    // Clear the checkbox container and build tiles
+    checkboxContainer.innerHTML = '';
 
     Object.keys(groupedByMember).forEach(mId => {
         const group = groupedByMember[mId];
@@ -644,48 +631,59 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
         memberHeader.textContent = group.memberName;
         checkboxContainer.appendChild(memberHeader);
 
-        group.benefits.forEach(benefit => {
-            const member = allMembers.find(m => m.householdMemberId === mId);
-            const isRedBenefit = member ? isBenefitNotEligible(benefit, member) : false;
-
+        group.benefits.forEach(benefitEntry => {
             const tile = document.createElement('div');
             tile.className = 'close-member-benefit-tile';
-            tile.dataset.benefit = benefit;
+            tile.dataset.benefit = benefitEntry.benefit;
             tile.dataset.memberId = mId;
-            // Auto-select red/hard-closeout benefits
-            tile.dataset.selected = isRedBenefit ? 'true' : 'false';
-            tile.textContent = benefit;
-
-            if (isRedBenefit) {
-                autoSelectEntries.push({ memberId: mId, benefit });
-            }
-
+            tile.dataset.selected = 'false';
+            tile.dataset.isNotEligible = benefitEntry.isNotEligible ? 'true' : 'false';
+            tile.dataset.ineligibilityReason = benefitEntry.ineligibilityReason || '';
+            tile.textContent = benefitEntry.benefit;
             tile.style.cssText = `
                 display: block;
                 padding: 10px 16px;
                 margin: 6px 0;
-                border: 2px solid ${isRedBenefit ? 'black' : '#ccc'};
+                border: 2px solid #ccc;
                 border-radius: 6px;
                 cursor: pointer;
                 font-size: 14px;
                 font-weight: 500;
-                color: ${isRedBenefit ? 'white' : '#333'};
-                background-color: ${isRedBenefit ? '#007bff' : '#f9f9f9'};
+                color: #333;
+                background-color: #f9f9f9;
                 transition: all 0.2s ease;
                 user-select: none;
             `;
 
+            if (benefitEntry.isNotEligible) {
+                tile.style.borderColor = '#f5c6cb';
+                tile.style.backgroundColor = '#f8d7da';
+                tile.style.color = '#721c24';
+            }
+
             tile.addEventListener('mouseover', () => {
                 if (tile.dataset.selected === 'false') {
-                    tile.style.borderColor = '#337ab7';
-                    tile.style.backgroundColor = '#e8f0fe';
+                    if (benefitEntry.isNotEligible) {
+                        tile.style.borderColor = '#c82333';
+                        tile.style.backgroundColor = '#f1b0b7';
+                    } else {
+                        tile.style.borderColor = '#337ab7';
+                        tile.style.backgroundColor = '#e8f0fe';
+                    }
                 }
             });
 
             tile.addEventListener('mouseout', () => {
                 if (tile.dataset.selected === 'false') {
-                    tile.style.borderColor = '#ccc';
-                    tile.style.backgroundColor = '#f9f9f9';
+                    if (benefitEntry.isNotEligible) {
+                        tile.style.borderColor = '#f5c6cb';
+                        tile.style.backgroundColor = '#f8d7da';
+                        tile.style.color = '#721c24';
+                    } else {
+                        tile.style.borderColor = '#ccc';
+                        tile.style.backgroundColor = '#f9f9f9';
+                        tile.style.color = '#333';
+                    }
                 }
             });
 
@@ -698,12 +696,17 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
                     tile.style.backgroundColor = '#007bff';
                     tile.style.color = 'white';
                 } else {
-                    tile.style.borderColor = '#ccc';
-                    tile.style.backgroundColor = '#f9f9f9';
-                    tile.style.color = '#333';
+                    if (benefitEntry.isNotEligible) {
+                        tile.style.borderColor = '#f5c6cb';
+                        tile.style.backgroundColor = '#f8d7da';
+                        tile.style.color = '#721c24';
+                    } else {
+                        tile.style.borderColor = '#ccc';
+                        tile.style.backgroundColor = '#f9f9f9';
+                        tile.style.color = '#333';
+                    }
                 }
 
-                // Update reason dropdown based on unique selected benefits
                 const selectedBenefitNames = Array.from(
                     checkboxContainer.querySelectorAll('.close-member-benefit-tile[data-selected="true"]')
                 ).map(t => t.dataset.benefit);
@@ -714,19 +717,26 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
         });
     });
 
-    // Initialize reason dropdown based on auto-selected benefits
-    if (autoSelectEntries.length > 0) {
-        const autoSelectedBenefitNames = [...new Set(autoSelectEntries.map(e => e.benefit))];
-        updateReasonDropdown(autoSelectedBenefitNames);
-
-        // If all auto-selected benefits are red, pre-select "Hard Determination"
-        const allAutoSelectedAreRed = autoSelectEntries.every(entry => {
-            const member = allMembers.find(m => m.householdMemberId === entry.memberId);
-            return member ? isBenefitNotEligible(entry.benefit, member) : false;
+    // Auto-select tiles that are "not eligible" (red cards)
+    const hasAnyNotEligible = allOpenBenefitEntries.some(e => e.isNotEligible);
+    if (hasAnyNotEligible) {
+        const allTiles = checkboxContainer.querySelectorAll('.close-member-benefit-tile');
+        allTiles.forEach(tile => {
+            if (tile.dataset.isNotEligible === 'true') {
+                tile.dataset.selected = 'true';
+                tile.style.borderColor = 'black';
+                tile.style.backgroundColor = '#007bff';
+                tile.style.color = 'white';
+            }
         });
-        if (allAutoSelectedAreRed) {
-            select.value = 'Hard Determination';
-        }
+
+        const autoSelectedBenefitNames = Array.from(
+            checkboxContainer.querySelectorAll('.close-member-benefit-tile[data-selected="true"]')
+        ).map(t => t.dataset.benefit);
+        updateReasonDropdown([...new Set(autoSelectedBenefitNames)]);
+
+        // Auto-select "Hard Determination" in the dropdown
+        select.value = 'Hard Determination';
     } else {
         select.innerHTML = '<option value="">-- Select a reason --</option>';
     }
@@ -758,36 +768,33 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
             selectedTiles.forEach(tile => {
                 const mId = tile.dataset.memberId;
                 const benefit = tile.dataset.benefit;
+                const ineligibilityReason = tile.dataset.ineligibilityReason || '';
                 if (!closuresByMember[mId]) closuresByMember[mId] = [];
-                closuresByMember[mId].push(benefit);
+                closuresByMember[mId].push({ benefit, ineligibilityReason });
             });
 
-            // Apply closures to each member — handle "Hard Determination" per-benefit mapping
+            // Apply closures to each member
             const noteLines = [];
-            for (const [mId, benefits] of Object.entries(closuresByMember)) {
-                const targetMember = allMembers.find(m => m.householdMemberId === mId);
+            for (const [mId, benefitEntries] of Object.entries(closuresByMember)) {
+                const targetMember = allMembers.find(m => String(m.householdMemberId) === String(mId));
                 if (targetMember) {
                     const memberName = `${capitalizeFirstLetter(targetMember.firstName)} ${capitalizeFirstLetter(targetMember.lastName)}`;
-                    const benefitNoteDetails = [];
-
-                    for (const benefit of benefits) {
-                        if (targetMember[benefit]) {
-                            let closeReason = reason;
-
-                            // If "Hard Determination", map to the specific reason per benefit
+                    const benefitNoteLines = [];
+                    for (const entry of benefitEntries) {
+                        if (targetMember[entry.benefit]) {
+                            // Determine the actual close reason
+                            let closeReason;
                             if (reason === 'Hard Determination') {
-                                const mappedReason = mapHardDeterminationReason(benefit, targetMember);
-                                if (mappedReason) {
-                                    closeReason = mappedReason;
-                                }
+                                closeReason = mapHardDeterminationReason(entry.benefit, entry.ineligibilityReason);
+                            } else {
+                                closeReason = reason;
                             }
-
-                            targetMember[benefit].screeningInProgress = false;
-                            targetMember[benefit].screeningCloseReason = closeReason;
-                            benefitNoteDetails.push(`${benefit} (${closeReason})`);
+                            targetMember[entry.benefit].screeningInProgress = false;
+                            targetMember[entry.benefit].screeningCloseReason = closeReason;
+                            benefitNoteLines.push(`${entry.benefit} — ${closeReason}`);
                         }
                     }
-                    noteLines.push(`<br><strong>${memberName}:</strong><br> ${benefitNoteDetails.join('<br>')}`);
+                    noteLines.push(`<br><strong>${memberName}:</strong><br> ${benefitNoteLines.join('<br>')}`);
                 }
             }
 
@@ -799,15 +806,10 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
 
             if (saveResponse.ok) {
                 modal.style.display = 'none';
-                const noteText = reason === 'Hard Determination'
-                    ? `<strong>Screening(s) closed (Hard Determination).</strong><br>${noteLines.join('<br>')}`
-                    : `<strong>Screening(s) closed.</strong><br>${noteLines.join('<br>')}<br><br>Reason: ${reason}`;
+                const noteText = `<strong>Screening(s) closed.</strong><br>${noteLines.join('<br>')}`;
                 await addNoteToClient(clientId, noteText);
                 await renderNotesContainer();
-                await displayHouseholdMembers();
-                // Check if all screenings are now closed
-                const freshMembers = await loadHouseholdMembers();
-                await checkAndAutoTerminateScreening(freshMembers);
+                await refreshAllDisplays();
             } else {
                 console.error('Failed to close screening.');
             }
@@ -1065,7 +1067,7 @@ async function displaySNAPHouseholds(prefetchedMembers, prefetchedClient) {
                     <option value="">-- Select a reason --</option>
                     <option value="Already Enrolled">Already Enrolled</option>
                     <option value="Ineligible - Income">Ineligible - Income</option>
-                    <option value="Ineligible - Assets">Ineligible - Income and Assets</option>
+                    <option value="Ineligible - Income and Assets">Ineligible - Income and Assets</option>
                     <option value="Client Not Interested"> Not Interested</option>
                     <option value="Client Unresponsive">Too Confusing</option>
                     <option value="Will Call Back">Will Call Back</option>
@@ -1098,7 +1100,29 @@ async function displaySNAPHouseholds(prefetchedMembers, prefetchedClient) {
     
         select.value = '';
         modal.style.display = 'flex';
-    
+
+        // Auto-select the most appropriate reason based on SNAP eligibility
+        const snapEligibility = (household[0]?.SNAP?.eligibility || []).join(' ').toUpperCase();
+        const clientId2 = getQueryParameter('id');
+
+        // Check client-level statuses first (from the prefetched client or fresh fetch)
+        const isAlreadyEnrolled = client?.snap === 'yes';
+        const isNotInterested = client?.snap === 'notinterested';
+
+        if (isAlreadyEnrolled) {
+            select.value = 'Already Enrolled';
+        } else if (isNotInterested) {
+            select.value = 'Not Interested';
+        } else if (snapEligibility.includes('ALREADY ENROLLED')) {
+            select.value = 'Already Enrolled';
+        } else if (snapEligibility.includes('NOT INTERESTED')) {
+            select.value = 'Client Not Interested';
+        } else if (snapEligibility.includes('INCOME AND ASSETS') || snapEligibility.includes('ASSETS')) {
+            select.value = 'Ineligible - Income and Assets';
+        } else if (snapEligibility.includes('INCOME') && snapEligibility.includes('NOT LIKELY')) {
+            select.value = 'Ineligible - Income';
+        }
+
         // Remove old listener by cloning
         const newConfirmBtn = confirmBtn.cloneNode(true);
         confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
@@ -1189,6 +1213,31 @@ async function refreshAllDisplays() {
     await displayHouseholdMembers(freshMembers);
     await displaySNAPHouseholds(freshMembers, freshClient);
     await displayLIHEAPHouseholds(freshMembers, freshClient);
+
+    // Refresh the current enrollments questions to show/hide based on closed benefits
+    if (window.refreshCurrentEnrollments) {
+        await window.refreshCurrentEnrollments();
+    }
+
+        // Fetch truly fresh members AFTER all saves are complete, then refresh income
+        if (window.refreshIncome) {
+            await window.refreshIncome();
+        }
+
+            // Refresh farmworker question visibility based on SNAP screening status
+    if (window.refreshFarmworkerVisibility) {
+        await window.refreshFarmworkerVisibility();
+    }
+
+        // Refresh asset display to re-evaluate show/hide Add Asset buttons
+        if (window.refreshAssetDisplay) {
+            await window.refreshAssetDisplay();
+        }
+
+    // Refresh the expense buttons to reflect the change
+    if (window.refreshExpenseButtons) {
+        await window.refreshExpenseButtons();
+    }
 
     // Check if all screenings are now closed across all members
     await checkAndAutoTerminateScreening(freshMembers);
@@ -1487,6 +1536,27 @@ if (isLiheapAlreadyEnrolled || isLiheapNotInterested) {
         select.value = '';
         modal.style.display = 'flex';
 
+        // Auto-select the most appropriate reason based on LIHEAP eligibility
+        const liheapEligibility = (activeLiheapMembers[0]?.LIHEAP?.eligibility || []).join(' ').toUpperCase();
+
+        // Check client-level statuses
+        const isLiheapAlreadyEnrolled = client?.liheapEnrollment === 'yes' && client?.heatingCrisis === 'no';
+        const isLiheapNotInterested = client?.liheapEnrollment === 'notinterested';
+
+        if (isLiheapAlreadyEnrolled) {
+            select.value = 'Already Enrolled';
+        } else if (isLiheapNotInterested) {
+            select.value = 'Client Not Interested';
+        } else if (liheapEligibility.includes('ALREADY ENROLLED')) {
+            select.value = 'Already Enrolled';
+        } else if (liheapEligibility.includes('NOT INTERESTED')) {
+            select.value = 'Client Not Interested';
+        } else if (liheapEligibility.includes('HEATING COST INCLUDED') || liheapEligibility.includes('SUBSIDIZED')) {
+            select.value = 'Subsidized Housing and No Heating Responsibility';
+        } else if (liheapEligibility.includes('INCOME') && liheapEligibility.includes('NOT LIKELY')) {
+            select.value = 'Ineligible - Income';
+        }
+
         // Remove old listener by cloning
         const newConfirmBtn = confirmBtn.cloneNode(true);
         confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
@@ -1618,7 +1688,9 @@ async function PACEEligibilityCheck(members) {
             if ((member.deceased ?? '').toLowerCase() === 'yes') {
                 member.PACE = {
                     combinedIncome: 0,
-                    eligibility: ["Not Checked"]
+                    eligibility: ["Not Checked"],
+                    screeningInProgress: member.PACE?.screeningInProgress ?? false,
+                    screeningCloseReason: member.PACE?.screeningCloseReason ?? "Not Applicable"
                 };
                 console.log(`Skipping PACE for deceased member: ${member.firstName} ${member.lastName}`);
                 continue;
@@ -1780,9 +1852,11 @@ if (years < 64 || (years === 64 && months < 11) || (years === 64 && months === 1
     }
 }
 
-// Save eligibility to the PACE object
 member.PACE = {
-    combinedIncome: Math.max(0, member.combinedIncome),    eligibility: eligibility
+    combinedIncome: Math.max(0, member.combinedIncome),
+    eligibility: eligibility,
+    screeningInProgress: member.PACE?.screeningInProgress ?? true,
+    screeningCloseReason: member.PACE?.screeningCloseReason ?? null
 };
 
 console.log(`PACE object for ${member.firstName} ${member.lastName}:`, member.PACE);
@@ -1815,12 +1889,16 @@ async function PTRREligibilityCheck(members) {
     // Filter members to include only those with headOfHousehold: true
     const headOfHouseholdMembers = members.filter(member => member.headOfHousehold === true);
 
+// ...existing code...
+
     // Set PTRR eligibility as "Not Checked" for members who are not head of household
     members.forEach(member => {
         if (!member.headOfHousehold) {
             member.PTRR = {
                 combinedIncome: 0,
-                eligibility: ["Not Checked"]
+                eligibility: ["Not Checked"],
+                screeningInProgress: member.PTRR?.screeningInProgress ?? false,
+                screeningCloseReason: member.PTRR?.screeningCloseReason ?? "Not Applicable"
             };
             console.log(`PTRR eligibility set to "Not Checked" for ${member.firstName} ${member.lastName}`);
         }
@@ -1973,7 +2051,9 @@ if (spouse) {
     
                 member.PTRR = {
                     combinedIncome: totalGrossIncome,
-                    eligibility: eligibility
+                    eligibility: eligibility,
+                    screeningInProgress: member.PTRR?.screeningInProgress ?? true,
+                    screeningCloseReason: member.PTRR?.screeningCloseReason ?? null
                 };
     
                 console.log(`PTRR object for ${member.firstName} ${member.lastName}:`, member.PTRR);
@@ -2010,7 +2090,9 @@ async function LISEligibilityCheck(members) {
                 member.LIS = {
                     combinedIncome: 0,
                     combinedAssets: 0,
-                    eligibility: ["Not Checked"]
+                    eligibility: ["Not Checked"],
+                    screeningInProgress: member.LIS?.screeningInProgress ?? false,
+                    screeningCloseReason: member.LIS?.screeningCloseReason ?? "Not Applicable"
                 };
                 console.log(`Skipping LIS for deceased member: ${member.firstName} ${member.lastName}`);
                 continue;
@@ -2028,7 +2110,9 @@ async function LISEligibilityCheck(members) {
                     member.LIS = {
                         combinedIncome: 0,
                         combinedAssets: 0,
-                        eligibility: ["Not Enrolled in Medicare"]
+                        eligibility: ["Not Enrolled in Medicare"],
+                        screeningInProgress: member.LIS?.screeningInProgress ?? true,
+                        screeningCloseReason: member.LIS?.screeningCloseReason ?? null
                     };
                     member.selections = member.selections || {};
                     member.selections["Is this person currently enrolled in LIS/ Extra Help?"] = "notenrolledinmedicare";
@@ -2038,7 +2122,9 @@ async function LISEligibilityCheck(members) {
                     member.LIS = {
                         combinedIncome: 0,
                         combinedAssets: 0,
-                        eligibility: ["Enrolled in Medicaid"]
+                        eligibility: ["Enrolled in Medicaid"],
+                        screeningInProgress: member.LIS?.screeningInProgress ?? true,
+                        screeningCloseReason: member.LIS?.screeningCloseReason ?? null
                     };
                     selections = member.selections || {};
                     selections["Is this person currently enrolled in LIS/ Extra Help?"] = "onmedicaid";
@@ -2052,7 +2138,9 @@ async function LISEligibilityCheck(members) {
                     member.LIS = {
                         combinedIncome: 0,
                         combinedAssets: 0,
-                        eligibility: ["Already Enrolled"]
+                        eligibility: ["Already Enrolled"],
+                        screeningInProgress: member.LIS?.screeningInProgress ?? true,
+                        screeningCloseReason: member.LIS?.screeningCloseReason ?? null
                     };
                     continue;
                 } else if (lisEnrollment === "notinterested") {
@@ -2060,7 +2148,9 @@ async function LISEligibilityCheck(members) {
                     member.LIS = {
                         combinedIncome: 0,
                         combinedAssets: 0,
-                        eligibility: ["Not Interested"]
+                        eligibility: ["Not Interested"],
+                        screeningInProgress: member.LIS?.screeningInProgress ?? true,
+                        screeningCloseReason: member.LIS?.screeningCloseReason ?? null
                     };
                     continue;
                 } else if (!lisEnrollment || lisEnrollment.toLowerCase().trim() === "notenrolledinmedicare" ||lisEnrollment.toLowerCase().trim() === "onmedicaid" ||lisEnrollment.toLowerCase().trim() === "n/a" || lisEnrollment.toLowerCase().trim() === "not interested") {
@@ -2068,7 +2158,9 @@ async function LISEligibilityCheck(members) {
                     member.LIS = {
                         combinedIncome: 0,
                         combinedAssets: 0,
-                        eligibility: ["Needs Current Enrollment Status"]
+                        eligibility: ["Needs Current Enrollment Status"],
+                        screeningInProgress: member.LIS?.screeningInProgress ?? true,
+                        screeningCloseReason: member.LIS?.screeningCloseReason ?? null
                     };
                     continue;
                 }
@@ -2183,14 +2275,19 @@ if (spouse) {
                 const lisObject = {
                     combinedIncome: combinedIncome,
                     combinedAssets: combinedAssets,
-                    eligibility: lisEligibility
+                    eligibility: lisEligibility,
+                    screeningInProgress: member.LIS?.screeningInProgress ?? true,
+                    screeningCloseReason: member.LIS?.screeningCloseReason ?? null
                 };
     
                 member.LIS = lisObject;
                 if (spouse) {
-                    spouse.LIS = lisObject;
-                    console.log(`LIS object for ${member.firstName} ${member.lastName} and spouse ${spouse.firstName} ${spouse.lastName} assigned.`);
-                    continue; // Skip further processing for the spouse
+                    spouse.LIS = {
+                        ...lisObject,
+                        screeningInProgress: spouse.LIS?.screeningInProgress ?? true,
+                        screeningCloseReason: spouse.LIS?.screeningCloseReason ?? null
+                    };
+
                 }
     
                 console.log(`LIS object for ${member.firstName} ${member.lastName}:`, member.LIS);
@@ -2227,7 +2324,9 @@ async function MSPEligibilityCheck(members) {
                 member.MSP = {
                     combinedIncome: 0,
                     combinedAssets: 0,
-                    eligibility: ["Not Checked"]
+                    eligibility: ["Not Checked"],
+                    screeningInProgress: member.MSP?.screeningInProgress ?? false,
+                    screeningCloseReason: member.MSP?.screeningCloseReason ?? "Not Applicable"
                 };
                 console.log(`Skipping MSP for deceased member: ${member.firstName} ${member.lastName}`);
                 continue;
@@ -2241,50 +2340,55 @@ async function MSPEligibilityCheck(members) {
                 const medicareEnrollment = member.medicare?.toLowerCase();
                 const medicaidEnrollment = member.medicaid?.toLowerCase();
                 if (medicareEnrollment === "no") {
-                    console.log(`${member.firstName} ${member.lastName} is not enrolled in Medicare. Marking as 'Not Enrolled in Medicare'.`);
                     member.MSP = {
                         combinedIncome: 0,
                         combinedAssets: 0,
-                        eligibility: ["Not Enrolled in Medicare"]
+                        eligibility: ["Not Enrolled in Medicare"],
+                        screeningInProgress: member.MSP?.screeningInProgress ?? true,
+                        screeningCloseReason: member.MSP?.screeningCloseReason ?? null
                     };
                     member.selections = member.selections || {};
                     member.selections["Is this person currently enrolled in the Medicare Savings Program?"] = "notenrolledinmedicare";
                     continue;
-} else if (medicaidEnrollment === "yes") {
-    console.log(`${member.firstName} ${member.lastName} is enrolled in Medicaid. Marking as 'Enrolled in Medicaid'.`);
-    member.MSP = {
-        combinedIncome: 0,
-        combinedAssets: 0,
-        eligibility: ["Enrolled in Medicaid"]
-    };
-    member.selections = member.selections || {};
-    member.selections["Is this person currently enrolled in the Medicare Savings Program?"] = "onmedicaid"; // Set MSP enrollment to "onmedicaid"
-    continue;
-}
+                } else if (medicaidEnrollment === "yes") {
+                    member.MSP = {
+                        combinedIncome: 0,
+                        combinedAssets: 0,
+                        eligibility: ["Enrolled in Medicaid"],
+                        screeningInProgress: member.MSP?.screeningInProgress ?? true,
+                        screeningCloseReason: member.MSP?.screeningCloseReason ?? null
+                    };
+                    member.selections = member.selections || {};
+                    member.selections["Is this person currently enrolled in the Medicare Savings Program?"] = "onmedicaid";
+                    continue;
+                }
     
                 const mspEnrollment = member.selections?.["Is this person currently enrolled in the Medicare Savings Program?"]?.toLowerCase();
                 if (mspEnrollment === "yes") {
-                    console.log(`${member.firstName} ${member.lastName} is already enrolled in MSP. Marking as 'Already Enrolled'.`);
                     member.MSP = {
                         combinedIncome: 0,
                         combinedAssets: 0,
-                        eligibility: ["Already Enrolled"]
+                        eligibility: ["Already Enrolled"],
+                        screeningInProgress: member.MSP?.screeningInProgress ?? true,
+                        screeningCloseReason: member.MSP?.screeningCloseReason ?? null
                     };
                     continue;
                 } else if (mspEnrollment === "notinterested") {
-                    console.log(`${member.firstName} ${member.lastName} is not interested. Marking as 'Not Checked'.`);
                     member.MSP = {
                         combinedIncome: 0,
                         combinedAssets: 0,
-                        eligibility: ["Not Interested"]
+                        eligibility: ["Not Interested"],
+                        screeningInProgress: member.MSP?.screeningInProgress ?? true,
+                        screeningCloseReason: member.MSP?.screeningCloseReason ?? null
                     };
                     continue;
                 } else if (!mspEnrollment || mspEnrollment.toLowerCase().trim() === "n/a" || mspEnrollment.toLowerCase().trim() === "notenrolledinmedicare" || mspEnrollment.toLowerCase().trim() === "onmedicaid" || mspEnrollment.toLowerCase().trim() === "not interested") {
-                    console.log(`${member.firstName} ${member.lastName} has MSP status as N/A. Marking as 'Needs Current Enrollment Status'.`);
                     member.MSP = {
                         combinedIncome: 0,
                         combinedAssets: 0,
-                        eligibility: ["Needs Current Enrollment Status"]
+                        eligibility: ["Needs Current Enrollment Status"],
+                        screeningInProgress: member.MSP?.screeningInProgress ?? true,
+                        screeningCloseReason: member.MSP?.screeningCloseReason ?? null
                     };
                     continue;
                 }
@@ -2393,14 +2497,18 @@ if (spouse) {
                 const mspObject = {
                     combinedIncome: combinedIncome,
                     combinedAssets: combinedAssets,
-                    eligibility: mspEligibility
+                    eligibility: mspEligibility,
+                    screeningInProgress: member.MSP?.screeningInProgress ?? true,
+                    screeningCloseReason: member.MSP?.screeningCloseReason ?? null
                 };
     
                 member.MSP = mspObject;
                 if (spouse) {
-                    spouse.MSP = mspObject;
-                    console.log(`MSP object for ${member.firstName} ${member.lastName} and spouse ${spouse.firstName} ${spouse.lastName} assigned.`);
-                    continue; // Skip further processing for the spouse
+                    spouse.MSP = {
+                        ...mspObject,
+                        screeningInProgress: spouse.MSP?.screeningInProgress ?? true,
+                        screeningCloseReason: spouse.MSP?.screeningCloseReason ?? null
+                    };
                 }
     
                 console.log(`MSP object for ${member.firstName} ${member.lastName}:`, member.MSP);

@@ -76,7 +76,12 @@ document.addEventListener('click', (event) => {
 
             // Re-render the income list UI
             await displayHouseholdMembers();
-    
+
+            // Refresh farmworker question visibility
+            if (window.refreshFarmworkerVisibility) {
+                await window.refreshFarmworkerVisibility();
+            }
+        
             console.log(`Income saved for member ${memberId}:`, income);
     
                     // Hide the modal after saving
@@ -387,8 +392,13 @@ if (income.type === 'Previous' && (startYear !== 2025 || endYear !== 2025)) {
         await window.eligibilityChecks.refreshAllDisplays();
     }
 
-    // Re-render the income list UI
+    // In the edit income handler (addIncomeButton click, isEditing branch), after displayHouseholdMembers():
     await displayHouseholdMembers();
+
+    // Refresh farmworker question visibility
+    if (window.refreshFarmworkerVisibility) {
+        await window.refreshFarmworkerVisibility();
+    }
 
     console.log('Income updated and checks re-run for member:', currentMemberId);
 
@@ -570,6 +580,10 @@ function attachIncomeEventListeners(incomeItem) {
         // Re-render the income list UI
         await displayHouseholdMembers();
 
+        // Refresh farmworker question visibility
+        if (window.refreshFarmworkerVisibility) {
+            await window.refreshFarmworkerVisibility();
+        }
                     } catch (error) {
 
                     console.error('Error deleting income:', error);
@@ -581,6 +595,9 @@ function attachIncomeEventListeners(incomeItem) {
 
     // Display household members on page load
     await displayHouseholdMembers();
+
+    // Expose displayHouseholdMembers globally so other scripts can refresh the income buttons
+    window.refreshIncome = displayHouseholdMembers;
 
 });
 

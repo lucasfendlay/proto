@@ -149,7 +149,7 @@
 
         .household-member-box {
             border: none;
-            align-self: flex-start;
+            align-self: stretch; /* Changed from flex-start to stretch */
             padding: 15px;
             margin-bottom: 10px;
             border-radius: 5px;
@@ -159,6 +159,8 @@
             min-width: 500px;
             max-width: 500px;
             box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
         }
         
         .snap-household-box h3 {
@@ -647,7 +649,114 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 </script>
-    <script src="estimationsstep.js" defer></script>
-    <script src="notes.js"></script>
+<script>
+    let _eqDebounceTimer = null;
+
+    function equalizeBoxHeights() {
+        // Only equalize individual member boxes inside #household-members-container
+        const container = document.getElementById('household-members-container');
+        if (!container) return;
+        const boxes = container.querySelectorAll(':scope > .household-member-box');
+        if (boxes.length === 0) return;
+
+        // Reset heights first
+        boxes.forEach(box => box.style.minHeight = '');
+
+        // Find the tallest
+        let maxHeight = 0;
+        boxes.forEach(box => {
+            const height = box.getBoundingClientRect().height;
+            if (height > maxHeight) maxHeight = height;
+        });
+
+        // Apply to all
+        boxes.forEach(box => {
+            box.style.minHeight = `${maxHeight}px`;
+        });
+    }
+
+    // Debounced version to avoid rapid-fire calls
+    function debouncedEqualizeBoxHeights() {
+        if (_eqDebounceTimer) cancelAnimationFrame(_eqDebounceTimer);
+        _eqDebounceTimer = requestAnimationFrame(equalizeBoxHeights);
+    }
+
+    // Run after content loads and re-run on any dynamic changes
+    const _eqObserver = new MutationObserver(debouncedEqualizeBoxHeights);
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const container = document.getElementById('household-members-container');
+        if (container) {
+            _eqObserver.observe(container, { childList: true, subtree: true, characterData: true });
+        }
+        // Initial equalization after a short delay to let JS render
+        setTimeout(equalizeBoxHeights, 500);
+    });
+
+    window.addEventListener('resize', equalizeBoxHeights);
+</script>
+<script>
+    // Equalize SNAP and LIHEAP box heights
+    let _snapLiheapDebounceTimer = null;
+
+    function equalizeSnapLiheapHeights() {
+        const snapBox = document.getElementById('snap-household-container');
+        const liheapBox = document.getElementById('liheap-household-container');
+        if (!snapBox || !liheapBox) return;
+
+        // Reset heights first
+        snapBox.style.minHeight = '';
+        liheapBox.style.minHeight = '';
+
+        // Match LIHEAP to SNAP height
+        const snapHeight = snapBox.getBoundingClientRect().height;
+        const liheapHeight = liheapBox.getBoundingClientRect().height;
+        const maxHeight = Math.max(snapHeight, liheapHeight);
+
+        snapBox.style.minHeight = `${maxHeight}px`;
+        liheapBox.style.minHeight = `${maxHeight}px`;
+    }
+
+    function debouncedEqualizeSnapLiheapHeights() {
+        if (_snapLiheapDebounceTimer) cancelAnimationFrame(_snapLiheapDebounceTimer);
+        _snapLiheapDebounceTimer = requestAnimationFrame(equalizeSnapLiheapHeights);
+    }
+
+    const _snapLiheapObserver = new MutationObserver(debouncedEqualizeSnapLiheapHeights);
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const snapBox = document.getElementById('snap-household-container');
+        const liheapBox = document.getElementById('liheap-household-container');
+        if (snapBox) _snapLiheapObserver.observe(snapBox, { childList: true, subtree: true, characterData: true });
+        if (liheapBox) _snapLiheapObserver.observe(liheapBox, { childList: true, subtree: true, characterData: true });
+        setTimeout(equalizeSnapLiheapHeights, 500);
+
+        // Listen for details toggle events inside both containers
+        function attachDetailsToggleListeners() {
+            const snapBox = document.getElementById('snap-household-container');
+            const liheapBox = document.getElementById('liheap-household-container');
+            [snapBox, liheapBox].forEach(container => {
+                if (!container) return;
+                container.querySelectorAll('details').forEach(details => {
+                    details.removeEventListener('toggle', debouncedEqualizeSnapLiheapHeights);
+                    details.addEventListener('toggle', debouncedEqualizeSnapLiheapHeights);
+                });
+            });
+        }
+
+        // Attach initially and re-attach whenever content changes
+        attachDetailsToggleListeners();
+        const _detailsObserver = new MutationObserver(() => {
+            attachDetailsToggleListeners();
+            debouncedEqualizeSnapLiheapHeights();
+        });
+        if (snapBox) _detailsObserver.observe(snapBox, { childList: true, subtree: true });
+        if (liheapBox) _detailsObserver.observe(liheapBox, { childList: true, subtree: true });
+    });
+
+    window.addEventListener('resize', equalizeSnapLiheapHeights);
+</script>
+        <script src="estimationsstep.js" defer></script>
+        <script src="notes.js"></script>
     <script src="editnavigation.js"></script>
 </html>
