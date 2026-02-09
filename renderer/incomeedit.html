@@ -308,26 +308,6 @@ function GoToAssetsEdit() {
     }
 }
 
-// Open the modal
-document.getElementById('add-income-button').addEventListener('click', () => {
-    const incomeModal = document.getElementById('income-modal');
-    incomeModal.style.display = 'block'; // Show the modal
-});
-
-// Close the modal when clicking outside of it
-window.addEventListener('click', (event) => {
-    const incomeModal = document.getElementById('income-modal');
-    if (event.target === incomeModal) {
-        incomeModal.style.display = 'none'; // Hide the modal
-    }
-});
-
-// Close the modal when clicking the close button
-document.getElementById('close-modal').addEventListener('click', () => {
-    const incomeModal = document.getElementById('income-modal');
-    incomeModal.style.display = 'none'; // Hide the modal
-});
-
 async function goToIncomeView() {
     const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
     if (!clientId) {

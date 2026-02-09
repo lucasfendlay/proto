@@ -1,14 +1,17 @@
 /* Modal styling */
 .modal {
-    display: flex; /* Use flexbox for centering */
-    position: fixed;
-    inset: 0; /* Shorthand for top, right, bottom, left: 0 */
-    top: 100px;
-
     display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
     justify-content: center;
     align-items: center;
-    z-index: 1000; /* Ensure it appears above everything else */
+    z-index: 9999;
+    overflow: hidden;
 }
 
 .modal.hidden {
@@ -20,12 +23,8 @@
     padding: 0px; /* Adjust padding for a cleaner look */
     border-radius: 0px;
     width: 100%;
-    justify-content: center;
-    align-items: center;
-    top: 100px;
     max-width: 450px;
-    box-shadow: 0 rgba(0, 0, 0, 0.3);
-    position: static;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
     text-align: center;
 }
 

@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     let currentIncomeType = null;
     const BACKEND_URL = window.location.origin || "http://localhost:3000";
 
-
     // Load household members
 async function loadHouseholdMembers() {
     try {
@@ -35,12 +34,15 @@ async function loadHouseholdMembers() {
 
 // Close the income modal when clicking outside of it
 document.addEventListener('click', (event) => {
-    if (!modal.contains(event.target) && !event.target.closest('#income-modal') && !event.target.closest('.add-income-button')) {
+    const isModalVisible = !modal.classList.contains('hidden') && modal.style.display !== 'none';
+    const modalContent = document.querySelector('.modal-content');
+    if (isModalVisible && !modalContent.contains(event.target) && !event.target.closest('.add-income-button') && !event.target.closest('.edit-income-button')) {
         modal.classList.add('hidden');
-        incomeForm.reset(); // Reset the form
-        isEditing = false; // Reset editing mode
-        editingIncomeId = null; // Reset editing ID
-        addIncomeButton.textContent = 'Add Income'; // Reset button text
+        modal.style.display = 'none';
+        incomeForm.reset();
+        isEditing = false;
+        editingIncomeId = null;
+        addIncomeButton.textContent = 'Add Income';
     }
 });
 
@@ -271,7 +273,7 @@ document.querySelectorAll('.edit-income-button').forEach(button => {
                 modalTitle.textContent = `Edit ${fetchedIncome.type} Year Income`;
                 addIncomeButton.textContent = 'Save and Update'; // Change button text
                 modal.classList.remove('hidden');
-                modal.style.display = 'block'; // Ensure the modal is visible
+                modal.style.display = 'flex'; // Use flex instead of block
 
             } else {
                 alert('Failed to fetch income details.');
@@ -312,7 +314,7 @@ document.getElementById('household-member-container').addEventListener('click', 
 
         // Show the modal
         modal.classList.remove('hidden');
-        modal.style.display = 'block';
+        modal.style.display = 'flex';
     }
 });
         }
@@ -512,9 +514,9 @@ function attachIncomeEventListeners(incomeItem) {
 
                 addIncomeButton.textContent = 'Save and Update'; // Change button text
                 modal.classList.remove('hidden');
-                modal.style.display = 'block'; // Ensure the modal is visible
+                modal.style.display = 'flex'; // Ensure the modal is visible
             } else {
-                alert('Failed to fetch income details.');
+                                alert('Failed to fetch income details.');
             }
         } catch (error) {
             console.error('Error fetching income details:', error);
