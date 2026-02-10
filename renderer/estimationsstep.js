@@ -1921,31 +1921,11 @@ function mapHardDeterminationReason(benefit, ineligibilityReason) {
                 return null;
             });
 
-            if (clientResponse && clientResponse.liheapEnrollment === 'notinterested') {
-                const notInterestedDiv = document.createElement('div');
-                notInterestedDiv.classList.add('household-member-box');
-                notInterestedDiv.style.backgroundColor = '#f8d7da';
-                notInterestedDiv.style.borderColor = '#f5c6cb';
-                notInterestedDiv.innerHTML = '<h3>LIHEAP HOUSEHOLD</h3><p>NOT INTERESTED</p>';
-                liheapHouseholdContainer.appendChild(notInterestedDiv);
-                return;
-            }
-    
-            if (activeMembersForLIHEAP.length === 0) {
-                const noHouseholdsDiv = document.createElement('div');
-                noHouseholdsDiv.classList.add('household-member-box');
-                noHouseholdsDiv.style.backgroundColor = '#fff3cd';
-                noHouseholdsDiv.style.borderColor = '#ffc107';
-                noHouseholdsDiv.innerHTML = '<h3>LIHEAP HOUSEHOLD</h3><p>NO LIHEAP HOUSEHOLDS FOUND.</p>';
-                liheapHouseholdContainer.appendChild(noHouseholdsDiv);
-                return;
-            }
-
-        const liheapMemberIds = activeMembersForLIHEAP.map(m => String(m.householdMemberId));
-        const liheapMemberNames = activeMembersForLIHEAP.map(m => `${capitalizeFirstLetter(m.firstName)} ${capitalizeFirstLetter(m.lastName)}`).join(', ');
-
+        // Check if LIHEAP screening is closed FIRST - if closed, show gray box regardless of eligibility
         const isLiheapScreeningClosed = activeMembersForLIHEAP[0]?.LIHEAP?.screeningInProgress === false;
         const liheapCloseReason = activeMembersForLIHEAP[0]?.LIHEAP?.screeningCloseReason || 'N/A';
+        const liheapMemberIds = activeMembersForLIHEAP.map(m => String(m.householdMemberId));
+        const liheapMemberNames = activeMembersForLIHEAP.map(m => `${capitalizeFirstLetter(m.firstName)} ${capitalizeFirstLetter(m.lastName)}`).join(', ');
 
         if (isLiheapScreeningClosed) {
             const householdDiv = document.createElement('div');
@@ -1972,6 +1952,18 @@ function mapHardDeterminationReason(benefit, ineligibilityReason) {
                     await reopenBenefitScreening('LIHEAP', liheapMemberIds, 'LIHEAP Household');
                 });
             }
+            return;
+        }
+
+        // Only check client-level "notinterested" for display purposes if screening is NOT closed
+        // But we still show the card with close button available
+        if (activeMembersForLIHEAP.length === 0) {
+            const noHouseholdsDiv = document.createElement('div');
+            noHouseholdsDiv.classList.add('household-member-box');
+            noHouseholdsDiv.style.backgroundColor = '#fff3cd';
+            noHouseholdsDiv.style.borderColor = '#ffc107';
+            noHouseholdsDiv.innerHTML = '<h3>LIHEAP HOUSEHOLD</h3><p>NO LIHEAP HOUSEHOLDS FOUND.</p>';
+            liheapHouseholdContainer.appendChild(noHouseholdsDiv);
             return;
         }
 
@@ -2065,6 +2057,7 @@ function mapHardDeterminationReason(benefit, ineligibilityReason) {
                     </button>
                     <button class="close-liheap-btn" 
                         data-member-ids="${liheapMemberIds.join(',')}"
+                        data-is-not-eligible="${liheapIsNotEligible ? 'true' : 'false'}"
                         style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 11px; cursor: pointer; margin: 8px 0; transition: background-color 0.3s;"
                         onmouseover="this.style.backgroundColor='#a71d2a'" 
                         onmouseout="this.style.backgroundColor='#dc3545'">
@@ -2104,6 +2097,7 @@ function mapHardDeterminationReason(benefit, ineligibilityReason) {
                     </button>
                     <button class="close-liheap-btn" 
                         data-member-ids="${liheapMemberIds.join(',')}"
+                        data-is-not-eligible="${liheapIsNotEligible ? 'true' : 'false'}"
                         style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 11px; cursor: pointer; margin: 8px 0; transition: background-color 0.3s;"
                         onmouseover="this.style.backgroundColor='#a71d2a'" 
                         onmouseout="this.style.backgroundColor='#dc3545'">
@@ -2190,11 +2184,12 @@ function mapHardDeterminationReason(benefit, ineligibilityReason) {
             });
         });
 
-        // Close button listeners (both front and back)
+        // Close button listeners (both front and back) - pass isNotEligible flag
         const closeBtns = householdDiv.querySelectorAll('.close-liheap-btn');
         closeBtns.forEach(btn => {
             btn.addEventListener('click', () => {
-                openBenefitScreeningCloseModal('LIHEAP', liheapMemberIds, 'LIHEAP Household');
+                const isNotEligible = btn.dataset.isNotEligible === 'true';
+                openCloseLiheapModal(liheapMemberIds, isNotEligible);
             });
         });
     }
@@ -4027,13 +4022,19 @@ function openCloseSnapModal(memberIds) {
     });
 }
 
-function openCloseLiheapModal(memberIds) {
+function openCloseLiheapModal(memberIds, isNotEligible = false) {
     createCloseLiheapModal();
     const modal = document.getElementById('close-liheap-modal');
     const select = document.getElementById('liheap-close-reason-select');
     const confirmBtn = document.getElementById('liheap-close-confirm-btn');
 
-    select.value = '';
+    // If not eligible (red card), auto-select "Client Not Interested" as the default
+    if (isNotEligible) {
+        select.value = 'Client Not Interested';
+    } else {
+        select.value = '';
+    }
+    
     modal.style.display = 'flex';
 
     // Remove old listener by cloning

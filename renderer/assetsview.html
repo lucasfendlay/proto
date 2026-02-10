@@ -4,259 +4,77 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>View Client Assets</title>
-    <!-- Stylesheets -->
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="incomeedit.css">
     <link rel="stylesheet" href="assetsedit.css">
     <link rel="stylesheet" href="notes.css">
     <script src="userInfo.js"></script>
+    <style>
+        .narrow-body {
+            margin-left: 385px;
+            margin-right: 10px;
+            max-width: calc(100% - 395px);
+            margin: 0 auto;
+            margin-top: 60px;
+        }
 
+        .list-header {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .asset-list {
+            margin: 20px auto;
+            max-width: 800px;
+        }
+
+        .list-item {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            align-items: center;
+            text-align: center;
+            gap: 10px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .button-container {
+            grid-column: span 3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+    </style>
 </head>
 <body class="narrow-body">
 
-    <!-- Page Title -->
     <h1>Assets</h1>
 
-    <style>
-
-.narrow-body {
-        margin-left: 385px; /* Space for the left sidebar */
-        margin-right: 10px; /* Optional: Space on the right */
-        max-width: calc(100% - 395px); /* Ensure the body doesn't exceed the available space */
-        margin: 0 auto; /* Center the content horizontally */
-        margin-top: 60px; /* Adjust this value to match the height of the navigation container */
-    }
-    </style>
-
-<div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
-    <div id="household-members-container" class="left-sidebar"></div>
-    <div id="snap-household-container" class="left-sidebar"></div>
-</div>
-
-<div id="notes-container">
-    <textarea id="note-input" placeholder="Add Note..."></textarea>
-    <button id="save-note">Save Note</button>
-    <div id="notes-list">
-        </div>
-        </div>
-
-    <!-- Household Members Section -->
-    <div id="household-member-container"></div>
-
-    <!-- Modal for Adding/Editing Assets -->
-    <div id="asset-modal" class="modal hidden">
-        <div class="modal-content">
-            <!-- Close Button -->
-            <button id="close-modal" class="close">&times;</button>
-
-            <!-- Modal Title -->
-            <h2 id="modal-title"></h2>
-
-            <!-- Asset Form -->
-            <form id="asset-form">
-                <!-- Type of Asset -->
-                <label for="asset-type">Type of Asset:</label>
-                <select id="asset-type" required>
-                    <option value="" disabled selected>Select Type of Asset</option>
-                    <option value="Real Estate">Real Estate</option>
-                    <option value="Vehicle">Vehicle</option>
-                    <option value="Bank Account">Bank Account</option>
-                    <option value="Investment">Investment</option>
-                    <option value="Retirement Account">Retirement Account</option>
-                    <option value="Personal Property">Personal Property</option>
-                    <option value="Other">Other</option>
-                </select>
-
-                <!-- Description -->
-                <label for="asset-description">Description:</label>
-                <input type="text" id="asset-description" class="text-input" placeholder="Enter asset description" required>
-
-                <!-- Value -->
-                <label for="asset-value">Value:</label>
-                <input type="text" id="asset-value" class="text-input" placeholder="Enter asset value" required>
-
-                <!-- Submit Button -->
-                <button type="button" id="add-asset-button" class="submit-button">Add Asset</button>
-            </form>
-        </div>
+    <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
+        <div id="household-members-container" class="left-sidebar"></div>
+        <div id="snap-household-container" class="left-sidebar"></div>
     </div>
 
-    <style>
-        /* Style for the list header */
-.list-header {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr); /* Adjust based on the number of columns */
-    justify-content: space-between;
-    align-items: center;
-    font-weight: bold;
-    padding: 10px;
-    border-bottom: 1px solid #ccc;
-    margin-bottom: 10px;
-    text-align: center;
-}
+    <div id="notes-container">
+        <textarea id="note-input" placeholder="Add Note..."></textarea>
+        <button id="save-note">Save Note</button>
+        <div id="notes-list"></div>
+    </div>
 
-/* Style for the list container */
-.asset-list {
-    margin: 20px auto;
-    max-width: 800px; /* Adjust as needed */
-}
-
-/* Center items within the list */
-.list-item {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr); /* Adjust based on the number of columns */
-    align-items: center;
-    text-align: center;
-    gap: 10px;
-    padding: 10px;
-    margin-bottom: 10px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    background-color: #f9f9f9;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* Style for the button container */
-.button-container {
-    grid-column: span 3; /* Span across all columns */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    margin-top: 10px;
-}
-    </style>
-
-    <script>
-        function getQueryParameter(name) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get(name);
-        }
-
-        function GoToNextPage() {
-            const clientId = getQueryParameter('id');
-            if (clientId) {
-                window.location.href = `estimationsstep.html?id=${clientId}`;
-            } else {
-                console.error('Client ID not found in query parameters.');
-            }
-        }
-
-        async function goToAssetView() {
-    const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
-    const confirmAction = confirm("Are you sure you want to save and release this profile?");
-    if (!confirmAction) {
-        return;
-    }
-
-    const noteContent = "Profile released.";
-    const timestamp = new Date().toLocaleString();
-    const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
-
-    if (!activeUser) {
-        console.error("No active user found in sessionStorage.");
-        return;
-    }
-
-    try {
-        // Save assets data (if applicable)
-        await saveAssetsData();
-
-        // Add a note about the action
-        const note = {
-            text: noteContent,
-            timestamp: timestamp,
-            username: activeUser
-        };
-
-        const addNoteResponse = await fetch(`/add-note-to-client`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ clientId, note })
-        });
-
-        if (!addNoteResponse.ok) {
-            throw new Error('Failed to add note to client');
-        }
-
-        // Update screening status in the database
-        const updateClientResponse = await fetch(`/update-client`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                clientId,
-                clientData: { screeningInProgress: false }
-            })
-        });
-
-        if (!updateClientResponse.ok) {
-            throw new Error('Failed to update client');
-        }
-
-        // Redirect to assets view
-        window.location.href = `assetsview.html?id=${clientId}`;
-    } catch (error) {
-        console.error("Error during goToAssetView:", error);
-    }
-}
-
-    async function saveAssetsData() {
-        // Implement logic to save assets data if needed
-        console.log("Saving assets data...");
-    }
-
-    // Define the getQueryParam function
-function getQueryParam(name) {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get(name);
-}
-
-async function toggleSidebarVisibility() {
-    const clientId = getQueryParam('id');
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
-    try {
-        // Fetch client data from the backend
-        const response = await fetch(`/get-client/${clientId}`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client data: ${response.statusText}`);
-        }
-
-        const client = await response.json();
-        console.log('Client data:', client); // Debugging
-        console.log('screeningInProgress:', client?.screeningInProgress); // Debugging
-
-        if (client && client.screeningInProgress) {
-            document.getElementById('leftSidebarContainer').style.display = 'block';
-            console.log('Sidebar is now visible'); // Debugging
-        } else {
-            document.getElementById('leftSidebarContainer').style.display = 'none';
-            console.log('Sidebar is now hidden'); // Debugging
-        }
-    } catch (error) {
-        console.error('Error toggling sidebar visibility:', error);
-    }
-}
-
-    // Call the function after the page loads
-    window.onload = function () {
-        toggleSidebarVisibility();
-    };
-    </script>
-
-    
+    <div id="household-member-container"></div>
 
     <!-- Scripts -->
     <script src="estimations.js"></script>

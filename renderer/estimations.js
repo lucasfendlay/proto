@@ -1302,34 +1302,86 @@ async function checkAndAutoTerminateScreening(members) {
     }
 }
 
-        async function displayLIHEAPHouseholds(prefetchedMembers, prefetchedClient) {
-            const liheapHouseholdContainer = document.getElementById('liheap-household-container');
-            if (!liheapHouseholdContainer) {
-                console.error('liheap-household-container element not found in the DOM.');
-                return;
+async function displayLIHEAPHouseholds(prefetchedMembers, prefetchedClient) {
+    const liheapHouseholdContainer = document.getElementById('liheap-household-container');
+    if (!liheapHouseholdContainer) {
+        console.error('liheap-household-container element not found in the DOM.');
+        return;
+    }
+
+    const members = prefetchedMembers || await loadHouseholdMembers();
+    liheapHouseholdContainer.innerHTML = ''; // Clear existing content
+
+    // Exclude deceased members from LIHEAP household display
+    const activeMembersForLIHEAP = members.filter(
+        m => (m.deceased ?? '').toLowerCase() !== 'yes'
+    );
+
+// Check if client is not interested in LIHEAP or already enrolled
+const clientId = getQueryParameter('id');
+const client = prefetchedClient || await fetch(`/get-client/${clientId}`)
+    .then(response => response.json())
+    .catch(error => {
+        console.error('Error fetching client data:', error);
+        return null;
+    });
+
+// Check if LIHEAP screening is closed FIRST (before checking enrollment status)
+const liheapScreeningClosed = activeMembersForLIHEAP.length > 0 && activeMembersForLIHEAP[0]?.LIHEAP?.screeningInProgress === false;
+
+if (liheapScreeningClosed) {
+    const reopenDiv = document.createElement('div');
+    reopenDiv.classList.add('household-member-box');
+    reopenDiv.innerHTML = `
+        <h3>LIHEAP HOUSEHOLD</h3>
+                <div style="background-color:rgb(212, 212, 212); border: 1px solid rgb(0, 0, 0); padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center; width: 100%; box-sizing: border-box;">
+            <p style="margin: 0 0 6px 0;"><strong>LIHEAP Screening Closed</strong></p>
+            <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${activeMembersForLIHEAP[0]?.LIHEAP?.screeningCloseReason || 'N/A'}</p>
+            <button id="reopen-liheap-screening-btn" 
+                style="background-color: #007bff; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 12px; cursor: pointer; transition: background-color 0.3s;"
+                onmouseover="this.style.backgroundColor='#0056b3'" 
+                onmouseout="this.style.backgroundColor='#007bff'">
+                Reopen LIHEAP Screening
+            </button>
+        </div>
+    `;
+    liheapHouseholdContainer.appendChild(reopenDiv);
+
+    document.getElementById('reopen-liheap-screening-btn').addEventListener('click', async () => {
+        try {
+            for (const member of activeMembersForLIHEAP) {
+                if (member.LIHEAP) {
+                    member.LIHEAP.screeningInProgress = true;
+                    member.LIHEAP.screeningCloseReason = null;
+                }
             }
-        
-            const members = prefetchedMembers || await loadHouseholdMembers();
-            liheapHouseholdContainer.innerHTML = ''; // Clear existing content
-    
-            // Exclude deceased members from LIHEAP household display
-            const activeMembersForLIHEAP = members.filter(
-                m => (m.deceased ?? '').toLowerCase() !== 'yes'
-            );
-        
-        // Check if client is not interested in LIHEAP or already enrolled
-        const clientId = getQueryParameter('id');
-        const client = prefetchedClient || await fetch(`/get-client/${clientId}`)
-            .then(response => response.json())
-            .catch(error => {
-                console.error('Error fetching client data:', error);
-                return null;
+
+            const saveResponse = await fetch(`/save-household-members`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, householdMembers: members })
             });
 
-            const isLiheapAlreadyEnrolled = client?.liheapEnrollment === 'yes' && client?.heatingCrisis === 'no';
-            const isLiheapNotInterested = client?.liheapEnrollment === 'notinterested';
+            if (saveResponse.ok) {
+                await addNoteToClient(clientId, '<strong>LIHEAP screening reopened.</strong>');
+                await renderNotesContainer();
+                await refreshAllDisplays();
+            } else {
+                console.error('Failed to reopen LIHEAP screening.');
+            }
+        } catch (error) {
+            console.error('Error reopening LIHEAP screening:', error);
+        }
+    });
 
-// ...existing code...
+    return; // Exit early - screening is closed, don't show anything else
+}
+
+// Only check enrollment status if screening is NOT closed
+const isLiheapAlreadyEnrolled = client?.liheapEnrollment === 'yes' && client?.heatingCrisis === 'no';
+const isLiheapNotInterested = client?.liheapEnrollment === 'notinterested';
+
+    
 if (isLiheapAlreadyEnrolled || isLiheapNotInterested) {
     const noHouseholdsDiv = document.createElement('div');
     noHouseholdsDiv.classList.add('household-member-box');
@@ -1360,70 +1412,6 @@ if (isLiheapAlreadyEnrolled || isLiheapNotInterested) {
     }
     return;
 }
-
-        // Check if LIHEAP screening is closed
-        const liheapScreeningClosed = activeMembersForLIHEAP.length > 0 && activeMembersForLIHEAP[0]?.LIHEAP?.screeningInProgress === false;
-
-        if (liheapScreeningClosed) {
-            const reopenDiv = document.createElement('div');
-            reopenDiv.classList.add('household-member-box');
-            reopenDiv.innerHTML = `
-                <h3>LIHEAP HOUSEHOLD</h3>
-                        <div style="background-color:rgb(212, 212, 212); border: 1px solid rgb(0, 0, 0); padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center; width: 100%; box-sizing: border-box;">
-                    <p style="margin: 0 0 6px 0;"><strong>LIHEAP Screening Closed</strong></p>
-                    <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${activeMembersForLIHEAP[0]?.LIHEAP?.screeningCloseReason || 'N/A'}</p>
-                    <button id="reopen-liheap-screening-btn" 
-                        style="background-color: #007bff; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 12px; cursor: pointer; transition: background-color 0.3s;"
-                        onmouseover="this.style.backgroundColor='#0056b3'" 
-                        onmouseout="this.style.backgroundColor='#007bff'">
-                        Reopen LIHEAP Screening
-                    </button>
-                </div>
-            `;
-            liheapHouseholdContainer.appendChild(reopenDiv);
-
-            document.getElementById('reopen-liheap-screening-btn').addEventListener('click', async () => {
-                try {
-                    for (const member of activeMembersForLIHEAP) {
-                        if (member.LIHEAP) {
-                            member.LIHEAP.screeningInProgress = true;
-                            member.LIHEAP.screeningCloseReason = null;
-                        }
-                    }
-
-                    const saveResponse = await fetch(`/save-household-members`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ clientId, householdMembers: members })
-                    });
-
-                    if (saveResponse.ok) {
-                        await addNoteToClient(clientId, '<strong>LIHEAP screening reopened.</strong>');
-                        await renderNotesContainer();
-                        await refreshAllDisplays();
-                    } else {
-                        console.error('Failed to reopen LIHEAP screening.');
-                    }
-                } catch (error) {
-                    console.error('Error reopening LIHEAP screening:', error);
-                }
-            });
-
-            return;
-        }
-    
-        if (activeMembersForLIHEAP.length === 0) {
-            const noHouseholdsDiv = document.createElement('div');
-            noHouseholdsDiv.classList.add('household-member-box');
-            noHouseholdsDiv.style.backgroundColor = '#fff3cd'; // Yellow for no households found
-            noHouseholdsDiv.style.borderColor = '#ffc107';
-            noHouseholdsDiv.innerHTML = `
-                <h3>LIHEAP HOUSEHOLD</h3>
-                <p>NO LIHEAP HOUSEHOLDS FOUND.</p>
-            `;
-            liheapHouseholdContainer.appendChild(noHouseholdsDiv);
-            return;
-        }
     
         // Use the combined values from the first active member (uniform across household)
         const combinedYearlyIncome = activeMembersForLIHEAP[0]?.LIHEAP?.combinedYearlyIncome || 0;
@@ -1551,7 +1539,7 @@ if (isLiheapAlreadyEnrolled || isLiheapNotInterested) {
             select.value = 'Already Enrolled';
         } else if (liheapEligibility.includes('NOT INTERESTED')) {
             select.value = 'Client Not Interested';
-        } else if (liheapEligibility.includes('HEATING COST INCLUDED') || liheapEligibility.includes('SUBSIDIZED')) {
+        } else if (liheapEligibility.includes('HEATING COST INCLUDED') && liheapEligibility.includes('SUBSIDIZED')) {
             select.value = 'Subsidized Housing and No Heating Responsibility';
         } else if (liheapEligibility.includes('INCOME') && liheapEligibility.includes('NOT LIKELY')) {
             select.value = 'Ineligible - Income';
@@ -1886,10 +1874,16 @@ try {
 }}
 
 async function PTRREligibilityCheck(members) {
+
+        // Get the client ID from the query parameter at the top of the function
+        const clientId = getQueryParameter('id');
+
+    // Re-fetch client data to get the latest residenceStatus and other fields
+    const freshClientResponse = await fetch(`/get-client/${clientId}`);
+    const freshClient = freshClientResponse.ok ? await freshClientResponse.json() : client;
+
     // Filter members to include only those with headOfHousehold: true
     const headOfHouseholdMembers = members.filter(member => member.headOfHousehold === true);
-
-// ...existing code...
 
     // Set PTRR eligibility as "Not Checked" for members who are not head of household
     members.forEach(member => {
@@ -2010,7 +2004,6 @@ if (spouse) {
     
                 if (member.residenceStatus?.toLowerCase() === "other") {
                     eligibility.push("No Formal Lease");
-                    delete member.selections?.["Has this person already applied for PTRR this year?"];
                 } else if (applicationStatus === "yes") {
                     eligibility.push("Already Applied");
                 } else if (!(age >= 18 && isDisabled) && !(age >= 50 && isWidowed) && !(age >= 65)) {
@@ -2027,7 +2020,7 @@ if (spouse) {
                     eligibility.push("Not Likely Eligible for PTRR (Income)");
                 } else {
                     const relevantExpenses = (member.expenses || []).filter(expense => {
-                        const residenceStatus = client.residenceStatus?.toLowerCase();
+                        const residenceStatus = freshClient.residenceStatus?.toLowerCase();
                         const isPropertyTax = expense.kind?.trim() === "Property Taxes";
                         const isRent = expense.kind?.trim() === "Rent";
                         const isPreviousYear = expense.type?.trim() === "Previous Year";
@@ -2043,7 +2036,16 @@ if (spouse) {
                     });
     
                     if (applicationStatus.toLowerCase().trim() === "no" && relevantExpenses.length === 0) {
-                        eligibility.push("Not Likely Eligible for PTRR (No Relevant Expenses)");
+                        const residenceStatus = freshClient.residenceStatus?.toLowerCase();
+                        if (residenceStatus === "owned") {
+                            eligibility.push("Needs Previous Year Property Tax Expense");
+                        } else if (residenceStatus === "rented") {
+                            eligibility.push("Needs Previous Year Rent Expense");
+                        } else if (residenceStatus === "rentedowned") {
+                            eligibility.push("Needs Previous Year Property Tax and Rent Expense");
+                        } else {
+                            eligibility.push("Not Likely Eligible for PTRR (No Relevant Expenses)");
+                        }
                     } else {
                         eligibility.push("Likely Eligible for PTRR");
                     }
@@ -2063,7 +2065,6 @@ if (spouse) {
         }
     
         // Save the updated members array using a REST API call
-const clientId = getQueryParameter('id'); // Get the client ID from the query parameter
 try {
     const response = await fetch(`/save-household-members`, {
         method: 'POST',

@@ -6,27 +6,17 @@
     <title>View Client Profile</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="notes.css">
-    
+
     <style>
-        /* General body styling */
         body {
-            max-width: 1200px; /* Adjust the max-width as needed */
-            margin: 0 auto;
+            max-width: 1200px;
+            margin: 60px auto 0;
             padding: 20px;
-            margin-top: 60px; /* Adjust this value to match the height of the navigation container */
         }
-    
-        /* Form field styling */
-        .form-field {
-            margin-bottom: 15px;
-        }
-    
-        .form-field label {
-            font-weight: bold;
-            display: block;
-            margin-bottom: 5px;
-        }
-    
+
+        .form-field { margin-bottom: 15px; }
+        .form-field label { font-weight: bold; display: block; margin-bottom: 5px; }
+
         .read-only-field {
             padding: 10px;
             border: 1px solid #ccc;
@@ -38,26 +28,24 @@
             font-weight: bold;
             margin-bottom: 10px;
         }
-    
-        /* Button container styling */
+
         .button-container {
             display: flex;
-            justify-content: center; /* Center the button horizontally */
+            justify-content: center;
             gap: 10px;
             flex-wrap: wrap;
             margin-top: 20px;
         }
-    
-        .button-container button {
-    flex: 1;
-    padding: 10px 15px !important; /* Override global padding */
-    font-size: 1rem;
-    cursor: pointer;
-    border: none; /* Remove global border */
-    margin: 0; /* Remove global margin */
-}
 
-        /* Selection box styling */
+        .button-container button {
+            flex: 1;
+            padding: 10px 15px !important;
+            font-size: 1rem;
+            cursor: pointer;
+            border: none;
+            margin: 0;
+        }
+
         .selection-box div.selected {
             background-color: #007bff;
             color: white;
@@ -65,165 +53,148 @@
             border-radius: 5px;
             padding: 5px;
         }
-    
-/* Sidebar header styling */
-.sidebar-header {
+
+        .sidebar-header {
             display: fixed;
-            justify-items: center; /* Center content horizontally */
-            text-align: center; /* Center text */
-            margin-bottom: 20px; /* Add spacing below the header */
-            width: 300px; /* Match the width of .left-sidebar */
-            margin: 0 auto; /* Center the header horizontally */
+            justify-items: center;
+            text-align: center;
+            margin-bottom: 20px;
+            width: 300px;
+            margin: 0 auto;
         }
 
         .sidebar-header .button-container {
             display: flex;
-            justify-content: center; /* Center the button horizontally */
-            width: 100%; /* Ensure the button container spans the full width */
+            justify-content: center;
+            width: 100%;
         }
-    
-        /* Contacts list container */
+
         #contacts-list {
             display: flex;
             flex-direction: column;
-            gap: 15px; /* Adds spacing between items */
-            width: 300px; /* Match the width of .left-sidebar */
-            margin: 0 auto; /* Center the header horizontally */
-            max-height: 500px; /* Match the height of householdedit containers */
-            overflow-y: auto; /* Add scroll if content overflows */
-            background-color: #f4f4f4; /* Light gray background */
-            border: 1px solid #ddd; /* Border around the container */
-            border-radius: 8px; /* Rounded corners */
-            padding: 15px; /* Padding inside the container */
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+            gap: 15px;
+            width: 300px;
+            margin: 0 auto;
+            max-height: 500px;
+            overflow-y: auto;
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-    
-        /* Individual sidebar items */
-        .left-sidebar {
-            background-color: #fff; /* White background for each item */
-            border: 1px solid #ccc; /* Border around each item */
-            border-radius: 5px; /* Rounded corners for each item */
-            padding: 10px; /* Padding inside each item */
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Subtle shadow for each item */
-            margin: 0 auto; /* Center the sidebar items horizontally */
-            width: 280px; /* Adjust width as needed */
-            transform: translateX(-8px); /* Shift the sidebar 10px to the left */
 
+        .left-sidebar {
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin: 0 auto;
+            width: 280px;
+            transform: translateX(-8px);
         }
-    
-    
-        .left-sidebar strong {
-            font-weight: bold; /* Bold labels */
-        }
-    
-        /* Interaction list styling */
+
+        .left-sidebar strong { font-weight: bold; }
+
         #interactionList {
-            list-style-type: none; /* Remove default bullet points */
+            list-style-type: none;
             padding: 0;
             margin: 0;
             display: flex;
-            flex-direction: column; /* Stack items vertically */
-            align-items: center; /* Center items horizontally */
-            gap: 15px; /* Add space between each interaction */
-            width: 90%; /* Make the interaction tracker stretch across the full width */
-            font-size: 0.9rem; /* Adjust the font size for the list */
-            line-height: 1.4; /* Adjust line height for better readability */
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            width: 90%;
+            font-size: 0.9rem;
+            line-height: 1.4;
         }
-    
+
         #interactionList li {
             display: flex;
-            flex-wrap: wrap; /* Allow content to wrap if needed */
-            align-items: flex-start; /* Align items at the top */
-            padding: 15px; /* Add padding inside each interaction */
-            border: 1px solid #ccc; /* Add a border around each interaction */
-            border-radius: 8px; /* Round the corners */
-            background-color: #f9f9f9; /* Light background color */
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
-            width: 90%; /* Ensure each interaction stretches across the full width */
-            word-wrap: break-word; /* Ensure long text wraps within the container */
+            flex-wrap: wrap;
+            align-items: flex-start;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            word-wrap: break-word;
         }
-    
+
         #interactionList li div {
-            flex: 1; /* Allow each section to stretch equally */
-            margin-right: 10px; /* Add space between sections */
-            font-size: 0.85rem; /* Slightly smaller font for individual sections */
+            flex: 1;
+            margin-right: 10px;
+            font-size: 0.85rem;
         }
-    
-        #interactionList li div:last-child {
-            margin-right: 0; /* Remove margin after the last section */
-        }
-    
-        #interactionList li strong {
-            font-weight: bold;
-            display: block; /* Ensure labels are on their own line */
-            margin-bottom: 5px; /* Add space below labels */
-        }
-    
-        /* Modal styling */
+
+        #interactionList li div:last-child { margin-right: 0; }
+        #interactionList li strong { font-weight: bold; display: block; margin-bottom: 5px; }
+
         .modal {
             display: none;
-            position: fixed; /* Position relative to the viewport */
+            position: fixed;
             top: 0;
             left: 0;
-            width: 100vw; /* Full viewport width */
-            height: 100vh; /* Full viewport height */
-            background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
-            z-index: 1000; /* Ensure it appears above other elements */
-            display: flex; /* Use flexbox for centering */
-            justify-content: center; /* Center horizontally */
-            align-items: center; /* Center vertically */
-            overflow: hidden; /* Prevent scrolling */
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
         }
-    
+
         .modal-content {
             background-color: #ffffff;
             border-radius: 10px;
-            width: 90%; /* Adjust width for responsiveness */
-            max-width: 500px; /* Limit the modal width */
+            width: 90%;
+            max-width: 500px;
             padding: 20px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Add a subtle shadow */
-            position: relative; /* Position relative for internal elements */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             text-align: left;
         }
 
         .centered-form {
-    display: flex;
-    flex-direction: column; /* Stack items vertically */
-    align-items: center; /* Center items horizontally */
-    justify-content: center; /* Center items vertically */
-    text-align: center; /* Center text */
-    width: 100%; /* Make the form take up the full width of its container */
-    max-width: 800px; /* Optional: Limit the maximum width of the form */
-    margin: 0 auto; /* Center the form horizontally */
-}
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
 
-.centered-form .form-field {
-    width: 100%; /* Make each form field stretch across the form */
-    margin: 10px 0; /* Add vertical spacing between fields */
-}
+        .centered-form .form-field {
+            width: 100%;
+            margin: 10px 0;
+        }
 
-.centered-form .read-only-field {
-    width: calc(100% - 40px); /* Stretch fields but leave space for side margins */
-    padding: 10px; /* Add padding inside the fields */
-    margin: 0 20px; /* Add consistent side margins */
-    box-sizing: border-box; /* Include padding and border in the element's total width */
-}
+        .centered-form .read-only-field {
+            width: calc(100% - 40px);
+            padding: 10px;
+            margin: 0 20px;
+            box-sizing: border-box;
+        }
     </style>
-
 </head>
 <body>
     <div id="notes-container">
         <textarea id="note-input" placeholder="Add Note..."></textarea>
         <button id="save-note">Save Note</button>
-        <div id="notes-list">
-            </div>
-            </div>
+        <div id="notes-list"></div>
+    </div>
 
     <script src="viewnavigation.js"></script>
 
     <h1>View Client Profile</h1>
 
-    <!-- Add this container where you want the contacts to appear -->
     <div class="left-sidebar-container" id="contactsSidebarContainer">
         <div class="sidebar-header">
             <div class="centered-container">
@@ -232,46 +203,40 @@
         </div>
         <div id="contacts-list" class="left-sidebar"></div>
     </div>
-<!-- Modal for Adding/Editing Contacts -->
-<div id="contactModal" class="modal" style="display: none;">
-    <div class="modal-content">
-        <h2 id="modal-title">Add New Contact</h2>
-        <form id="contactForm">
-            <label for="contactFirstName">First Name:</label>
-            <input type="text" id="contactFirstName" required>
 
-            <label for="contactLastName">Last Name:</label>
-            <input type="text" id="contactLastName" required>
-
-            <label for="contactPhoneNumber">Phone Number:</label>
-            <input type="text" id="contactPhoneNumber" required>
-
-            <label for="authorizedRepresentative">Authorized Representative:</label>
-            <select id="authorizedRepresentative">
-                <option value="N/A" selected>N/A</option>
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-            </select>
-
-            <div class="button-container">
-                <button type="button" onclick="saveContact()">Save</button>
-                <button type="button" onclick="closeContactModal()">Cancel</button>
-            </div>
-        </form>
+    <div id="contactModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2 id="modal-title">Add New Contact</h2>
+            <form id="contactForm">
+                <label for="contactFirstName">First Name:</label>
+                <input type="text" id="contactFirstName" required>
+                <label for="contactLastName">Last Name:</label>
+                <input type="text" id="contactLastName" required>
+                <label for="contactPhoneNumber">Phone Number:</label>
+                <input type="text" id="contactPhoneNumber" required>
+                <label for="authorizedRepresentative">Authorized Representative:</label>
+                <select id="authorizedRepresentative">
+                    <option value="N/A" selected>N/A</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                </select>
+                <div class="button-container">
+                    <button type="button" onclick="saveContact()">Save</button>
+                    <button type="button" onclick="closeContactModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
     </div>
-</div>
 
-    <h2 id="profileId">Profile: Loading...</h2> <!-- New header for Profile ID -->
+    <h2 id="profileId">Profile: Loading...</h2>
     <div class="button-container">
         <button id="release-profile-button" class="interactive" style="display: none;" onclick="releaseProfile()">Release Profile</button>
     </div><br>
-    <p id="terminationStatus" style="color: red; display: none;"><strong>PROFILE TERMINATED</strong></p> <!-- Termination status -->
-
+    <p id="terminationStatus" style="color: red; display: none;"><strong>PROFILE TERMINATED</strong></p>
 
     <button id="call-logging-button" class="interactive" onclick="confirmAndLogCall()">Log New Call</button>
 
-
-    <form id="clientForm" class="centered-form">        
+    <form id="clientForm" class="centered-form">
         <h2>Primary Client</h2>
         <div class="form-field">
             <label for="firstName">First Name:</label>
@@ -323,532 +288,387 @@
         </div>
     </form>
 
-
     <div class="button-container">
-        <button id="profile-edit-button" class="interactive" style="border: 1px solid #000000; border-radius: 5px" onclick="if(confirm('Are you sure you want to check out this profile?')) { GoToProfileEditChecked(); }">Check Out Profile</button>    
+        <button id="profile-edit-button" class="interactive" style="border: 1px solid #000000; border-radius: 5px" onclick="if(confirm('Are you sure you want to check out this profile?')) { GoToProfileEditChecked(); }">Check Out Profile</button>
     </div>
 
-        <h2>Interaction Tracker</h2>
+    <h2>Interaction Tracker</h2>
     <ul id="interactionList">
         <li>Loading...</li>
     </ul>
 
     <script>
-        // Function to get query parameter by name
-        function getQueryParam(name) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get(name);
+    // ===== GLOBALS =====
+    let client = null;
+    let editingContactIndex = null;
+    const CLIENT_ID = new URLSearchParams(window.location.search).get('id');
+
+    // ===== UTILITIES =====
+    function formatPhoneNumber(phone) {
+        if (!phone) return '';
+        const cleaned = String(phone).trim().replace(/\D/g, '');
+        const digits = cleaned.length === 11 && cleaned.startsWith('1') ? cleaned.substring(1) : cleaned;
+        if (digits.length === 10) {
+            return `(${digits.substring(0, 3)})-${digits.substring(3, 6)}-${digits.substring(6)}`;
         }
+        return String(phone).trim();
+    }
 
-        let client = null; // Define client globally
-
-// Function to load client data and display it in read-only mode
-async function loadClientData() {
-    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-    console.log(`Loading client data for ID: ${clientId}`);
-    try {
-        const response = await fetch(`/get-client/${clientId}`, {
+    // ===== SINGLE FETCH =====
+    async function fetchClient() {
+        const response = await fetch(`/get-client/${CLIENT_ID}`, {
             method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
         });
+        if (!response.ok) throw new Error(`Failed to fetch client: ${response.statusText}`);
+        return response.json();
+    }
 
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client: ${response.statusText}`);
+    // ===== POPULATE UI FROM CLIENT DATA =====
+    function populateView(data) {
+        client = data;
+
+        // Profile header
+        document.getElementById('profileId').textContent = `Profile: ${data.id || 'N/A'}`;
+
+        // Termination
+        document.getElementById('terminationStatus').style.display = data.terminated ? 'block' : 'none';
+
+        // Read-only fields
+        const fields = ['firstName', 'lastName', 'phoneNumber', 'homelessness',
+            'streetAddress', 'streetAddress2', 'city', 'state', 'zipCode',
+            'county', 'speakingLanguage'];
+
+        for (const field of fields) {
+            const el = document.getElementById(field);
+            if (field === 'phoneNumber') {
+                el.textContent = formatPhoneNumber(data[field]) || 'N/A';
+            } else {
+                el.textContent = data[field] ? data[field].toUpperCase() : 'N/A';
+            }
         }
 
-        client = await response.json(); // Assign the fetched client data to the global variable
-        if (client) {
-            console.log('Client data loaded:', client);
+        // Interpreter
+        const interpreterMap = { yes: 'Yes', no: 'No' };
+        document.getElementById('interpreter').textContent = interpreterMap[data.interpreter] || 'N/A';
 
-            // Populate the Profile ID in the header
-            document.getElementById('profileId').textContent = `Profile: ${client.id || 'N/A'}`;
+        // Homelessness label
+        document.querySelector('label[for="streetAddress"]').textContent =
+            data.homelessness === 'yes' ? 'Mailing Address:' : 'Street Address:';
 
-            // Populate fields with client data
-            document.getElementById('firstName').textContent = client.firstName ? client.firstName.toUpperCase() : 'N/A';
-            document.getElementById('lastName').textContent = client.lastName ? client.lastName.toUpperCase() : 'N/A';
-            document.getElementById('phoneNumber').textContent = client.phoneNumber ? client.phoneNumber.toUpperCase() : 'N/A';
-            document.getElementById('homelessness').textContent = client.homelessness ? client.homelessness.toUpperCase() : 'N/A';
-            document.getElementById('streetAddress').textContent = client.streetAddress ? client.streetAddress.toUpperCase() : 'N/A';
-            document.getElementById('streetAddress2').textContent = client.streetAddress2 ? client.streetAddress2.toUpperCase() : 'N/A';
-            document.getElementById('city').textContent = client.city ? client.city.toUpperCase() : 'N/A';
-            document.getElementById('state').textContent = client.state ? client.state.toUpperCase() : 'N/A';
-            document.getElementById('zipCode').textContent = client.zipCode ? client.zipCode.toUpperCase() : 'N/A';
-            document.getElementById('county').textContent = client.county ? client.county.toUpperCase() : 'N/A';
-            document.getElementById('speakingLanguage').textContent = client.speakingLanguage ? client.speakingLanguage.toUpperCase() : 'N/A';
+        // Button visibility based on checkout status
+        const activeUser = sessionStorage.getItem('loggedInUser')?.trim();
+        const checkedOutInfo = data.checkedOut?.find(entry => entry.status === true);
 
-            // Handle interpreter field
-            if (client.interpreter === 'yes') {
-                document.getElementById('interpreter').textContent = 'Yes';
-            } else if (client.interpreter === 'no') {
-                document.getElementById('interpreter').textContent = 'No';
-            } else {
-                document.getElementById('interpreter').textContent = 'N/A'; // Default to "N/A"
-            }
+        if (checkedOutInfo && checkedOutInfo.user !== activeUser) {
+            document.getElementById('call-logging-button').style.display = 'none';
+            document.getElementById('profile-edit-button').style.display = 'none';
+        }
 
-            // Display "PROFILE TERMINATED" if applicable
-            if (client.terminated) {
-                const terminationStatus = document.getElementById('terminationStatus');
-                terminationStatus.style.display = 'block'; // Show the termination status
-            }
+        // Contacts sidebar always visible
+        document.getElementById('contactsSidebarContainer').style.display = 'block';
 
-            // Check if the profile is checked out by a different user
-            const activeUser = sessionStorage.getItem('loggedInUser')?.trim();
-            const checkedOutInfo = client.checkedOut?.find(entry => entry.status === true);
+        // Interaction tracker
+        populateInteractions(data.callLogs);
 
-            if (checkedOutInfo && checkedOutInfo.user !== activeUser) {
-                // Hide the "Log New Call" and "Check Out Profile" buttons
-                document.getElementById('call-logging-button').style.display = 'none';
-                document.getElementById('profile-edit-button').style.display = 'none';
-            }
+        // Contacts
+        renderContacts();
+    }
 
-            // Populate interaction tracker
-            const interactionList = document.getElementById('interactionList');
-            interactionList.innerHTML = ''; // Clear existing entries
+    function populateInteractions(callLogs) {
+        const list = document.getElementById('interactionList');
+        list.innerHTML = '';
 
-            if (client.callLogs && client.callLogs.length > 0) {
-                // Sort call logs by timestamp in descending order
-                client.callLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        if (!callLogs || callLogs.length === 0) {
+            list.innerHTML = '<li>No call logs available.</li>';
+            return;
+        }
 
-                client.callLogs.forEach(log => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `
-                        <div><strong>Agent:</strong> ${log.agent?.toUpperCase() || 'UNKNOWN AGENT'}</div>
-                        <div><strong>Timestamp:</strong> ${log.timestamp?.toUpperCase() || 'UNKNOWN TIME'}</div>
-                        <div><strong>Caller:</strong> ${(log.callerFirstName || '').toUpperCase()} ${(log.callerLastName || '').toUpperCase()}</div>
-                        <div><strong>Phone:</strong> ${formatPhoneNumber(log.callerPhoneNumber) || ''}</div>
-                        <div><strong>Direction:</strong> ${log.callDirection?.toUpperCase() || ''}</div>
-                        <div><strong>Service Center:</strong> ${log.servicingCenter?.toUpperCase() || ''}</div>
-                        <div><strong>Reason:</strong> ${log.reasonForCall?.toUpperCase() || ''}</div>
-                        <div><strong>Referral:</strong> ${log.referralSource?.toUpperCase() || 'N/A'}</div>
-                        ${log.specificReferral ? `<div><strong>Specifically:</strong> ${log.specificReferral.toUpperCase()}</div>` : ''}
-                    `;
-                    interactionList.appendChild(li);
-                });
-            } else {
-                const noLogsMessage = document.createElement('li');
-                noLogsMessage.textContent = 'No call logs available.';
-                interactionList.appendChild(noLogsMessage);
-            }
+        callLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-            // Render contacts
-            renderContacts(); // Call renderContacts to display the contacts
+        const fragment = document.createDocumentFragment();
+        for (const log of callLogs) {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div><strong>Agent:</strong> ${(log.agent || 'UNKNOWN AGENT').toUpperCase()}</div>
+                <div><strong>Timestamp:</strong> ${(log.timestamp || 'UNKNOWN TIME').toUpperCase()}</div>
+                <div><strong>Caller:</strong> ${(log.callerFirstName || '').toUpperCase()} ${(log.callerLastName || '').toUpperCase()}</div>
+                <div><strong>Phone:</strong> ${formatPhoneNumber(log.callerPhoneNumber) || ''}</div>
+                <div><strong>Direction:</strong> ${(log.callDirection || '').toUpperCase()}</div>
+                <div><strong>Service Center:</strong> ${(log.servicingCenter || '').toUpperCase()}</div>
+                <div><strong>Reason:</strong> ${(log.reasonForCall || '').toUpperCase()}</div>
+                <div><strong>Referral:</strong> ${(log.referralSource || 'N/A').toUpperCase()}</div>
+                ${log.specificReferral ? `<div><strong>Specifically:</strong> ${log.specificReferral.toUpperCase()}</div>` : ''}
+            `;
+            fragment.appendChild(li);
+        }
+        list.appendChild(fragment);
+    }
+
+    // ===== CONTACTS =====
+    function renderContacts() {
+        const container = document.getElementById('contacts-list');
+        container.innerHTML = '';
+
+        if (!client.Contacts || client.Contacts.length === 0) {
+            container.innerHTML = '<p>No contacts available.</p>';
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        client.Contacts.forEach((contact, index) => {
+            const div = document.createElement('div');
+            div.classList.add('left-sidebar');
+            div.innerHTML = `
+                <p><strong>Name:</strong><br> ${(contact.firstName || 'N/A').toUpperCase()} ${(contact.lastName || 'N/A').toUpperCase()}</p>
+                <p><strong>Phone:</strong><br> ${formatPhoneNumber(contact.phoneNumber) || 'N/A'}</p>
+                <p><strong>Authorized Representative:</strong><br> ${(contact.authorizedRepresentative || 'N/A').toUpperCase()}</p>
+            `;
+            fragment.appendChild(div);
+        });
+        container.appendChild(fragment);
+    }
+
+    function openContactModal(contact = null, index = null) {
+        const modal = document.getElementById('contactModal');
+        const buttonContainer = modal.querySelector('.button-container');
+
+        buttonContainer.innerHTML = `
+            <button type="button" onclick="saveContact()">Save</button>
+            <button type="button" onclick="closeContactModal()">Cancel</button>
+        `;
+
+        if (contact) {
+            document.getElementById('modal-title').textContent = 'Edit Contact';
+            document.getElementById('contactFirstName').value = contact.firstName || '';
+            document.getElementById('contactLastName').value = contact.lastName || '';
+            document.getElementById('contactPhoneNumber').value = contact.phoneNumber || '';
+            document.getElementById('authorizedRepresentative').value = contact.authorizedRepresentative || 'N/A';
+            editingContactIndex = index;
+
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Delete';
+            deleteButton.type = 'button';
+            deleteButton.style.cssText = 'background-color:red;color:white;';
+            deleteButton.onclick = () => deleteContact(index);
+            buttonContainer.appendChild(deleteButton);
         } else {
-            alert('Client not found');
+            document.getElementById('modal-title').textContent = 'Add Contact';
+            document.getElementById('contactFirstName').value = '';
+            document.getElementById('contactLastName').value = '';
+            document.getElementById('contactPhoneNumber').value = '';
+            document.getElementById('authorizedRepresentative').value = 'N/A';
+            editingContactIndex = null;
         }
-    } catch (error) {
-        console.error('Error loading client data:', error);
-    }
-}
 
-let editingContactIndex = null; // Track the index of the contact being edited
-
-// Open the modal for adding or editing a contact
-function openContactModal(contact = null, index = null) {
-    const modal = document.getElementById('contactModal');
-    const modalTitle = document.getElementById('modal-title');
-    const firstNameInput = document.getElementById('contactFirstName');
-    const lastNameInput = document.getElementById('contactLastName');
-    const phoneNumberInput = document.getElementById('contactPhoneNumber');
-    const authorizedRepSelect = document.getElementById('authorizedRepresentative');
-    const buttonContainer = modal.querySelector('.button-container');
-
-    // Clear existing buttons to avoid duplicates
-    buttonContainer.innerHTML = `
-        <button type="button" onclick="saveContact()">Save</button>
-        <button type="button" onclick="closeContactModal()">Cancel</button>
-    `;
-
-    if (contact) {
-        // Populate fields for editing
-        modalTitle.textContent = 'Edit Contact';
-        firstNameInput.value = contact.firstName || '';
-        lastNameInput.value = contact.lastName || '';
-        phoneNumberInput.value = contact.phoneNumber || '';
-        authorizedRepSelect.value = contact.authorizedRepresentative || 'N/A';
-        editingContactIndex = index;
-
-        // Add a "Delete" button for editing
-        const deleteButton = document.createElement('button');
-        deleteButton.textContent = 'Delete';
-        deleteButton.type = 'button';
-        deleteButton.style.backgroundColor = 'red';
-        deleteButton.style.color = 'white';
-        deleteButton.onclick = () => deleteContact(index);
-        buttonContainer.appendChild(deleteButton);
-    } else {
-        // Clear fields for adding
-        modalTitle.textContent = 'Add Contact';
-        firstNameInput.value = '';
-        lastNameInput.value = '';
-        phoneNumberInput.value = '';
-        authorizedRepSelect.value = 'N/A';
-        editingContactIndex = null;
+        modal.style.display = 'flex';
     }
 
-    modal.style.display = 'block';
-}
-
-// Delete a contact
-async function deleteContact(index) {
-    if (!confirm('Are you sure you want to delete this contact?')) {
-        return; // Exit if the user cancels
+    function openContactModalByIndex(index) {
+        openContactModal(client.Contacts[index], index);
     }
 
-    try {
-        // Remove the contact locally
+    function closeContactModal() {
+        document.getElementById('contactModal').style.display = 'none';
+    }
+
+    window.addEventListener('click', (event) => {
+        const modal = document.getElementById('contactModal');
+        if (event.target === modal) closeContactModal();
+    });
+
+    async function saveContact() {
+        const firstName = document.getElementById('contactFirstName').value.trim();
+        const lastName = document.getElementById('contactLastName').value.trim();
+        const phoneNumber = document.getElementById('contactPhoneNumber').value.trim();
+        const authorizedRepresentative = document.getElementById('authorizedRepresentative').value;
+
+        if (!firstName || !lastName || !phoneNumber) {
+            alert('Please fill in all required fields.');
+            return;
+        }
+
+        const newContact = { firstName, lastName, phoneNumber, authorizedRepresentative };
+
+        if (!client.Contacts) client.Contacts = [];
+
+        try {
+            const requestBody = { clientId: CLIENT_ID, contact: newContact };
+
+            if (editingContactIndex !== null) {
+                requestBody.index = editingContactIndex;
+                client.Contacts[editingContactIndex] = newContact;
+            } else {
+                client.Contacts.push(newContact);
+            }
+
+            const response = await fetch('/add-to-contacts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody),
+            });
+
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                console.error('Failed to save contact:', result.message);
+                alert(`Error: ${result.message}`);
+                return;
+            }
+
+            closeContactModal();
+            renderContacts();
+        } catch (error) {
+            console.error('Error saving contact:', error);
+            alert('An error occurred while saving the contact.');
+        }
+    }
+
+    async function deleteContact(index) {
+        if (!confirm('Are you sure you want to delete this contact?')) return;
+
         const deletedContact = client.Contacts.splice(index, 1)[0];
-
-        // Send delete request to the backend
-        const response = await fetch('/add-to-contacts', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                clientId: client.id, // Pass the client ID
-                contact: deletedContact, // Pass the deleted contact
-                index, // Pass the index of the contact to delete
-                delete: true, // Indicate this is a delete operation
-            }),
-        });
-
-        const result = await response.json();
-        if (result.success) {
-            console.log('Contact deleted successfully:', result.message);
-        } else {
-            console.error('Failed to delete contact:', result.message);
-            alert(`Error: ${result.message}`);
+        try {
+            const response = await fetch('/add-to-contacts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId: CLIENT_ID,
+                    contact: deletedContact,
+                    index,
+                    delete: true,
+                }),
+            });
+            const result = await response.json();
+            if (!result.success) {
+                console.error('Failed to delete contact:', result.message);
+            }
+        } catch (error) {
+            console.error('Error deleting contact:', error);
         }
-    } catch (error) {
-        console.error('Error while deleting contact from the database:', error);
-        alert('An error occurred while deleting the contact. Please try again.');
-    }
-
-    // Re-render contacts and close modal
-    renderContacts();
-    closeContactModal();
-}
-// Close the modal
-function closeContactModal() {
-    const modal = document.getElementById('contactModal');
-    modal.style.display = 'none';
-}
-
-// Close the modal when clicking outside of it
-window.addEventListener('click', (event) => {
-    const modal = document.getElementById('contactModal');
-    const modalContent = modal.querySelector('.modal-content');
-    if (event.target === modal && !modalContent.contains(event.target)) {
+        renderContacts();
         closeContactModal();
     }
-});
 
-// Save the contact (add or edit)
-async function saveContact() {
-    const firstName = document.getElementById('contactFirstName').value;
-    const lastName = document.getElementById('contactLastName').value;
-    const phoneNumber = document.getElementById('contactPhoneNumber').value;
-    const authorizedRepresentative = document.getElementById('authorizedRepresentative').value;
+    // ===== ACTION HANDLERS =====
+    function confirmAndLogCall() {
+        if (!confirm("Are you sure you want to log a new call?")) return;
+        window.location.href = `call-loggingreturning.html?id=${CLIENT_ID}`;
+    }
 
-    const newContact = {
-        firstName,
-        lastName,
-        phoneNumber,
-        authorizedRepresentative,
+    async function releaseProfile() {
+        if (!confirm("Are you sure you want to release this profile?")) return;
+
+        const previousActiveUser = client.checkedOut?.find(entry => entry.status === true)?.user;
+        if (!previousActiveUser) {
+            alert("No active user found to release.");
+            return;
+        }
+
+        try {
+            const activeUser = sessionStorage.getItem('loggedInUser');
+            const updatedCheckedOut = client.checkedOut.map(entry => ({ ...entry, status: false }));
+
+            // Release profile + add note + notify user in parallel
+            await Promise.all([
+                fetch('/update-client', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        clientId: CLIENT_ID,
+                        clientData: { checkedOut: updatedCheckedOut },
+                    }),
+                }),
+                fetch('/add-note-to-client', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        clientId: CLIENT_ID,
+                        note: {
+                            text: "Profile released.",
+                            timestamp: new Date().toLocaleString(),
+                            username: activeUser,
+                        },
+                    }),
+                }),
+                fetch('/notify-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: previousActiveUser,
+                        redirectUrl: `profileview.html?id=${CLIENT_ID}`,
+                    }),
+                }),
+            ]);
+
+            alert('Profile released successfully.');
+            window.location.reload();
+        } catch (error) {
+            console.error('Error releasing profile:', error);
+            alert('An error occurred while releasing the profile.');
+        }
+    }
+
+    // ===== WEBSOCKET =====
+    const ws = new WebSocket(`ws://localhost:8080?username=${sessionStorage.getItem('loggedInUser')}`);
+
+    ws.onopen = () => {
+        console.log('WebSocket connection established.');
+        window.heartbeatInterval = setInterval(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'ping' }));
+            }
+        }, 30000);
     };
 
-    // Ensure the Contacts array exists locally
-    if (!client.Contacts) {
-        client.Contacts = []; // Initialize the Contacts array if it doesn't exist
-    }
-
-    try {
-        let response;
-        if (editingContactIndex !== null) {
-            // Edit existing contact
-            client.Contacts[editingContactIndex] = newContact;
-
-            // Send update request to the backend
-            response = await fetch('/add-to-contacts', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    clientId: client.id, // Pass the client ID
-                    contact: newContact, // Pass the updated contact
-                    index: editingContactIndex, // Pass the index of the contact to update
-                }),
-            });
-        } else {
-            // Add new contact
-            client.Contacts.push(newContact);
-
-            // Send add request to the backend
-            response = await fetch('/add-to-contacts', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    clientId: client.id, // Pass the client ID
-                    contact: newContact, // Pass the new contact
-                }),
-            });
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.redirectUrl) {
+            alert('You have been redirected because the profile was released by another user.');
+            window.location.href = data.redirectUrl;
         }
+    };
 
-        const result = await response.json();
-        if (result.success) {
-            console.log('Contact saved successfully:', result.message);
-        } else {
-            console.error('Failed to save contact:', result.message);
-            alert(`Error: ${result.message}`);
-        }
-    } catch (error) {
-        console.error('Error while saving contact to the database:', error);
-        alert('An error occurred while saving the contact. Please try again.');
-    }
+    ws.onclose = () => {
+        clearInterval(window.heartbeatInterval);
+    };
 
-    // Re-render contacts and close modal
-    renderContacts();
-    closeContactModal();
-}
+    ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+    };
 
-// Render contacts dynamically
-function renderContacts() {
-    const contactsContainer = document.getElementById('contacts-list');
-    contactsContainer.innerHTML = ''; // Clear existing contacts
+    // ===== INITIALIZATION: Single fetch, then role check =====
+    async function initPage() {
+        try {
+            const data = await fetchClient();
+            populateView(data);
 
-    if (client.Contacts && client.Contacts.length > 0) {
-        client.Contacts.forEach((contact, index) => {
-            const contactDiv = document.createElement('div');
-            contactDiv.classList.add('left-sidebar');
-            contactDiv.innerHTML = `
-                <p><strong>Name:</strong><br> ${contact.firstName?.toUpperCase() || 'N/A'} ${contact.lastName?.toUpperCase() || 'N/A'}</p>
-                <p><strong>Phone:</strong><br> ${formatPhoneNumber(contact.phoneNumber) || 'N/A'}</p>
-                <p><strong>Authorized Representative:</strong><br> ${contact.authorizedRepresentative?.toUpperCase() || 'N/A'}</p>
-            `;
-            contactsContainer.appendChild(contactDiv);
-        });
-    } else {
-        contactsContainer.innerHTML = '<p>No contacts available.</p>';
-    }
-}
+            // Admin release button check (uses already-fetched client data)
+            const activeUser = sessionStorage.getItem('loggedInUser');
+            if (!activeUser) return;
 
-// Open the modal for editing a contact by index
-function openContactModalByIndex(index) {
-    const contact = client.Contacts[index]; // Get the contact by index
-    openContactModal(contact, index); // Call the existing openContactModal function
-}
+            const roleResponse = await fetch(`/get-user-role?username=${encodeURIComponent(activeUser)}`);
+            if (!roleResponse.ok) return;
 
-function formatPhoneNumber(phone) {
-        if (!phone) return '';
-        const cleaned = phone.replace(/\D/g, ''); // Remove all non-numeric characters
-        const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/); // Match the phone number pattern
-        return match ? `(${match[1]})-${match[2]}-${match[3]}` : phone; // Format if valid, else return original
-    }
-
-        function GoToCallLogging() {
-            const clientId = getQueryParam('id');
-            window.location.href = `call-loggingreturning.html?id=${clientId}`;
-        }
-
-        async function confirmAndLogCall() {
-    if (confirm("Are you sure you want to log a new call?")) {
-        const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-        console.log('Client ID:', clientId);
-
-        if (!clientId) {
-            alert('Client ID is missing from the URL.');
-            return;
-        }
-
-        // Redirect to the call logging page
-        const redirectUrl = `call-loggingreturning.html?id=${clientId}`;
-        console.log('Redirecting to:', redirectUrl);
-        window.location.href = redirectUrl;
-    }
-}
-
-async function releaseProfile() {
-    if (!confirm("Are you sure you want to release this profile?")) {
-        return; // Exit if the user cancels
-    }
-
-    try {
-        const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-        const previousActiveUser = client.checkedOut?.find(entry => entry.status === true)?.user;
-
-        if (!previousActiveUser) {
-            console.error("No active user found in the checkedOut array.");
-            alert("No active user found to notify.");
-            return;
-        }
-
-        console.log(`Previous active user identified: ${previousActiveUser}`);
-
-        // Update the checkedOut status to false for all entries
-        const updatedCheckedOut = client.checkedOut.map(entry => ({
-            ...entry,
-            status: false,
-        }));
-
-        const response = await fetch('/update-client', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                clientId: client.id,
-                clientData: { checkedOut: updatedCheckedOut },
-            }),
-        });
-
-        const result = await response.json();
-        if (result.success) {
-            alert('Profile released successfully.');
-
-            // Notify the previous active user to redirect
-            await fetch('/notify-user', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    username: previousActiveUser,
-                    redirectUrl: `profileview.html?id=${client.id}`,
-                }),
-            });
-
-            console.log(`Notification sent to previous active user: ${previousActiveUser}`);
-
-            // Add a note about the profile release
-            const noteContent = "Profile released.";
-            const timestamp = new Date().toLocaleString();
-            const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
-
-            const note = {
-                text: noteContent,
-                timestamp: timestamp,
-                username: activeUser,
-            };
-
-            try {
-                const noteResponse = await fetch('/add-note-to-client', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ clientId, note }),
-                });
-
-                const noteResult = await noteResponse.json();
-                if (!noteResponse.ok || !noteResult.success) {
-                    console.error('Failed to add note to client:', noteResult.message);
-                    alert('Failed to add note to client.');
-                } else {
-                    console.log('Note successfully added to client.');
-                }
-            } catch (error) {
-                console.error('Error adding note to client:', error);
-                alert('An error occurred while adding the note.');
-            }
-
-            // Refresh the page for the current user
-            window.location.reload();
-        } else {
-            alert(`Error: ${result.message}`);
-        }
-    } catch (error) {
-        console.error('Error releasing profile:', error);
-        alert('An error occurred while releasing the profile. Please try again.');
-    }
-}
-
-const ws = new WebSocket(`ws://localhost:8080?username=${sessionStorage.getItem('loggedInUser')}`);
-
-ws.onopen = () => {
-    console.log('WebSocket connection established for:', sessionStorage.getItem('loggedInUser'));
-
-    // Start sending heartbeat messages every 30 seconds
-    window.heartbeatInterval = setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'ping' }));
-            console.log('Heartbeat sent to server.');
-        }
-    }, 30000); // 30 seconds
-};
-
-ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    if (data.redirectUrl) {
-        console.log('Redirecting to:', data.redirectUrl);
-        alert('You have been redirected because the profile was released by another user.');
-        window.location.href = data.redirectUrl; // Force redirect to the specified URL
-    }
-};
-
-ws.onclose = () => {
-    console.log('WebSocket connection closed.');
-    clearInterval(window.heartbeatInterval); // Stop the heartbeat
-};
-
-ws.onerror = (error) => {
-    console.error('WebSocket error:', error);
-};
-
-window.onload = async function () {
-    await loadClientData(); // Load client data first
-    console.log('Logged-in user:', sessionStorage.getItem('loggedInUser'));
-
-    const activeUser = sessionStorage.getItem('loggedInUser');
-    if (activeUser) {
-        console.log('Active User:', activeUser); // Debugging
-
-        // Fetch the user's role from the backend
-        fetch(`/get-user-role?username=${encodeURIComponent(activeUser)}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    // Set the user role in sessionStorage
-                    sessionStorage.setItem('userRole', data.role);
-
-                    // Check if the user is an admin
-                    if (data.role === 'admin') {
-                        console.log('Admin role detected.');
-
-                        // Check if the profile is currently checked out
-                        const isCheckedOut = client.checkedOut?.some(entry => entry.status === true);
-                        if (isCheckedOut) {
-                            console.log('Profile is checked out. Displaying the Release Profile button.');
-                            document.getElementById('release-profile-button').style.display = 'block';
-                        } else {
-                            console.log('Profile is not checked out. Hiding the Release Profile button.');
-                        }
-                    } else {
-                        console.log('User is not an admin. Button will not be displayed.');
+            const roleData = await roleResponse.json();
+            if (roleData.success) {
+                sessionStorage.setItem('userRole', roleData.role);
+                if (roleData.role === 'admin') {
+                    const isCheckedOut = client.checkedOut?.some(entry => entry.status === true);
+                    if (isCheckedOut) {
+                        document.getElementById('release-profile-button').style.display = 'block';
                     }
-                } else {
-                    console.error('Failed to fetch user role:', data.message);
                 }
-            })
-            .catch(error => {
-                console.error('Error fetching user role:', error);
-            });
-    } else {
-        console.error('No active user found in sessionStorage');
+            }
+        } catch (error) {
+            console.error('Error loading client data:', error);
+            alert('Client not found.');
+        }
     }
-};
+
+    document.addEventListener('DOMContentLoaded', initPage);
     </script>
+
     <script src="notes.js"></script>
     <script src="userInfo.js"></script>
-
 </body>
 </html>

@@ -6,11 +6,12 @@
     <title>Call Logging</title>
     <link rel="stylesheet" href="styles.css">
     <script src="userInfo.js"></script>
-    <style>.error {
-        border: 2px solid red;
-        background-color: #ffe6e6;
-    }</style>
-
+    <style>
+        .error {
+            border: 2px solid red;
+            background-color: #ffe6e6;
+        }
+    </style>
 </head>
 <body>
     <h1>Add New Contact</h1>
@@ -32,35 +33,36 @@
             <option value="PACE Elevated">PACE Elevated</option>
             <option value="GOV SNAP">GOV SNAP</option>
         </select><br><br>
-        
+
         <label for="callerFirstName">Contact First Name:</label>
         <input type="text" id="callerFirstName" name="callerFirstName" required><br><br>
         <label for="callerLastName">Contact Last Name:</label>
         <input type="text" id="callerLastName" name="callerLastName" required><br><br>
         <label for="callerPhoneNumber">Contact Phone Number:</label>
         <input type="text" id="callerPhoneNumber" name="callerPhoneNumber" required><br><br>
+
         <label for="callDirection">Call Direction:</label>
         <select id="callDirection" name="callDirection" required>
-            <option value disabled selected>Select Call Direction</option>
+            <option value="" disabled selected>Select Call Direction</option>
             <option value="Inbound">Inbound</option>
             <option value="Outbound">Outbound</option>
         </select><br><br>
 
         <label for="reasonForCall">Reason for Call:</label>
-<select id="reasonForCall" name="reasonForCall">
-    <option value="" disabled selected>Select Reason for Call</option>
-    <option value="To Apply Myself for Public Benefits">To Apply Myself for Public Benefits</option>
-    <option value="To Apply Someone Else for Public Benefits">To Apply Someone Else for Public Benefits</option>
-    <option value="To Recertify SNAP and/or Medical Assistance">To Recertify SNAP and/or Medical Assistance </option>
-    <option value="Post-Submission Questions">Post-Submission Questions</option>
-    <option value="Questions about an Existing Case">Questions about an Existing Case</option>
-    <option value="Other">Another Reason</option>
-</select><br><br>
+        <select id="reasonForCall" name="reasonForCall">
+            <option value="" disabled selected>Select Reason for Call</option>
+            <option value="To Apply Myself for Public Benefits">To Apply Myself for Public Benefits</option>
+            <option value="To Apply Someone Else for Public Benefits">To Apply Someone Else for Public Benefits</option>
+            <option value="To Recertify SNAP and/or Medical Assistance">To Recertify SNAP and/or Medical Assistance</option>
+            <option value="Post-Submission Questions">Post-Submission Questions</option>
+            <option value="Questions about an Existing Case">Questions about an Existing Case</option>
+            <option value="Other">Another Reason</option>
+        </select><br><br>
 
         <div id="referralSourceContainer">
             <label for="referralSource">Referral Source:</label>
             <select id="referralSource" name="referralSource" onchange="handleReferralSourceChange()">
-                <option value disabled selected>Select Referral Source</option>
+                <option value="" disabled selected>Select Referral Source</option>
                 <option value="Outreach">Outreach</option>
                 <option value="Referral from a Government Agency">Referral from a Government Agency</option>
                 <option value="Referral from a CBO">Referral from a Community-Based Organization</option>
@@ -74,339 +76,215 @@
             <input type="text" id="specificReferral" name="specificReferral" placeholder="Enter details">
         </div>
 
-        <button type="button" onclick="window.location.href='home.html'"> Home</button>
+        <button type="button" onclick="window.location.href='home.html'">Home</button>
         <button type="button" onclick="logNewCall()">Log New Call</button>
     </form>
+
     <script>
-        // Function to get query parameter by name
-        function getQueryParam(name) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get(name);
-        }
+    // ===== GLOBALS =====
+    const CLIENT_ID = new URLSearchParams(window.location.search).get('id');
+    const ACTIVE_USER = sessionStorage.getItem('loggedInUser');
 
-        async function logNewCall() {
-    const requiredFields = ['servicingCenter', 'callerFirstName', 'callerLastName', 'callerPhoneNumber', 'callDirection', 'reasonForCall', 'referralSource', 'specificReferral'];
-    let invalidFields = []; // Array to collect invalid fields
+    // ===== UTILITIES =====
+    function getEl(id) { return document.getElementById(id); }
+    function getVal(id) { return getEl(id)?.value || ''; }
 
-    // Clear previous error classes
-    requiredFields.forEach(field => {
-        const fieldElement = document.getElementById(field);
-        if (fieldElement) {
-            fieldElement.classList.remove('error');
-        }
-    });
-
-    for (const field of requiredFields) {
-        const fieldElement = document.getElementById(field);
-
-        // Skip hidden fields
-        if (fieldElement && fieldElement.classList.contains('hidden')) {
-            console.log(`Skipping hidden field: ${field}`);
-            continue;
-        }
-
-        // Skip reasonForCall if callDirection is Outbound
-        if (field === 'reasonForCall' && document.getElementById('callDirection').value === 'Outbound') {
-            console.log('Skipping reasonForCall because callDirection is Outbound');
-            continue;
-        }
-
-        if (field === 'referralSource' && document.getElementById('callDirection').value === 'Outbound') {
-            console.log('Skipping referralSource because callDirection is Outbound');
-            continue;
-        }
-
-        if (field === 'referralSource') {
-            const referralSourceContainer = document.getElementById('referralSourceContainer');
-            if (referralSourceContainer.style.display === 'none') {
-                console.log('Skipping referralSource because its container is hidden');
-                continue;
-            }
-        }
-
-        if (field === 'specificReferral') {
-            const specificReferralContainer = document.getElementById('specificReferralContainer');
-            if (specificReferralContainer.style.display === 'none') {
-                console.log('Skipping specificReferral because its container is hidden');
-                continue;
-            }
-        }
-
-        if (!fieldElement || !fieldElement.value) {
-            invalidFields.push(fieldElement); // Add invalid field to the array
-        }
+    function isFieldVisible(fieldId) {
+        const el = getEl(fieldId);
+        if (!el) return false;
+        if (el.classList.contains('hidden')) return false;
+        const container = el.closest('[id$="Container"]');
+        if (container && container.style.display === 'none') return false;
+        return el.style.display !== 'none';
     }
 
-// Validate phone number (10 digits)
-const phoneNumber = document.getElementById('callerPhoneNumber').value;
-const phoneRegex = /^\d{10}$/;
-if (!phoneRegex.test(phoneNumber)) {
-    invalidFields.push(document.getElementById('callerPhoneNumber')); // Add phone number field to the array
-    alert('Phone number must be exactly 10 digits.');
-}
+    // ===== VALIDATION =====
+    function validateForm() {
+        const isOutbound = getVal('callDirection') === 'Outbound';
+        const fieldsToValidate = [
+            'servicingCenter', 'callerFirstName', 'callerLastName',
+            'callerPhoneNumber', 'callDirection'
+        ];
 
-// Check referral source if visible
-const referralSourceContainer = document.getElementById('referralSourceContainer');
-if (referralSourceContainer.style.display !== 'none' && !document.getElementById('referralSource').value) {
-    invalidFields.push(document.getElementById('referralSource')); // Add referral source field to the array
-}
+        if (!isOutbound) {
+            fieldsToValidate.push('reasonForCall');
+            if (isFieldVisible('referralSource')) fieldsToValidate.push('referralSource');
+            if (isFieldVisible('specificReferral')) fieldsToValidate.push('specificReferral');
+        }
 
-// Highlight all invalid fields and add listeners to remove the error class
-if (invalidFields.length > 0) {
-    invalidFields.forEach(field => {
-        if (field) {
-            field.classList.add('error'); // Add error class to each invalid field
+        // Clear previous errors
+        document.querySelectorAll('.error').forEach(el => el.classList.remove('error'));
 
-            // Add an event listener to remove the error class when the field is updated
-            field.addEventListener('input', function removeError() {
-                if (field.value.trim() !== '') {
-                    field.classList.remove('error');
-                    field.removeEventListener('input', removeError); // Remove the listener after the error is cleared
-                }
+        const invalidFields = [];
+        for (const fieldId of fieldsToValidate) {
+            const el = getEl(fieldId);
+            if (!el || !el.value.trim()) {
+                invalidFields.push(el);
+            }
+        }
+
+        // Phone validation
+        const phone = getVal('callerPhoneNumber').replace(/\D/g, '');
+        if (!/^\d{10}$/.test(phone)) {
+            const phoneEl = getEl('callerPhoneNumber');
+            if (!invalidFields.includes(phoneEl)) invalidFields.push(phoneEl);
+        }
+
+        if (invalidFields.length > 0) {
+            invalidFields.forEach(field => {
+                if (!field) return;
+                field.classList.add('error');
+                const handler = function () {
+                    if (field.value.trim()) {
+                        field.classList.remove('error');
+                        field.removeEventListener('input', handler);
+                        field.removeEventListener('change', handler);
+                    }
+                };
+                field.addEventListener('input', handler);
+                field.addEventListener('change', handler);
             });
-        }
-    });
 
-    // Show a generic alert for other invalid fields
-    if (!invalidFields.includes(document.getElementById('callerPhoneNumber'))) {
-        alert('Please fill out all required fields.');
+            const phoneEl = getEl('callerPhoneNumber');
+            const hasPhoneError = invalidFields.includes(phoneEl);
+            if (hasPhoneError && phone.length > 0) {
+                alert('Phone number must be exactly 10 digits.');
+            } else if (hasPhoneError && phone.length === 0) {
+                alert('Please fill out all required fields, including phone number.');
+            } else {
+                alert('Please fill out all required fields.');
+            }
+            return null;
+        }
+
+        return {
+            agent: getVal('Agent'),
+            servicingCenter: getVal('servicingCenter'),
+            callerFirstName: getVal('callerFirstName'),
+            callerLastName: getVal('callerLastName'),
+            callerPhoneNumber: phone,
+            callDirection: getVal('callDirection'),
+            reasonForCall: getVal('reasonForCall'),
+            referralSource: getVal('referralSource'),
+            specificReferral: isFieldVisible('specificReferral') ? getVal('specificReferral') : null,
+            timestamp: new Date().toLocaleString(),
+        };
     }
-    return;
-}
 
-    const specificReferralContainer = document.getElementById('specificReferralContainer');
-    const specificReferral = specificReferralContainer.style.display !== 'none'
-        ? document.getElementById('specificReferral').value
-        : null;
+    // ===== MAIN ACTION =====
+    async function logNewCall() {
+        const callLog = validateForm();
+        if (!callLog) return;
 
-    const clientId = getQueryParam('id');
-    const callLog = {
-        agent: document.getElementById('Agent').value,
-        servicingCenter: document.getElementById('servicingCenter').value,
-        callerFirstName: document.getElementById('callerFirstName').value,
-        callerLastName: document.getElementById('callerLastName').value,
-        callerPhoneNumber: phoneNumber, // Use validated phone number
-        callDirection: document.getElementById('callDirection').value,
-        reasonForCall: document.getElementById('reasonForCall').value,
-        referralSource: document.getElementById('referralSource').value,
-        specificReferral: specificReferral, // Save the "Specifically, which?" field
-        timestamp: new Date().toLocaleString(),
-    };
-
-    try {
-        // Save caller details if reasonForCall is not "None"
-        if (callLog.reasonForCall !== "None") {
-    const generateContactId = () => `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const contactId = generateContactId(); // Generate a unique contactId
-    const clientData = {
-        firstName: callLog.callerFirstName,
-        lastName: callLog.callerLastName,
-        phoneNumber: callLog.callerPhoneNumber,
-    };
-
-    // Save to Contacts only if reasonForCall is "To Apply Someone Else for Public Benefits"
-    if (callLog.reasonForCall === "To Apply Someone Else for Public Benefits") {
-        const addToContactsResponse = await fetch('/add-to-contacts', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                clientId,
-                contact: { ...clientData, contactId }, // Add contactId only to the Contacts array
-            }),
-        });
-
-        const addToContactsResult = await addToContactsResponse.json();
-        if (!addToContactsResponse.ok || !addToContactsResult.success) {
-            alert(addToContactsResult.message || 'Failed to save contact details.');
-            return;
-        }
-    } else {
-        // Save caller details to the client
-        const updateClientResponse = await fetch('/update-client', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ clientId, clientData }), // Do not include contactId here
-        });
-
-        const updateClientResult = await updateClientResponse.json();
-        if (!updateClientResponse.ok || !updateClientResult.success) {
-            alert(updateClientResult.message || 'Failed to update client details.');
-            return;
-        }
-
-        // Add caller details to the Contacts array
-        const addToContactsResponse = await fetch('/add-to-contacts', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                clientId,
-                contact: { ...clientData, contactId }, // Add contactId only to the Contacts array
-            }),
-        });
-
-        const addToContactsResult = await addToContactsResponse.json();
-        if (!addToContactsResponse.ok || !addToContactsResult.success) {
-            alert(addToContactsResult.message || 'Failed to save contact details.');
-            return;
-        }
-    }
-}
-
-        // Log the call
-        const logCallResponse = await fetch('/log-call', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ clientId, callLog }),
-        });
-
-        const logCallResult = await logCallResponse.json();
-        if (logCallResponse.ok && logCallResult.success) {
-            // Create a note for profile creation
-            const activeUser = sessionStorage.getItem('loggedInUser');
-            const profileCreationNote = {
-                text: `Profile created.`,
-                timestamp: callLog.timestamp,
-                username: activeUser,
+        try {
+            const contactId = `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            const clientData = {
+                firstName: callLog.callerFirstName,
+                lastName: callLog.callerLastName,
+                phoneNumber: callLog.callerPhoneNumber,
             };
+            const contactPayload = { clientId: CLIENT_ID, contact: { ...clientData, contactId } };
 
-            // Add the profile creation note to the database
-            const addProfileNoteResponse = await fetch('/add-note-to-client', {
+            // Build all requests to fire in parallel
+            const requests = [];
+
+            // 1. Log the call
+            requests.push(fetch('/log-call', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ clientId, note: profileCreationNote }),
-            });
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId: CLIENT_ID, callLog }),
+            }));
 
-            const addProfileNoteResult = await addProfileNoteResponse.json();
-            if (!addProfileNoteResponse.ok || !addProfileNoteResult.success) {
-                alert('Failed to add profile creation note.');
-                return;
+            // 2. Save contact/client data — always add to contacts, update client unless "applying someone else"
+            requests.push(fetch('/add-to-contacts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(contactPayload),
+            }));
+
+            if (callLog.reasonForCall !== 'To Apply Someone Else for Public Benefits') {
+                requests.push(fetch('/update-client', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientId: CLIENT_ID, clientData }),
+                }));
             }
 
-            // Create a note for the call
-            const callNote = {
-                text: `<strong>${callLog.callDirection} call logged.</strong> <br><br> Service Center: <br><br> ${callLog.servicingCenter}.`,
-                timestamp: callLog.timestamp,
-                username: activeUser,
-            };
-
-            // Add the call note to the database
-            const addCallNoteResponse = await fetch('/add-note-to-client', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
+            // 3. Add profile creation note + call note in one batch
+            const notes = [
+                { text: 'Profile created.', timestamp: callLog.timestamp, username: ACTIVE_USER },
+                {
+                    text: `<strong>${callLog.callDirection} call logged.</strong> <br><br> Service Center: <br><br> ${callLog.servicingCenter}.`,
+                    timestamp: callLog.timestamp,
+                    username: ACTIVE_USER,
                 },
-                body: JSON.stringify({ clientId, note: callNote }),
-            });
-
-            const addCallNoteResult = await addCallNoteResponse.json();
-            if (!addCallNoteResponse.ok || !addCallNoteResult.success) {
-                alert('Failed to add note to client.');
-                return;
+            ];
+            for (const note of notes) {
+                requests.push(fetch('/add-note-to-client', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientId: CLIENT_ID, note }),
+                }));
             }
 
-                        // Update the client with checkedOut: true after redirecting
-                        await fetch('/update-client', {
+            // 4. Check out profile
+            requests.push(fetch('/update-client', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    clientId, 
-                    clientData: { 
-                        checkedOut: [
-                            {
-                                status: true,
-                                timestamp: new Date().toISOString(),
-                                user: sessionStorage.getItem('loggedInUser') 
-                                    ? sessionStorage.getItem('loggedInUser').trim() 
-                                    : 'Unknown User'
-                            }
-                        ] 
-                    } 
+                body: JSON.stringify({
+                    clientId: CLIENT_ID,
+                    clientData: {
+                        checkedOut: [{
+                            status: true,
+                            timestamp: new Date().toISOString(),
+                            user: ACTIVE_USER ? ACTIVE_USER.trim() : 'Unknown User',
+                        }],
+                    },
                 }),
-            });
-            window.location.href = `profileedit.html?id=${clientId}`;
-            window.location.href = url;
-        } else {
-            alert(logCallResult.message || 'Failed to log call.');
-        }
-    } catch (error) {
-        console.error('Error logging call:', error);
-    }
-}
+            }));
 
-        function populateActiveUser() {
-            const activeUser = sessionStorage.getItem('loggedInUser');
-            if (activeUser) {
-                document.getElementById('Agent').value = activeUser;
+            // Fire all requests in parallel
+            const results = await Promise.all(requests);
+
+            // Check the call log response (first request)
+            const logResult = await results[0].json();
+            if (!results[0].ok || !logResult.success) {
+                alert(logResult.message || 'Failed to log call.');
+                return;
             }
+
+            window.location.href = `profileedit.html?id=${CLIENT_ID}`;
+        } catch (error) {
+            console.error('Error logging call:', error);
+            alert('An error occurred while logging the call.');
         }
-
-        function toggleReferralSource() {
-            const callDirection = document.getElementById('callDirection').value;
-            const referralSourceContainer = document.getElementById('referralSourceContainer');
-            if (callDirection === 'Outbound') {
-                referralSourceContainer.style.display = 'none';
-                document.getElementById('referralSource').removeAttribute('required');
-            } else {
-                referralSourceContainer.style.display = 'block';
-                document.getElementById('referralSource').setAttribute('required', 'required');
-            }
-        }
-
-        function handleReferralSourceChange() {
-    const referralSource = document.getElementById('referralSource').value;
-    const specificReferralContainer = document.getElementById('specificReferralContainer');
-
-    if (
-        referralSource === 'Referral from a Government Agency' ||
-        referralSource === 'Referral from a CBO' ||
-        referralSource === 'Community Referral'
-    ) {
-        specificReferralContainer.style.display = 'block';
-        document.getElementById('specificReferral').setAttribute('required', 'required');
-    } else {
-        specificReferralContainer.style.display = 'none';
-        document.getElementById('specificReferral').removeAttribute('required');
     }
-}
 
-function toggleReasonForCall() {
-    const callDirection = document.getElementById('callDirection').value;
-    const reasonForCallLabel = document.querySelector('label[for="reasonForCall"]');
-    const reasonForCallSelect = document.getElementById('reasonForCall');
-    const referralSourceContainer = document.getElementById('referralSourceContainer');
-
-     // Also toggle referral source based on call direction
-
-    if (callDirection === 'Outbound') {
-        reasonForCallLabel.style.display = 'none';
-        reasonForCallSelect.style.display = 'none';
-        reasonForCallSelect.removeAttribute('required');
-        referralSourceContainer.style.display = 'none';
-        document.getElementById('referralSource').removeAttribute('required');
-    } else {
-        reasonForCallLabel.style.display = 'inline-block';
-        reasonForCallSelect.style.display = 'inline-block';
-        reasonForCallSelect.setAttribute('required', 'required');
-        referralSourceContainer.style.display = 'block';
-        document.getElementById('referralSource').setAttribute('required', 'required');
+    // ===== UI TOGGLES =====
+    function handleReferralSourceChange() {
+        const referralSource = getVal('referralSource');
+        const needsSpecific = ['Referral from a Government Agency', 'Referral from a CBO', 'Community Referral'].includes(referralSource);
+        getEl('specificReferralContainer').style.display = needsSpecific ? 'block' : 'none';
     }
-}
-document.getElementById('callDirection').addEventListener('change', toggleReasonForCall);
 
-        window.onload = function() {
-            populateActiveUser();
-            toggleReasonForCall(); // Ensure the correct state on page load
-        };
+    function toggleOutboundFields() {
+        const isOutbound = getVal('callDirection') === 'Outbound';
+
+        const reasonLabel = document.querySelector('label[for="reasonForCall"]');
+        const reasonSelect = getEl('reasonForCall');
+        const referralContainer = getEl('referralSourceContainer');
+
+        reasonLabel.style.display = isOutbound ? 'none' : 'inline-block';
+        reasonSelect.style.display = isOutbound ? 'none' : 'inline-block';
+        referralContainer.style.display = isOutbound ? 'none' : 'block';
+    }
+
+    // ===== INIT =====
+    document.addEventListener('DOMContentLoaded', () => {
+        if (ACTIVE_USER) getEl('Agent').value = ACTIVE_USER;
+        getEl('callDirection').addEventListener('change', toggleOutboundFields);
+        toggleOutboundFields();
+    });
     </script>
 </body>
 </html>

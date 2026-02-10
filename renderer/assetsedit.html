@@ -4,64 +4,112 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Client Assets</title>
-    <!-- Stylesheets -->
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="householdedit.css">
     <link rel="stylesheet" href="incomeedit.css">
     <link rel="stylesheet" href="notes.css">
     <script src="userInfo.js"></script>
+    <style>
+        details > summary {
+            cursor: pointer;
+        }
 
+        .narrow-body {
+            margin-left: 385px;
+            margin-right: 10px;
+            max-width: calc(100% - 395px);
+            margin: 0 auto;
+            margin-top: 60px;
+        }
+
+        #save-exit, #save-continue {
+            border: 1px solid #000000;
+            border-radius: 5px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        #save-exit:hover, #save-continue:hover {
+            background-color: #0056b3;
+            color: white;
+        }
+
+        .list-header {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .asset-list {
+            margin: 20px auto;
+            max-width: 800px;
+        }
+
+        .list-item {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            align-items: center;
+            text-align: center;
+            gap: 10px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .button-container {
+            grid-column: span 3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .edit-asset-button:hover {
+            background-color: #0056b3 !important;
+        }
+
+        .delete-asset-button:hover {
+            background-color: #a71d2a !important;
+        }
+    </style>
 </head>
 <body class="narrow-body">
 
-    <!-- Page Title -->
     <h1>Assets</h1>
 
-    <style>
+    <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
+        <div id="snap-household-container" class="left-sidebar"></div>
+        <div id="liheap-household-container" class="left-sidebar"></div>
+        <div id="household-members-container" class="left-sidebar"></div>
+    </div>
 
-details > summary {
-    cursor: pointer; /* Change cursor to hand */
-}
+    <div id="notes-container">
+        <textarea id="note-input" placeholder="Add Note..."></textarea>
+        <button id="save-note">Save Note</button>
+        <div id="notes-list"></div>
+    </div>
 
-.narrow-body {
-        margin-left: 385px; /* Space for the left sidebar */
-        margin-right: 10px; /* Optional: Space on the right */
-        max-width: calc(100% - 395px); /* Ensure the body doesn't exceed the available space */
-        margin: 0 auto; /* Center the content horizontally */
-        margin-top: 60px; /* Adjust this value to match the height of the navigation container */
-    }
-    </style>
-
-<div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
-    <div id="snap-household-container" class="left-sidebar"></div>
-    <div id="liheap-household-container" class="left-sidebar"></div>
-
-    <div id="household-members-container" class="left-sidebar"></div>
-</div>
-
-<div id="notes-container">
-    <textarea id="note-input" placeholder="Add Note..."></textarea>
-    <button id="save-note">Save Note</button>
-    <div id="notes-list">
-        </div>
-        </div>
-
-    <!-- Household Members Section -->
     <div id="household-member-container"></div>
 
     <!-- Modal for Adding/Editing Assets -->
     <div id="asset-modal" class="modal hidden">
         <div class="modal-content">
-            <!-- Close Button -->
             <button id="close-modal" class="close">&times;</button>
-
-            
-            <!-- Asset Form -->
             <form id="asset-form">
-
                 <h2 id="modal-title"></h2>
 
-                <!-- Type of Asset -->
                 <label for="asset-type">Type of Asset:</label>
                 <select id="asset-type" required>
                     <option value="" disabled selected>Select Type of Asset</option>
@@ -80,250 +128,21 @@ details > summary {
                     <option value="Cash On Hand">Cash On Hand</option>
                 </select>
 
-                <!-- Description -->
                 <label for="asset-description">Description:</label>
                 <input type="text" id="asset-description" class="text-input" placeholder="Enter asset description">
 
-                <!-- Value -->
                 <label for="asset-value">Value:</label>
                 <input type="text" id="asset-value" class="text-input" placeholder="Enter asset value" required>
 
-                <!-- Submit Button -->
                 <button type="button" id="add-asset-button" class="submit-button">Add Asset</button>
             </form>
         </div>
     </div>
 
     <div class="button-container">
-        <button id="save-exit" onclick="goToAssetView()">Save and Release Profile</button>
-        <button id="save-continue" onclick="GoToNextPage()">Save and Continue</button> <br>
+        <button id="save-exit">Save and Release Profile</button>
+        <button id="save-continue">Save and Continue</button>
     </div>
-
-    <style>
-        /* Add a border to the Save and Release Profile and Save and Continue buttons */
-        #save-exit, #save-continue {
-            border: 1px solid #000000;
-            border-radius: 5px; /* Rounded corners */
-            padding: 10px 20px; /* Add padding for better spacing */
-            background-color: #007bff; /* Light background color */
-            color: white; /* Blue text color */
-            transition: background-color 0.3s, color 0.3s; /* Smooth hover effect */
-        }
-    
-        /* Hover effect for the buttons */
-        #save-exit:hover, #save-continue:hover {
-            background-color: #0056b3; /* Blue background on hover */
-            color: white; /* White text on hover */
-        }
-
-/* Style for the list header */
-.list-header {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr); /* Adjust based on the number of columns */
-    justify-content: space-between;
-    align-items: center;
-    font-weight: bold;
-    padding: 10px;
-    border-bottom: 1px solid #ccc;
-    margin-bottom: 10px;
-    text-align: center;
-}
-
-/* Style for the list container */
-.asset-list {
-    margin: 20px auto;
-    max-width: 800px; /* Adjust as needed */
-}
-
-/* Center items within the list */
-.list-item {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr); /* Adjust based on the number of columns */
-    align-items: center;
-    text-align: center;
-    gap: 10px;
-    padding: 10px;
-    margin-bottom: 10px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    background-color: #f9f9f9;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* Style for the button container */
-.button-container {
-    grid-column: span 3; /* Span across all columns */
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    margin-top: 10px;
-}
-
-
-
-    </style>
-
-    <script>
-        function getQueryParameter(name) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get(name);
-        }
-
-        function GoToNextPage() {
-            const clientId = getQueryParameter('id');
-            if (clientId) {
-                window.location.href = `expensesedit.html?id=${clientId}`;
-            } else {
-                console.error('Client ID not found in query parameters.');
-            }
-        }
-
-        async function goToAssetView() {
-    const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
-    const confirmAction = confirm("Are you sure you want to save and release this profile?");
-    if (!confirmAction) {
-        return;
-    }
-
-    const noteContent = "Profile released.";
-    const timestamp = new Date().toLocaleString();
-    const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
-
-    if (!activeUser) {
-        console.error("No active user found in sessionStorage.");
-        return;
-    }
-
-    try {
-
-        await setCheckedOutStatus(clientId, false);
-
-        // Save assets data (if applicable)
-        await saveAssetsData();
-
-        // Add a note about the action
-        const note = {
-            text: noteContent,
-            timestamp: timestamp,
-            username: activeUser
-        };
-
-        const addNoteResponse = await fetch(`/add-note-to-client`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ clientId, note })
-        });
-
-        if (!addNoteResponse.ok) {
-            console.warn('Failed to add note to client.');
-        }
-
-    } catch (error) {
-        console.error("Error during goToAssetView:", error);
-    } finally {
-        // Redirect to assets view regardless of success or failure
-        window.location.href = `assetsview.html?id=${clientId}`;
-    }
-}
-
-    async function saveAssetsData() {
-        // Implement logic to save assets data if needed
-        console.log("Saving assets data...");
-    }
-
-    // Define the getQueryParam function
-function getQueryParam(name) {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get(name);
-}
-
-async function toggleSidebarVisibility() {
-    const clientId = getQueryParam('id');
-    try {
-        // Fetch client data via REST API
-        const response = await fetch(`/get-client/${clientId}`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client data: ${response.statusText}`);
-        }
-        const client = await response.json();
-        console.log('Client data:', client); // Debugging
-        console.log('screeningInProgress:', client?.screeningInProgress); // Debugging
-
-        if (client && client.screeningInProgress) {
-            document.getElementById('leftSidebarContainer').style.display = 'block';
-            // Show all sub-containers
-            const snapContainer = document.getElementById('snap-household-container');
-            const liheapContainer = document.getElementById('liheap-household-container');
-            const householdContainer = document.getElementById('household-members-container');
-            if (snapContainer) snapContainer.style.display = '';
-            if (liheapContainer) liheapContainer.style.display = '';
-            if (householdContainer) householdContainer.style.display = '';
-            console.log('Sidebar is now visible'); // Debugging
-        } else {
-            // Still show the sidebar container so the stop-screening / reopen button is visible
-            document.getElementById('leftSidebarContainer').style.display = 'block';
-            // Hide the individual benefit containers
-            const snapContainer = document.getElementById('snap-household-container');
-            const liheapContainer = document.getElementById('liheap-household-container');
-            const householdContainer = document.getElementById('household-members-container');
-            if (snapContainer) snapContainer.style.display = 'none';
-            if (liheapContainer) liheapContainer.style.display = 'none';
-            if (householdContainer) householdContainer.style.display = 'none';
-            console.log('Sidebar visible with only stop-screening container'); // Debugging
-        }
-    } catch (error) {
-        console.error('Error toggling sidebar visibility:', error);
-    }
-}
-
-async function setCheckedOutStatus(clientId, status) {
-    try {
-        const response = await fetch('/update-client', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-                clientId, 
-                clientData: { 
-                    checkedOut: [
-                        {
-                            status: status, // Set status to false
-                            timestamp: status ? new Date().toISOString() : null, // Clear timestamp if status is false
-                            user: status ? sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User' : null // Clear user if status is false
-                        }
-                    ] 
-                } 
-            }),
-        });
-
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-            console.error(`Failed to update checkedOut status to ${status}:`, result.message);
-        } else {
-            console.log(`Successfully updated checkedOut status to ${status}.`);
-        }
-    } catch (error) {
-        console.error(`Error updating checkedOut status to ${status}:`, error);
-    }
-}
-
-
-    // Call the function after the page loads
-    window.onload = function () {
-        toggleSidebarVisibility();
-    };
-    </script>
-
-    
 
     <!-- Scripts -->
     <script src="estimations.js"></script>

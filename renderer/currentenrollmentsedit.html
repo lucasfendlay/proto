@@ -10,247 +10,99 @@
     <link rel="stylesheet" href="notes.css">
     <script src="userInfo.js"></script>
     <style>
+        details > summary {
+            cursor: pointer;
+        }
 
-details > summary {
-    cursor: pointer; /* Change cursor to hand */
-}
+        .household-member.no-questions {
+            opacity: 0.5;
+        }
 
-.household-member.no-questions {
-    opacity: 0.5;
-}
+        .household-member-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+            align-items: center;
+        }
 
-.household-member-container {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    width: 100%;
-    align-items: center; /* Center the content horizontally */
-}
+        .household-member {
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            width: 80%;
+            align-items: center;
+        }
 
-.household-member {
-    display: flex;
-    flex-direction: column;
-    padding: 20px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    background-color: #f9f9f9;
-    width: 80%; /* Adjust the width as needed */
-    align-items: center; /* Center the content horizontally */
-}
+        .selection-box {
+            margin-top: 10px;
+            text-align: center;
+        }
 
-.selection-box {
-    margin-top: 10px;
-    text-align: center; /* Center the text inside the selection box */
-}
+        .selection-option {
+            display: inline-block;
+            padding: 5px 10px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+        }
 
-.selection-option {
-    display: inline-block;
-    padding: 5px 10px;
-    margin-right: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    cursor: pointer;
-}
+        .selection-option.selected {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
 
-.selection-option.selected {
-    background-color: #007bff;
-    color: white;
-    border-color: #007bff;
-}
+        .grayed-out {
+            opacity: 0.5;
+            pointer-events: none;
+        }
 
-.grayed-out {
-    opacity: 0.5;
-    pointer-events: none;
-}      
+        #save-exit, #save-continue {
+            border: 1px solid #000000;
+            border-radius: 5px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.3s, color 0.3s;
+        }
 
+        #save-exit:hover, #save-continue:hover {
+            background-color: #0056b3;
+            color: white;
+        }
     </style>
 </head>
 <body class="narrow-body">
 
     <h1>Current Enrollments</h1>
 
-<div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
-    <div id="snap-household-container" class="left-sidebar"></div>
-    <div id="liheap-household-container" class="left-sidebar"></div>
-    <div id="household-members-container" class="left-sidebar"></div>
-</div>
+    <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
+        <div id="snap-household-container" class="left-sidebar"></div>
+        <div id="liheap-household-container" class="left-sidebar"></div>
+        <div id="household-members-container" class="left-sidebar"></div>
+    </div>
 
-<div id="notes-container">
-    <textarea id="note-input" placeholder="Add Note..."></textarea>
-    <button id="save-note">Save Note</button>
-    <div id="notes-list">
-        </div>
-        </div>
+    <div id="notes-container">
+        <textarea id="note-input" placeholder="Add Note..."></textarea>
+        <button id="save-note">Save Note</button>
+        <div id="notes-list"></div>
+    </div>
     
     <div id="householdMemberContainer" class="household-member-container"></div>
 
-
     <div class="button-container">
-        <button id="save-exit" onclick="redirecttoCurrentEnrollments()">Save and Release Profile</button>
-        <button id="save-continue" onclick="gotoIncome()">Save and Continue</button> <br>
+        <button id="save-exit">Save and Release Profile</button>
+        <button id="save-continue">Save and Continue</button>
     </div>
 
-    <style>
-        /* Add a border to the Save and Release Profile and Save and Continue buttons */
-        #save-exit, #save-continue {
-            border: 1px solid #000000;
-            border-radius: 5px; /* Rounded corners */
-            padding: 10px 20px; /* Add padding for better spacing */
-            background-color: #007bff; /* Light background color */
-            color: white; /* Blue text color */
-            transition: background-color 0.3s, color 0.3s; /* Smooth hover effect */
-        }
-    
-        /* Hover effect for the buttons */
-        #save-exit:hover, #save-continue:hover {
-            background-color: #0056b3; /* Blue background on hover */
-            color: white; /* White text on hover */
-        }
-    </style>
-
+    <!-- Scripts -->
     <script src="estimations.js"></script>
-
     <script src="currentenrollments.js"></script>
-    <script>
-        // Function to get query parameter by name
-        function getQueryParameter(name) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get(name);
-        }
-
-        // Add event listeners to form elements
-        document.querySelectorAll('#householdMemberForm input, #householdMemberForm select').forEach(element => {
-            element.addEventListener('change', saveData);
-        });
-        
-        async function redirecttoCurrentEnrollments() {
-    const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
-    const confirmAction = confirm("Are you sure you want to save and release this profile?");
-    if (!confirmAction) {
-        return;
-    }
-
-    const noteContent = "Profile released.";
-    const timestamp = new Date().toLocaleString();
-    const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
-
-    if (!activeUser) {
-        console.error("No active user found in sessionStorage.");
-        return;
-    }
-
-    try {
-
-        await setCheckedOutStatus(clientId, false);
-
-        // Save current enrollments data (if applicable)
-        await saveCurrentEnrollmentsData();
-
-        // Add a note about the action
-        const note = {
-            text: noteContent,
-            timestamp: timestamp,
-            username: activeUser
-        };
-
-        const noteResponse = await fetch('/add-note-to-client', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ clientId, note })
-        });
-
-        if (!noteResponse.ok) {
-            console.warn(`Failed to add note: ${noteResponse.statusText}`);
-        }
-
-        // Redirect to current enrollments view
-        window.location.href = `currentenrollmentsview.html?id=${clientId}`;
-    } catch (error) {
-        console.error("Error during redirecttoCurrentEnrollments:", error);
-
-        // Redirect to current enrollments view even if an error occurs
-        window.location.href = `currentenrollmentsview.html?id=${clientId}`;
-    }
-}
-
-    async function saveCurrentEnrollmentsData() {
-        // Implement logic to save current enrollments data if needed
-        console.log("Saving current enrollments data...");
-    }
-
-        const householdMemberContainer = document.getElementById('householdMemberContainer');
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'childList' && mutation.removedNodes.length > 0) {
-                    console.log('Household member container was cleared:', mutation);
-                }
-            });
-        });
-
-        observer.observe(householdMemberContainer, { childList: true });
-
-        
-
-        function getQueryParameter(name) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get(name);
-        }
-
-        function gotoIncome() {
-    const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
-    try {
-        // Redirect to the income page with the client ID as a query parameter
-        window.location.href = `incomeedit.html?id=${clientId}`;
-    } catch (error) {
-        console.error('Error during navigation to income page:', error);
-    }
-}
-
-async function setCheckedOutStatus(clientId, status) {
-    try {
-        const response = await fetch('/update-client', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-                clientId, 
-                clientData: { 
-                    checkedOut: [
-                        {
-                            status: status, // Set status to false
-                            timestamp: status ? new Date().toISOString() : null, // Clear timestamp if status is false
-                            user: status ? sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User' : null // Clear user if status is false
-                        }
-                    ] 
-                } 
-            }),
-        });
-
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-            console.error(`Failed to update checkedOut status to ${status}:`, result.message);
-        } else {
-            console.log(`Successfully updated checkedOut status to ${status}.`);
-        }
-    } catch (error) {
-        console.error(`Error updating checkedOut status to ${status}:`, error);
-    }
-}
-
-    </script>
     <script src="notes.js"></script>
     <script src="editnavigation.js"></script>
 </body>

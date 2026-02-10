@@ -6,18 +6,16 @@
     <title>Edit Client Profile</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="notes.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 
     <style>
         body {
             max-width: 1200px;
-            margin: 0 auto;
+            margin: 60px auto 0;
             padding: 20px;
-            margin-top: 60px;
         }
 
-        details > summary {
-            cursor: pointer;
-        }
+        details > summary { cursor: pointer; }
 
         #interactionList {
             list-style-type: none;
@@ -50,15 +48,8 @@
             font-size: 0.85rem;
         }
 
-        #interactionList li div:last-child {
-            margin-right: 0;
-        }
-
-        #interactionList li strong {
-            font-weight: bold;
-            display: block;
-            margin-bottom: 5px;
-        }
+        #interactionList li div:last-child { margin-right: 0; }
+        #interactionList li strong { font-weight: bold; display: block; margin-bottom: 5px; }
 
         .button-container, .button-container1 {
             display: flex;
@@ -66,14 +57,21 @@
             flex-wrap: wrap;
         }
 
-        .button-container button, .button-container1 button {
-            flex: 1;
-            padding: 10px 15px;
+        .button-container {
+            justify-content: center;
+            margin-top: 20px;
         }
 
-        .form-field {
-            margin-bottom: 10px;
+        .button-container button, .button-container1 button {
+            flex: 1;
+            padding: 10px 15px !important;
+            font-size: 1rem;
+            cursor: pointer;
+            border: none;
+            margin: 0;
         }
+
+        .form-field { margin-bottom: 10px; }
 
         #terminate-button {
             background-color: #ff4d4d;
@@ -86,203 +84,151 @@
             transition: background-color 0.3s ease;
         }
 
-        #terminate-button:hover {
-            background-color: #cc0000;
-        }
-
-        #terminate-button:disabled {
-            background-color: #f5f5f5;
-            color: #ccc;
-            cursor: not-allowed;
-        }
-
-                /* Button container styling */
-                .button-container {
-            display: flex;
-            justify-content: center; /* Center the button horizontally */
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 20px;
-        }
+        #terminate-button:hover { background-color: #cc0000; }
+        #terminate-button:disabled { background-color: #f5f5f5; color: #ccc; cursor: not-allowed; }
 
         .selection-box div {
-    height: 35px; /* Consistent height */
-    border: 1px solid #ddd;
-    padding: 0 15px; /* Horizontal padding only */
-    display: flex; /* Use flexbox for alignment */
-    align-items: center; /* Center text vertically */
-    justify-content: center; /* Center text horizontally */
-    box-sizing: border-box; /* Ensure total size remains the same */
-    margin-bottom: 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    }
+            height: 35px;
+            border: 1px solid #ddd;
+            padding: 0 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
 
-.selection-box div.selected {
-    background-color: #007bff;
-    color: white;
-    height: 35px; /* Consistent height */
-    border: 1px solid #0056b3; /* Consistent border */
-    padding: 0 15px; /* Horizontal padding only */
-    display: flex; /* Use flexbox for alignment */
-    align-items: center; /* Center text vertically */
-    justify-content: center; /* Center text horizontally */
-    box-sizing: border-box; /* Ensure total size remains the same */
-}
-
-.selection-box-input {
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    cursor: pointer;
-    margin-top: 10px;
-    display: block;
-    width: 100%;
-    box-sizing: border-box;
-}
-.selection-box select option {
-    padding: 10px;
-}
-    
-        .button-container button {
-    flex: 1;
-    padding: 10px 15px !important; /* Override global padding */
-    font-size: 1rem;
-    cursor: pointer;
-    border: none; /* Remove global border */
-    margin: 0; /* Remove global margin */
-}
-
-        /* Selection box styling */
         .selection-box div.selected {
             background-color: #007bff;
             color: white;
-            border: 1px solid #0056b3;
-            border-radius: 5px;
-            padding: 5px;
+            border-color: #0056b3;
         }
-    
-        /* Sidebar header styling */
-.sidebar-header {
+
+        .selection-box-input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .selection-box select option { padding: 10px; }
+
+        .sidebar-header {
             display: fixed;
-            justify-items: center; /* Center content horizontally */
-            text-align: center; /* Center text */
-            margin-bottom: 20px; /* Add spacing below the header */
-            width: 300px; /* Match the width of .left-sidebar */
-            margin: 0 auto; /* Center the header horizontally */
+            justify-items: center;
+            text-align: center;
+            margin-bottom: 20px;
+            width: 300px;
+            margin: 0 auto;
         }
 
         .sidebar-header .button-container {
             display: flex;
-            justify-content: center; /* Center the button horizontally */
-            width: 100%; /* Ensure the button container spans the full width */
+            justify-content: center;
+            width: 100%;
         }
-    
-        /* Contacts list container */
+
         #contacts-list {
             display: flex;
             flex-direction: column;
-            gap: 15px; /* Adds spacing between items */
-            width: 300px; /* Match the width of .left-sidebar */
-            margin: 0 auto; /* Center the header horizontally */
-            max-height: 1000px; /* Match the height of householdedit containers */
-            overflow-y: auto; /* Add scroll if content overflows */
-            background-color: #f4f4f4; /* Light gray background */
-            border: 1px solid #ddd; /* Border around the container */
-            border-radius: 8px; /* Rounded corners */
-            padding: 15px; /* Padding inside the container */
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+            gap: 15px;
+            width: 300px;
+            margin: 0 auto;
+            max-height: 1000px;
+            overflow-y: auto;
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-    
-        /* Individual sidebar items */
+
         .left-sidebar {
-            background-color: #fff; /* White background for each item */
-            border: 1px solid #ccc; /* Border around each item */
-            border-radius: 5px; /* Rounded corners for each item */
-            padding: 10px; /* Padding inside each item */
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Subtle shadow for each item */
-            margin: 0 auto; /* Center the sidebar items horizontally */
-            width: 280px; /* Adjust width as needed */
-            transform: translateX(-8px); /* Shift the sidebar 10px to the left */
-
-        }
-    
-    
-        .left-sidebar strong {
-            font-weight: bold; /* Bold labels */
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin: 0 auto;
+            width: 280px;
+            transform: translateX(-8px);
         }
 
-                /* Modal styling */
-                .contactmodal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 1000;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
-}
+        .left-sidebar strong { font-weight: bold; }
 
-.modal-content {
-    background-color: white;
-    border-radius: 8px;
-    width: 90%;
-    max-width: 500px;
-    padding: 20px;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    text-align: left;
-}    
+        .contactmodal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
 
-.error {
-        border: 2px solid red;
-        background-color: #ffe6e6; /* Light red background */
-    }
+        .modal-content {
+            background-color: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            padding: 20px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: left;
+        }
 
-    .centered-form {
-    display: flex;
-    flex-direction: column; /* Stack items vertically */
-    align-items: center; /* Center items horizontally */
-    justify-content: center; /* Center items vertically */
-    text-align: center; /* Center text */
-    width: 100%; /* Make the form take up the full width of its container */
-    max-width: 800px; /* Optional: Limit the maximum width of the form */
-    margin: 0 auto; /* Center the form horizontally */
-}
+        .error {
+            border: 2px solid red;
+            background-color: #ffe6e6;
+        }
 
-.centered-form .form-field {
-    width: 100%; /* Make each form field stretch across the form */
-    margin: 10px 0; /* Add vertical spacing between fields */
-}
+        .centered-form {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
 
-.centered-form input[type="text"],
-.centered-form select {
-    width: calc(100% - 40px); /* Stretch inputs but leave space for side margins */
-    padding: 10px; /* Add padding inside the input fields */
-    margin: 0 20px; /* Add consistent side margins */
-    box-sizing: border-box; /* Include padding and border in the element's total width */
-}
+        .centered-form .form-field {
+            width: 100%;
+            margin: 10px 0;
+        }
 
-</style>
+        .centered-form input[type="text"],
+        .centered-form select {
+            width: calc(100% - 40px);
+            padding: 10px;
+            margin: 0 20px;
+            box-sizing: border-box;
+        }
+    </style>
 
     <script src="editnavigation.js"></script>
     <script src="userInfo.js"></script>
-
 </head>
-<body>    <div id="notes-container">
+<body>
+    <div id="notes-container">
         <textarea id="note-input" placeholder="Add Note..."></textarea>
         <button id="save-note">Save Note</button>
-        <div id="notes-list">
-            </div>
-            </div>
+        <div id="notes-list"></div>
+    </div>
 
-                <!-- Add this container where you want the contacts to appear -->
     <div class="left-sidebar-container" id="contactsSidebarContainer">
         <div class="sidebar-header">
             <h2>Contacts</h2>
@@ -293,49 +239,41 @@
         <div id="contacts-list" class="left-sidebar"></div>
     </div>
 
-<!-- Modal for Adding/Editing Contacts -->
-<div id="contactModal" class="contactmodal" style="display: none;">
-    <div class="modal-content">
-        <form id="contactForm">
-            <h2 id="modal-title">Add Contact</h2>
-            <label for="contactFirstName">First Name:</label>
-            <input type="text" id="contactFirstName" required>
-
-            <label for="contactLastName">Last Name:</label>
-            <input type="text" id="contactLastName" required>
-
-            <label for="contactPhoneNumber">Phone Number:</label>
-            <input type="text" id="contactPhoneNumber" required>
-
-            <label for="authorizedRepresentative">Authorized Representative:</label>
-            <select id="authorizedRepresentative">
-                <option value="N/A" selected>N/A</option>
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-            </select>
-
-            <div class="button-container">
-                <button type="button" onclick="saveContact()">Save</button>
-                <button type="button" onclick="closeContactModal()">Cancel</button>
-            </div>
-        </form>
+    <div id="contactModal" class="contactmodal" style="display: none;">
+        <div class="modal-content">
+            <form id="contactForm">
+                <h2 id="modal-title">Add Contact</h2>
+                <label for="contactFirstName">First Name:</label>
+                <input type="text" id="contactFirstName" required>
+                <label for="contactLastName">Last Name:</label>
+                <input type="text" id="contactLastName" required>
+                <label for="contactPhoneNumber">Phone Number:</label>
+                <input type="text" id="contactPhoneNumber" required>
+                <label for="authorizedRepresentative">Authorized Representative:</label>
+                <select id="authorizedRepresentative">
+                    <option value="N/A" selected>N/A</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                </select>
+                <div class="button-container">
+                    <button type="button" onclick="saveContact()">Save</button>
+                    <button type="button" onclick="closeContactModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
     </div>
-</div>
 
-    <h2 id="profileId">Profile: Loading...</h2> <!-- New header for Profile ID -->
-    <p id="terminationStatus" style="color: red; display: none;"><strong>PROFILE TERMINATED</strong></p> <!-- Termination status -->
-
-
+    <h2 id="profileId">Profile: Loading...</h2>
+    <p id="terminationStatus" style="color: red; display: none;"><strong>PROFILE TERMINATED</strong></p>
 
     <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
         <div id="snap-household-container" class="left-sidebar"></div>
         <div id="liheap-household-container" class="left-sidebar"></div>
         <div id="household-members-container" class="left-sidebar"></div>
-</div>
+    </div>
 
-<form id="clientForm" class="centered-form">
-    
-    <h2>Primary Client</h2>
+    <form id="clientForm" class="centered-form">
+        <h2>Primary Client</h2>
         <div class="form-field">
             <label for="firstName">First Name:</label>
             <input type="text" id="firstName" name="firstName">
@@ -348,7 +286,6 @@
             <label for="phoneNumber">Phone Number:</label>
             <input type="text" id="phoneNumber" name="phoneNumber">
         </div>
-
         <div class="form-field">
             <label>Are you currently experiencing homelessness?</label>
             <div class="selection-box homelessness-container">
@@ -356,7 +293,6 @@
                 <div data-value="no" onclick="updateHomelessness('no')">No</div>
             </div>
         </div>
-        
         <div class="form-field">
             <label for="streetAddress">Street Address:</label>
             <input type="text" id="streetAddress" name="streetAddress">
@@ -373,59 +309,24 @@
             <label for="state">State:</label>
             <select id="state" name="state">
                 <option value="PA" selected>PA</option>
-                <option value="AL">AL</option>
-                <option value="AK">AK</option>
-                <option value="AZ">AZ</option>
-                <option value="AR">AR</option>
-                <option value="CA">CA</option>
-                <option value="CO">CO</option>
-                <option value="CT">CT</option>
-                <option value="DE">DE</option>
-                <option value="FL">FL</option>
-                <option value="GA">GA</option>
-                <option value="HI">HI</option>
-                <option value="ID">ID</option>
-                <option value="IL">IL</option>
-                <option value="IN">IN</option>
-                <option value="IA">IA</option>
-                <option value="KS">KS</option>
-                <option value="KY">KY</option>
-                <option value="LA">LA</option>
-                <option value="ME">ME</option>
-                <option value="MD">MD</option>
-                <option value="MA">MA</option>
-                <option value="MI">MI</option>
-                <option value="MN">MN</option>
-                <option value="MS">MS</option>
-                <option value="MO">MO</option>
-                <option value="MT">MT</option>
-                <option value="NE">NE</option>
-                <option value="NV">NV</option>
-                <option value="NH">NH</option>
-                <option value="NJ">NJ</option>
-                <option value="NM">NM</option>
-                <option value="NY">NY</option>
-                <option value="NC">NC</option>
-                <option value="ND">ND</option>
-                <option value="OH">OH</option>
-                <option value="OK">OK</option>
-                <option value="OR">OR</option>
-                <option value="RI">RI</option>
-                <option value="SC">SC</option>
-                <option value="SD">SD</option>
-                <option value="TN">TN</option>
-                <option value="TX">TX</option>
-                <option value="UT">UT</option>
-                <option value="VT">VT</option>
-                <option value="VA">VA</option>
-                <option value="WA">WA</option>
-                <option value="WV">WV</option>
-                <option value="WI">WI</option>
-                <option value="WY">WY</option>
-                <option value="DC">DC</option>
-                <option value="PR">Puerto Rico</option>
-                <option value="GU">Guam</option>
-                <!-- Add other states as needed -->
+                <option value="AL">AL</option><option value="AK">AK</option><option value="AZ">AZ</option>
+                <option value="AR">AR</option><option value="CA">CA</option><option value="CO">CO</option>
+                <option value="CT">CT</option><option value="DE">DE</option><option value="FL">FL</option>
+                <option value="GA">GA</option><option value="HI">HI</option><option value="ID">ID</option>
+                <option value="IL">IL</option><option value="IN">IN</option><option value="IA">IA</option>
+                <option value="KS">KS</option><option value="KY">KY</option><option value="LA">LA</option>
+                <option value="ME">ME</option><option value="MD">MD</option><option value="MA">MA</option>
+                <option value="MI">MI</option><option value="MN">MN</option><option value="MS">MS</option>
+                <option value="MO">MO</option><option value="MT">MT</option><option value="NE">NE</option>
+                <option value="NV">NV</option><option value="NH">NH</option><option value="NJ">NJ</option>
+                <option value="NM">NM</option><option value="NY">NY</option><option value="NC">NC</option>
+                <option value="ND">ND</option><option value="OH">OH</option><option value="OK">OK</option>
+                <option value="OR">OR</option><option value="RI">RI</option><option value="SC">SC</option>
+                <option value="SD">SD</option><option value="TN">TN</option><option value="TX">TX</option>
+                <option value="UT">UT</option><option value="VT">VT</option><option value="VA">VA</option>
+                <option value="WA">WA</option><option value="WV">WV</option><option value="WI">WI</option>
+                <option value="WY">WY</option><option value="DC">DC</option>
+                <option value="PR">Puerto Rico</option><option value="GU">Guam</option>
             </select>
         </div>
         <div class="form-field">
@@ -436,122 +337,67 @@
             <label for="county">County:</label>
             <select id="county" name="county">
                 <option value="" disabled selected>Select County</option>
-                <option value="Adams">Adams</option>
-                <option value="Allegheny">Allegheny</option>
-                <option value="Armstrong">Armstrong</option>
-                <option value="Beaver">Beaver</option>
-                <option value="Bedford">Bedford</option>
-                <option value="Berks">Berks</option>
-                <option value="Blair">Blair</option>
-                <option value="Bradford">Bradford</option>
-                <option value="Bucks">Bucks</option>
-                <option value="Butler">Butler</option>
-                <option value="Cambria">Cambria</option>
-                <option value="Cameron">Cameron</option>
-                <option value="Carbon">Carbon</option>
-                <option value="Centre">Centre</option>
-                <option value="Chester">Chester</option>
-                <option value="Clarion">Clarion</option>
-                <option value="Clearfield">Clearfield</option>
-                <option value="Clinton">Clinton</option>
-                <option value="Columbia">Columbia</option>
-                <option value="Crawford">Crawford</option>
-                <option value="Cumberland">Cumberland</option>
-                <option value="Dauphin">Dauphin</option>
-                <option value="Delaware">Delaware</option>
-                <option value="Elk">Elk</option>
-                <option value="Erie">Erie</option>
-                <option value="Fayette">Fayette</option>
-                <option value="Forest">Forest</option>
-                <option value="Franklin">Franklin</option>
-                <option value="Fulton">Fulton</option>
-                <option value="Greene">Greene</option>
-                <option value="Huntingdon">Huntingdon</option>
-                <option value="Indiana">Indiana</option>
-                <option value="Jefferson">Jefferson</option>
-                <option value="Juniata">Juniata</option>
-                <option value="Lackawanna">Lackawanna</option>
-                <option value="Lancaster">Lancaster</option>
-                <option value="Lawrence">Lawrence</option>
-                <option value="Lebanon">Lebanon</option>
-                <option value="Lehigh">Lehigh</option>
-                <option value="Luzerne">Luzerne</option>
-                <option value="Lycoming">Lycoming</option>
-                <option value="McKean">McKean</option>
-                <option value="Monroe">Monroe</option>
-                <option value="Montgomery">Montgomery</option>
-                <option value="Montour">Montour</option>
-                <option value="Northampton">Northampton</option>
-                <option value="Northumberland">Northumberland</option>
-                <option value="Perry">Perry</option>
-                <option value="Philadelphia">Philadelphia</option>
-                <option value="Pike">Pike</option>
-                <option value="Potter">Potter</option>
-                <option value="Schuylkill">Schuylkill</option>
-                <option value="Snyder">Snyder</option>
-                <option value="Somerset">Somerset</option>
-                <option value="Sullivan">Sullivan</option>
-                <option value="Susquehanna">Susquehanna</option>
-                <option value="Tioga">Tioga</option>
-                <option value="Union">Union</option>
-                <option value="Venango">Venango</option>
-                <option value="Warren">Warren</option>
-                <option value="Washington">Washington</option>
-                <option value="Wayne">Wayne</option>
-                <option value="Westmoreland">Westmoreland</option>
-                <option value="Wyoming">Wyoming</option>
+                <option value="Adams">Adams</option><option value="Allegheny">Allegheny</option>
+                <option value="Armstrong">Armstrong</option><option value="Beaver">Beaver</option>
+                <option value="Bedford">Bedford</option><option value="Berks">Berks</option>
+                <option value="Blair">Blair</option><option value="Bradford">Bradford</option>
+                <option value="Bucks">Bucks</option><option value="Butler">Butler</option>
+                <option value="Cambria">Cambria</option><option value="Cameron">Cameron</option>
+                <option value="Carbon">Carbon</option><option value="Centre">Centre</option>
+                <option value="Chester">Chester</option><option value="Clarion">Clarion</option>
+                <option value="Clearfield">Clearfield</option><option value="Clinton">Clinton</option>
+                <option value="Columbia">Columbia</option><option value="Crawford">Crawford</option>
+                <option value="Cumberland">Cumberland</option><option value="Dauphin">Dauphin</option>
+                <option value="Delaware">Delaware</option><option value="Elk">Elk</option>
+                <option value="Erie">Erie</option><option value="Fayette">Fayette</option>
+                <option value="Forest">Forest</option><option value="Franklin">Franklin</option>
+                <option value="Fulton">Fulton</option><option value="Greene">Greene</option>
+                <option value="Huntingdon">Huntingdon</option><option value="Indiana">Indiana</option>
+                <option value="Jefferson">Jefferson</option><option value="Juniata">Juniata</option>
+                <option value="Lackawanna">Lackawanna</option><option value="Lancaster">Lancaster</option>
+                <option value="Lawrence">Lawrence</option><option value="Lebanon">Lebanon</option>
+                <option value="Lehigh">Lehigh</option><option value="Luzerne">Luzerne</option>
+                <option value="Lycoming">Lycoming</option><option value="McKean">McKean</option>
+                <option value="Monroe">Monroe</option><option value="Montgomery">Montgomery</option>
+                <option value="Montour">Montour</option><option value="Northampton">Northampton</option>
+                <option value="Northumberland">Northumberland</option><option value="Perry">Perry</option>
+                <option value="Philadelphia">Philadelphia</option><option value="Pike">Pike</option>
+                <option value="Potter">Potter</option><option value="Schuylkill">Schuylkill</option>
+                <option value="Snyder">Snyder</option><option value="Somerset">Somerset</option>
+                <option value="Sullivan">Sullivan</option><option value="Susquehanna">Susquehanna</option>
+                <option value="Tioga">Tioga</option><option value="Union">Union</option>
+                <option value="Venango">Venango</option><option value="Warren">Warren</option>
+                <option value="Washington">Washington</option><option value="Wayne">Wayne</option>
+                <option value="Westmoreland">Westmoreland</option><option value="Wyoming">Wyoming</option>
                 <option value="York">York</option>
-                <!-- Add other counties as needed -->
             </select>
         </div>
         <div class="form-field">
             <label for="speakingLanguage">Preferred Speaking Language:</label>
             <select id="speakingLanguage" name="speakingLanguage">
                 <option value="" disabled selected>Select Language</option>
-                <option value="English">English</option>
-                <option value="Arabic">Arabic</option>
-<option value="Bengali">Bengali</option>
-<option value="Bulgarian">Bulgarian</option>
-<option value="Croatian">Croatian</option>
-<option value="Czech">Czech</option>
-<option value="Danish">Danish</option>
-<option value="Dutch">Dutch</option>
-<option value="Estonian">Estonian</option>
-<option value="Finnish">Finnish</option>
-<option value="French">French</option>
-<option value="German">German</option>
-<option value="Greek">Greek</option>
-<option value="Hebrew">Hebrew</option>
-<option value="Hindi">Hindi</option>
-<option value="Hungarian">Hungarian</option>
-<option value="Icelandic">Icelandic</option>
-<option value="Irish">Irish</option>
-<option value="Italian">Italian</option>
-<option value="Japanese">Japanese</option>
-<option value="Korean">Korean</option>
-<option value="Latvian">Latvian</option>
-<option value="Lithuanian">Lithuanian</option>
-<option value="Maltese">Maltese</option>
-<option value="Mandarin">Mandarin</option>
-<option value="Norwegian">Norwegian</option>
-<option value="Persian">Persian</option>
-<option value="Portuguese">Portuguese</option>
-<option value="Punjabi">Punjabi</option>
-<option value="Romanian">Romanian</option>
-<option value="Russian">Russian</option>
-<option value="Serbian">Serbian</option>
-<option value="Slovak">Slovak</option>
-<option value="Slovenian">Slovenian</option>
-<option value="Spanish">Spanish</option>
-<option value="Swahili">Swahili</option>
-<option value="Swedish">Swedish</option>
-<option value="Tagalog">Tagalog</option>
-<option value="Thai">Thai</option>
-<option value="Turkish">Turkish</option>
-<option value="Urdu">Urdu</option>
-<option value="Vietnamese">Vietnamese</option>
-<option value="Welsh">Welsh</option>
-                <!-- Add other languages as needed -->
+                <option value="English">English</option><option value="Arabic">Arabic</option>
+                <option value="Bengali">Bengali</option><option value="Bulgarian">Bulgarian</option>
+                <option value="Croatian">Croatian</option><option value="Czech">Czech</option>
+                <option value="Danish">Danish</option><option value="Dutch">Dutch</option>
+                <option value="Estonian">Estonian</option><option value="Finnish">Finnish</option>
+                <option value="French">French</option><option value="German">German</option>
+                <option value="Greek">Greek</option><option value="Hebrew">Hebrew</option>
+                <option value="Hindi">Hindi</option><option value="Hungarian">Hungarian</option>
+                <option value="Icelandic">Icelandic</option><option value="Irish">Irish</option>
+                <option value="Italian">Italian</option><option value="Japanese">Japanese</option>
+                <option value="Korean">Korean</option><option value="Latvian">Latvian</option>
+                <option value="Lithuanian">Lithuanian</option><option value="Maltese">Maltese</option>
+                <option value="Mandarin">Mandarin</option><option value="Norwegian">Norwegian</option>
+                <option value="Persian">Persian</option><option value="Portuguese">Portuguese</option>
+                <option value="Punjabi">Punjabi</option><option value="Romanian">Romanian</option>
+                <option value="Russian">Russian</option><option value="Serbian">Serbian</option>
+                <option value="Slovak">Slovak</option><option value="Slovenian">Slovenian</option>
+                <option value="Spanish">Spanish</option><option value="Swahili">Swahili</option>
+                <option value="Swedish">Swedish</option><option value="Tagalog">Tagalog</option>
+                <option value="Thai">Thai</option><option value="Turkish">Turkish</option>
+                <option value="Urdu">Urdu</option><option value="Vietnamese">Vietnamese</option>
+                <option value="Welsh">Welsh</option>
             </select>
         </div>
         <div class="form-field">
@@ -561,1145 +407,771 @@
                 <div data-value="no" onclick="updateInterpreter('no')">No</div>
             </div>
         </div>
-        </form>
+    </form>
 
     <button id="call-logging-button" class="interactive" onclick="confirmAndRedirect()">Start Screening</button>
-    <button id="save-button" class="interactive" onclick="confirmSaveAndRelease(); window.saveAndReleaseProfile();">Save and Release Profile</button>
+    <button id="save-button" class="interactive" onclick="confirmSaveAndRelease()">Save and Release Profile</button>
     <h2>Interaction Tracker</h2>
     <ul id="interactionList">
         <li>Loading...</li>
     </ul>
-    
     <button id="terminate-button" class="interactive" onclick="confirmAndTerminate()">Terminate Profile</button>
 
     <script>
-        // Function to get query parameter by name
-        function getQueryParam(name) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get(name);
+    // ===== GLOBALS =====
+    let client = {};
+    let editingContactIndex = null;
+    let pendingChanges = {};
+    let saveDebounceTimer = null;
+    const SAVE_DEBOUNCE_MS = 1500;
+    const CLIENT_ID = new URLSearchParams(window.location.search).get('id');
+
+    // ===== UTILITIES =====
+    function formatPhoneNumber(phone) {
+        if (!phone) return '';
+        const cleaned = String(phone).trim().replace(/\D/g, '');
+        const digits = cleaned.length === 11 && cleaned.startsWith('1') ? cleaned.substring(1) : cleaned;
+        if (digits.length === 10) {
+            return `(${digits.substring(0, 3)})-${digits.substring(3, 6)}-${digits.substring(6)}`;
+        }
+        return String(phone).trim();
+    }
+
+    function fieldsMatchCount(a, b) {
+        let matches = 0;
+        if ((a.firstName || '').toUpperCase() === (b.firstName || '').toUpperCase()) matches++;
+        if ((a.lastName || '').toUpperCase() === (b.lastName || '').toUpperCase()) matches++;
+        const pA = String(a.phoneNumber || '').replace(/\D/g, '');
+        const pB = String(b.phoneNumber || '').replace(/\D/g, '');
+        if (pA && pB && pA === pB) matches++;
+        return matches;
+    }
+
+    // ===== SINGLE FETCH: Load all client data once =====
+    async function fetchClient() {
+        const response = await fetch(`/get-client/${CLIENT_ID}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        if (!response.ok) throw new Error(`Failed to fetch client: ${response.statusText}`);
+        return response.json();
+    }
+
+    // ===== BATCHED SAVE: Collect changes and flush in one PUT =====
+    function queueChange(field, value) {
+        pendingChanges[field] = value;
+        clearTimeout(saveDebounceTimer);
+        saveDebounceTimer = setTimeout(flushChanges, SAVE_DEBOUNCE_MS);
+    }
+
+    async function flushChanges() {
+        if (Object.keys(pendingChanges).length === 0) return;
+        const dataToSave = { ...pendingChanges };
+        pendingChanges = {};
+        try {
+            const response = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId: CLIENT_ID, clientData: dataToSave }),
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                console.error('Batch save failed:', result.message);
+            } else {
+                console.log('Batch save successful:', Object.keys(dataToSave));
+            }
+        } catch (error) {
+            console.error('Error in batch save:', error);
+        }
+    }
+
+    // Force immediate save (used before navigation)
+    async function flushChangesImmediate() {
+        clearTimeout(saveDebounceTimer);
+        await flushChanges();
+    }
+
+    // Full client save from form (used before redirects)
+    function collectFormData() {
+        return {
+            firstName: document.getElementById('firstName').value,
+            lastName: document.getElementById('lastName').value,
+            phoneNumber: document.getElementById('phoneNumber').value.replace(/\D/g, ''),
+            streetAddress: document.getElementById('streetAddress').value,
+            streetAddress2: document.getElementById('streetAddress2').value,
+            city: document.getElementById('city').value,
+            state: document.getElementById('state').value,
+            zipCode: document.getElementById('zipCode').value,
+            county: document.getElementById('county').value,
+            speakingLanguage: document.getElementById('speakingLanguage').value,
+            interpreter: document.querySelector('.interpreter-container div.selected')?.dataset.value || 'N/A',
+            homelessness: document.querySelector('.homelessness-container div.selected')?.dataset.value || '',
+        };
+    }
+
+    async function saveClientFull() {
+        clearTimeout(saveDebounceTimer);
+        pendingChanges = {};
+        const clientData = collectFormData();
+        try {
+            const response = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId: CLIENT_ID, clientData }),
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                console.error('Failed to save client data:', result.message);
+            }
+        } catch (error) {
+            console.error('Error saving client data:', error);
+        }
+    }
+
+    // ===== POPULATE UI FROM CLIENT DATA (no fetch) =====
+    function populateForm(data) {
+        client = data;
+
+        // Profile header
+        document.getElementById('profileId').textContent = `Profile: ${data.id || 'N/A'}`;
+
+        // Termination
+        const terminationStatus = document.getElementById('terminationStatus');
+        const terminateButton = document.getElementById('terminate-button');
+        if (data.terminated) {
+            terminationStatus.style.display = 'block';
+            terminateButton.textContent = 'Undo Profile Termination';
+        } else {
+            terminationStatus.style.display = 'none';
+            terminateButton.textContent = 'Terminate Profile';
+        }
+        terminateButton.style.display = 'inline-block';
+
+        // Screening button
+        document.getElementById('call-logging-button').style.display = data.screeningInProgress ? 'none' : 'block';
+
+        // Contacts sidebar always visible; screenings sidebar never shown on this page
+        document.getElementById('contactsSidebarContainer').style.display = 'block';
+        document.getElementById('leftSidebarContainer').style.display = 'none';
+        // Form fields
+        document.getElementById('firstName').value = (data.firstName || '').toUpperCase();
+        document.getElementById('lastName').value = (data.lastName || '').toUpperCase();
+        document.getElementById('phoneNumber').value = formatPhoneNumber(data.phoneNumber || '');
+        document.getElementById('streetAddress').value = (data.streetAddress || '').toUpperCase();
+        document.getElementById('streetAddress2').value = (data.streetAddress2 || '').toUpperCase();
+        document.getElementById('city').value = (data.city || '').toUpperCase();
+        document.getElementById('state').value = (data.state || 'PA').toUpperCase();
+        document.getElementById('zipCode').value = data.zipCode || '';
+        document.getElementById('speakingLanguage').value = data.speakingLanguage || '';
+
+        // County dropdown
+        const backendZipCode = data.zipCode || '';
+        const backendCounty = data.county || null;
+        if (backendZipCode.length === 5 && zipToCountyMap[backendZipCode]) {
+            updateCountyDropdown(zipToCountyMap[backendZipCode], backendCounty);
+        } else {
+            const countyDropdown = document.getElementById('county');
+            countyDropdown.innerHTML = '<option value="" disabled selected>Select County</option>';
         }
 
-        async function confirmSaveAndRelease() {
-        if (confirm("Are you sure you want to save and release this profile?")) {
-            const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-            const noteContent = "Profile released.";
-            const timestamp = new Date().toLocaleString();
-            const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
+        // Selection boxes
+        setSelectionBox('.homelessness-container', data.homelessness);
+        setSelectionBox('.interpreter-container', data.interpreter);
 
-            if (!activeUser) {
-                console.error("No active user found in sessionStorage.");
+        // Homelessness label
+        document.querySelector('label[for="streetAddress"]').textContent =
+            data.homelessness === 'yes' ? 'Mailing Address:' : 'Street Address:';
+
+        // Interaction tracker
+        populateInteractions(data.callLogs);
+
+        // Contacts
+        renderContacts();
+    }
+
+    function setSelectionBox(containerSelector, value) {
+        const container = document.querySelector(containerSelector);
+        if (!container) return;
+        container.querySelectorAll('div[data-value]').forEach(div => div.classList.remove('selected'));
+        if (value) {
+            const selected = container.querySelector(`div[data-value="${value}"]`);
+            if (selected) selected.classList.add('selected');
+        }
+    }
+
+    function populateInteractions(callLogs) {
+        const list = document.getElementById('interactionList');
+        list.innerHTML = '';
+
+        if (!callLogs || callLogs.length === 0) {
+            list.innerHTML = '<li>No call logs available.</li>';
+            return;
+        }
+
+        callLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        const fragment = document.createDocumentFragment();
+        for (const log of callLogs) {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div><strong>Agent:</strong> ${(log.agent || 'UNKNOWN AGENT').toUpperCase()}</div>
+                <div><strong>Timestamp:</strong> ${(log.timestamp || 'UNKNOWN TIME').toUpperCase()}</div>
+                <div><strong>Caller:</strong> ${(log.callerFirstName || '').toUpperCase()} ${(log.callerLastName || '').toUpperCase()}</div>
+                <div><strong>Phone:</strong> ${formatPhoneNumber(log.callerPhoneNumber) || ''}</div>
+                <div><strong>Direction:</strong> ${(log.callDirection || '').toUpperCase()}</div>
+                <div><strong>Service Center:</strong> ${(log.servicingCenter || '').toUpperCase()}</div>
+                <div><strong>Reason:</strong> ${(log.reasonForCall || '').toUpperCase()}</div>
+                <div><strong>Referral:</strong> ${(log.referralSource || 'N/A').toUpperCase()}</div>
+                ${log.specificReferral ? `<div><strong>Specifically:</strong> ${log.specificReferral.toUpperCase()}</div>` : ''}
+            `;
+            fragment.appendChild(li);
+        }
+        list.appendChild(fragment);
+    }
+
+    // ===== CONTACTS =====
+    function renderContacts() {
+        const container = document.getElementById('contacts-list');
+        container.innerHTML = '';
+
+        if (!client.Contacts || client.Contacts.length === 0) {
+            container.innerHTML = '<p>No contacts available.</p>';
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        client.Contacts.forEach((contact, index) => {
+            const div = document.createElement('div');
+            div.classList.add('left-sidebar');
+            div.innerHTML = `
+                <p><strong>Name:</strong><br> ${(contact.firstName || 'N/A').toUpperCase()} ${(contact.lastName || 'N/A').toUpperCase()}</p>
+                <p><strong>Phone:</strong><br> ${formatPhoneNumber(contact.phoneNumber) || 'N/A'}</p>
+                <p><strong>Authorized Representative:</strong><br> ${(contact.authorizedRepresentative || 'N/A').toUpperCase()}</p>
+                <button onclick="openContactModalByIndex(${index})">Edit Contact</button>
+            `;
+            fragment.appendChild(div);
+        });
+        container.appendChild(fragment);
+    }
+
+    function openContactModal(contact = null, index = null) {
+        const modal = document.getElementById('contactModal');
+        const buttonContainer = modal.querySelector('.button-container');
+
+        buttonContainer.innerHTML = `
+            <button type="button" onclick="saveContact()">Save</button>
+            <button type="button" onclick="closeContactModal()">Cancel</button>
+        `;
+
+        if (contact) {
+            document.getElementById('modal-title').textContent = 'Edit Contact';
+            document.getElementById('contactFirstName').value = contact.firstName || '';
+            document.getElementById('contactLastName').value = contact.lastName || '';
+            document.getElementById('contactPhoneNumber').value = formatPhoneNumber(contact.phoneNumber) || '';
+            document.getElementById('authorizedRepresentative').value = contact.authorizedRepresentative || 'N/A';
+            editingContactIndex = index;
+
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Delete';
+            deleteButton.type = 'button';
+            deleteButton.style.cssText = 'background-color:red;color:white;';
+            deleteButton.onmouseover = () => deleteButton.style.backgroundColor = 'darkred';
+            deleteButton.onmouseout = () => deleteButton.style.backgroundColor = 'red';
+            deleteButton.onclick = () => deleteContact(index);
+            buttonContainer.appendChild(deleteButton);
+        } else {
+            document.getElementById('modal-title').textContent = 'Add Contact';
+            document.getElementById('contactFirstName').value = '';
+            document.getElementById('contactLastName').value = '';
+            document.getElementById('contactPhoneNumber').value = '';
+            document.getElementById('authorizedRepresentative').value = 'N/A';
+            editingContactIndex = null;
+        }
+
+        modal.style.display = 'flex';
+    }
+
+    function openContactModalByIndex(index) {
+        openContactModal(client.Contacts[index], index);
+    }
+
+    function closeContactModal() {
+        document.getElementById('contactModal').style.display = 'none';
+    }
+
+    window.addEventListener('click', (event) => {
+        const modal = document.getElementById('contactModal');
+        if (event.target === modal) closeContactModal();
+    });
+
+    async function saveContact() {
+        const firstName = document.getElementById('contactFirstName').value.trim();
+        const lastName = document.getElementById('contactLastName').value.trim();
+        const phoneNumber = document.getElementById('contactPhoneNumber').value.trim();
+        const authorizedRepresentative = document.getElementById('authorizedRepresentative').value;
+        const phoneNumberInput = document.getElementById('contactPhoneNumber');
+        phoneNumberInput.classList.remove('error');
+
+        if (!firstName || !lastName || !phoneNumber) {
+            alert('Please fill in all required fields.');
+            return;
+        }
+
+        const cleanedPhone = phoneNumber.replace(/[\(\)\-\s]/g, '');
+        if (!/^\d{10}$/.test(cleanedPhone)) {
+            alert('Please enter a valid phone number (10 digits or (xxx)-xxx-xxxx format).');
+            phoneNumberInput.classList.add('error');
+            return;
+        }
+
+        const newContact = {
+            firstName,
+            lastName,
+            phoneNumber: cleanedPhone,
+            authorizedRepresentative,
+            contactId: editingContactIndex !== null
+                ? client.Contacts[editingContactIndex].contactId
+                : `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        };
+
+        if (!client.Contacts) client.Contacts = [];
+
+        const isDuplicate = client.Contacts.some((c, i) =>
+            i !== editingContactIndex &&
+            c.firstName === newContact.firstName &&
+            c.lastName === newContact.lastName &&
+            c.phoneNumber === newContact.phoneNumber
+        );
+        if (isDuplicate) {
+            alert('This contact already exists.');
+            return;
+        }
+
+        try {
+            let oldContactData = null;
+            const requestBody = { clientId: CLIENT_ID, contact: newContact };
+
+            if (editingContactIndex !== null) {
+                oldContactData = { ...client.Contacts[editingContactIndex] };
+                requestBody.index = editingContactIndex;
+                client.Contacts[editingContactIndex] = newContact;
+            } else {
+                client.Contacts.push(newContact);
+            }
+
+            const response = await fetch('/add-to-contacts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody),
+            });
+
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                console.error('Failed to save contact:', result.message);
+                alert(`Error: ${result.message}`);
                 return;
             }
 
-            try {
-                            // Set checkedOut to false
-            await setCheckedOutStatus(clientId, false);
-
-                // Save client data
-                await saveClient();
-
-                // Add a note about the action
-                const note = {
-                    text: noteContent,
-                    timestamp: timestamp,
-                    username: activeUser
-                };
-
-                try {
-    const response = await fetch('/add-note-to-client', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ clientId, note }),
-    });
-
-    const result = await response.json();
-    if (!response.ok || !result.success) {
-        console.error('Failed to add note to client:', result.message);
-        alert('Failed to add note to client.');
-    } else {
-        console.log('Note successfully added to client.');
-    }
-} catch (error) {
-    console.error('Error adding note to client:', error);
-    alert('An error occurred while adding the note.');
-}
-                // Call the releaseProfile function to update screeningInProgress to false
-                await releaseProfile();
-
-                // Redirect to profile view
-                GoToProfileView();
-            } catch (error) {
-                console.error("Error during confirmSaveAndRelease:", error);
-            }
-        }
-    }
-
-    let client = {}; // Global variable to hold client data
-
-// Function to load client data and populate the form
-async function loadClientData() {
-    const clientId = getQueryParam('id');
-    console.log(`Loading client data for ID: ${clientId}`);
-    try {
-        const response = await fetch(`/get-client/${clientId}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client: ${response.statusText}`);
-        }
-
-        client = await response.json(); // Assign the fetched client data to the global variable
-        if (client) {
-            console.log('Client data loaded:', client);
-
-            // Populate form fields with client data
-            document.getElementById('zipCode').value = client.zipCode || ''; // Populate zip code
-            const countyDropdown = document.getElementById('county');
-            const backendZipCode = client.zipCode || '';
-            const backendCounty = client.county || null;
-
-            // Populate the county dropdown based on the zip code
-            if (backendZipCode.length === 5 && zipToCountyMap[backendZipCode]) {
-                updateCountyDropdown(zipToCountyMap[backendZipCode], backendCounty);
-            } else {
-                // If the zip code is invalid or blank, reset the dropdown to "Select County"
-                countyDropdown.innerHTML = '<option value="" disabled selected>Select County</option>';
-                console.log("Invalid, null, or empty zip code. Defaulting to 'Select County'.");
-            }
-
-            // Hide the "Start Screening" button if a screening is in progress
-            const startScreeningButton = document.getElementById('call-logging-button');
-            startScreeningButton.style.display = client.screeningInProgress ? 'none' : 'block';
-
-            // Populate the Profile ID in the header
-            document.getElementById('profileId').textContent = `Profile: ${client.id || 'N/A'}`;
-
-            // Display "Terminated" status if applicable
-            const terminationStatus = document.getElementById('terminationStatus');
-            const terminateButton = document.getElementById('terminate-button');
-            if (client.terminated) {
-                terminationStatus.style.display = 'block';
-                terminateButton.style.display = 'none';
-            } else {
-                terminationStatus.style.display = 'none';
-                terminateButton.style.display = 'inline-block';
-            }
-
-            // Populate other form fields with client data
-            document.getElementById('firstName').value = (client.firstName || '').toUpperCase();
-            document.getElementById('lastName').value = (client.lastName || '').toUpperCase();
-            document.getElementById('phoneNumber').value = formatPhoneNumber(client.phoneNumber || '');
-            document.getElementById('streetAddress').value = (client.streetAddress || '').toUpperCase();
-            document.getElementById('streetAddress2').value = (client.streetAddress2 || '').toUpperCase();
-            document.getElementById('city').value = (client.city || '').toUpperCase();
-            document.getElementById('state').value = (client.state || 'PA').toUpperCase(); // Default to "PA"
-            document.getElementById('speakingLanguage').value = client.speakingLanguage || '';
-
-            // Highlight the selected homelessness button
-            document.querySelectorAll('.homelessness-container div[data-value]').forEach(div => div.classList.remove('selected'));
-            const selectedHomelessness = document.querySelector(`.homelessness-container div[data-value="${client.homelessness}"]`);
-            if (selectedHomelessness) {
-                selectedHomelessness.classList.add('selected');
-            }
-
-            // Update the label for Street Address based on homelessness status
-            const streetAddressLabel = document.querySelector('label[for="streetAddress"]');
-            if (client.homelessness === 'yes') {
-                streetAddressLabel.textContent = 'Mailing Address:';
-            } else {
-                streetAddressLabel.textContent = 'Street Address:';
-            }
-
-// Highlight the selected interpreter button
-document.querySelectorAll('.interpreter-container div[data-value]').forEach(div => div.classList.remove('selected'));
-const selectedInterpreter = document.querySelector(`.interpreter-container div[data-value="${client.interpreter}"]`);
-if (selectedInterpreter) {
-    selectedInterpreter.classList.add('selected');
-}
-
-            // Populate interaction tracker
-            const interactionList = document.getElementById('interactionList');
-            interactionList.innerHTML = ''; // Clear existing entries
-
-            if (client.callLogs && client.callLogs.length > 0) {
-                // Sort call logs by timestamp in descending order
-                client.callLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-                client.callLogs.forEach(log => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `
-                        <div><strong>Agent:</strong> ${log.agent?.toUpperCase() || 'UNKNOWN AGENT'}</div>
-                        <div><strong>Timestamp:</strong> ${log.timestamp?.toUpperCase() || 'UNKNOWN TIME'}</div>
-                        <div><strong>Caller:</strong> ${(log.callerFirstName || '').toUpperCase()} ${(log.callerLastName || '').toUpperCase()}</div>
-                        <div><strong>Phone:</strong> ${formatPhoneNumber(log.callerPhoneNumber) || ''}</div>
-                        <div><strong>Direction:</strong> ${log.callDirection?.toUpperCase() || ''}</div>
-                        <div><strong>Service Center:</strong> ${log.servicingCenter?.toUpperCase() || ''}</div>
-                        <div><strong>Reason:</strong> ${log.reasonForCall?.toUpperCase() || ''}</div>
-                        <div><strong>Referral:</strong> ${log.referralSource?.toUpperCase() || 'N/A'}</div>
-                        ${log.specificReferral ? `<div><strong>Specifically:</strong> ${log.specificReferral.toUpperCase()}</div>` : ''}
-                    `;
-                    interactionList.appendChild(li);
-                });
-            } else {
-                const noLogsMessage = document.createElement('li');
-                noLogsMessage.textContent = 'No call logs available.';
-                interactionList.appendChild(noLogsMessage);
-            }
-
-            // Render contacts
-            console.log('Rendering contacts:', client.Contacts); // Debugging log
-            renderContacts();
-        } else {
-            alert('Client not found.');
-        }
-    } catch (error) {
-        console.error('Error loading client data:', error);
-    }
-}
-
-let editingContactIndex = null; // Track the index of the contact being edited
-
-// Render contacts dynamically
-function renderContacts() {
-    const contactsContainer = document.getElementById('contacts-list');
-    contactsContainer.innerHTML = ''; // Clear existing contacts
-
-    if (client.Contacts && client.Contacts.length > 0) {
-        client.Contacts.forEach((contact, index) => {
-            const contactDiv = document.createElement('div');
-            contactDiv.classList.add('left-sidebar');
-            contactDiv.innerHTML = `
-                <p><strong>Name:</strong><br> ${contact.firstName?.toUpperCase() || 'N/A'} ${contact.lastName?.toUpperCase() || 'N/A'}</p>
-                <p><strong>Phone:</strong><br> ${formatPhoneNumber(contact.phoneNumber) || 'N/A'}</p>
-                <p><strong>Authorized Representative:</strong><br> ${contact.authorizedRepresentative?.toUpperCase() || 'N/A'}</p>
-                <button onclick="openContactModalByIndex(${index})">Edit Contact</button>
-            `;
-            contactsContainer.appendChild(contactDiv);
-        });
-    } else {
-        contactsContainer.innerHTML = '<p>No contacts available.</p>';
-    }
-}
-
-// Open the modal for adding or editing a contact
-function openContactModal(contact = null, index = null) {
-    const modal = document.getElementById('contactModal');
-    const modalTitle = document.getElementById('modal-title');
-    const firstNameInput = document.getElementById('contactFirstName');
-    const lastNameInput = document.getElementById('contactLastName');
-    const phoneNumberInput = document.getElementById('contactPhoneNumber');
-    const authorizedRepSelect = document.getElementById('authorizedRepresentative');
-    const buttonContainer = modal.querySelector('.button-container');
-
-    // Clear existing buttons to avoid duplicates
-    buttonContainer.innerHTML = `
-        <button type="button" onclick="saveContact()">Save</button>
-        <button type="button" onclick="closeContactModal()">Cancel</button>
-    `;
-
-    if (contact) {
-        // Populate fields for editing
-        modalTitle.textContent = 'Edit Contact';
-        firstNameInput.value = contact.firstName || '';
-        lastNameInput.value = contact.lastName || '';
-        console.log('Raw phone from contact:', contact.phoneNumber, typeof contact.phoneNumber);
-        const formattedPhone = formatPhoneNumber(contact.phoneNumber);
-        console.log('Formatted phone:', formattedPhone);
-        phoneNumberInput.value = formattedPhone || '';
-        authorizedRepSelect.value = contact.authorizedRepresentative || 'N/A';
-        editingContactIndex = index;
-
-        // Add a "Delete" button for editing
-        const deleteButton = document.createElement('button');
-        deleteButton.textContent = 'Delete';
-        deleteButton.type = 'button';
-        deleteButton.style.backgroundColor = 'red';
-deleteButton.onmouseover = () => deleteButton.style.backgroundColor = 'darkred';
-deleteButton.onmouseout = () => deleteButton.style.backgroundColor = 'red';
-        deleteButton.style.color = 'white';
-        deleteButton.onclick = () => deleteContact(index);
-        buttonContainer.appendChild(deleteButton);
-    } else {
-        // Clear fields for adding
-        modalTitle.textContent = 'Add Contact';
-        firstNameInput.value = '';
-        lastNameInput.value = '';
-        phoneNumberInput.value = '';
-        authorizedRepSelect.value = 'N/A';
-        editingContactIndex = null;
-    }
-
-    modal.style.display = 'flex';
-}
-
-// Save the contact (add or edit)
-async function saveContact() {
-    const firstName = document.getElementById('contactFirstName').value.trim();
-    const lastName = document.getElementById('contactLastName').value.trim();
-    const phoneNumber = document.getElementById('contactPhoneNumber').value.trim();
-    const authorizedRepresentative = document.getElementById('authorizedRepresentative').value;
-    const clientId = getQueryParam('id'); // Ensure clientId is retrieved from the URL
-    const phoneNumberInput = document.getElementById('contactPhoneNumber');
-    phoneNumberInput.classList.remove('error'); // Remove error class initially
-
-    // Validate required fields
-    if (!clientId || !firstName || !lastName || !phoneNumber) {
-        alert('Please fill in all required fields.');
-        console.error('Missing required fields:', { clientId, firstName, lastName, phoneNumber });
-        return;
-    }
-
-    // Validate phone number format (exactly 10 digits, or formatted as (xxx)-xxx-xxxx)
-    const cleanedPhone = phoneNumber.replace(/[\(\)\-\s]/g, ''); // Strip formatting characters
-    const phoneRegex = /^\d{10}$/;
-    if (!phoneRegex.test(cleanedPhone)) {
-        alert('Please enter a valid phone number (10 digits or (xxx)-xxx-xxxx format).');
-        console.error('Invalid phone number:', phoneNumber);
-
-        // Add error class to the input field
-        phoneNumberInput.classList.add('error');
-        return;
-    }
-
-    // Generate a unique contactId for new contacts
-    const generateContactId = () => `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-    const newContact = {
-        firstName,
-        lastName,
-        phoneNumber: cleanedPhone,
-        authorizedRepresentative,
-        contactId: editingContactIndex !== null ? client.Contacts[editingContactIndex].contactId : generateContactId(), // Reuse existing contactId if editing
-    };
-
-    // Ensure the Contacts array exists locally
-    if (!client.Contacts) {
-        client.Contacts = []; // Initialize the Contacts array if it doesn't exist
-    }
-
-    // Check for duplicates
-    const isDuplicate = client.Contacts.some(contact =>
-        contact.firstName === newContact.firstName &&
-        contact.lastName === newContact.lastName &&
-        contact.phoneNumber === newContact.phoneNumber
-    );
-
-    if (isDuplicate) {
-        alert('This contact already exists. Duplicate contacts are not allowed.');
-        console.log('Duplicate contact detected. Skipping save.');
-        return;
-    }
-
-    try {
-        let response;
-        let oldContactData = null; // Capture old contact data before overwriting
-
-        if (editingContactIndex !== null) {
-            // Capture old contact for matching purposes
-            oldContactData = { ...client.Contacts[editingContactIndex] };
-
-            // Edit existing contact
-            client.Contacts[editingContactIndex] = newContact;
-
-            // Send update request to the backend
-            response = await fetch('/add-to-contacts', {
-
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    clientId, // Pass the client ID
-                    contact: newContact, // Pass the updated contact
-                    index: editingContactIndex, // Pass the index of the contact to update
-                }),
-            });
-        } else {
-            // Add new contact
-            client.Contacts.push(newContact);
-
-            // Send add request to the backend
-            response = await fetch('/add-to-contacts', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    clientId, // Pass the client ID
-                    contact: newContact, // Pass the new contact
-                }),
-            });
-        }
-
-        const result = await response.json();
-        if (response.ok && result.success) {
-            console.log('Contact saved successfully:', result.message);
-
-            // Sync contact -> client: if the old or new contact matches client on 2 of 3 fields, update client
+            // Sync contact -> client primary fields
             const currentClientData = {
                 firstName: client.firstName || '',
                 lastName: client.lastName || '',
                 phoneNumber: client.phoneNumber || '',
             };
-
             const shouldSync = oldContactData
                 ? fieldsMatchCount(currentClientData, oldContactData) >= 3
                 : fieldsMatchCount(currentClientData, newContact) >= 3;
 
             if (shouldSync) {
-                const cleanedContactPhone = String(newContact.phoneNumber || '').replace(/\D/g, '');
-                await updateClientData('firstName', newContact.firstName);
-                await updateClientData('lastName', newContact.lastName);
-                await updateClientData('phoneNumber', cleanedContactPhone);
-                document.getElementById('firstName').value = newContact.firstName.toUpperCase();
-                document.getElementById('lastName').value = newContact.lastName.toUpperCase();
-                document.getElementById('phoneNumber').value = formatPhoneNumber(cleanedContactPhone);
+                const syncData = {
+                    firstName: newContact.firstName,
+                    lastName: newContact.lastName,
+                    phoneNumber: cleanedPhone,
+                };
+                await fetch('/update-client', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientId: CLIENT_ID, clientData: syncData }),
+                });
                 client.firstName = newContact.firstName;
                 client.lastName = newContact.lastName;
-                client.phoneNumber = cleanedContactPhone;
-                console.log('Primary client data synced from contact update.');
+                client.phoneNumber = cleanedPhone;
+                document.getElementById('firstName').value = newContact.firstName.toUpperCase();
+                document.getElementById('lastName').value = newContact.lastName.toUpperCase();
+                document.getElementById('phoneNumber').value = formatPhoneNumber(cleanedPhone);
             }
 
-            // Refresh contacts from server and re-render
             closeContactModal();
-            await loadClientData();
-        } else {
-            console.error('Failed to save contact:', result.message);
-            alert(`Error: ${result.message}`);
+            renderContacts();
+        } catch (error) {
+            console.error('Error saving contact:', error);
+            alert('An error occurred while saving the contact.');
         }
-    } catch (error) {
-        console.error('Error while saving contact to the database:', error);
-        alert('An error occurred while saving the contact. Please try again.');
-    }
-}
-
-// Delete a contact
-async function deleteContact(index) {
-    if (!confirm('Are you sure you want to delete this contact?')) {
-        return; // Exit if the user cancels
     }
 
-    try {
-        // Remove the contact locally
+    async function deleteContact(index) {
+        if (!confirm('Are you sure you want to delete this contact?')) return;
+
         const deletedContact = client.Contacts.splice(index, 1)[0];
-
-        // Send delete request to the backend
-        const response = await fetch('/add-to-contacts', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                clientId: client.id, // Pass the client ID
-                contact: deletedContact, // Pass the deleted contact
-                index, // Pass the index of the contact to delete
-                delete: true, // Indicate this is a delete operation
-            }),
-        });
-
-        const result = await response.json();
-        if (result.success) {
-            console.log('Contact deleted successfully:', result.message);
-        } else {
-            console.error('Failed to delete contact:', result.message);
-            alert(`Error: ${result.message}`);
+        try {
+            const response = await fetch('/add-to-contacts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId: CLIENT_ID,
+                    contact: deletedContact,
+                    index,
+                    delete: true,
+                }),
+            });
+            const result = await response.json();
+            if (!result.success) {
+                console.error('Failed to delete contact:', result.message);
+            }
+        } catch (error) {
+            console.error('Error deleting contact:', error);
         }
-    } catch (error) {
-        console.error('Error while deleting contact from the database:', error);
-        alert('An error occurred while deleting the contact. Please try again.');
-    }
-
-    // Re-render contacts and close modal
-    renderContacts();
-    closeContactModal();
-}
-
-// Close the modal
-function closeContactModal() {
-    const modal = document.getElementById('contactModal');
-    modal.style.display = 'none';
-}
-
-// Close the modal when clicking outside of it
-window.addEventListener('click', (event) => {
-    const modal = document.getElementById('contactModal');
-    const modalContent = modal.querySelector('.modal-content');
-    if (event.target === modal && !modalContent.contains(event.target)) {
+        renderContacts();
         closeContactModal();
     }
-});
 
+    // ===== SYNC CLIENT -> CONTACT =====
+    async function syncClientToContact(oldClientData, newClientData) {
+        if (!client.Contacts || client.Contacts.length === 0) return;
 
-// Open the modal for editing a contact by index
-function openContactModalByIndex(index) {
-    const contact = client.Contacts[index]; // Get the contact by index
-    openContactModal(contact, index); // Call the existing openContactModal function
-}
+        for (let i = 0; i < client.Contacts.length; i++) {
+            const contact = client.Contacts[i];
+            if (fieldsMatchCount(oldClientData, contact) >= 3) {
+                const updatedContact = {
+                    ...contact,
+                    firstName: newClientData.firstName || contact.firstName,
+                    lastName: newClientData.lastName || contact.lastName,
+                    phoneNumber: String(newClientData.phoneNumber || '').replace(/\D/g, '') || contact.phoneNumber,
+                };
+                client.Contacts[i] = updatedContact;
 
-// Utility function to format phone numbers
-function formatPhoneNumber(phone) {
-    if (phone === null || phone === undefined || phone === '') return '';
-    const phoneStr = String(phone).trim();
-    const cleaned = phoneStr.replace(/\D/g, '');
-    if (cleaned.length === 10) {
-        return `(${cleaned.substring(0, 3)})-${cleaned.substring(3, 6)}-${cleaned.substring(6)}`;
-    }
-    if (cleaned.length === 11 && cleaned.startsWith('1')) {
-        const withoutCountryCode = cleaned.substring(1);
-        return `(${withoutCountryCode.substring(0, 3)})-${withoutCountryCode.substring(3, 6)}-${withoutCountryCode.substring(6)}`;
-    }
-    return phoneStr;
-}
-
-// Helper: Check if client and contact match on at least 2 of 3 fields (firstName, lastName, phoneNumber)
-function fieldsMatchCount(clientData, contactData) {
-    let matches = 0;
-    if ((clientData.firstName || '').toUpperCase() === (contactData.firstName || '').toUpperCase()) matches++;
-    if ((clientData.lastName || '').toUpperCase() === (contactData.lastName || '').toUpperCase()) matches++;
-    const clientPhone = String(clientData.phoneNumber || '').replace(/\D/g, '');
-    const contactPhone = String(contactData.phoneNumber || '').replace(/\D/g, '');
-    if (clientPhone && contactPhone && clientPhone === contactPhone) matches++;
-    return matches;
-}
-
-// Sync client -> contact: find a contact matching 3 of 3 fields (using OLD client values) and update it with NEW client values
-async function syncClientToContact(oldClientData, newClientData) {
-    if (!client.Contacts || client.Contacts.length === 0) return;
-
-    for (let i = 0; i < client.Contacts.length; i++) {
-        const contact = client.Contacts[i];
-        if (fieldsMatchCount(oldClientData, contact) >= 3) {
-            // Update the contact with new client values
-            const updatedContact = {
-                ...contact,
-                firstName: newClientData.firstName || contact.firstName,
-                lastName: newClientData.lastName || contact.lastName,
-                phoneNumber: String(newClientData.phoneNumber || '').replace(/\D/g, '') || contact.phoneNumber,
-            };
-
-            client.Contacts[i] = updatedContact;
-
-            try {
-                const response = await fetch('/add-to-contacts', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        clientId: client.id,
-                        contact: updatedContact,
-                        index: i,
-                    }),
-                });
-                const result = await response.json();
-                if (response.ok && result.success) {
-                    console.log(`Contact at index ${i} synced from client update.`);
+                try {
+                    await fetch('/add-to-contacts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ clientId: CLIENT_ID, contact: updatedContact, index: i }),
+                    });
                     renderContacts();
-                } else {
-                    console.error('Failed to sync contact from client update:', result.message);
+                } catch (error) {
+                    console.error('Error syncing contact from client update:', error);
                 }
-            } catch (error) {
-                console.error('Error syncing contact from client update:', error);
+                break;
             }
-            break; // Only update the first matching contact
         }
     }
-}
 
-async function saveClient() {
-    const clientId = getQueryParam('id');
-    const clientData = {
-        firstName: document.getElementById('firstName').value,
-        lastName: document.getElementById('lastName').value,
-        phoneNumber: document.getElementById('phoneNumber').value.replace(/\D/g, ''), // Store as raw digits
-        streetAddress: document.getElementById('streetAddress').value,
-        streetAddress2: document.getElementById('streetAddress2').value,
-        city: document.getElementById('city').value,
-        state: document.getElementById('state').value,
-        zipCode: document.getElementById('zipCode').value,
-        county: document.getElementById('county').value,
-        speakingLanguage: document.getElementById('speakingLanguage').value,
-        interpreter: document.querySelector('.selection-box div.selected')?.dataset.value || 'N/A',
-    };
+    // ===== SELECTION BOXES =====
+    function updateHomelessness(value) {
+        setSelectionBox('.homelessness-container', value);
+        queueChange('homelessness', value);
+        document.querySelector('label[for="streetAddress"]').textContent =
+            value === 'yes' ? 'Mailing Address:' : 'Street Address:';
+    }
 
-    try {
-        const response = await fetch('/update-client', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ clientId, clientData }),
+    function updateInterpreter(value) {
+        setSelectionBox('.interpreter-container', value);
+        queueChange('interpreter', value);
+    }
+
+    // ===== EVENT LISTENERS (batched saves, no full reload) =====
+    function setupFieldListeners() {
+        // Text inputs: queue changes on blur, uppercase display, sync contacts
+        document.querySelectorAll('#clientForm input[type="text"]').forEach(input => {
+            input.addEventListener('blur', async (event) => {
+                const field = event.target.id;
+                let value = event.target.value;
+
+                if (field === 'phoneNumber') {
+                    value = value.replace(/\D/g, '');
+                }
+
+                // Capture old client data for contact sync
+                const oldClientData = {
+                    firstName: client.firstName || '',
+                    lastName: client.lastName || '',
+                    phoneNumber: client.phoneNumber || '',
+                };
+
+                // Queue the change for batched save
+                queueChange(field, value);
+
+                // If zip code, also update county
+                if (field === 'zipCode') {
+                    const zipCode = value.trim();
+                    const countyDropdown = document.getElementById('county');
+                    if (zipCode.length === 5 && zipToCountyMap[zipCode]) {
+                        updateCountyDropdown(zipToCountyMap[zipCode]);
+                    } else {
+                        countyDropdown.innerHTML = '<option value="" disabled selected>Select County</option>';
+                        queueChange('county', null);
+                    }
+                }
+
+                // Sync client -> contact for name/phone changes
+                if (['firstName', 'lastName', 'phoneNumber'].includes(field)) {
+                    const newClientData = { ...oldClientData, [field]: value };
+                    client[field] = value;
+                    await syncClientToContact(oldClientData, newClientData);
+                } else {
+                    client[field] = value;
+                }
+
+                // Re-display in uppercase without refetching
+                if (field === 'phoneNumber') {
+                    event.target.value = formatPhoneNumber(value);
+                } else if (field !== 'zipCode') {
+                    event.target.value = value.toUpperCase();
+                }
+            });
         });
 
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-            console.error('Failed to save client data:', result.message);
-        } else {
-            console.log('Client data successfully saved.');
-        }
-    } catch (error) {
-        console.error('Error saving client data:', error);
-        alert('An error occurred while saving client data.');
-    }
-}
-
-function updateHomelessness(value) {
-    const container = document.querySelector('.homelessness-container');
-    if (!container) {
-        console.error('Error: .homelessness-container element not found.');
-        return;
-    }
-
-    // Clear selection for homelessness buttons only
-    container.querySelectorAll('div[data-value]').forEach(div => div.classList.remove('selected'));
-    const selectedButton = container.querySelector(`div[data-value="${value}"]`);
-    if (selectedButton) {
-        selectedButton.classList.add('selected');
-    }
-
-    // Update the homelessness field in the client data
-    updateClientData('homelessness', value);
-
-    // Change the label for Street Address to Mailing Address if "Yes" is selected
-    const streetAddressLabel = document.querySelector('label[for="streetAddress"]');
-    if (value === 'yes') {
-        streetAddressLabel.textContent = 'Mailing Address:';
-    } else {
-        streetAddressLabel.textContent = 'Street Address:';
-    }
-}
-
-function updateInterpreter(value) {
-    const container = document.querySelector('.interpreter-container');
-    if (!container) {
-        console.error('Error: .interpreter-container element not found.');
-        return;
-    }
-
-    // Clear selection for interpreter buttons only
-    container.querySelectorAll('div[data-value]').forEach(div => div.classList.remove('selected'));
-    const selectedButton = container.querySelector(`div[data-value="${value}"]`);
-    if (selectedButton) {
-        selectedButton.classList.add('selected');
-    }
-
-    // Update the interpreter field in the client data
-    updateClientData('interpreter', value);
-}
-
-async function updateClientData(field, value) {
-    const clientId = getQueryParam('id'); // Ensure clientId is retrieved from the URL
-
-    // Validate required fields
-    if (!clientId || !field) {
-        console.error('Missing required fields for update:', { clientId, field, value });
-        return;
-    }
-
-    // Prepare the data to be updated
-    const clientData = { [field]: value };
-
-    // If the zipCode is being updated, also include the county value
-    if (field === 'zipCode') {
-        const countyDropdown = document.getElementById('county');
-        const selectedCounty = countyDropdown.value;
-        clientData.county = selectedCounty || ''; // Include the county value (empty if none selected)
-    }
-
-    try {
-        const response = await fetch('/update-client', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ clientId, clientData }),
+        // Dropdowns: queue changes on change
+        document.querySelectorAll('#clientForm select').forEach(select => {
+            select.addEventListener('change', (event) => {
+                const field = event.target.id;
+                const value = event.target.value || null;
+                queueChange(field, value);
+            });
         });
-
-        const result = await response.json();
-        if (response.ok && result.success) {
-            console.log(`Client data successfully updated for ${field}.`);
-        } else {
-            console.error(`Failed to update client data for ${field}:`, result.message);
-        }
-    } catch (error) {
-        console.error(`Error updating client data for ${field}:`, error);
-        alert(`An error occurred while updating ${field}.`);
     }
-}
 
-// Add event listeners to text inputs
-document.querySelectorAll('input[type="text"]').forEach(input => {
-    input.addEventListener('blur', async (event) => {
-        const field = event.target.id; // Use the input's ID as the field name
-        let value = event.target.value;
+    // ===== ACTION HANDLERS =====
+    async function confirmSaveAndRelease() {
+        if (!confirm("Are you sure you want to save and release this profile?")) return;
 
-        // Clean phone number before saving to database
-        if (field === 'phoneNumber') {
-            value = value.replace(/\D/g, ''); // Strip to digits only for storage
-        }
-
-        // Capture old client data before the update for sync purposes
-        const oldClientData = {
-            firstName: client.firstName || '',
-            lastName: client.lastName || '',
-            phoneNumber: client.phoneNumber || '',
-        };
-
-        await updateClientData(field, value); // Wait for the client data to be updated
-
-        // Build new client data after the update
-        const newClientData = { ...oldClientData, [field]: value };
-
-        // Sync client -> contact if firstName, lastName, or phoneNumber changed
-        if (['firstName', 'lastName', 'phoneNumber'].includes(field)) {
-            await syncClientToContact(oldClientData, newClientData);
-            // Update local client object
-            client[field] = value;
-        }
-
-        loadClientData(); // Reload client data to ensure it is displayed in all caps
-    });
-});
-
-// Add event listeners to dropdowns
-document.querySelectorAll('select').forEach(select => {
-    select.addEventListener('change', (event) => {
-        const field = event.target.id; // Use the select's ID as the field name
-        const value = event.target.value;
-        updateClientData(field, value);
-    });
-});     
-
-        function GoToProfileView() {
-    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-    window.location.href = `profileview.html?id=${clientId}`; // Redirect to profileview.html with the client ID
-}
-
-        // Load client data on page load
-        window.onload = loadClientData;
-
-        async function confirmAndRedirect() {
-    if (confirm("Are you sure you want to start a new screening?")) {
-        const clientId = getQueryParam('id');
-        const noteContent = "<strong>New screening initiated.</strong>";
-        const timestamp = new Date().toLocaleString();
-        const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
-
+        const activeUser = sessionStorage.getItem('loggedInUser');
         if (!activeUser) {
             console.error("No active user found in sessionStorage.");
             return;
         }
 
         try {
-            // Save client data
-            await saveClient();
+            await flushChangesImmediate();
+            await saveClientFull();
 
-            // Add a note about the screening
-            const note = {
-                text: noteContent,
-                timestamp: timestamp,
-                username: activeUser
-            };
-
-            const response = await fetch('/add-note-to-client', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ clientId, note }),
-            });
-
-            const result = await response.json();
-            if (!response.ok || !result.success) {
-                console.error('Failed to add note to client:', result.message);
-                alert('Failed to add note to client.');
-                return;
-            }
-
-            console.log('Note successfully added to client.');
-
-            // Update screening status in the database
-            const updateResponse = await fetch('/update-client', {
+            // Batch: set checkedOut false + screeningInProgress false in one call
+            await fetch('/update-client', {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ clientId, clientData: { screeningInProgress: true } }),
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId: CLIENT_ID,
+                    clientData: {
+                        screeningInProgress: false,
+                        checkedOut: [{
+                            status: false,
+                            timestamp: null,
+                            user: null,
+                        }],
+                    },
+                }),
             });
 
-            const updateResult = await updateResponse.json();
-            if (!updateResponse.ok || !updateResult.success) {
-                console.error('Failed to update screening status:', updateResult.message);
-                return;
-            }
+            // Add note
+            await fetch('/add-note-to-client', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId: CLIENT_ID,
+                    note: {
+                        text: "Profile released.",
+                        timestamp: new Date().toLocaleString(),
+                        username: activeUser,
+                    },
+                }),
+            });
 
-            console.log('Screening status successfully updated.');
+            window.location.href = `profileview.html?id=${CLIENT_ID}`;
+        } catch (error) {
+            console.error("Error during save and release:", error);
+        }
+    }
 
-            // Reopen all benefit screenings on all household members
-            const membersResponse = await fetch(`/get-client/${clientId}`);
-            if (membersResponse.ok) {
-                const clientData = await membersResponse.json();
-                const currentMembers = clientData.householdMembers || [];
+    async function confirmAndRedirect() {
+        if (!confirm("Are you sure you want to start a new screening?")) return;
 
-                const allBenefits = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
-                for (const member of currentMembers) {
-                    for (const benefit of allBenefits) {
-                        if (member[benefit]) {
-                            member[benefit].screeningInProgress = true;
-                            member[benefit].screeningCloseReason = null;
-                        }
-                    }
-                }
+        const activeUser = sessionStorage.getItem('loggedInUser');
+        if (!activeUser) {
+            console.error("No active user found in sessionStorage.");
+            return;
+        }
 
-                const saveMembersResponse = await fetch('/save-household-members', {
+        try {
+            await flushChangesImmediate();
+            await saveClientFull();
+
+            // Add note + update screening status in parallel
+            await Promise.all([
+                fetch('/add-note-to-client', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ clientId, householdMembers: currentMembers })
-                });
+                    body: JSON.stringify({
+                        clientId: CLIENT_ID,
+                        note: {
+                            text: "<strong>New screening initiated.</strong>",
+                            timestamp: new Date().toLocaleString(),
+                            username: activeUser,
+                        },
+                    }),
+                }),
+                fetch('/update-client', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientId: CLIENT_ID, clientData: { screeningInProgress: true } }),
+                }),
+            ]);
 
-                if (!saveMembersResponse.ok) {
-                    console.error('Failed to reopen benefit screenings on household members.');
-                } else {
-                    console.log('All benefit screenings reopened on household members.');
+            // Reopen all benefit screenings on household members
+            const clientData = await fetchClient();
+            const currentMembers = clientData.householdMembers || [];
+            const allBenefits = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
+
+            let membersChanged = false;
+            for (const member of currentMembers) {
+                for (const benefit of allBenefits) {
+                    if (member[benefit]) {
+                        member[benefit].screeningInProgress = true;
+                        member[benefit].screeningCloseReason = null;
+                        membersChanged = true;
+                    }
                 }
-            } else {
-                console.error('Failed to fetch household members for screening reopen.');
             }
 
-            // Redirect to householdedit.html
-            window.location.href = `householdedit.html?id=${clientId}`;
+            if (membersChanged) {
+                await fetch('/save-household-members', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientId: CLIENT_ID, householdMembers: currentMembers }),
+                });
+            }
+
+            window.location.href = `householdedit.html?id=${CLIENT_ID}`;
         } catch (error) {
             console.error("Error during confirmAndRedirect:", error);
         }
     }
-}
 
-async function releaseProfile() {
-    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-
-    try {
-        // Update screening status in the database
-        const response = await fetch('/update-client', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ clientId, clientData: { screeningInProgress: false } }),
-        });
-
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-            console.error('Failed to release profile:', result.message);
-            return;
-        }
-
-        console.log('Profile successfully released.');
-
-        // Optionally, show the "Start Screening" button if it exists on the page
-        const startScreeningButton = document.getElementById('call-logging-button');
-        if (startScreeningButton) {
-            startScreeningButton.style.display = 'block';
-        }
-    } catch (error) {
-        console.error('Error releasing profile:', error);
-        alert('An error occurred while releasing the profile.');
-    }
-}
-
-async function confirmAndTerminate() {
-        const clientId = getQueryParam('id');
-        const timestamp = new Date().toLocaleString();
+    async function confirmAndTerminate() {
         const activeUser = sessionStorage.getItem('loggedInUser');
-
         if (!activeUser) {
-            console.error("No active user found in sessionStorage.");
             alert("Error: No active user found.");
             return;
         }
 
-        // Check the current termination status
-        const terminateButton = document.getElementById('terminate-button');
-        const isTerminated = terminateButton.textContent === "Undo Profile Termination";
-
-        const confirmationMessage = isTerminated
+        const isTerminated = client.terminated === true;
+        const msg = isTerminated
             ? "Are you sure you want to undo the termination of this profile?"
             : "Are you sure you want to terminate this profile?";
 
-        if (confirm(confirmationMessage)) {
-            try {
-                await saveClient();
+        if (!confirm(msg)) return;
 
-                const response = await fetch('/update-client', {
+        try {
+            await flushChangesImmediate();
+            await saveClientFull();
+
+            // Update termination + add note in parallel
+            await Promise.all([
+                fetch('/update-client', {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ clientId, clientData: { terminated: !isTerminated } }),
-                });
-
-                const result = await response.json();
-                if (!response.ok || !result.success) {
-                    console.error('Failed to update termination status:', result.message);
-                    alert('Failed to update termination status.');
-                    return;
-                }
-
-                const note = {
-                    text: isTerminated ? "Profile termination undone." : "Profile terminated.",
-                    timestamp: timestamp,
-                    username: activeUser,
-                };
-
-                const noteResponse = await fetch('/add-note-to-client', {
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientId: CLIENT_ID, clientData: { terminated: !isTerminated } }),
+                }),
+                fetch('/add-note-to-client', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ clientId, note }),
-                });
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        clientId: CLIENT_ID,
+                        note: {
+                            text: isTerminated ? "Profile termination undone." : "Profile terminated.",
+                            timestamp: new Date().toLocaleString(),
+                            username: activeUser,
+                        },
+                    }),
+                }),
+            ]);
 
-                const noteResult = await noteResponse.json();
-                if (!noteResponse.ok || !noteResult.success) {
-                    console.error('Failed to add termination note:', noteResult.message);
-                    alert('Failed to add termination note.');
-                    return;
-                }
-
-                alert(isTerminated ? "The profile termination has been undone." : "The profile has been successfully terminated.");
-                document.getElementById('terminationStatus').style.display = isTerminated ? 'none' : 'block';
-                terminateButton.textContent = isTerminated ? "Terminate Profile" : "Undo Profile Termination";
-            // Reload the page after the operation
+            alert(isTerminated ? "Profile termination undone." : "Profile terminated.");
             location.reload();
         } catch (error) {
-            console.error("Error updating the profile termination status:", error);
-            alert("An error occurred while updating the profile termination status. Please try again.");
+            console.error("Error updating termination status:", error);
+            alert("An error occurred. Please try again.");
         }
     }
-}
 
-    // Update the button text on page load based on the termination status
-    async function updateTerminateButton() {
-    const clientId = getQueryParam('id');
-    try {
-        const response = await fetch(`/get-client/${clientId}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client: ${response.statusText}`);
-        }
-
-        const client = await response.json();
-        const terminateButton = document.getElementById('terminate-button');
-        const terminationStatus = document.getElementById('terminationStatus');
-
-        console.log('Client termination status:', client.terminated); // Debugging log
-
-        if (client.terminated) {
-            terminateButton.textContent = "Undo Profile Termination";
-            terminationStatus.style.display = 'block'; // Show "PROFILE TERMINATED" message
-            terminateButton.style.display = 'inline-block'; // Ensure the button is visible
-        } else {
-            terminateButton.textContent = "Terminate Profile";
-            terminationStatus.style.display = 'none'; // Hide "PROFILE TERMINATED" message
-            terminateButton.style.display = 'inline-block'; // Ensure the button is visible
-        }
-    } catch (error) {
-        console.error('Error updating terminate button:', error);
-    }
-}
-
-async function toggleSidebarVisibility() {
-    const clientId = getQueryParam('id');
-    try {
-        const response = await fetch(`/get-client/${clientId}`, {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client: ${response.statusText}`);
-        }
-
-        const client = await response.json();
-        if (client && client.screeningInProgress) {
-            document.getElementById('leftSidebarContainer').style.display = 'block';
-        } else {
-            document.getElementById('leftSidebarContainer').style.display = 'none';
-        }
-    } catch (error) {
-        console.error('Error toggling sidebar visibility:', error);
-    }
-}
-
-// Call the function after the page loads
-window.onload = function () {
-    loadClientData();
-    updateTerminateButton();
-
-};
-    </script>
-        <script src="estimations.js"></script>
-<script src="notes.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
-<script>
+    // ===== ZIP-TO-COUNTY =====
     let zipToCountyMap = {};
 
-    // Load and parse the CSV file
     function loadZipCountyData() {
-    Papa.parse('./uszips.csv', {
-        download: true,
-        header: true,
-        complete: function (results) {
-            results.data.forEach(row => {
-                const zip = row.zip;
-                const counties = row.county_names_all; // Use the county_names_all column
-                if (zip && counties) {
-                    if (!zipToCountyMap[zip]) {
-                        zipToCountyMap[zip] = [];
+        Papa.parse('./uszips.csv', {
+            download: true,
+            header: true,
+            complete: function (results) {
+                results.data.forEach(row => {
+                    const zip = row.zip;
+                    const counties = row.county_names_all;
+                    if (zip && counties) {
+                        if (!zipToCountyMap[zip]) zipToCountyMap[zip] = [];
+                        counties.split('|').forEach(county => {
+                            const trimmed = county.trim();
+                            if (!zipToCountyMap[zip].includes(trimmed)) {
+                                zipToCountyMap[zip].push(trimmed);
+                            }
+                        });
                     }
-                    // Split counties by "|" and add them to the map
-                    counties.split('|').forEach(county => {
-                        if (!zipToCountyMap[zip].includes(county.trim())) {
-                            zipToCountyMap[zip].push(county.trim());
-                        }
-                    });
-                }
-            });
-            console.log('Zip-to-county data loaded:', zipToCountyMap);
-
-            // Filter the county dropdown on page load
-            filterCountyDropdownOnPageLoad();
-        },
-        error: function (error) {
-            console.error('Error loading CSV file:', error);
-        }
-    });
-}
-
-// Filter the county dropdown based on the zip code on page load
-function filterCountyDropdownOnPageLoad() {
-    const zipCodeInput = document.getElementById("zipCode");
-    const countyDropdown = document.getElementById("county");
-    const zipCode = zipCodeInput.value.trim();
-
-    if (zipCode.length === 5 && zipToCountyMap[zipCode]) {
-        // Populate the county dropdown based on the zip code
-        const backendCounty = countyDropdown.value; // Preserve the preexisting county value
-        updateCountyDropdown(zipToCountyMap[zipCode], backendCounty);
-    } else {
-        // If the zip code is invalid or blank, do not overwrite the dropdown
-        console.log("Invalid or empty zip code on page load. Preserving existing county selection.");
-    }
-}
-
-// Update the county dropdown based on the zip code
-function updateCountyDropdown(counties, backendCounty = null) {
-    const countyDropdown = document.getElementById("county");
-
-    // Clear existing options
-    countyDropdown.innerHTML = '<option value="" disabled>Select County</option>';
-
-    counties.forEach(county => {
-        const option = document.createElement("option");
-        option.value = county;
-        option.textContent = county;
-        countyDropdown.appendChild(option);
-    });
-
-    // Auto-select logic
-    if (backendCounty && counties.includes(backendCounty)) {
-        // If a backend county exists and matches one of the counties, select it
-        countyDropdown.value = backendCounty;
-    } else if (counties.length === 1) {
-        // If there's only one county, auto-select it
-        countyDropdown.value = counties[0];
-    } else {
-        // Otherwise, leave the dropdown unselected
-        countyDropdown.value = "";
-    }
-}
-
-// Add event listener for the county dropdown
-document.getElementById("county").addEventListener("change", function () {
-    const selectedValue = this.value;
-
-    if (selectedValue === "") {
-        // If "Select County" is selected, set county to null in the database
-        updateClientData('county', null);
-    }
-});
-
-// Add event listener for zip code input
-function setupZipCodeListener() {
-    const zipCodeInput = document.getElementById("zipCode");
-    const countyDropdown = document.getElementById("county");
-
-    zipCodeInput.addEventListener("blur", async function () {
-        const zipCode = this.value.trim();
-
-        if (zipCode.length === 5 && zipToCountyMap[zipCode]) {
-            // Populate the county dropdown based on the zip code
-            updateCountyDropdown(zipToCountyMap[zipCode]);
-        } else {
-            // Reset the dropdown to "Select County" if the zip code is invalid, null, or blank
-            countyDropdown.innerHTML = '<option value="" disabled selected>Select County</option>';
-            console.log("Invalid, null, or empty zip code entered. Defaulting to 'Select County'.");
-
-            // Set the county data to null in the backend
-            await updateClientData('county', null);
-        }
-    });
-}
-
-async function setCheckedOutStatus(clientId, status) {
-    try {
-        const response = await fetch('/update-client', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
+                });
+                console.log('Zip-to-county data loaded.');
+                // Now that zip data is ready, load client
+                initPage();
             },
-            body: JSON.stringify({ 
-                clientId, 
-                clientData: { 
-                    checkedOut: [
-                        {
-                            status: status, // Set status to false
-                            timestamp: status ? new Date().toISOString() : null, // Clear timestamp if status is false
-                            user: status ? sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User' : null // Clear user if status is false
-                        }
-                    ] 
-                } 
-            }),
+            error: function (error) {
+                console.error('Error loading CSV:', error);
+                initPage(); // Still init even if CSV fails
+            }
         });
-
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-            console.error(`Failed to update checkedOut status to ${status}:`, result.message);
-        } else {
-            console.log(`Successfully updated checkedOut status to ${status}.`);
-        }
-    } catch (error) {
-        console.error(`Error updating checkedOut status to ${status}:`, error);
     }
-}
 
-    // Ensure all initialization functions are executed
+    function updateCountyDropdown(counties, backendCounty = null) {
+        const dropdown = document.getElementById("county");
+        dropdown.innerHTML = '<option value="" disabled>Select County</option>';
+
+        for (const county of counties) {
+            const option = document.createElement("option");
+            option.value = county;
+            option.textContent = county;
+            dropdown.appendChild(option);
+        }
+
+        if (backendCounty && counties.includes(backendCounty)) {
+            dropdown.value = backendCounty;
+        } else if (counties.length === 1) {
+            dropdown.value = counties[0];
+        } else {
+            dropdown.value = "";
+        }
+    }
+
+    // ===== INITIALIZATION: Single fetch, single render =====
+    async function initPage() {
+        try {
+            const data = await fetchClient();
+            populateForm(data);
+        } catch (error) {
+            console.error('Error loading client data:', error);
+            alert('Client not found.');
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
-        loadZipCountyData(); // Load the CSV data
-        setupZipCodeListener(); // Set up the zip code input listener
-        loadClientData(); // Load client data
-        updateTerminateButton(); // Update the terminate button
+        setupFieldListeners();
+        loadZipCountyData(); // This calls initPage() when CSV is ready
     });
-</script>
+    </script>
+
+    <script src="estimations.js"></script>
+    <script src="notes.js"></script>
 </body>
 </html>

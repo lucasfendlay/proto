@@ -1,156 +1,213 @@
-document.addEventListener('DOMContentLoaded', async function () {
-    // Initialize window.eligibilityChecks
-    window.eligibilityChecks = {
-        async loadHouseholdMembers() {
-            console.log('Loading household members...');
-            return []; // Replace with actual logic
-        },
-        async PACEEligibilityCheck(members) {
-            console.log('Running PACE eligibility check...');
-        },
-        async LISEligibilityCheck(members) {
-            console.log('Running LIS eligibility check...');
-        },
-        async MSPEligibilityCheck(members) {
-            console.log('Running MSP eligibility check...');
-        },
-        async PTRREligibilityCheck(members) {
-            console.log('Running PTRR eligibility check...');
-        },
-        async updateAndDisplayHouseholdMembers() {
-            console.log('Updating and displaying household members...');
-        }
-    };
+// ══════════════════════════════════════════════════════════════
+// CONSTANTS
+// ══════════════════════════════════════════════════════════════
 
-    const clientId = getQueryParameter('id'); // Get the client ID from the query parameter
+const BACKEND_URL = window.location.origin || "http://localhost:3000";
 
-    async function loadHouseholdMembers() {
-        try {
-            // Use the correct backend handler to fetch client data
-            const response = await fetch(`/get-client/${clientId}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
+// ══════════════════════════════════════════════════════════════
+// UTILITIES
+// ══════════════════════════════════════════════════════════════
 
-            if (!response.ok) {
-                throw new Error(`Failed to fetch client data: ${response.statusText}`);
-            }
+function getQueryParameter(name) {
+    return new URLSearchParams(window.location.search).get(name);
+}
 
-            const client = await response.json();
+function parseAge(ageString) {
+    if (!ageString) return { years: 0, months: 0, days: 0 };
+    
+    const [years, months, days] = ageString
+        .replace(/Years|Months|Days|,/g, '')
+        .trim()
+        .split(/\s+/)
+        .map(value => parseInt(value.trim()) || 0);
+    
+    return { years, months, days };
+}
 
-            if (!client || !client.householdMembers) {
-                console.error('No household members found for this client.');
-                return [];
-            }
+// ══════════════════════════════════════════════════════════════
+// CLIENT API HELPERS
+// ══════════════════════════════════════════════════════════════
 
-            return client.householdMembers; // Return the household members array
-        } catch (error) {
-            console.error('Error loading household members:', error);
-            return [];
-        }
-    }
+async function fetchClientData(clientId) {
+    if (!clientId) return null;
 
-    // Helper function to clear a selection in the database
-async function clearSelection(clientId, memberId, question) {
     try {
-        const response = await fetch('/clear-household-member-selection', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                clientId,
-                memberId,
-                question
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to clear selection: ${response.statusText}`);
-        }
-
-        console.log(`Cleared: Question = "${question}"`);
+        const response = await fetch(`${BACKEND_URL}/get-client/${clientId}`);
+        if (!response.ok) throw new Error(`Failed to fetch client data: ${response.statusText}`);
+        return await response.json();
     } catch (error) {
-        console.error('Error clearing selection:', error);
+        console.error('Error fetching client data:', error);
+        return null;
     }
 }
 
-    async function addHouseholdMemberToUI(member) {
-        const householdMemberContainer = document.getElementById('householdMemberContainer');
-        const memberDiv = document.createElement('div');
-        memberDiv.classList.add('household-member');
-        memberDiv.setAttribute('data-id', member.householdMemberId);
+async function loadHouseholdMembers() {
+    const clientId = getQueryParameter('id');
+    if (!clientId) return [];
 
-        // Add styles to make the container narrower
-        householdMemberContainer.style.minWidth = '600px';
-        householdMemberContainer.style.maxWidth = '600px';
-        householdMemberContainer.style.margin = '0 auto';
+    try {
+        const client = await fetchClientData(clientId);
+        return client?.householdMembers || [];
+    } catch (error) {
+        console.error('Error loading household members:', error);
+        return [];
+    }
+}
 
-        const dob = new Date(member.dob);
-        const age = member.age;
-        const client = await fetch(`/get-client/${clientId}`).then(res => res.json());
+async function fetchSavedSelections(clientId, memberId) {
+    try {
+        const response = await fetch(`${BACKEND_URL}/get-household-member-selections/${clientId}/${memberId}`);
+        if (!response.ok) throw new Error(`Failed to fetch saved selections: ${response.statusText}`);
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching saved selections:', error);
+        return {};
+    }
+}
 
-        const [years, months, days] = age
-            .replace(/Years|Months|Days|,/g, '')
-            .trim()
-            .split(/\s+/)
-            .map(value => parseInt(value.trim()) || 0);
+// ══════════════════════════════════════════════════════════════
+// SIDEBAR VISIBILITY
+// ══════════════════════════════════════════════════════════════
 
-        const isOnMedicare = member.medicare === 'yes';
-        const isOnMedicaid = member.medicaid === 'yes';
-        const isDisabled = member.disability === 'yes';
-console.log('Disability:', member.disability, 'Is Disabled:', isDisabled);
+async function checkScreeningStatus() {
+    const clientId = getQueryParameter('id');
+    if (!clientId) return;
 
-const isWidowed = member.previousMaritalStatus && member.previousMaritalStatus.toLowerCase() === 'widowed';
-console.log('Previous Marital Status:', member.previousMaritalStatus, 'Is Widowed:', isWidowed);
+    try {
+        const clientData = await fetchClientData(clientId);
+        const leftSidebar = document.getElementById('leftSidebarContainer');
 
-const residenceStatus = client.residenceStatus ? client.residenceStatus.toLowerCase() : 'other';
-console.log('Residence Status:', member.residenceStatus, 'Processed Residence Status:', residenceStatus);
+        if (!leftSidebar) return;
 
-        memberDiv.innerHTML = `
-            <p>Name: <strong>${member.firstName} ${member.middleInitial || ''} ${member.lastName}</strong></p>
-            <p>Date of Birth: ${member.dob}</p>
-            <p>Marital Status: ${member.maritalStatus}</p>
-        `;
+        leftSidebar.style.display = clientData?.screeningInProgress ? 'flex' : 'none';
+    } catch (error) {
+        console.error('Error checking screening status:', error);
+    }
+}
 
-        let hasQuestions = false;
+// ══════════════════════════════════════════════════════════════
+// ELIGIBILITY CONDITION CHECKS
+// ══════════════════════════════════════════════════════════════
 
-        // Conditional logic for Pennsylvania residency question
-        if ((years >= 65 || (years === 64 && months === 11 && days > 0)) && !isOnMedicaid) {    hasQuestions = true;
+function checkPACEEligibility(member, client) {
+    const { years, months, days } = parseAge(member.age);
+    const isOnMedicaid = member.medicaid === 'yes';
+    const paceIsClosed = member.PACE?.screeningInProgress === false;
 
-    // Add Pennsylvania residency question
-    memberDiv.innerHTML += `
-        <div class="selection-box readonly">
+    return (years >= 65 || (years === 64 && months === 11 && days > 0)) && !isOnMedicaid && !paceIsClosed;
+}
+
+function checkLISMSPEligibility(member) {
+    const isOnMedicare = member.medicare === 'yes';
+    const isOnMedicaid = member.medicaid === 'yes';
+    const lisIsClosed = member.LIS?.screeningInProgress === false;
+    const mspIsClosed = member.MSP?.screeningInProgress === false;
+
+    return {
+        showLIS: isOnMedicare && !isOnMedicaid && !lisIsClosed,
+        showMSP: isOnMedicare && !isOnMedicaid && !mspIsClosed
+    };
+}
+
+function checkPTRREligibility(member, client, members) {
+    if (!member.headOfHousehold) return false;
+
+    const ptrrIsClosed = member.PTRR?.screeningInProgress === false;
+    if (ptrrIsClosed) return false;
+
+    const { years } = parseAge(member.age);
+    const isDisabled = member.disability === 'yes';
+    const isWidowed = member.previousMaritalStatus?.toLowerCase() === 'widowed';
+    const residenceStatus = client.residenceStatus?.toLowerCase() || 'other';
+
+    if (residenceStatus === 'other') return false;
+
+    let previousSpouseMeetsConditions = false;
+    if (member.previousSpouseId) {
+        const previousSpouse = members.find(m => m.householdMemberId === member.previousSpouseId);
+        if (previousSpouse) {
+            const spouseAge = parseAge(previousSpouse.age);
+            const spouseIsDisabled = previousSpouse.disability === 'yes';
+            const spouseIsWidowed = previousSpouse.previousMaritalStatus?.toLowerCase() === 'widowed';
+
+            previousSpouseMeetsConditions = 
+                (spouseAge.years >= 18 && spouseIsDisabled) ||
+                (spouseAge.years >= 50 && spouseIsWidowed) ||
+                (spouseAge.years >= 65);
+        }
+    }
+
+    return previousSpouseMeetsConditions ||
+           (years >= 18 && isDisabled) ||
+           (years >= 50 && isWidowed) ||
+           (years >= 65);
+}
+
+// ══════════════════════════════════════════════════════════════
+// QUESTION HTML GENERATION (READ-ONLY)
+// ══════════════════════════════════════════════════════════════
+
+function generatePACEQuestionsHTML() {
+    return `
+        <div class="selection-box residency-question">
             <label>Has this person lived in Pennsylvania for at least the last 90 consecutive days?</label>
             <div data-value="yes" class="selection-option">Yes</div>
             <div data-value="no" class="selection-option">No</div>
         </div>
-    `;
-
-    // Add PACE question (initially hidden)
-    const paceQuestionHTML = `
-        <div class="selection-box pace-question readonly" style="display: none;">
+        <div class="selection-box pace-question" style="display: none;">
             <label>Is this person currently enrolled in PACE?</label>
             <div data-value="yes" class="selection-option">Yes</div>
             <div data-value="no" class="selection-option">No</div>
             <div data-value="notinterested" class="selection-option">Not Interested</div>
         </div>
     `;
-    memberDiv.innerHTML += paceQuestionHTML;
+}
 
-// Recall saved selections and set visibility for PACE question
-try {
-    const response = await fetch(`/get-household-member-selections/${clientId}/${member.householdMemberId}`);
-    if (!response.ok) {
-        throw new Error(`Failed to fetch saved selections: ${response.statusText}`);
-    }
+function generateLISQuestionHTML() {
+    return `
+        <div class="selection-box">
+            <label>Is this person currently enrolled in LIS/ Extra Help?</label>
+            <div data-value="yes" class="selection-option">Yes</div>
+            <div data-value="no" class="selection-option">No</div>
+            <div data-value="notinterested" class="selection-option">Not Interested</div>
+        </div>
+    `;
+}
 
-    const savedSelections = await response.json();
+function generateMSPQuestionHTML() {
+    return `
+        <div class="selection-box">
+            <label>Is this person currently enrolled in the Medicare Savings Program?</label>
+            <div data-value="yes" class="selection-option">Yes</div>
+            <div data-value="no" class="selection-option">No</div>
+            <div data-value="notinterested" class="selection-option">Not Interested</div>
+        </div>
+    `;
+}
+
+function generatePTRRQuestionHTML() {
+    return `
+        <div class="selection-box">
+            <label>Has this person already applied for PTRR this year?</label>
+            <div data-value="yes" class="selection-option">Yes</div>
+            <div data-value="no" class="selection-option">No</div>
+            <div data-value="notinterested" class="selection-option">Not Interested</div>
+        </div>
+    `;
+}
+
+// ══════════════════════════════════════════════════════════════
+// APPLY SAVED SELECTIONS (READ-ONLY)
+// ══════════════════════════════════════════════════════════════
+
+async function applySavedSelections(memberDiv, clientId, memberId) {
+    const savedSelections = await fetchSavedSelections(clientId, memberId);
 
     memberDiv.querySelectorAll('.selection-box').forEach(box => {
-        const question = box.querySelector('label').innerText.trim();
+        const label = box.querySelector('label');
+        if (!label) return;
+
+        const question = label.innerText.trim();
         const savedValue = savedSelections[question];
 
         if (savedValue) {
@@ -159,297 +216,94 @@ try {
                 optionToSelect.classList.add('selected');
             }
 
-            // Handle special logic for Pennsylvania residency question
             if (question === "Has this person lived in Pennsylvania for at least the last 90 consecutive days?") {
                 const paceQuestion = memberDiv.querySelector('.pace-question');
-                if (savedValue === 'yes') {
-                    paceQuestion.style.display = 'block';
-                } else {
-                    paceQuestion.style.display = 'none';
-                    paceQuestion.querySelectorAll('.selection-option').forEach(paceOption => {
-                        paceOption.classList.remove('selected');
-                    });
+                if (paceQuestion) {
+                    paceQuestion.style.display = savedValue === 'yes' ? 'block' : 'none';
                 }
             }
         }
     });
-} catch (error) {
-    console.error('Error fetching or applying saved selections:', error);
-}
-} else {
-    // Save default selection for PACE question if residency conditions are not met
 }
 
-        // Conditional logic for LIS and MSP
-        if (isOnMedicare && !isOnMedicaid) {
-            hasQuestions = true;
-            memberDiv.innerHTML += `
-                <div class="selection-box readonly">
-                    <label>Is this person currently enrolled in LIS/ Extra Help?</label>
-                    <div data-value="yes" class="selection-option">Yes</div>
-                    <div data-value="no" class="selection-option">No</div>
-                    <div data-value="notinterested" class="selection-option">Not Interested</div>
-                </div>
-                <div class="selection-box readonly">
-                    <label>Is this person currently enrolled in the Medicare Savings Program?</label>
-                    <div data-value="yes" class="selection-option">Yes</div>
-                    <div data-value="no" class="selection-option">No</div>
-                    <div data-value="notinterested" class="selection-option">Not Interested</div>
-                </div>
-            `;
-        } else {
-            await saveDefaultSelection(clientId, member.householdMemberId, "Is this person currently enrolled in LIS?", "Not Interested");
-            await saveDefaultSelection(clientId, member.householdMemberId, "Is this person currently enrolled in MSP?", "Not Interested");
-        }
+// ══════════════════════════════════════════════════════════════
+// DISPLAY HOUSEHOLD MEMBERS (READ-ONLY)
+// ══════════════════════════════════════════════════════════════
 
-        // Conditional logic for PTRR
-if (member.headOfHousehold === true) {
-    if (
-        ((years >= 18 && isDisabled) && residenceStatus !== 'other') ||
-        ((years >= 50 && isWidowed) && residenceStatus !== 'other') ||
-        (years >= 65 && residenceStatus !== 'other')
-    ) {
-        console.log('PTRR Condition Met:', {
-            years,
-            isDisabled,
-            isWidowed,
-            residenceStatus
-        });
+async function addHouseholdMemberToUI(member, client, members) {
+    const clientId = getQueryParameter('id');
+    const memberDiv = document.createElement('div');
+    memberDiv.classList.add('household-member');
+    memberDiv.setAttribute('data-id', member.householdMemberId);
 
-        try {
-            const response = await fetch(`/get-client/${clientId}`);
-            const client = await response.json();
+    memberDiv.innerHTML = `
+        <p>Name: <strong>${member.firstName} ${member.middleInitial || ''} ${member.lastName}</strong></p>
+        <p>Date of Birth: ${member.dob}</p>
+        <p>Marital Status: ${member.maritalStatus}</p>
+    `;
 
-            console.log('Client Response:', client);
+    let hasQuestions = false;
 
-            if (client && client.residenceStatus === 'other') {
-                console.log('Skipping PTRR question because residenceStatus is "other".');
-                await saveDefaultSelection(clientId, member.householdMemberId, "Has this person already applied for PTRR this year?", "Not Interested");
-            } else {
-                hasQuestions = true;
-                console.log('Appending PTRR question to the DOM.');
-                memberDiv.innerHTML += `
-                    <div class="selection-box readonly">
-                        <label>Has this person already applied for PTRR this year?</label>
-                        <div data-value="yes" class="selection-option">Yes</div>
-                        <div data-value="no" class="selection-option">No</div>
-                        <div data-value="notinterested" class="selection-option">Not Interested</div>
-                    </div>
-                `;
-            }
-        } catch (error) {
-            console.error('Error fetching client data for PTRR logic:', error);
-        }
-    } else {
-        console.log('PTRR Condition Not Met:', {
-            years,
-            isDisabled,
-            isWidowed,
-            residenceStatus
-        });
-        await saveDefaultSelection(clientId, member.householdMemberId, "Has this person already applied for PTRR this year?", "Not Interested");
+    // PACE eligibility
+    if (checkPACEEligibility(member, client)) {
+        hasQuestions = true;
+        memberDiv.innerHTML += generatePACEQuestionsHTML();
+    }
+
+    // LIS/MSP eligibility
+    const { showLIS, showMSP } = checkLISMSPEligibility(member);
+    if (showLIS || showMSP) {
+        hasQuestions = true;
+        if (showLIS) memberDiv.innerHTML += generateLISQuestionHTML();
+        if (showMSP) memberDiv.innerHTML += generateMSPQuestionHTML();
+    }
+
+    // PTRR eligibility
+    const showPTRR = checkPTRREligibility(member, client, members);
+    if (showPTRR) {
+        hasQuestions = true;
+        memberDiv.innerHTML += generatePTRRQuestionHTML();
+    }
+
+    if (!hasQuestions) {
+        memberDiv.classList.add('no-questions');
+    }
+
+    // Apply saved selections (read-only display)
+    await applySavedSelections(memberDiv, clientId, member.householdMemberId);
+
+    return memberDiv;
+}
+
+async function displayHouseholdMembers() {
+    const container = document.getElementById('householdMemberContainer');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    const clientId = getQueryParameter('id');
+    const client = await fetchClientData(clientId);
+    const members = await loadHouseholdMembers();
+
+    if (members.length === 0) {
+        container.innerHTML = '<p>No household members found.</p>';
+        return;
+    }
+
+    // Sort: head of household first
+    members.sort((a, b) => (b.headOfHousehold ? 1 : 0) - (a.headOfHousehold ? 1 : 0));
+
+    for (const member of members) {
+        const memberDiv = await addHouseholdMemberToUI(member, client, members);
+        container.appendChild(memberDiv);
     }
 }
 
-        // Only append the member to the container if they have applicable questions
-        if (hasQuestions) {
-            householdMemberContainer.appendChild(memberDiv);
+// ══════════════════════════════════════════════════════════════
+// INITIALIZATION
+// ══════════════════════════════════════════════════════════════
 
-            // Recall saved selections and simulate clicks
-            const response = await fetch(`/get-household-member-selections/${clientId}/${member.householdMemberId}`);
-            const savedSelections = await response.json();
-
-            memberDiv.querySelectorAll('.selection-box').forEach(box => {
-                const question = box.querySelector('label').innerText.trim();
-                const savedValue = savedSelections[question];
-
-                if (savedValue) {
-                    const optionToSelect = box.querySelector(`.selection-option[data-value="${savedValue}"]`);
-                    if (optionToSelect) {
-                        optionToSelect.classList.add('selected');
-                    }
-                }
-            });
-
-            // Modify the event listener for saving selections
-memberDiv.querySelectorAll('.selection-option').forEach(option => {
-    option.addEventListener('click', async function () {
-        const parent = this.parentElement;
-        parent.querySelectorAll('.selection-option').forEach(sibling => sibling.classList.remove('selected'));
-        this.classList.add('selected');
-
-        const question = parent.querySelector('label').innerText.trim();
-        const value = this.dataset.value;
-
-        // Save the selection immediately
-        await fetch('/save-household-member-selection', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                clientId,
-                memberId: member.householdMemberId,
-                question,
-                value
-            })
-        });
-
-        console.log(`Saved: Question = "${question}", Value = "${value}"`);
-
-        // Handle special logic for Pennsylvania residency question
-        if (question === "Has this person lived in Pennsylvania for at least the last 90 consecutive days?") {
-            const paceQuestion = memberDiv.querySelector('.pace-question');
-            if (value === 'yes') {
-                paceQuestion.style.display = 'block';
-                await fetch('/save-household-member-selection', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        clientId,
-                        memberId: member.householdMemberId,
-                        question: "Is this person currently enrolled in PACE?",
-                        value: null
-                    })
-                });
-            } else {
-                paceQuestion.style.display = 'none';
-                paceQuestion.querySelectorAll('.selection-option').forEach(paceOption => {
-                    paceOption.classList.remove('selected');
-                });
-                await fetch('/save-household-member-selection', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        clientId,
-                        memberId: member.householdMemberId,
-                        question: "Is this person currently enrolled in PACE?",
-                        value: "residencynotmet"
-                    })
-                });
-            }
-        }
-
-        // Trigger eligibility checks after saving
-        const members = await window.eligibilityChecks.loadHouseholdMembers();
-        await window.eligibilityChecks.PACEEligibilityCheck(members);
-        await window.eligibilityChecks.LISEligibilityCheck(members);
-        await window.eligibilityChecks.MSPEligibilityCheck(members);
-        await window.eligibilityChecks.PTRREligibilityCheck(members);
-
-        // Optionally update the UI
-        await window.eligibilityChecks.updateAndDisplayHouseholdMembers();
-    });
-});
-
-            return true; // Member has questions and was appended
-        }
-
-        return false; // Member has no questions
-    }
-
-    async function displayHouseholdMembers() {
-        const householdMemberContainer = document.getElementById('householdMemberContainer');
-        householdMemberContainer.innerHTML = '';
-    
-        const members = await loadHouseholdMembers();
-        let appendedMembers = 0;
-    
-        if (members.length === 0) {
-            const noMembersMessage = document.createElement('p');
-            noMembersMessage.textContent = 'No household members found.';
-            householdMemberContainer.appendChild(noMembersMessage);
-        } else {
-            // Sort members to show headOfHousehold: true first
-            members.sort((a, b) => {
-                if (a.headOfHousehold === b.headOfHousehold) return 0;
-                return a.headOfHousehold ? -1 : 1;
-            });
-    
-            for (const member of members) {
-                const wasAppended = await addHouseholdMemberToUI(member);
-                if (wasAppended) {
-                    appendedMembers++;
-                }
-            }
-        }
-    }
-
-    // Helper function to save default selection
-    async function saveDefaultSelection(clientId, memberId, question, value) {
-        try {
-            const response = await fetch('/save-household-member-selection', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    clientId,
-                    memberId,
-                    question,
-                    value
-                })
-            });
-    
-            if (!response.ok) {
-                throw new Error(`Failed to save selection: ${response.statusText}`);
-            }
-    
-            console.log(`Default saved: Question = "${question}", Value = "${value}"`);
-        } catch (error) {
-            console.error('Error saving default selection:', error);
-        }
-    }
-    
-    // Expose the function globally
-    window.saveDefaultSelection = saveDefaultSelection;
-
-    async function checkScreeningStatus() {
-        const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
-        if (!clientId) {
-            console.error('Client ID not found in query parameters.');
-            return;
-        }
-
-        try {
-            // Use the correct backend handler
-            const response = await fetch(`/get-client/${clientId}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (!response.ok) {
-                throw new Error(`Failed to fetch client data: ${response.statusText}`);
-            }
-
-            const clientData = await response.json();
-
-            // Check if screeningInProgress is true
-            if (clientData && clientData.screeningInProgress) {
-                document.getElementById('leftSidebarContainer').style.display = 'flex';
-            } else {
-                document.getElementById('leftSidebarContainer').style.display = 'none';
-            }
-        } catch (error) {
-            console.error('Error fetching client data:', error);
-        }
-    }
-
-    // Call the function on page load
-    window.addEventListener('load', checkScreeningStatus);
-
-    // Helper function to get query parameters
-    function getQueryParameter(name) {
-        const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get(name);
-    }
-
-    // Display household members on page load
+document.addEventListener('DOMContentLoaded', async () => {
+    await checkScreeningStatus();
     await displayHouseholdMembers();
 });

@@ -8,64 +8,64 @@
     <link rel="stylesheet" href="householdedit.css">
     <link rel="stylesheet" href="notes.css">
     <script src="userInfo.js"></script>
-
-
     <style>
-/* ...existing code... */
-details > summary {
-    cursor: pointer; /* Change cursor to hand */
-}
-
-.narrow-body {
-        margin-left: 385px; /* Space for the left sidebar */
-        margin-right: 10px; /* Optional: Space on the right */
-        max-width: calc(100% - 395px); /* Ensure the body doesn't exceed the available space */
-        margin: 0 auto; /* Center the content horizontally */
-        margin-top: 60px; /* Adjust this value to match the height of the navigation container */
-
-    }
-
-.household-member-container {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    width: 100%;
-    align-items: center; /* Center the content horizontally */
-}
-
-.household-member {
-    display: flex;
-    flex-direction: column;
-    padding: 20px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    background-color: #f9f9f9;
-    width: 80%; /* Adjust the width as needed */
-    align-items: center; /* Center the content horizontally */
-}
-
-.selection-box {
-    margin-top: 10px;
-    text-align: center; /* Center the text inside the selection box */
-}
-
-.selection-option {
-    display: inline-block;
-    padding: 5px 10px;
-    margin-right: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.selection-option.selected {
-    background-color: #007bff;
-    color: white;
-    border-color: #007bff;
-}
-
-/* ...existing code... */
-        
+        details > summary {
+            cursor: pointer;
+        }
+        .narrow-body {
+            margin-left: 385px;
+            margin-right: 10px;
+            max-width: calc(100% - 395px);
+            margin: 0 auto;
+            margin-top: 60px;
+        }
+        .household-member-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+            align-items: center;
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .household-member {
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            width: 80%;
+            align-items: center;
+            text-align: center;
+            margin: 0 auto;
+        }
+        .selection-box {
+            margin-top: 10px;
+            text-align: center;
+        }
+        .selection-option {
+            display: inline-block;
+            padding: 5px 10px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .selection-option.selected {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        .action-buttons {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .relationship-entry,
+        .spouse-dropdown-container {
+            text-align: center;
+        }
     </style>
     <script src="editnavigation.js"></script>
 </head>
@@ -73,108 +73,27 @@ details > summary {
 
     <h1>Relationships</h1>
 
-<div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
-    <div id="snap-household-container" class="left-sidebar"></div>
-    <div id="liheap-household-container" class="left-sidebar"></div>
+    <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
+        <div id="snap-household-container" class="left-sidebar"></div>
+        <div id="liheap-household-container" class="left-sidebar"></div>
+        <div id="household-members-container" class="left-sidebar"></div>
+    </div>
 
-    <div id="household-members-container" class="left-sidebar"></div>
-</div>
+    <div id="notes-container">
+        <textarea id="note-input" placeholder="Add Note..."></textarea>
+        <button id="save-note">Save Note</button>
+        <div id="notes-list"></div>
+    </div>
 
-<div id="notes-container">
-    <textarea id="note-input" placeholder="Add Note..."></textarea>
-    <button id="save-note">Save Note</button>
-    <div id="notes-list">
-        </div>
-        </div>
+    <div id="householdMemberContainer" class="household-member-container"></div>
 
-    </body>
+    <div id="actionButtons" class="action-buttons" style="display: none;">
+        <button id="save-exit">Save and Release Profile</button>
+        <button id="save-continue">Save and Continue</button>
+    </div>
+
     <script src="estimations.js"></script>
     <script src="notes.js"></script>
     <script src="relationships.js"></script>
-
-    <script>
-
-        // Define the getQueryParam function
-function getQueryParam(name) {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get(name);
-}
-
-async function toggleSidebarVisibility() {
-    const clientId = getQueryParam('id');
-    try {
-        // Fetch client data via REST API
-        const response = await fetch(`/get-client/${clientId}`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client data: ${response.statusText}`);
-        }
-        const client = await response.json();
-        console.log('Client data:', client); // Debugging
-        console.log('screeningInProgress:', client?.screeningInProgress); // Debugging
-
-        if (client && client.screeningInProgress) {
-            document.getElementById('leftSidebarContainer').style.display = 'block';
-            // Show all sub-containers
-            const snapContainer = document.getElementById('snap-household-container');
-            const liheapContainer = document.getElementById('liheap-household-container');
-            const householdContainer = document.getElementById('household-members-container');
-            if (snapContainer) snapContainer.style.display = '';
-            if (liheapContainer) liheapContainer.style.display = '';
-            if (householdContainer) householdContainer.style.display = '';
-            console.log('Sidebar is now visible'); // Debugging
-        } else {
-            // Still show the sidebar container so the stop-screening / reopen button is visible
-            document.getElementById('leftSidebarContainer').style.display = 'block';
-            // Hide the individual benefit containers
-            const snapContainer = document.getElementById('snap-household-container');
-            const liheapContainer = document.getElementById('liheap-household-container');
-            const householdContainer = document.getElementById('household-members-container');
-            if (snapContainer) snapContainer.style.display = 'none';
-            if (liheapContainer) liheapContainer.style.display = 'none';
-            if (householdContainer) householdContainer.style.display = 'none';
-            console.log('Sidebar visible with only stop-screening container'); // Debugging
-        }
-    } catch (error) {
-        console.error('Error toggling sidebar visibility:', error);
-    }
-}
-
-async function setCheckedOutStatus(clientId, status) {
-    try {
-        const response = await fetch('/update-client', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-                clientId, 
-                clientData: { 
-                    checkedOut: [
-                        {
-                            status: status, // Set status to false
-                            timestamp: status ? new Date().toISOString() : null, // Clear timestamp if status is false
-                            user: status ? sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User' : null // Clear user if status is false
-                        }
-                    ] 
-                } 
-            }),
-        });
-
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-            console.error(`Failed to update checkedOut status to ${status}:`, result.message);
-        } else {
-            console.log(`Successfully updated checkedOut status to ${status}.`);
-        }
-    } catch (error) {
-        console.error(`Error updating checkedOut status to ${status}:`, error);
-    }
-}
-
-
-    // Call the function after the page loads
-    window.onload = function () {
-        toggleSidebarVisibility();
-    };
-
-    </script>
+</body>
+</html>

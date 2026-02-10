@@ -4,127 +4,42 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Client Income</title>
-    <!-- Stylesheets -->
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="householdedit.css">
     <link rel="stylesheet" href="incomeedit.css">
     <link rel="stylesheet" href="notes.css">
     <script src="userInfo.js"></script>
-
-    <style>
-
-details > summary {
-    cursor: pointer; /* Change cursor to hand */
-}
-
-    /* Default button styling */
-.option-button {
-    padding: 10px 20px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background-color: #f9f9f9;
-    color: #333;
-    cursor: pointer;
-    margin-right: 10px;
-    transition: background-color 0.3s, color 0.3s;
-}
-
-/* Hover effect */
-.option-button:hover {
-    background-color: #e0e0e0;
-}
-
-/* Selected state */
-.option-button.selected {
-    background-color: #007bff;
-    color: white;
-    border: 1px solid #007bff;
-}
-
-.narrow-body {
-        margin-left: 385px; /* Space for the left sidebar */
-        margin-right: 10px; /* Optional: Space on the right */
-        max-width: calc(100% - 395px); /* Ensure the body doesn't exceed the available space */
-        margin: 0 auto; /* Center the content horizontally */
-        margin-top: 60px; /* Adjust this value to match the height of the navigation container */
-
-    }
-
-</style>
 </head>
 <body class="narrow-body">
-    <!-- Page Title -->
     <h1>Income</h1>
 
-    <style>
-
-        .selection-box {
-    margin-bottom: 20px; /* Add spacing between selection boxes */
-}
-
-.selection-box label {
-    display: block; /* Ensure the label is on its own line */
-    font-weight: bold; /* Make the label text bold */
-    margin-bottom: 10px; /* Add spacing below the label */
-}
-
-.selection-box div {
-    display: inline-block; /* Make options appear side by side */
-    padding: 10px 20px; /* Add padding for a button-like appearance */
-    margin-right: 10px; /* Add spacing between options */
-    border: 1px solid #ccc; /* Add a border around options */
-    border-radius: 5px; /* Round the corners */
-    background-color: #f9f9f9; /* Light background color */
-    cursor: pointer; /* Change cursor to pointer on hover */
-    text-align: center; /* Center the text */
-}
-
-.selection-box div.selected {
-    background-color: #007bff; /* Highlight selected option */
-    color: #fff; /* Change text color for contrast */
-    border-color: #007bff; /* Match border color with background */
-}
-    </style>
-
-<div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
-    <div id="snap-household-container" class="left-sidebar"></div>
-    <div id="liheap-household-container" class="left-sidebar"></div>
-
-    <div id="household-members-container" class="left-sidebar"></div>
-</div>
-
-<div id="notes-container">
-    <textarea id="note-input" placeholder="Add Note..."></textarea>
-    <button id="save-note">Save Note</button>
-    <div id="notes-list">
-        </div>
-        </div>
-
-    <div class="selection-box">
-        <label id="farmworker-label"><strong>Is everyone in the household a migrant or seasonal farmworker?</strong></label>
-        <div id="farmworker-yes" data-value="yes">Yes</div>
-        <div id="farmworker-no" data-value="no">No</div>
+    <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
+        <div id="snap-household-container" class="left-sidebar"></div>
+        <div id="liheap-household-container" class="left-sidebar"></div>
+        <div id="household-members-container" class="left-sidebar"></div>
     </div>
 
-    <!-- Household Members Section -->
+    <div id="notes-container">
+        <textarea id="note-input" placeholder="Add Note..."></textarea>
+        <button id="save-note">Save Note</button>
+        <div id="notes-list"></div>
+    </div>
+
+    <div class="selection-box" id="farmworker-question" style="display: none;">
+        <label id="farmworker-label"><strong>Is everyone in the household a migrant or seasonal farmworker?</strong></label>
+        <div id="farmworker-yes" class="option-button" data-value="yes">Yes</div>
+        <div id="farmworker-no" class="option-button" data-value="no">No</div>
+    </div>
+
     <div id="household-member-container"></div>
 
     <!-- Modal for Adding/Editing Income -->
     <div id="income-modal" class="modal hidden">
         <div class="modal-content">
-           
-            <!-- Close Button -->
             <button id="close-modal" class="close">&times;</button>
-
-            <!-- Modal Title -->
-
-            <!-- Income Form -->
             <form id="income-form">
-
                 <h2 id="modal-title"></h2>
 
-
-                <!-- Kind of Income -->
                 <label for="income-kind">Kind of Income:</label>
                 <select id="income-kind" required>
                     <option value="" disabled selected>Select Kind of Income</option>
@@ -156,17 +71,16 @@ details > summary {
                     <option value="Inheritance">Inheritance</option>
                     <option value="Death Benefits">Death Benefits</option>
                     <option value="Life Insurance">Life Insurance</option>
-                    <option value="Disablity Insurance">Disability Insurance</option>
+                    <option value="Disability Insurance">Disability Insurance</option>
                     <option value="Inkind Income">Inkind Income</option>
                     <option value="Federal CSRS">Federal CSRS</option>
                     <option value="Property Sale">Property Sale</option>
                     <option value="Property Sale Loss">Property Sale Loss</option>
                     <option value="Gambling Winnings">Gambling Winnings</option>
-                    <option value-="Lottery Winnings">Lottery Winnings</option>
+                    <option value="Lottery Winnings">Lottery Winnings</option>
                     <option value="Other">Other Income</option>
                 </select>
 
-                <!-- Frequency -->
                 <label for="income-frequency">Frequency:</label>
                 <select id="income-frequency" required>
                     <option value="" disabled selected>Select Frequency</option>
@@ -179,436 +93,28 @@ details > summary {
                     <option value="Annually">Annually</option>
                 </select>
 
-                <!-- Start Date -->
                 <label for="income-start-date">Start Date:</label>
                 <input type="date" id="income-start-date" class="large-input" required>
 
-                <!-- End Date -->
                 <label for="income-end-date">End Date:</label>
                 <input type="date" id="income-end-date" class="large-input" required>
 
-                <!-- Amount -->
                 <label for="income-amount">Amount:</label>
                 <input type="text" id="income-amount" class="text-input" required>
 
-                <!-- Submit Button -->
                 <button type="button" id="add-income-button" class="submit-button">Add Income</button>
             </form>
         </div>
     </div>
 
-    <div class="button-container">
-        <button id="save-exit" onclick="goToIncomeView()">Save and Release Profile</button>
-        <button id="save-continue" onclick="GoToAssetsEdit()">Save and Continue</button> <br>
+    <div class="button-container page-actions">
+        <button id="save-exit">Save and Release Profile</button>
+        <button id="save-continue">Save and Continue</button>
     </div>
 
-    <style>
-        /* Add a border to the Save and Release Profile and Save and Continue buttons */
-        #save-exit, #save-continue {
-            border: 1px solid #000000;
-            border-radius: 5px; /* Rounded corners */
-            padding: 10px 20px; /* Add padding for better spacing */
-            background-color: #007bff; /* Light background color */
-            color: white; /* Blue text color */
-            transition: background-color 0.3s, color 0.3s; /* Smooth hover effect */
-        }
-    
-        /* Hover effect for the buttons */
-        #save-exit:hover, #save-continue:hover {
-            background-color: #0056b3; /* Blue background on hover */
-            color: white; /* White text on hover */
-        }
-
-        .income-list {
-    list-style-type: none; /* Remove default bullet points */
-    padding: 0; /* Remove default padding */
-    margin: 0; /* Remove default margin */
-}
-
-/* Style for each income list item */
-.income-list li {
-    display: grid; /* Use CSS Grid for layout */
-    grid-template-columns: repeat(6, 1fr); /* Define 6 equal columns */
-    grid-auto-rows: minmax(40px, auto); /* Ensure consistent row height */
-    gap: 10px; /* Add spacing between grid items */
-    padding: 10px; /* Add padding inside each item */
-    margin-bottom: 10px; /* Add spacing between list items */
-    border: 1px solid #ccc; /* Add a border around each item */
-    border-radius: 8px; /* Round the corners */
-    background-color: #f9f9f9; /* Light background color */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
-}
-
-/* Style for the income details */
-.income-list li p {
-    margin: 0; /* Remove default margin */
-    font-size: 0.9rem; /* Adjust font size */
-    line-height: 1.4; /* Adjust line height for readability */
-}
-
-/* Style for the income list item buttons */
-.income-list li .button-container {
-    display: flex; /* Use flexbox for layout */
-    justify-content: center; /* Center the buttons horizontally */
-    align-items: center; /* Center the buttons vertically */
-    gap: 10px; /* Add spacing between the buttons */
-    grid-column: span 6; /* Ensure the container spans the full width */
-}
-
-/* Style for individual buttons */
-.income-list li .button-container button {
-    padding: 8px 16px; /* Add padding for better appearance */
-    border: 1px solid #000000; /* Optional: Add a border */
-    color: white; /* Button text color */
-    cursor: pointer; /* Pointer cursor on hover */
-    transition: background-color 0.3s; /* Smooth hover effect */
-}
-
-/* Hover effect for buttons */
-.income-list li .button-container button:hover {
-    background-color: #0056b3; /* Darker blue on hover */
-}
-
-/* Style for the delete button */
-.income-list li .button-container .delete-income-button {
-    padding: 8px 16px;
-    border: 1px solid #000000;
-    background-color: red; /* Red background */
-    color: white;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-/* Hover effect for the delete button */
-.income-list li .button-container .delete-income-button:hover {
-    background-color: darkred; /* Darker red on hover */
-}
-    </style>
-
-    <script>
-
-        // Disable the Enter key for the income form
-incomeForm.addEventListener('keydown', function (event) {
-    if (event.key === 'Enter') {
-        event.preventDefault(); // Prevent the default action (form submission)
-    }
-});
-
-function getQueryParameter(name) {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get(name);
-}
-
-function GoToAssetsEdit() {
-    const clientId = getQueryParameter('id');
-    if (clientId) {
-        window.location.href = `assetsedit.html?id=${clientId}`;
-    } else {
-        console.error('Client ID not found in query parameters.');
-    }
-}
-
-async function goToIncomeView() {
-    const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
-    const confirmAction = confirm("Are you sure you want to save and release this profile?");
-    if (!confirmAction) {
-        return;
-    }
-
-    const noteContent = "Profile released.";
-    const timestamp = new Date().toLocaleString();
-    const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
-    const BACKEND_URL = window.location.origin || "http://localhost:3000";
-
-    if (!activeUser) {
-        console.error("No active user found in sessionStorage.");
-        return;
-    }
-
-    try {
-
-        await setCheckedOutStatus(clientId, false);
-
-        // Save income data (if applicable)
-        await saveIncomeData();
-
-        // Add a note about the action
-        const note = {
-            text: noteContent,
-            timestamp: timestamp,
-            username: activeUser
-        };
-
-        const addNoteResponse = await fetch(`${BACKEND_URL}/add-note-to-client`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clientId, note })
-        });
-
-        if (!addNoteResponse.ok) {
-            console.warn('Failed to add note to client.');
-        }
-
-    } catch (error) {
-        console.error("Error during goToIncomeView:", error);
-    } finally {
-        // Redirect to income view regardless of success or failure
-        window.location.href = `incomeview.html?id=${clientId}`;
-    }
-}
-
-    async function saveIncomeData() {
-        // Implement logic to save income data if needed
-        console.log("Saving income data...");
-    }
-
-    </script>
-
-    <script>
-document.addEventListener('DOMContentLoaded', async () => {
-    const farmworkerYes = document.getElementById('farmworker-yes');
-    const farmworkerNo = document.getElementById('farmworker-no');
-
-    // Get client ID from query parameters
-    const clientId = getQueryParameter('id');
-
-    async function highlightSavedSelection() {
-    const clientId = getQueryParameter('id'); // Ensure clientId is retrieved from query parameters
-    const BACKEND_URL = window.location.origin || "http://localhost:3000";
-
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
-    try {
-        // Fetch client data from the backend API
-        const response = await fetch(`${BACKEND_URL}/get-client/${clientId}`);
-        if (!response.ok) {
-            throw new Error('Failed to fetch client data.');
-        }
-
-        const clientData = await response.json();
-
-        // Check if the client data contains the isFarmworker field
-        if (clientData && typeof clientData.isFarmworker === 'boolean') {
-            if (clientData.isFarmworker) {
-                farmworkerYes.classList.add('selected');
-            } else {
-                farmworkerNo.classList.add('selected');
-            }
-        }
-    } catch (error) {
-        console.error('Error fetching client data:', error);
-    }
-}
-
-async function saveFarmworkerStatus(isFarmworker) {
-    const clientId = getQueryParameter('id'); // Ensure clientId is retrieved from query parameters
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
-    const BACKEND_URL = window.location.origin || "http://localhost:3000";
-
-    try {
-        // Make a PUT request to the backend API to update the client
-        const response = await fetch(`${BACKEND_URL}/update-client`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                clientId,
-                clientData: { isFarmworker }
-            })
-        });
-
-        const result = await response.json();
-
-        if (response.ok && result.success) {
-            console.log(`Farmworker status saved successfully: ${isFarmworker}`);
-        } else {
-            console.error(`Failed to save farmworker status: ${result.message}`);
-        }
-    } catch (error) {
-        console.error('Error saving farmworker status:', error);
-    }
-}
-    // Event listeners for options
-    farmworkerYes.addEventListener('click', () => {
-        farmworkerYes.classList.add('selected');
-        farmworkerNo.classList.remove('selected');
-        saveFarmworkerStatus(true);
-    });
-
-    farmworkerNo.addEventListener('click', () => {
-        farmworkerNo.classList.add('selected');
-        farmworkerYes.classList.remove('selected');
-        saveFarmworkerStatus(false);
-    });
-
-    // Highlight the saved selection on page load
-    await highlightSavedSelection();
-});
-
-// Helper function to get query parameters
-function getQueryParameter(name) {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get(name);
-}
-
-// Define the getQueryParam function
-function getQueryParam(name) {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get(name);
-}
-
-// Define the getQueryParam function
-function getQueryParam(name) {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get(name);
-}
-
-async function toggleSidebarVisibility() {
-    const clientId = getQueryParam('id');
-    try {
-        // Fetch client data via REST API
-        const response = await fetch(`/get-client/${clientId}`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client data: ${response.statusText}`);
-        }
-        const client = await response.json();
-        console.log('Client data:', client); // Debugging
-        console.log('screeningInProgress:', client?.screeningInProgress); // Debugging
-
-        if (client && client.screeningInProgress) {
-            document.getElementById('leftSidebarContainer').style.display = 'block';
-            // Show all sub-containers
-            const snapContainer = document.getElementById('snap-household-container');
-            const liheapContainer = document.getElementById('liheap-household-container');
-            const householdContainer = document.getElementById('household-members-container');
-            if (snapContainer) snapContainer.style.display = '';
-            if (liheapContainer) liheapContainer.style.display = '';
-            if (householdContainer) householdContainer.style.display = '';
-            console.log('Sidebar is now visible'); // Debugging
-        } else {
-            // Still show the sidebar container so the stop-screening / reopen button is visible
-            document.getElementById('leftSidebarContainer').style.display = 'block';
-            // Hide the individual benefit containers
-            const snapContainer = document.getElementById('snap-household-container');
-            const liheapContainer = document.getElementById('liheap-household-container');
-            const householdContainer = document.getElementById('household-members-container');
-            if (snapContainer) snapContainer.style.display = 'none';
-            if (liheapContainer) liheapContainer.style.display = 'none';
-            if (householdContainer) householdContainer.style.display = 'none';
-            console.log('Sidebar visible with only stop-screening container'); // Debugging
-        }
-    } catch (error) {
-        console.error('Error toggling sidebar visibility:', error);
-    }
-}
-
-// Call the function after the page loads
-window.onload = function () {
-    toggleSidebarVisibility();
-};
-    </script>
-
-<script>
-    document.addEventListener('DOMContentLoaded', async () => {
-    const farmworkerQuestion = document.querySelector('.selection-box');
-    const clientId = getQueryParameter('id'); // Get client ID from query parameters
-    const BACKEND_URL = window.location.origin || "http://localhost:3000";
-
-    console.log('Client ID:', clientId); // Debugging
-
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
-    // Define the function to check and update farmworker question visibility
-    async function refreshFarmworkerVisibility() {
-        try {
-            const response = await fetch(`${BACKEND_URL}/get-client/${clientId}`);
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Failed to fetch client data: ${errorText}`);
-            }
-
-            const client = await response.json();
-            const householdMembers = client.householdMembers || [];
-
-            const hasMealsAndSnapScreening = householdMembers.some(
-                member => member.meals === 'yes' && member.SNAP?.screeningInProgress === true
-            );
-            console.log('Has Meals and SNAP Screening:', hasMealsAndSnapScreening);
-
-            if (hasMealsAndSnapScreening) {
-                farmworkerQuestion.style.display = 'block';
-            } else {
-                farmworkerQuestion.style.display = 'none';
-            }
-        } catch (error) {
-            console.error('Error refreshing farmworker visibility:', error);
-        }
-    }
-
-    // Expose globally so income.js and other scripts can call it after changes
-    window.refreshFarmworkerVisibility = refreshFarmworkerVisibility;
-
-    // Run on initial page load
-    await refreshFarmworkerVisibility();
-});
-
-async function setCheckedOutStatus(clientId, status) {
-    try {
-        const response = await fetch('/update-client', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-                clientId, 
-                clientData: { 
-                    checkedOut: [
-                        {
-                            status: status, // Set status to false
-                            timestamp: status ? new Date().toISOString() : null, // Clear timestamp if status is false
-                            user: status ? sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User' : null // Clear user if status is false
-                        }
-                    ] 
-                } 
-            }),
-        });
-
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-            console.error(`Failed to update checkedOut status to ${status}:`, result.message);
-        } else {
-            console.log(`Successfully updated checkedOut status to ${status}.`);
-        }
-    } catch (error) {
-        console.error(`Error updating checkedOut status to ${status}:`, error);
-    }
-}
-
-
-// Helper function to get query parameters
-function getQueryParameter(name) {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get(name);
-}
-    </script>
     <script src="estimations.js"></script>
     <script src="notes.js"></script>
     <script src="income.js"></script>
     <script src="editnavigation.js"></script>
-
 </body>
 </html>

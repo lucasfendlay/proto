@@ -8,167 +8,119 @@
     <link rel="stylesheet" href="householdedit.css">
     <link rel="stylesheet" href="notes.css">
     <script src="userInfo.js"></script>
-
-
     <style>
+        .hidden { visibility: hidden; }
 
-.hidden {
-    visibility: hidden;
-}
-        /* Highlight effect */
         .highlight {
-            background-color: #007bff; /* Blue background */
-            color: white; /* White text */
-            border-radius: 5px; /* Optional: Rounded corners */
-            padding: 5px; /* Optional: Add some padding */
+            background-color: #007bff;
+            color: white;
+            border-radius: 5px;
+            padding: 5px;
         }
-        </style>
-        <script>
-            // Add event listeners to toggle "highlight" class on heatingCrisis options
-            document.querySelectorAll('#heatingCrisis-yes, #heatingCrisis-no').forEach(option => {
-                option.addEventListener('click', function () {
-                    // Remove the "highlight" class from both options
-                    document.querySelectorAll('#heatingCrisis-yes, #heatingCrisis-no').forEach(el => el.classList.remove('highlight'));
-            
-                    // Add the "highlight" class to the clicked option
-                    this.classList.add('highlight');
-                });
-            });
-            </script>
-    <style>
 
-.readonly {
-        background-color: #f0f0f0; /* Light gray background */
-        color: #6c757d; /* Slightly muted text color */
-        cursor: not-allowed; /* Show "not allowed" cursor */
-    }
+        .readonly {
+            background-color: #f0f0f0;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
 
-details > summary {
-    cursor: pointer; /* Change cursor to hand */
-}
+        .error { border: 2px solid red; }
 
-.button-container button {
-    border: 1px solid #000000; /* Add a blue border */
-    border-radius: 5px; /* Optional: Add rounded corners */
-    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; /* Smooth transition for hover effects */
-}
+        details > summary { cursor: pointer; }
 
-.button-container button:hover {
-    background-color: #0056b3; /* Darker blue background on hover */
-    color: white; /* Ensure text is visible */
-    border-color: #003f7f; /* Darker border color on hover */
-}
+        #household-size {
+            text-align: center;
+            text-align-last: center;
+        }
 
-.error {
-    border: 2px solid red;
-}
+        .household-member-info p {
+            text-align: left;
+            word-wrap: break-word;
+            white-space: normal;
+        }
 
-.household-member-info p {
-    text-align: left; /* Ensure text is left-aligned */
-    word-wrap: break-word; /* Allow long words to break and wrap */
-    white-space: normal; /* Ensure normal wrapping behavior */
-}
-body {
-    max-width: 1200px; /* Adjust the max-width as needed */
-    margin: 0 auto;
-    padding: 20px;
-    margin-top: 60px; /* Adjust this value to match the height of the navigation container */
+        body {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            margin-top: 60px;
+        }
 
-}
-        
-    </style>
-    <style>
         .button-container {
-                display: flex;
-                gap: 10px; /* Adds spacing between buttons */
-                flex-wrap: wrap; /* Ensures buttons wrap to the next line if needed */
-            }
-        
-            .button-container button {
-                flex: 1; /* Ensures buttons are evenly spaced */
-                padding: 10px 15px;
-            }
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
 
-            /* Modal content styling */
-.modal-content {
-    background-color: #ffffff;
-    border-radius: 10px;
-    width: 100%;
-    max-width: 500px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    position: relative;
-    text-align: center;
-}
+        .button-container button {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #000000;
+            border-radius: 5px;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
 
-.narrow-body {
-        margin-left: 385px; /* Space for the left sidebar */
-        margin-right: 10px; /* Optional: Space on the right */
-        max-width: calc(100% - 395px); /* Ensure the body doesn't exceed the available space */
-        margin: 0 auto; /* Center the content horizontally */
-        margin-top: 60px; /* Adjust this value to match the height of the navigation container */
-    }
-        
-            </style>
+        .button-container button:hover {
+            background-color: #0056b3;
+            color: white;
+            border-color: #003f7f;
+        }
+
+        .modal-content {
+            background-color: #ffffff;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            position: relative;
+            text-align: center;
+        }
+
+        .narrow-body {
+            margin-left: 385px;
+            margin-right: 10px;
+            max-width: calc(100% - 395px);
+            margin: 0 auto;
+            margin-top: 60px;
+        }
+    </style>
 </head>
 <body class="narrow-body hidden">
 
-    <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-    await loadSavedData(); // Load and display saved data
-    document.body.classList.remove('hidden'); // Show the body after processing
-});
-    </script>
-
     <h1>Household</h1>
 
-    <style>
-        #household-size {
-            text-align: center; /* Center the text */
-            text-align-last: center; /* Center the selected option in modern browsers */
-        }
-    </style>
+    <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
+        <div id="snap-household-container" class="left-sidebar"></div>
+        <div id="liheap-household-container" class="left-sidebar"></div>
+        <div id="household-members-container" class="left-sidebar"></div>
+    </div>
 
-<div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
-    <div id="snap-household-container" class="left-sidebar"></div>
-    <div id="liheap-household-container" class="left-sidebar"></div>
-    <div id="household-members-container" class="left-sidebar"></div>
-</div>
+    <div id="notes-container">
+        <textarea id="note-input" placeholder="Add Note..."></textarea>
+        <button id="save-note">Save Note</button>
+        <div id="notes-list"></div>
+    </div>
 
-<div id="notes-container">
-    <textarea id="note-input" placeholder="Add Note..."></textarea>
-    <button id="save-note">Save Note</button>
-    <div id="notes-list">
-        </div>
-        </div>
-    
+    <!-- Household Size -->
     <div class="selection-box">
         <label for="household-size">How many people reside in the household?</label>
         <select id="household-size">
             <option value="" disabled selected>Select household size</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-            <option value="6">6</option>
-            <option value="7">7</option>
-            <option value="8">8</option>
-            <option value="9">9</option>
-            <option value="10">10</option>
-            <option value="11">11</option>
-            <option value="12">12</option>
-            <option value="13">13</option>
-            <option value="14">14</option>
-            <option value="15">15</option>
+            <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+            <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+            <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+            <option value="10">10</option><option value="11">11</option><option value="12">12</option>
+            <option value="13">13</option><option value="14">14</option><option value="15">15</option>
         </select>
     </div>
 
+    <!-- Yes/No Household Questions -->
     <div class="selection-box">
         <label id="disability-label">Is anyone in the household currently receiving disability benefits?</label>
         <div id="disability-yes" data-value="yes">Yes</div>
         <div id="disability-no" data-value="no">No</div>
     </div>
-    
+
     <div class="selection-box">
         <label id="medicare-label">Is anyone in the household currently enrolled in Medicare (or will be within the next three months)?</label>
         <div id="medicare-yes" data-value="yes">Yes</div>
@@ -234,565 +186,427 @@ body {
         <div id="subsidizedHousing-yes" data-value="yes">Yes</div>
         <div id="subsidizedHousing-no" data-value="no">No</div>
     </div>
-    
+
     <div class="selection-box" id="heatingCost-container" style="display: none;">
         <label id="heatingCost-label">Is the cost of your heating included in the cost of rent?</label>
         <div id="heatingCost-yes" data-value="yes">Yes</div>
         <div id="heatingCost-no" data-value="no">No</div>
     </div>
 
+    <!-- Action Buttons -->
     <div class="button-container">
         <button id="add-household-member">Add Household Member</button>
-        <button id="save-exit" onclick="redirectToHouseholdView()">Save and Release Profile</button>
-        <button id="save-continue" onclick="goToRelationshipsEdit()">Save and Continue</button> <br>
+        <button id="save-exit">Save and Release Profile</button>
+        <button id="save-continue">Save and Continue</button>
     </div>
 
     <div id="householdMemberContainer" class="household-member-container"></div>
+    <div id="loading-indicator" style="display: none;">Loading...</div>
 
-<!-- Add this to your HTML -->
-<div id="loading-indicator" style="display: none;">Loading...</div>
+    <!-- Household Member Modal -->
+    <div id="householdMemberModal" class="modal">
+        <div class="modal-content">
+            <form id="householdMemberForm">
+                <h2 id="modal-header">Add Household Member</h2>
+                <input type="hidden" id="householdMemberId">
 
-<div id="householdMemberModal" class="modal">
-    <div class="modal-content">
-        <form id="householdMemberForm">
+                <label for="prefix">Prefix:</label>
+                <select id="prefix" name="prefix">
+                    <option value="" disabled selected>Select Prefix</option>
+                    <option value="">NONE</option>
+                    <option value="BR">BR</option>
+                    <option value="FTHR">FATHR</option>
+                    <option value="MTHR">MTHR</option>
+                    <option value="REB">REB</option>
+                    <option value="REV">REV</option>
+                    <option value="SR">SR</option>
+                </select><br><br>
 
-            <h2 id="modal-header">Add Household Member</h2>
+                <label for="firstName">First Name:</label>
+                <input type="text" id="firstName" name="firstName"><br><br>
 
-            <input type="hidden" id="householdMemberId">
-<!-- Prefix Dropdown -->
-<label for="prefix">Prefix:</label>
-<select id="prefix" name="prefix">
-    <option value="" disabled selected>Select Prefix</option>
-    <option value="">NONE</option>
-    <option value="BR">BR</option>
-    <option value="FTHR">FATHR</option>
-    <option value="MTHR">MTHR</option>
-    <option value="REB">REB</option>
-    <option value="REV">REV</option>
-    <option value="SR">SR</option>
-</select><br><br>
+                <label for="middleInitial">Middle Initial:</label>
+                <input type="text" id="middleInitial" name="middleInitial"><br><br>
 
-<!-- First Name -->
-<label for="firstName">First Name:</label>
-<input type="text" id="firstName" name="firstName"><br><br>
+                <label for="lastName">Last Name:</label>
+                <input type="text" id="lastName" name="lastName"><br><br>
 
-<!-- Middle Initial -->
-<label for="middleInitial">Middle Initial:</label>
-<input type="text" id="middleInitial" name="middleInitial"><br><br>
+                <label for="suffix">Suffix:</label>
+                <select id="suffix" name="suffix">
+                    <option value="" disabled selected>Select Suffix</option>
+                    <option value="">NONE</option>
+                    <option value="JR">JR</option><option value="SR">SR</option>
+                    <option value="I">I</option><option value="II">II</option>
+                    <option value="III">III</option><option value="IV">IV</option>
+                    <option value="V">V</option><option value="VI">VI</option>
+                    <option value="VII">VII</option>
+                </select><br><br>
 
-<!-- Last Name -->
-<label for="lastName">Last Name:</label>
-<input type="text" id="lastName" name="lastName"><br><br>
+                <div id="deceasedQuestion" class="selection-box">
+                    <label>Is this person deceased?</label>
+                    <div id="modal-deceased-yes" data-value="yes">Yes</div>
+                    <div id="modal-deceased-no" data-value="no">No</div>
+                </div>
 
-<!-- Suffix Dropdown -->
-<label for="suffix">Suffix:</label>
-<select id="suffix" name="suffix">
-    <option value="" disabled selected>Select Suffix</option>
-    <option value="">NONE</option>
-    <option value="JR">JR</option>
-    <option value="SR">SR</option>
-    <option value="I">I</option>
-    <option value="II">II</option>
-    <option value="III">III</option>
-    <option value="IV">IV</option>
-    <option value="V">V</option>
-    <option value="VI">VI</option>
-    <option value="VII">VII</option>
-</select><br><br>
+                <div class="selection-box">
+                    <label for="dob">Date of Birth:</label>
+                    <input type="date" id="dob" name="dob" class="selection-box-input"><br><br>
+                </div>
 
-<div id="deceasedQuestion" class="selection-box">
-    <label>Is this person deceased?</label>
-    <div id="modal-deceased-yes" data-value="yes">Yes</div>
-    <div id="modal-deceased-no" data-value="no">No</div>
-</div>
+                <div id="dateOfDeathContainer" style="display: none;">
+                    <label for="dateOfDeath">Date of Death:</label>
+                    <input type="date" id="dateOfDeath" name="dateOfDeath" class="selection-box-input"><br><br>
+                </div>
 
-<script>
-
-// Toggle visibility of fields based on deceased selection
-function updateVisibilityForDeceased(isDeceased) {
-    const toToggleIds = [
-        'disabilityQuestion',
-        'medicareQuestion',
-        'medicaidQuestion',
-        'studentQuestion',
-        'mealsQuestion',
-        'citizenQuestion',
-        'nonCitizenStatusContainer',
-        'studentStatusContainer',
-    ];
-
-    // Hide/show marital status wrappers
-    const maritalStatusWrapper = document.querySelector('label[for="maritalStatus"]')?.closest('.selection-box');
-    const previousMaritalStatusWrapper = document.getElementById('previousMaritalStatus')?.closest('.selection-box')
-        || document.querySelector('label[for="previousMaritalStatus"]')?.closest('.selection-box');
-
-    if (maritalStatusWrapper) maritalStatusWrapper.style.display = isDeceased ? 'none' : '';
-    if (previousMaritalStatusWrapper) previousMaritalStatusWrapper.style.display = isDeceased ? 'none' : '';
-
-    // Toggle dependent containers
-    toToggleIds.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = isDeceased ? 'none' : '';
-    });
-
-    // Show/hide Date of Death
-    const dodContainer = document.getElementById('dateOfDeathContainer');
-    const dodInput = document.getElementById('dateOfDeath');
-    if (dodContainer) {
-        dodContainer.style.display = isDeceased ? 'block' : 'none';
-    }
-    if (!isDeceased && dodInput) {
-        dodInput.value = '';
-    }
-}
-
-// Attach listeners to deceased yes/no
-document.getElementById('modal-deceased-yes')?.addEventListener('click', () => {
-    // highlight selection
-    document.getElementById('modal-deceased-no')?.classList.remove('selected');
-    document.getElementById('modal-deceased-yes')?.classList.add('selected');
-
-    updateVisibilityForDeceased(true);
-});
-
-document.getElementById('modal-deceased-no')?.addEventListener('click', () => {
-    // highlight selection
-    document.getElementById('modal-deceased-yes')?.classList.remove('selected');
-    document.getElementById('modal-deceased-no')?.classList.add('selected');
-
-    updateVisibilityForDeceased(false);
-});
-</script>
-
-<div class="selection-box">
-    <label for="dob">Date of Birth:</label>
-    <input type="date" id="dob" name="dob" class="selection-box-input"><br><br>
-</div>
-
-<div id="dateOfDeathContainer" style="display: none;">
-    <label for="dateOfDeath">Date of Death:</label>
-    <input type="date" id="dateOfDeath" name="dateOfDeath" class="selection-box-input"><br><br>
-</div>
-
-
-            <script>
-                // Initialize Flatpickr for the Start Date field
-                flatpickr("#dob", {
-                    dateFormat: "Y-m-d", // Format: 2026-01-01
-                    altInput: true,      // Show a user-friendly date format
-                    altFormat: "F j, Y", // Format: January 1, 2026
-                });
-            </script>
-
-            <div class="selection-box">
-                <label for="legalSex">Legal Sex:</label>
-                <select id="legalSex" name="legalSex" class="selection-box-input">
-                    <option value="" disabled selected>Select Legal Sex</option>
-                    <option value="MALE">MALE</option>
-                    <option value="FEMALE">FEMALE</option>
+                <div class="selection-box">
+                    <label for="legalSex">Legal Sex:</label>
+                    <select id="legalSex" name="legalSex" class="selection-box-input">
+                        <option value="" disabled selected>Select Legal Sex</option>
+                        <option value="MALE">MALE</option>
+                        <option value="FEMALE">FEMALE</option>
                     </select><br><br>
-            </div>
+                </div>
 
-            <div class="selection-box">
-                <label for="maritalStatus">Current Marital Status:</label>
-                <select id="maritalStatus" name="maritalStatus" class="selection-box-input">
-                    <option value="" disabled selected>Select Marital Status</option>
-                    <option value="Single">Single</option>
-                    <option value="Married (Living Together)">Married (Living Together)</option>
-                    <option value="Married (Living Separately)">Married (Living Separately)</option>
-                    <option value="Divorced">Divorced</option>
-                    <option value="Widowed">Widowed</option>
-                </select><br><br>
-            </div>
-            <div class="selection-box">
-                <label for="previousMaritalStatus">Previous Year Marital Status:</label>
-                <select id="previousMaritalStatus" name="previousMaritalStatus" class="selection-box-input">
-                    <option value="" disabled selected>Select Previous Year Marital Status</option>
-                    <option value="Single">Single</option>
-                    <option value="Married (Living Together)">Married (Living Together)</option>
-                    <option value="Married (Living Separately)">Married (Living Separately)</option>
-                    <option value="Divorced">Divorced</option>
-                    <option value="Widowed">Widowed</option>
-                </select><br><br>
-            </div>
-            <label for="socialSecurityNumber">Social Security Number:</label>
-            <input type="text" 
-                id="socialSecurityNumber" 
-                name="socialSecurityNumber" 
-                placeholder="xxx-xx-xxxx" 
-                maxlength="11" 
-                oninput="formatSSN(this)" 
-                readonly
-                class="readonly"
-            >
-            <button type="button" id="nextSSNButton" onclick="showConfirmSSN()" style="display: none;">Next</button><br><br>
-            
-            <div id="confirmSSNContainer" style="display: none;">
-                <label for="confirmSocialSecurityNumber">Confirm Social Security Number:</label>
-                <input 
-                    type="text" 
-                    id="confirmSocialSecurityNumber" 
-                    name="confirmSocialSecurityNumber" 
-                    placeholder="xxx-xx-xxxx" 
-                    maxlength="11" 
-                    oninput="formatSSN(this)" 
-                    readonly
-                    class="readonly"
-                >
-            </div>
-            <div id="disabilityQuestion" class="selection-box">
-                <label>Is this person receiving disability benefits?</label>
-                <div id="modal-disability-yes" data-value="yes">Yes</div>
-                <div id="modal-disability-no" data-value="no">No</div>
-            </div>
-            <div id="medicareQuestion" class="selection-box">
-                <label>Is this person enrolled in Medicare (or will they be within the next three months)?</label>
-                <div id="modal-medicare-yes" data-value="yes">Yes</div>
-                <div id="modal-medicare-no" data-value="no">No</div>
-            </div>
-            <div id="medicaidQuestion" class="selection-box">
-                <label>Is this person enrolled in Medicaid?</label>
-                <div id="modal-medicaid-yes" data-value="yes">Yes</div>
-                <div id="modal-medicaid-no" data-value="no">No</div>
-            </div>
-            <div id="citizenQuestion" class="selection-box">
-                <label>Is this person a U.S. citizen?</label>
-                <div id="modal-citizen-yes" data-value="yes">Yes</div>
-                <div id="modal-citizen-no" data-value="no">No</div>
-            </div>
-            <div id="nonCitizenStatusContainer" style="display: none; margin-top: 10px;">
-                <label for="nonCitizenStatus">Select Non-Citizenship Status:</label>
-                <select id="nonCitizenStatus">
-                    <option value="" disabled selected>Select status</option>
-                    <option value="Lawful Permanent Resident (5+ Years)">Lawful Permanent Resident (5+ Years)</option>
-                    <option value="Refugee">Refugee</option>
-                    <option value="Asylee">Asylee</option>
-                    <option value="Person Whose Deportation is Withheld">Person Whose Deportation is Withheld</option>
-                    <option value="Conditional Entrant (5+ Years)">Conditional Entrant (5+ Years)</option>
-                    <option value="Victim of Severe Trafficking">Victim of Severe Trafficking</option>
-                    <option value="Cuban or Haitian Entrant">Cuban or Haitian Entrant</option>
-                    <option value="Iraqi or Afghan Special Immigrant">Iraqi or Afghan Special Immigrant</option>
-                    <option value="Child Under 18 in Qualified Non-Citizen Category">Child Under 18 in Qualified Non-Citizen Category</option>
-                    <option value="Hmong or Highland Laotian Tribal Members">Hmong or Highland Laotian Tribal Members</option>
-                    <option value="Citizen of Micronesia, Marshall Islands, or Palau">Citizen of Micronesia, Marshall Islands, or Palau</option>
-                    <option value="Amerasian">Amerasian</option>
-                    <option value="Person Paroled in the U.S. (1+ Years)">Person Paroled in the U.S. (1+ Years)</option>
-                    <option value="Non-Citizen Who is Blind or Disabled and Receiving Disability Benefits">Non-Citizen Who is Blind or Disabled and Receiving Disability Benefits</option>
-                    <option value="Non-Citizen Who Was 65+ and Lawfully Residing in the U.S. on August 22, 1996">Non-Citizen Who Was 65+ and Lawfully Residing in the U.S. on August 22, 1996</option>
-                    <option value="Ineligible Non-Citizen">Ineligible Non-Citizen</option>
-                </select>
-            </div>
-            <div id="studentQuestion" class="selection-box">
-                <label>Is this person a student?</label>
-                <div id="modal-student-yes" data-value="yes">Yes</div>
-                <div id="modal-student-no" data-value="no">No</div>
-            </div>
-            <div id="studentStatusContainer" style="display: none; margin-top: 10px;">
-                <label for="studentStatus">Select Student Status:</label>
-                <select id="studentStatus">
-                    <option value="" disabled selected>Select status</option>
-                    <option value="Enrolled Less than Half-Time">Enrolled Less than Half-Time</option>
-                    <option value="Under Age 18">Under Age 18</option>
-                    <option value="High School Student">High School Student</option>
-                    <option value="Age 50 or Older">Age 50 or Older</option>
-                    <option value="Physically or Mentally Unfit for Employment">Physically or Mentally Unfit for Employment</option>
-                    <option value="Employed at Least 20 Hours Per Week">Employed at Least 20 Hours Per Week</option>
-                    <option value="Participating in a Work Study Program">Participating in a Work Study
-                    <option value="Participating in a Job Training Program">Participating in a Job Training Program</option>
-                    <option value="Assigned to or Placed in College through a SNAP Employment or Training Program">Assigned to or Placed in College through a SNAP Employment or Training Program</option>
-                    <option value="Responsible for the Care of a Child Under 6">Responsible for the Care of a Child Under 6</option>
-                    <option value="Responsible for the Care of a Child Aged 6-12 and No Adequate Child Care Available">Responsible for the Care of a Child Aged 6-12 and No Adequate Child Care Available</option>
-                    <option value="Single Parent Enrolled Full-Time and Responsible for a Child Under 12">Single Parent Enrolled Full-Time and Responsible for a Child Under 12</option>
-                    <option value="TANF Recipient">TANF Recipient</option>
-                    <option value="Ineligible Student">Ineligible Student</option>
-                </select>
-            </div>
-            <div id="mealsQuestion" class="selection-box">
-                <label>Is this person included in the SNAP household?</label>
-                <div id="modal-meals-yes" data-value="yes">Yes</div>
-                <div id="modal-meals-no" data-value="no">No</div>
-            </div>
-            <button type="button" id="add-member" class="submit-button">Add Member</button>
+                <div class="selection-box">
+                    <label for="maritalStatus">Current Marital Status:</label>
+                    <select id="maritalStatus" name="maritalStatus" class="selection-box-input">
+                        <option value="" disabled selected>Select Marital Status</option>
+                        <option value="Single">Single</option>
+                        <option value="Married (Living Together)">Married (Living Together)</option>
+                        <option value="Married (Living Separately)">Married (Living Separately)</option>
+                        <option value="Divorced">Divorced</option>
+                        <option value="Widowed">Widowed</option>
+                    </select><br><br>
+                </div>
 
-        </form>
+                <div class="selection-box">
+                    <label for="previousMaritalStatus">Previous Year Marital Status:</label>
+                    <select id="previousMaritalStatus" name="previousMaritalStatus" class="selection-box-input">
+                        <option value="" disabled selected>Select Previous Year Marital Status</option>
+                        <option value="Single">Single</option>
+                        <option value="Married (Living Together)">Married (Living Together)</option>
+                        <option value="Married (Living Separately)">Married (Living Separately)</option>
+                        <option value="Divorced">Divorced</option>
+                        <option value="Widowed">Widowed</option>
+                    </select><br><br>
+                </div>
 
-    <script>
-// Utility function to get query parameters
-function getQueryParam(name) {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get(name);
-}
+                <label for="socialSecurityNumber">Social Security Number:</label>
+                <input type="text" id="socialSecurityNumber" name="socialSecurityNumber"
+                    placeholder="xxx-xx-xxxx" maxlength="11" readonly class="readonly">
+                <button type="button" id="nextSSNButton" style="display: none;">Next</button><br><br>
 
-function goToRelationshipsEdit() {
-    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
+                <div id="confirmSSNContainer" style="display: none;">
+                    <label for="confirmSocialSecurityNumber">Confirm Social Security Number:</label>
+                    <input type="text" id="confirmSocialSecurityNumber" name="confirmSocialSecurityNumber"
+                        placeholder="xxx-xx-xxxx" maxlength="11" readonly class="readonly">
+                </div>
 
-    fetch(`/get-client/${clientId}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Failed to fetch client data: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(clientData => {
-            if (!clientData) {
-                console.error('Client data not found.');
-                return;
-            }
+                <div id="disabilityQuestion" class="selection-box">
+                    <label>Is this person receiving disability benefits?</label>
+                    <div id="modal-disability-yes" data-value="yes">Yes</div>
+                    <div id="modal-disability-no" data-value="no">No</div>
+                </div>
 
-            // Debugging: Log the data
-            console.log('Client Data:', clientData);
-            console.log('Household Members Length:', clientData.householdMembers.length);
-            console.log('Household Size:', clientData.householdSize);
+                <div id="medicareQuestion" class="selection-box">
+                    <label>Is this person enrolled in Medicare (or will they be within the next three months)?</label>
+                    <div id="modal-medicare-yes" data-value="yes">Yes</div>
+                    <div id="modal-medicare-no" data-value="no">No</div>
+                </div>
 
-            // Ensure householdSize is a number
-            if (clientData.householdMembers.length !== Number(clientData.householdSize)) {
-                alert('The number of household members does not match the selected household size. Please review your entries before continuing.');
-                return; // Prevent navigation
-            }
+                <div id="medicaidQuestion" class="selection-box">
+                    <label>Is this person enrolled in Medicaid?</label>
+                    <div id="modal-medicaid-yes" data-value="yes">Yes</div>
+                    <div id="modal-medicaid-no" data-value="no">No</div>
+                </div>
 
-            // If validation passes, navigate to the relationships edit page
-            window.location.href = `relationshipsedit.html?id=${clientId}`;
-        })
-        .catch(error => {
-            console.error('Error validating household data:', error);
-        });
-}
+                <div id="citizenQuestion" class="selection-box">
+                    <label>Is this person a U.S. citizen?</label>
+                    <div id="modal-citizen-yes" data-value="yes">Yes</div>
+                    <div id="modal-citizen-no" data-value="no">No</div>
+                </div>
 
-// Add event listeners to toggle "selected" class on div-based options
-document.querySelectorAll('[id^="disability-"], [id^="medicare-"], [id^="medicaid-"], [id^="citizen-"], [id^="student-"], [id^="snap-"], [id^="liheap-"], [id^="residenceStatusCurrent-"], [id^="residenceStatus-"]').forEach(option => {
-    option.addEventListener('click', function () {
-        // Get the group prefix (e.g., "heatingCrisis")
-        const group = this.id.split('-')[0];
+                <div id="nonCitizenStatusContainer" style="display: none; margin-top: 10px;">
+                    <label for="nonCitizenStatus">Select Non-Citizenship Status:</label>
+                    <select id="nonCitizenStatus">
+                        <option value="" disabled selected>Select status</option>
+                        <option value="Lawful Permanent Resident (5+ Years)">Lawful Permanent Resident (5+ Years)</option>
+                        <option value="Refugee">Refugee</option>
+                        <option value="Asylee">Asylee</option>
+                        <option value="Person Whose Deportation is Withheld">Person Whose Deportation is Withheld</option>
+                        <option value="Conditional Entrant (5+ Years)">Conditional Entrant (5+ Years)</option>
+                        <option value="Victim of Severe Trafficking">Victim of Severe Trafficking</option>
+                        <option value="Cuban or Haitian Entrant">Cuban or Haitian Entrant</option>
+                        <option value="Iraqi or Afghan Special Immigrant">Iraqi or Afghan Special Immigrant</option>
+                        <option value="Child Under 18 in Qualified Non-Citizen Category">Child Under 18 in Qualified Non-Citizen Category</option>
+                        <option value="Hmong or Highland Laotian Tribal Members">Hmong or Highland Laotian Tribal Members</option>
+                        <option value="Citizen of Micronesia, Marshall Islands, or Palau">Citizen of Micronesia, Marshall Islands, or Palau</option>
+                        <option value="Amerasian">Amerasian</option>
+                        <option value="Person Paroled in the U.S. (1+ Years)">Person Paroled in the U.S. (1+ Years)</option>
+                        <option value="Non-Citizen Who is Blind or Disabled and Receiving Disability Benefits">Non-Citizen Who is Blind or Disabled and Receiving Disability Benefits</option>
+                        <option value="Non-Citizen Who Was 65+ and Lawfully Residing in the U.S. on August 22, 1996">Non-Citizen Who Was 65+ and Lawfully Residing in the U.S. on August 22, 1996</option>
+                        <option value="Ineligible Non-Citizen">Ineligible Non-Citizen</option>
+                    </select>
+                </div>
 
-        // Get all elements in the group
-        const groupElements = document.querySelectorAll(`[id^="${group}-"]`);
+                <div id="studentQuestion" class="selection-box">
+                    <label>Is this person a student?</label>
+                    <div id="modal-student-yes" data-value="yes">Yes</div>
+                    <div id="modal-student-no" data-value="no">No</div>
+                </div>
 
-        // Remove the "selected" class from all elements in the group
-        groupElements.forEach(el => el.classList.remove('selected'));
+                <div id="studentStatusContainer" style="display: none; margin-top: 10px;">
+                    <label for="studentStatus">Select Student Status:</label>
+                    <select id="studentStatus">
+                        <option value="" disabled selected>Select status</option>
+                        <option value="Enrolled Less than Half-Time">Enrolled Less than Half-Time</option>
+                        <option value="Under Age 18">Under Age 18</option>
+                        <option value="High School Student">High School Student</option>
+                        <option value="Age 50 or Older">Age 50 or Older</option>
+                        <option value="Physically or Mentally Unfit for Employment">Physically or Mentally Unfit for Employment</option>
+                        <option value="Employed at Least 20 Hours Per Week">Employed at Least 20 Hours Per Week</option>
+                        <option value="Participating in a Work Study Program">Participating in a Work Study Program</option>
+                        <option value="Participating in a Job Training Program">Participating in a Job Training Program</option>
+                        <option value="Assigned to or Placed in College through a SNAP Employment or Training Program">Assigned to or Placed in College through a SNAP Employment or Training Program</option>
+                        <option value="Responsible for the Care of a Child Under 6">Responsible for the Care of a Child Under 6</option>
+                        <option value="Responsible for the Care of a Child Aged 6-12 and No Adequate Child Care Available">Responsible for the Care of a Child Aged 6-12 and No Adequate Child Care Available</option>
+                        <option value="Single Parent Enrolled Full-Time and Responsible for a Child Under 12">Single Parent Enrolled Full-Time and Responsible for a Child Under 12</option>
+                        <option value="TANF Recipient">TANF Recipient</option>
+                        <option value="Ineligible Student">Ineligible Student</option>
+                    </select>
+                </div>
 
-        // Add the "selected" class to the clicked element
-        this.classList.add('selected');
-    });
-});
+                <div id="mealsQuestion" class="selection-box">
+                    <label>Is this person included in the SNAP household?</label>
+                    <div id="modal-meals-yes" data-value="yes">Yes</div>
+                    <div id="modal-meals-no" data-value="no">No</div>
+                </div>
 
-async function redirectToHouseholdView() {
-    const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
+                <button type="button" id="add-member" class="submit-button">Add Member</button>
+            </form>
+        </div>
+    </div>
 
-    const confirmAction = confirm("Are you sure you want to save and release this profile?");
-    if (!confirmAction) {
-        return;
-    }
-
-    const noteContent = "Profile released.";
-    const timestamp = new Date().toLocaleString();
-    const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
-
-    if (!activeUser) {
-        console.error("No active user found in sessionStorage.");
-        return;
-    }
-
-    try {
-
-        await setCheckedOutStatus(clientId, false);
-
-        // Add a note about the action
-        const note = {
-            text: noteContent,
-            timestamp: timestamp,
-            username: activeUser
-        };
-
-        const noteResponse = await fetch(`/add-note-to-client`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ clientId, note }),
-        });
-
-        if (!noteResponse.ok) {
-            throw new Error(`Failed to add note: ${noteResponse.statusText}`);
-        }
-
-        // Redirect to household view
-        window.location.href = `householdview.html?id=${clientId}`;
-    } catch (error) {
-        console.error("Error during redirectToHouseholdView:", error);
-    }
-}
-
-async function toggleSidebarVisibility() {
-    const clientId = getQueryParam('id');
-    try {
-        // Fetch client data via REST API
-        const response = await fetch(`/get-client/${clientId}`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client data: ${response.statusText}`);
-        }
-        const client = await response.json();
-        console.log('Client data:', client); // Debugging
-        console.log('screeningInProgress:', client?.screeningInProgress); // Debugging
-
-        if (client && client.screeningInProgress) {
-            document.getElementById('leftSidebarContainer').style.display = 'block';
-            // Show all sub-containers
-            const snapContainer = document.getElementById('snap-household-container');
-            const liheapContainer = document.getElementById('liheap-household-container');
-            const householdContainer = document.getElementById('household-members-container');
-            if (snapContainer) snapContainer.style.display = '';
-            if (liheapContainer) liheapContainer.style.display = '';
-            if (householdContainer) householdContainer.style.display = '';
-            console.log('Sidebar is now visible'); // Debugging
-        } else {
-            // Still show the sidebar container so the stop-screening / reopen button is visible
-            document.getElementById('leftSidebarContainer').style.display = 'block';
-            // Hide the individual benefit containers
-            const snapContainer = document.getElementById('snap-household-container');
-            const liheapContainer = document.getElementById('liheap-household-container');
-            const householdContainer = document.getElementById('household-members-container');
-            if (snapContainer) snapContainer.style.display = 'none';
-            if (liheapContainer) liheapContainer.style.display = 'none';
-            if (householdContainer) householdContainer.style.display = 'none';
-            console.log('Sidebar visible with only stop-screening container'); // Debugging
-        }
-    } catch (error) {
-        console.error('Error toggling sidebar visibility:', error);
-    }
-}
-
-function showConfirmSSN() {
-    const ssnLabel = document.querySelector('label[for="socialSecurityNumber"]');
-    const ssnInput = document.getElementById('socialSecurityNumber');
-    const nextButton = document.getElementById('nextSSNButton');
-    const confirmSSNContainer = document.getElementById('confirmSSNContainer');
-
-    // Check if the SSN field is filled
-    if (ssnInput.value.length === 11) {
-        // Hide the SSN label, input, and button
-        ssnLabel.style.display = 'none';
-        ssnInput.style.display = 'none';
-        nextButton.style.display = 'none';
-
-        // Show the Confirm SSN input
-        confirmSSNContainer.style.display = 'block';
-    } else {
-        alert('Please enter a valid Social Security Number before proceeding.');
-    }
-}
-
-function resetSSNFields() {
-    const ssnLabel = document.querySelector('label[for="socialSecurityNumber"]');
-    const ssnInput = document.getElementById('socialSecurityNumber');
-    const nextButton = document.getElementById('nextSSNButton');
-    const confirmSSNContainer = document.getElementById('confirmSSNContainer');
-    const confirmSSNInput = document.getElementById('confirmSocialSecurityNumber');
-
-    // Reset visibility
-    ssnLabel.style.display = 'block';
-    ssnInput.style.display = 'block';
-    nextButton.style.display = 'inline-block';
-    confirmSSNContainer.style.display = 'none';
-
-    // Clear input values
-    ssnInput.value = '';
-    confirmSSNInput.value = '';
-}
-
-function formatSSN(input) {
-    const nextButton = document.getElementById('nextSSNButton');
-
-    // Remove all non-digit characters
-    let value = input.value.replace(/\D/g, '');
-
-    // Format the value as ###-##-####
-    if (value.length > 3 && value.length <= 5) {
-        value = `${value.slice(0, 3)}-${value.slice(3)}`;
-    } else if (value.length > 5) {
-        value = `${value.slice(0, 3)}-${value.slice(3, 5)}-${value.slice(5, 9)}`;
-    }
-
-    // Set the formatted value back to the input
-    input.value = value;
-
-    // Only show the "Next" button for the initial SSN field
-    if (input.id === 'socialSecurityNumber') {
-        if (value.length === 11) {
-            nextButton.style.display = 'inline-block';
-        } else {
-            nextButton.style.display = 'none';
-        }
-    }
-}
-
-function validateConfirmSSN() {
-    const ssnInput = document.getElementById('socialSecurityNumber');
-    const confirmSSNInput = document.getElementById('confirmSocialSecurityNumber');
-
-    // Check if the confirm SSN field has 11 characters
-    if (confirmSSNInput.value.length === 11) {
-        if (confirmSSNInput.value !== ssnInput.value) {
-            alert('The Social Security Numbers entered do not match. Please try again.');
-            resetSSNFields(); // Reset both fields
-        }
-    }
-}
-
-// Add an event listener to the confirm SSN field
-document.getElementById('confirmSocialSecurityNumber').addEventListener('input', function () {
-    validateConfirmSSN();
-});
-
-async function setCheckedOutStatus(clientId, status) {
-    try {
-        const response = await fetch('/update-client', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-                clientId, 
-                clientData: { 
-                    checkedOut: [
-                        {
-                            status: status, // Set status to false
-                            timestamp: status ? new Date().toISOString() : null, // Clear timestamp if status is false
-                            user: status ? sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User' : null // Clear user if status is false
-                        }
-                    ] 
-                } 
-            }),
-        });
-
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-            console.error(`Failed to update checkedOut status to ${status}:`, result.message);
-        } else {
-            console.log(`Successfully updated checkedOut status to ${status}.`);
-        }
-    } catch (error) {
-        console.error(`Error updating checkedOut status to ${status}:`, error);
-    }
-}
-
-// Call the function after the page loads
-window.onload = function () {
-    toggleSidebarVisibility();
-};
-    </script>
-
-<script src="estimations.js"></script>
+    <script src="estimations.js"></script>
     <script src="householdedit.js"></script>
     <script src="editnavigation.js"></script>
     <script src="notes.js"></script>
 
+    <script>
+    // ── Initialization ──
+    document.addEventListener('DOMContentLoaded', async () => {
+        await loadSavedData();
+        document.body.classList.remove('hidden');
+    });
+
+    // ── Utility ──
+    function getQueryParam(name) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(name);
+    }
+
+    // Alias for legacy code that uses getQueryParameter
+    function getQueryParameter(name) {
+        return getQueryParam(name);
+    }
+
+    // ── Deceased toggle (modal) ──
+    function updateVisibilityForDeceased(isDeceased) {
+        const toggleIds = [
+            'disabilityQuestion', 'medicareQuestion', 'medicaidQuestion',
+            'studentQuestion', 'mealsQuestion', 'citizenQuestion',
+            'nonCitizenStatusContainer', 'studentStatusContainer'
+        ];
+
+        const maritalWrapper = document.querySelector('label[for="maritalStatus"]')?.closest('.selection-box');
+        const prevMaritalWrapper = document.getElementById('previousMaritalStatus')?.closest('.selection-box')
+            || document.querySelector('label[for="previousMaritalStatus"]')?.closest('.selection-box');
+
+        if (maritalWrapper) maritalWrapper.style.display = isDeceased ? 'none' : '';
+        if (prevMaritalWrapper) prevMaritalWrapper.style.display = isDeceased ? 'none' : '';
+
+        toggleIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = isDeceased ? 'none' : '';
+        });
+
+        const dodContainer = document.getElementById('dateOfDeathContainer');
+        const dodInput = document.getElementById('dateOfDeath');
+        if (dodContainer) dodContainer.style.display = isDeceased ? 'block' : 'none';
+        if (!isDeceased && dodInput) dodInput.value = '';
+    }
+
+    document.getElementById('modal-deceased-yes')?.addEventListener('click', () => {
+        document.getElementById('modal-deceased-no')?.classList.remove('selected');
+        document.getElementById('modal-deceased-yes')?.classList.add('selected');
+        updateVisibilityForDeceased(true);
+    });
+
+    document.getElementById('modal-deceased-no')?.addEventListener('click', () => {
+        document.getElementById('modal-deceased-yes')?.classList.remove('selected');
+        document.getElementById('modal-deceased-no')?.classList.add('selected');
+        updateVisibilityForDeceased(false);
+    });
+
+    // ── Generic selection highlight for main page questions ──
+    document.querySelectorAll(
+        '[id^="disability-"], [id^="medicare-"], [id^="medicaid-"], [id^="citizen-"], ' +
+        '[id^="student-"], [id^="snap-"], [id^="liheap-"], ' +
+        '[id^="residenceStatusCurrent-"], [id^="residenceStatus-"]'
+    ).forEach(option => {
+        option.addEventListener('click', function () {
+            const group = this.id.split('-')[0];
+            document.querySelectorAll(`[id^="${group}-"]`).forEach(el => el.classList.remove('selected'));
+            this.classList.add('selected');
+        });
+    });
+
+    // ── SSN handling ──
+    function formatSSN(input) {
+        const nextButton = document.getElementById('nextSSNButton');
+        let value = input.value.replace(/\D/g, '');
+
+        if (value.length > 3 && value.length <= 5) {
+            value = `${value.slice(0, 3)}-${value.slice(3)}`;
+        } else if (value.length > 5) {
+            value = `${value.slice(0, 3)}-${value.slice(3, 5)}-${value.slice(5, 9)}`;
+        }
+
+        input.value = value;
+
+        if (input.id === 'socialSecurityNumber') {
+            nextButton.style.display = value.length === 11 ? 'inline-block' : 'none';
+        }
+    }
+
+    function showConfirmSSN() {
+        const ssnInput = document.getElementById('socialSecurityNumber');
+        if (ssnInput.value.length !== 11) {
+            alert('Please enter a valid Social Security Number before proceeding.');
+            return;
+        }
+        document.querySelector('label[for="socialSecurityNumber"]').style.display = 'none';
+        ssnInput.style.display = 'none';
+        document.getElementById('nextSSNButton').style.display = 'none';
+        document.getElementById('confirmSSNContainer').style.display = 'block';
+    }
+
+    function resetSSNFields() {
+        document.querySelector('label[for="socialSecurityNumber"]').style.display = 'block';
+        const ssnInput = document.getElementById('socialSecurityNumber');
+        ssnInput.style.display = 'block';
+        ssnInput.value = '';
+        document.getElementById('nextSSNButton').style.display = 'inline-block';
+        document.getElementById('confirmSSNContainer').style.display = 'none';
+        document.getElementById('confirmSocialSecurityNumber').value = '';
+    }
+
+    // Wire up SSN oninput handlers
+    document.getElementById('socialSecurityNumber').addEventListener('input', function () { formatSSN(this); });
+    document.getElementById('confirmSocialSecurityNumber').addEventListener('input', function () {
+        formatSSN(this);
+        if (this.value.length === 11 && this.value !== document.getElementById('socialSecurityNumber').value) {
+            alert('The Social Security Numbers entered do not match. Please try again.');
+            resetSSNFields();
+        }
+    });
+    document.getElementById('nextSSNButton').addEventListener('click', showConfirmSSN);
+
+    // ── Navigation ──
+    function goToRelationshipsEdit() {
+        const clientId = getQueryParam('id');
+        if (!clientId) return;
+
+        fetch(`/get-client/${clientId}`)
+            .then(r => r.ok ? r.json() : Promise.reject(r.statusText))
+            .then(data => {
+                if (data.householdMembers.length !== Number(data.householdSize)) {
+                    alert('The number of household members does not match the selected household size. Please review your entries before continuing.');
+                    return;
+                }
+                window.location.href = `relationshipsedit.html?id=${clientId}`;
+            })
+            .catch(err => console.error('Error validating household data:', err));
+    }
+
+    async function redirectToHouseholdView() {
+        const clientId = getQueryParam('id');
+        if (!clientId) return;
+        if (!confirm("Are you sure you want to save and release this profile?")) return;
+
+        const activeUser = sessionStorage.getItem('loggedInUser');
+        if (!activeUser) { console.error("No active user found."); return; }
+
+        try {
+            await setCheckedOutStatus(clientId, false);
+
+            await fetch('/add-note-to-client', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId,
+                    note: { text: "Profile released.", timestamp: new Date().toLocaleString(), username: activeUser }
+                }),
+            });
+
+            window.location.href = `householdview.html?id=${clientId}`;
+        } catch (error) {
+            console.error("Error during redirectToHouseholdView:", error);
+        }
+    }
+
+    // Wire navigation buttons (replaces inline onclick)
+    document.getElementById('save-exit').addEventListener('click', redirectToHouseholdView);
+    document.getElementById('save-continue').addEventListener('click', goToRelationshipsEdit);
+
+    // ── Checked-out status ──
+    async function setCheckedOutStatus(clientId, status) {
+        try {
+            const response = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId,
+                    clientData: {
+                        checkedOut: [{
+                            status,
+                            timestamp: status ? new Date().toISOString() : null,
+                            user: status ? (sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User') : null
+                        }]
+                    }
+                }),
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                console.error(`Failed to update checkedOut to ${status}:`, result.message);
+            }
+        } catch (error) {
+            console.error(`Error updating checkedOut to ${status}:`, error);
+        }
+    }
+
+    // ── Sidebar visibility ──
+    async function toggleSidebarVisibility() {
+        const clientId = getQueryParam('id');
+        try {
+            const response = await fetch(`/get-client/${clientId}`);
+            if (!response.ok) throw new Error(response.statusText);
+            const client = await response.json();
+
+            document.getElementById('leftSidebarContainer').style.display = 'block';
+
+            const containers = ['snap-household-container', 'liheap-household-container', 'household-members-container'];
+            const show = client?.screeningInProgress === true;
+            containers.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = show ? '' : 'none';
+            });
+        } catch (error) {
+            console.error('Error toggling sidebar visibility:', error);
+        }
+    }
+
+    window.addEventListener('load', toggleSidebarVisibility);
+    </script>
 </body>
 </html>

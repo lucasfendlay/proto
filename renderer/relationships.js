@@ -1,564 +1,559 @@
-document.addEventListener('DOMContentLoaded', async function () {
-    const clientId = getQueryParameter('id'); // Get the client ID from the query parameter
+// ══════════════════════════════════════════════════════════════
+// UTILITIES
+// ══════════════════════════════════════════════════════════════
 
-    // Define reciprocal relationships
-    const reciprocalRelationshipMap = {
-        spouse: 'spouse',
-        parent: 'child',
-        child: 'parent',
-        sibling: 'sibling',
-        grandparent: 'grandchild',
-        grandchild: 'grandparent',
-        'aunt/uncle': 'niece/nephew',
-        'niece/nephew': 'aunt/uncle',
-        cousin: 'cousin',
-        unrelated: 'unrelated',
-        'adopted child': 'adoptive parent',
-        'adoptive parent': 'adopted child',
-        'foster child': 'foster parent',
-        'foster parent': 'foster child',
-        'step-child': 'step-parent',
-        'step-parent': 'step-child',
-        guardian: 'ward',
-        ward: 'guardian',
-        'step-sibling': 'step-sibling',
-        'half-sibling': 'half-sibling',
-        'other': 'other'
-    };
+function getQueryParam(param) {
+    return new URLSearchParams(window.location.search).get(param);
+}
 
-    async function loadHouseholdMembers() {
-        const clientId = getQueryParameter('id'); // Retrieve the client ID from the URL
-        if (!clientId) {
-            console.error('Client ID not found in query parameters.');
-            return [];
-        }
-    
-        try {
-            // Fetch client data from the backend
-            const response = await fetch(`/get-client/${clientId}`);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch client data: ${response.statusText}`);
-            }
-    
-            const client = await response.json();
-    
-            if (!client || !client.householdMembers) {
-                console.error('No household members found for this client.');
-                return [];
-            }
-    
-            return client.householdMembers; // Return the household members array
-        } catch (error) {
-            console.error('Error loading household members:', error);
-            return [];
-        }
-    }
+function parseAge(ageString) {
+    if (!ageString) return 0;
+    const yearsMatch = ageString.match(/(\d+)\s*Years/i);
+    return yearsMatch ? parseInt(yearsMatch[1], 10) : 0;
+}
 
-    async function saveRelationship(memberId, relatedMemberId, relationship) {
-        const clientId = getQueryParameter('id'); // Retrieve the client ID from the URL
-        if (!clientId) {
-            console.error('Client ID not found in query parameters.');
-            return;
-        }
-    
-        try {
-            // Save the relationship in the household member's relationships array
-            const relationshipResponse = await fetch(`/update-relationship`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    clientId,
-                    memberId,
-                    relatedMemberId,
-                    relationship,
-                }),
-            });
-    
-            if (!relationshipResponse.ok) {
-                throw new Error(`Failed to save relationship: ${relationshipResponse.statusText}`);
-            }
-    
-            const members = await loadHouseholdMembers();
-    
-            const member = members.find((m) => m.householdMemberId === memberId);
-            const relatedMember = members.find((m) => m.householdMemberId === relatedMemberId);
-    
-            if (
-                member &&
-                member.meals === 'yes' &&
-                relatedMember &&
-                relatedMember.nonCitizenStatus !== 'Ineligible Non-Citizen' &&
-                relatedMember.studentStatus !== 'Ineligible Student'
-            ) {
-                const memberAge = parseAge(member.age);
-                const relatedMemberAge = parseAge(relatedMember.age);
-    
-                // Check if the relationship is "spouse" and update meals property
-                if (relationship === 'spouse') {
-                    relatedMember.meals = 'yes';
-    
-                    // Save the updated meals property for the spouse
-                    await fetch(`/update-household-member`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            clientId,
-                            memberId: relatedMemberId,
-                            updatedData: { meals: 'yes' },
-                        }),
-                    });
-    
-                    console.log(`Updated meals for spouse: ${relatedMemberId}`);
-                }
-    
-                // Check for parent/child relationship and age condition
-                if ((relationship === 'parent' || relationship === 'child') && relatedMemberAge < 22) {
-                    relatedMember.meals = 'yes';
-    
-                    // Save the updated meals property
-                    await fetch(`/update-household-member`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            clientId,
-                            memberId: relatedMemberId,
-                            updatedData: { meals: 'yes' },
-                        }),
-                    });
-    
-                    console.log(`Updated meals for parent/child: ${relatedMemberId}`);
-                }
+// ══════════════════════════════════════════════════════════════
+// API HELPERS
+// ══════════════════════════════════════════════════════════════
 
-                if ((relationship === 'step-parent' || relationship === 'step-child') && relatedMemberAge < 22) {
-                    relatedMember.meals = 'yes';
-    
-                    // Save the updated meals property
-                    await fetch(`/update-household-member`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            clientId,
-                            memberId: relatedMemberId,
-                            updatedData: { meals: 'yes' },
-                        }),
-                    });
-    
-                    console.log(`Updated meals for step-parent/step-child: ${relatedMemberId}`);
-                }
+let cachedClientData = null;
 
-                if ((relationship === 'adoptive parent' || relationship === 'adopted child') && relatedMemberAge < 22) {
-                    relatedMember.meals = 'yes';
-
-                    // Save the updated meals property
-                    await fetch(`/update-household-member`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            clientId,
-                            memberId: relatedMemberId,
-                            updatedData: { meals: 'yes' },
-                        }),
-                    });
-
-                    console.log(`Updated meals for adoptive parent/adopted child: ${relatedMemberId}`);
-                }
-
-                if ((relationship === 'guardian' || relationship === 'ward') && relatedMemberAge < 18) {
-                    relatedMember.meals = 'yes';
-    
-                    // Save the updated meals property
-                    await fetch(`/update-household-member`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            clientId,
-                            memberId: relatedMemberId,
-                            updatedData: { meals: 'yes' },
-                        }),
-                    });
-    
-                    console.log(`Updated meals for guardian/ward: ${relatedMemberId}`);
-                }
-    
-            }
-    
-        // Trigger eligibility checks
-        await window.eligibilityChecks.PACEEligibilityCheck(members);
-        await window.eligibilityChecks.LISEligibilityCheck(members);
-        await window.eligibilityChecks.MSPEligibilityCheck(members);
-        await window.eligibilityChecks.PTRREligibilityCheck(members);
-        await window.eligibilityChecks.SNAPEligibilityCheck(members);
-        await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
-
-        // Single refresh after all checks complete
-        if (window.eligibilityChecks && window.eligibilityChecks.refreshAllDisplays) {
-            await window.eligibilityChecks.refreshAllDisplays();
-        }
-    
-            console.log(`Relationship saved: ${memberId} -> ${relatedMemberId}: ${relationship}`);
-        } catch (error) {
-            console.error('Error saving relationship:', error);
-        }
+async function fetchClient(clientId, forceRefresh = false) {
+    if (cachedClientData && !forceRefresh) {
+        return cachedClientData;
     }
     
-    // Helper function to parse age from the format "XX Years, XX Months, XX Days"
-    function parseAge(ageString) {
-        const yearsMatch = ageString.match(/(\d+)\s*Years/);
-        return yearsMatch ? parseInt(yearsMatch[1], 10) : 0;
+    const response = await fetch(`/get-client/${clientId}`);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch client data: ${response.statusText}`);
     }
+    
+    cachedClientData = await response.json();
+    return cachedClientData;
+}
 
-    async function displayHouseholdMembers() {
-        const householdMemberContainer = document.createElement('div');
-        householdMemberContainer.classList.add('household-member-container');
-    
-        // Add styles to make the container narrower
-        householdMemberContainer.style.maxWidth = '600px'; // Adjust the width as needed
-        householdMemberContainer.style.margin = '0 auto'; // Center the container
-        householdMemberContainer.style.textAlign = 'center'; // Center text content
-    
-        document.body.appendChild(householdMemberContainer);
-    
-        const members = await loadHouseholdMembers();
-    
-        if (members.length === 0) {
-            const noMembersMessage = document.createElement('p');
-            noMembersMessage.textContent = 'No household members found.';
-            householdMemberContainer.appendChild(noMembersMessage);
-        } else {
-            // Sort members to show headOfHousehold: true first
-            members.sort((a, b) => {
-                if (a.headOfHousehold === b.headOfHousehold) return 0;
-                return a.headOfHousehold ? -1 : 1;
-            });
-    
-            members.forEach(member => {
-                const memberDiv = document.createElement('div');
-                memberDiv.classList.add('household-member');
-                memberDiv.style.textAlign = 'center'; // Center content within each member card
-                memberDiv.style.margin = '0 auto'; // Center the card itself
-    
-                // Populate member details
-                memberDiv.innerHTML = `
-                    <p><strong>Name:</strong> ${member.firstName} ${member.middleInitial || ''} ${member.lastName}</p>
-                    <p><strong>Date of Birth:</strong> ${member.dob}</p>
-                    <p><strong>Marital Status:</strong> <br>${member.maritalStatus || 'N/A'}</p>
-                    <div class="relationships-container">
-                        <p><strong>Relationships:</strong></p>
-                    </div>
-                `;
-    
-                // Check if the member has previousMaritalStatus: married (living together)
-                if (member.previousMaritalStatus === 'Married (Living Together)') {
-                    const spouseDropdownContainer = document.createElement('div');
-                    spouseDropdownContainer.classList.add('spouse-dropdown-container');
-                    spouseDropdownContainer.style.textAlign = 'center'; // Center the spouse dropdown
-                    spouseDropdownContainer.innerHTML = `
-                        <label for="spouse-dropdown-${member.householdMemberId}"><strong>Select Previous Year Spouse:</strong></label>
-                        <select id="spouse-dropdown-${member.householdMemberId}" class="spouse-dropdown">
-                            <option value="">Select a household member</option>
-                        </select>
-                    `;
-    
-                    // Populate the dropdown with other household members
-                    const spouseDropdown = spouseDropdownContainer.querySelector('.spouse-dropdown');
-                    members
-                        .filter(otherMember => otherMember.householdMemberId !== member.householdMemberId) // Exclude the HOH
-                        .forEach(otherMember => {
-                            const option = document.createElement('option');
-                            option.value = otherMember.householdMemberId;
-                            option.textContent = `${otherMember.firstName} ${otherMember.middleInitial || ''} ${otherMember.lastName}`;
-                            spouseDropdown.appendChild(option);
-                        });
-    
-                    // Prepopulate the dropdown with the saved previousSpouseId
-                    if (member.previousSpouseId) {
-                        spouseDropdown.value = member.previousSpouseId;
-                    }
-    
-// Add event listener to handle spouse selection
-spouseDropdown.addEventListener('change', async function () {
-    const selectedSpouseId = this.value;
-    if (selectedSpouseId) {
-        console.log(`Selected spouse for HOH (${member.householdMemberId}): ${selectedSpouseId}`);
-        
-        // Save the selected spouse ID into the HOH's previousSpouseId field
-        await savePreviousSpouseId(member.householdMemberId, selectedSpouseId);
+function getHouseholdMembers() {
+    return cachedClientData?.householdMembers || [];
+}
 
-        // Run PACE and PTRR eligibility checks
-        const members = await loadHouseholdMembers(); // Reload household members after saving
-        // Trigger eligibility checks
-        await window.eligibilityChecks.PACEEligibilityCheck(members);
-        await window.eligibilityChecks.LISEligibilityCheck(members);
-        await window.eligibilityChecks.MSPEligibilityCheck(members);
-        await window.eligibilityChecks.PTRREligibilityCheck(members);
-        await window.eligibilityChecks.SNAPEligibilityCheck(members);
-        await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
-
-        // Single refresh after all checks complete
-        if (window.eligibilityChecks && window.eligibilityChecks.refreshAllDisplays) {
-            await window.eligibilityChecks.refreshAllDisplays();
-        }
-        }
-
-});
+async function updateHouseholdMember(clientId, memberId, updatedData) {
+    const response = await fetch(`/update-household-member`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            clientId,
+            member: { householdMemberId: memberId, ...updatedData }
+        }),
+    });
     
-                    memberDiv.appendChild(spouseDropdownContainer);
-                }
-    
-                // Add dropdowns for relationships with other members
-                const relationshipsContainer = memberDiv.querySelector('.relationships-container');
-                members
-                    .filter(otherMember => otherMember.householdMemberId !== member.householdMemberId) // Exclude the current member
-                    .forEach(otherMember => {
-                        const relationshipDiv = document.createElement('div');
-                        relationshipDiv.classList.add('relationship-entry');
-                        relationshipDiv.style.textAlign = 'center'; // Center each relationship entry
-    
-                        relationshipDiv.innerHTML = `                            <p><strong>${otherMember.firstName} ${otherMember.middleInitial || ''} ${otherMember.lastName}</strong></p>
-                            <select class="relationship-dropdown" data-member-id="${member.householdMemberId}" data-related-member-id="${otherMember.householdMemberId}">
-                                <option value="">Select Relationship</option>
-                                <option value="spouse">Spouse</option>
-                                <option value="parent">Parent</option>
-                                <option value="child">Child</option>
-                                <option value="sibling">Sibling</option>
-                                <option value="half-sibling">Half-Sibling</option>
-                                <option value="grandparent">Grandparent</option>
-                                <option value="grandchild">Grandchild</option>
-                                <option value="step-parent">Step-Parent</option>
-                                <option value="step-child">Step-Child</option>
-                                <option value="step-sibling">Step-Sibling</option>
-                                <option value="aunt/uncle">Aunt/Uncle</option>
-                                <option value="niece/nephew">Niece/Nephew</option>
-                                <option value="cousin">Cousin</option>
-                                <option value="adoptive parent">Adoptive Parent</option>
-                                <option value="adopted child">Adopted Child</option>
-                                <option value="foster parent">Foster Parent</option>
-                                <option value="foster child">Foster Child</option>
-                                <option value="guardian">Guardian</option>
-                                <option value="ward">Ward</option>
-                                <option value="other">Other Relationship</option>
-                                <option value="unrelated">Unrelated</option>
-                            </select>
-                        `;
-    
-                        // Prepopulate the dropdown with the saved relationship
-                        const dropdown = relationshipDiv.querySelector('.relationship-dropdown');
-                        const savedRelationship = member.relationships?.find(r => r.relatedMemberId === otherMember.householdMemberId)?.relationship;
-                        if (savedRelationship) {
-                            dropdown.value = savedRelationship;
-    
-                            // Simulate a change event to trigger any associated logic
-                            dropdown.dispatchEvent(new Event('change'));
-                        }
-    
-                        // Add event listener to save the relationship when selected
-                        dropdown.addEventListener('change', async function () {
-                            const relationship = this.value;
-                            const memberId = this.dataset.memberId;
-                            const relatedMemberId = this.dataset.relatedMemberId;
-    
-                            // Save the relationship
-                            await saveRelationship(memberId, relatedMemberId, relationship);
-    
-                            // Automatically set the reciprocal relationship
-                            const reciprocalRelationship = reciprocalRelationshipMap[relationship];
-                            if (reciprocalRelationship) {
-                                const relatedDropdown = document.querySelector(
-                                    `.relationship-dropdown[data-member-id="${relatedMemberId}"][data-related-member-id="${memberId}"]`
-                                );
-                                if (relatedDropdown) {
-                                    relatedDropdown.value = reciprocalRelationship;
-                                    await saveRelationship(relatedMemberId, memberId, reciprocalRelationship);
-                                }
-                            }
-                        });
-    
-                        relationshipsContainer.appendChild(relationshipDiv);
-                    });
-    
-                householdMemberContainer.appendChild(memberDiv);
-            });
-        }
-    
-        // Add action buttons below the household member containers
-        const actionButtonsDiv = document.createElement('div');
-        actionButtonsDiv.classList.add('action-buttons');
-        actionButtonsDiv.style.textAlign = 'center'; // Center the buttons
-        actionButtonsDiv.style.marginTop = '20px';
-        actionButtonsDiv.innerHTML = `
-            <button id="save-exit" onclick="redirectToRelationshipsView()">Save and Release Profile</button>
-            <button id="save-continue" onclick="GoToCurrentEnrollmentsEdit()">Save and Continue</button>
-        `;
-        document.body.appendChild(actionButtonsDiv);
+    if (!response.ok) {
+        throw new Error(`Failed to update household member: ${response.statusText}`);
     }
+    
+    return response.json();
+}
 
-    // Display household members on page load
-    await displayHouseholdMembers();
-});
+async function saveRelationshipToServer(clientId, memberId, relatedMemberId, relationship) {
+    const response = await fetch(`/update-relationship`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId, memberId, relatedMemberId, relationship }),
+    });
+    
+    if (!response.ok) {
+        throw new Error(`Failed to save relationship: ${response.statusText}`);
+    }
+    
+    return response.json();
+}
 
-async function savePreviousSpouseId(memberId, previousSpouseId) {
-    const clientId = getQueryParameter('id'); // Retrieve the client ID from the URL
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
+async function setCheckedOutStatus(clientId, status) {
+    const response = await fetch('/update-client', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            clientId, 
+            clientData: { 
+                checkedOut: [{
+                    status,
+                    timestamp: status ? new Date().toISOString() : null,
+                    user: status ? sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User' : null
+                }] 
+            } 
+        }),
+    });
+
+    if (!response.ok) {
+        console.error(`Failed to update checkedOut status: ${response.statusText}`);
+    }
+}
+
+async function addNoteToClient(clientId, noteText) {
+    const response = await fetch(`/add-note-to-client`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            clientId, 
+            note: {
+                text: noteText,
+                timestamp: new Date().toLocaleString(),
+                username: sessionStorage.getItem('loggedInUser') || 'Unknown'
+            }
+        }),
+    });
+    
+    if (!response.ok) {
+        throw new Error(`Failed to add note: ${response.statusText}`);
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// CONFIGURATION
+// ══════════════════════════════════════════════════════════════
+
+const RECIPROCAL_RELATIONSHIPS = {
+    'spouse': 'spouse',
+    'parent': 'child',
+    'child': 'parent',
+    'sibling': 'sibling',
+    'grandparent': 'grandchild',
+    'grandchild': 'grandparent',
+    'aunt/uncle': 'niece/nephew',
+    'niece/nephew': 'aunt/uncle',
+    'cousin': 'cousin',
+    'unrelated': 'unrelated',
+    'adopted child': 'adoptive parent',
+    'adoptive parent': 'adopted child',
+    'foster child': 'foster parent',
+    'foster parent': 'foster child',
+    'step-child': 'step-parent',
+    'step-parent': 'step-child',
+    'guardian': 'ward',
+    'ward': 'guardian',
+    'step-sibling': 'step-sibling',
+    'half-sibling': 'half-sibling',
+    'other': 'other'
+};
+
+const RELATIONSHIP_OPTIONS = [
+    { value: '', label: 'Select Relationship' },
+    { value: 'spouse', label: 'Spouse' },
+    { value: 'parent', label: 'Parent' },
+    { value: 'child', label: 'Child' },
+    { value: 'sibling', label: 'Sibling' },
+    { value: 'half-sibling', label: 'Half-Sibling' },
+    { value: 'grandparent', label: 'Grandparent' },
+    { value: 'grandchild', label: 'Grandchild' },
+    { value: 'step-parent', label: 'Step-Parent' },
+    { value: 'step-child', label: 'Step-Child' },
+    { value: 'step-sibling', label: 'Step-Sibling' },
+    { value: 'aunt/uncle', label: 'Aunt/Uncle' },
+    { value: 'niece/nephew', label: 'Niece/Nephew' },
+    { value: 'cousin', label: 'Cousin' },
+    { value: 'adoptive parent', label: 'Adoptive Parent' },
+    { value: 'adopted child', label: 'Adopted Child' },
+    { value: 'foster parent', label: 'Foster Parent' },
+    { value: 'foster child', label: 'Foster Child' },
+    { value: 'guardian', label: 'Guardian' },
+    { value: 'ward', label: 'Ward' },
+    { value: 'other', label: 'Other Relationship' },
+    { value: 'unrelated', label: 'Unrelated' },
+];
+
+// Relationships that auto-set meals=yes based on age
+const MEALS_RELATIONSHIP_RULES = [
+    { relationships: ['spouse'], maxAge: Infinity },
+    { relationships: ['parent', 'child', 'step-parent', 'step-child', 'adoptive parent', 'adopted child'], maxAge: 22 },
+    { relationships: ['guardian', 'ward'], maxAge: 18 },
+];
+
+// ══════════════════════════════════════════════════════════════
+// ELIGIBILITY CHECKS
+// ══════════════════════════════════════════════════════════════
+
+async function runAllEligibilityChecks() {
+    if (!window.eligibilityChecks) {
+        console.warn('Eligibility checks not loaded');
         return;
     }
 
+    const members = getHouseholdMembers();
+
+    const checks = [
+        'PACEEligibilityCheck',
+        'LISEligibilityCheck',
+        'MSPEligibilityCheck',
+        'PTRREligibilityCheck',
+        'SNAPEligibilityCheck',
+        'LIHEAPEligibilityCheck',
+    ];
+
+    for (const check of checks) {
+        if (typeof window.eligibilityChecks[check] === 'function') {
+            await window.eligibilityChecks[check](members);
+        }
+    }
+
+    if (typeof window.eligibilityChecks.refreshAllDisplays === 'function') {
+        await window.eligibilityChecks.refreshAllDisplays();
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// MEALS AUTO-UPDATE LOGIC
+// ══════════════════════════════════════════════════════════════
+
+function shouldAutoSetMeals(member, relatedMember, relationship) {
+    // Skip if related member is ineligible
+    if (relatedMember.nonCitizenStatus === 'Ineligible Non-Citizen' ||
+        relatedMember.studentStatus === 'Ineligible Student') {
+        return false;
+    }
+
+    // Check if member has meals=yes (to propagate)
+    if (member.meals !== 'yes') {
+        return false;
+    }
+
+    const relatedAge = parseAge(relatedMember.age);
+
+    for (const rule of MEALS_RELATIONSHIP_RULES) {
+        if (rule.relationships.includes(relationship) && relatedAge < rule.maxAge) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+// ══════════════════════════════════════════════════════════════
+// RELATIONSHIP HANDLERS
+// ══════════════════════════════════════════════════════════════
+
+async function handleRelationshipChange(clientId, memberId, relatedMemberId, relationship) {
     try {
-        // Update the member being edited
-        const payloadForMember = {
-            clientId,
-            member: {
-                householdMemberId: memberId,
-                previousSpouseId
+        // Save the primary relationship
+        await saveRelationshipToServer(clientId, memberId, relatedMemberId, relationship);
+
+        // Update local cache
+        const members = getHouseholdMembers();
+        const member = members.find(m => m.householdMemberId === memberId);
+        const relatedMember = members.find(m => m.householdMemberId === relatedMemberId);
+
+        if (member && relatedMember) {
+            // Update member's relationships in cache
+            if (!member.relationships) member.relationships = [];
+            const existingRel = member.relationships.find(r => r.relatedMemberId === relatedMemberId);
+            if (existingRel) {
+                existingRel.relationship = relationship;
+            } else {
+                member.relationships.push({ relatedMemberId, relationship });
             }
-        };
 
-        console.log('Payload for member being edited:', payloadForMember);
-
-        const responseForMember = await fetch(`/update-household-member`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payloadForMember),
-        });
-
-        if (!responseForMember.ok) {
-            throw new Error(`Failed to save previousSpouseId for member: ${responseForMember.statusText}`);
+            // Auto-set meals if applicable
+            if (shouldAutoSetMeals(member, relatedMember, relationship)) {
+                await updateHouseholdMember(clientId, relatedMemberId, { meals: 'yes' });
+                relatedMember.meals = 'yes';
+                console.log(`Updated meals for ${relatedMemberId} via ${relationship}`);
+            }
         }
 
-        console.log(`Successfully updated previousSpouseId for member ${memberId} to ${previousSpouseId}`);
+        // Save reciprocal relationship
+        const reciprocal = RECIPROCAL_RELATIONSHIPS[relationship];
+        if (reciprocal) {
+            await saveRelationshipToServer(clientId, relatedMemberId, memberId, reciprocal);
 
-        // Update the selected spouse to point back to the member being edited
-        const payloadForSpouse = {
-            clientId,
-            member: {
-                householdMemberId: previousSpouseId,
-                previousSpouseId: memberId
+            // Update reciprocal dropdown in UI
+            const reciprocalDropdown = document.querySelector(
+                `.relationship-dropdown[data-member-id="${relatedMemberId}"][data-related-member-id="${memberId}"]`
+            );
+            if (reciprocalDropdown && reciprocalDropdown.value !== reciprocal) {
+                reciprocalDropdown.value = reciprocal;
             }
-        };
 
-        console.log('Payload for selected spouse:', payloadForSpouse);
-
-        const responseForSpouse = await fetch(`/update-household-member`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payloadForSpouse),
-        });
-
-        if (!responseForSpouse.ok) {
-            throw new Error(`Failed to save previousSpouseId for selected spouse: ${responseForSpouse.statusText}`);
+            // Update cache for reciprocal
+            if (relatedMember) {
+                if (!relatedMember.relationships) relatedMember.relationships = [];
+                const existingRecip = relatedMember.relationships.find(r => r.relatedMemberId === memberId);
+                if (existingRecip) {
+                    existingRecip.relationship = reciprocal;
+                } else {
+                    relatedMember.relationships.push({ relatedMemberId: memberId, relationship: reciprocal });
+                }
+            }
         }
 
-        console.log(`Successfully updated previousSpouseId for spouse ${previousSpouseId} to ${memberId}`);
+        // Run eligibility checks once after all updates
+        await runAllEligibilityChecks();
 
-        // Update both dropdowns automatically
+        console.log(`Relationship saved: ${memberId} -> ${relatedMemberId}: ${relationship}`);
+    } catch (error) {
+        console.error('Error saving relationship:', error);
+    }
+}
+
+async function handlePreviousSpouseChange(clientId, memberId, previousSpouseId) {
+    try {
+        // Update both members' previousSpouseId
+        await updateHouseholdMember(clientId, memberId, { previousSpouseId });
+        await updateHouseholdMember(clientId, previousSpouseId, { previousSpouseId: memberId });
+
+        // Update local cache
+        const members = getHouseholdMembers();
+        const member = members.find(m => m.householdMemberId === memberId);
+        const spouse = members.find(m => m.householdMemberId === previousSpouseId);
+        
+        if (member) member.previousSpouseId = previousSpouseId;
+        if (spouse) spouse.previousSpouseId = memberId;
+
+        // Update both dropdowns in UI
         updateSpouseDropdowns(memberId, previousSpouseId);
+
+        // Run eligibility checks
+        await runAllEligibilityChecks();
+
+        console.log(`Previous spouse saved: ${memberId} <-> ${previousSpouseId}`);
     } catch (error) {
         console.error('Error saving previousSpouseId:', error);
     }
 }
 
-// Function to update both dropdowns automatically
 function updateSpouseDropdowns(memberId, previousSpouseId) {
-    const memberDropdown = document.querySelector(`#spouse-dropdown-${memberId}`);
-    const spouseDropdown = document.querySelector(`#spouse-dropdown-${previousSpouseId}`);
+    const memberDropdown = document.getElementById(`spouse-dropdown-${memberId}`);
+    const spouseDropdown = document.getElementById(`spouse-dropdown-${previousSpouseId}`);
 
-    if (memberDropdown) {
-        memberDropdown.value = previousSpouseId;
-        console.log(`Updated dropdown for member ${memberId} to show spouse ${previousSpouseId}`);
-    }
-
-    if (spouseDropdown) {
-        spouseDropdown.value = memberId;
-        console.log(`Updated dropdown for spouse ${previousSpouseId} to show member ${memberId}`);
-    }
+    if (memberDropdown) memberDropdown.value = previousSpouseId;
+    if (spouseDropdown) spouseDropdown.value = memberId;
 }
 
-// Helper function to get query parameters
-function getQueryParameter(name) {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get(name);
+// ══════════════════════════════════════════════════════════════
+// RENDER FUNCTIONS
+// ══════════════════════════════════════════════════════════════
+
+function buildRelationshipDropdownHTML(memberId, relatedMemberId) {
+    const options = RELATIONSHIP_OPTIONS.map(opt => 
+        `<option value="${opt.value}">${opt.label}</option>`
+    ).join('');
+
+    return `
+        <select class="relationship-dropdown" 
+                data-member-id="${memberId}" 
+                data-related-member-id="${relatedMemberId}">
+            ${options}
+        </select>
+    `;
 }
 
-function GoToCurrentEnrollmentsEdit() {
-    const clientId = getQueryParameter('id');
+function buildSpouseDropdownHTML(member, allMembers) {
+    const otherMembers = allMembers.filter(m => m.householdMemberId !== member.householdMemberId);
+    const options = otherMembers.map(m => 
+        `<option value="${m.householdMemberId}">${m.firstName} ${m.middleInitial || ''} ${m.lastName}</option>`
+    ).join('');
+
+    return `
+        <div class="spouse-dropdown-container">
+            <label for="spouse-dropdown-${member.householdMemberId}">
+                <strong>Select Previous Year Spouse:</strong>
+            </label>
+            <select id="spouse-dropdown-${member.householdMemberId}" class="spouse-dropdown">
+                <option value="">Select a household member</option>
+                ${options}
+            </select>
+        </div>
+    `;
+}
+
+function buildMemberHTML(member, allMembers) {
+    const otherMembers = allMembers.filter(m => m.householdMemberId !== member.householdMemberId);
+    
+    const relationshipsHTML = otherMembers.map(other => `
+        <div class="relationship-entry">
+            <p><strong>${other.firstName} ${other.middleInitial || ''} ${other.lastName}</strong></p>
+            ${buildRelationshipDropdownHTML(member.householdMemberId, other.householdMemberId)}
+        </div>
+    `).join('');
+
+    const showSpouseDropdown = member.previousMaritalStatus === 'Married (Living Together)';
+
+    return `
+        <p><strong>Name:</strong> ${member.firstName} ${member.middleInitial || ''} ${member.lastName}</p>
+        <p><strong>Date of Birth:</strong> ${member.dob}</p>
+        <p><strong>Marital Status:</strong><br>${member.maritalStatus || 'N/A'}</p>
+        ${showSpouseDropdown ? buildSpouseDropdownHTML(member, allMembers) : ''}
+        <div class="relationships-container">
+            <p><strong>Relationships:</strong></p>
+            ${relationshipsHTML}
+        </div>
+    `;
+}
+
+function renderHouseholdMembers(clientId, members) {
+    const container = document.getElementById('householdMemberContainer');
+    if (!container) return;
+
+    if (!members.length) {
+        container.innerHTML = '<p>No household members found.</p>';
+        return;
+    }
+
+    container.innerHTML = '';
+
+    // Sort: head of household first
+    const sorted = [...members].sort((a, b) => (b.headOfHousehold ? 1 : 0) - (a.headOfHousehold ? 1 : 0));
+
+    sorted.forEach(member => {
+        const memberDiv = document.createElement('div');
+        memberDiv.classList.add('household-member');
+        memberDiv.innerHTML = buildMemberHTML(member, members);
+        container.appendChild(memberDiv);
+    });
+
+    // Wire up event listeners
+    wireRelationshipDropdowns(clientId, members);
+    wireSpouseDropdowns(clientId);
+
+    // Show action buttons
+    document.getElementById('actionButtons').style.display = 'block';
+}
+
+function wireRelationshipDropdowns(clientId, members) {
+    document.querySelectorAll('.relationship-dropdown').forEach(dropdown => {
+        const memberId = dropdown.dataset.memberId;
+        const relatedMemberId = dropdown.dataset.relatedMemberId;
+
+        // Prepopulate saved value
+        const member = members.find(m => m.householdMemberId === memberId);
+        const savedRelationship = member?.relationships?.find(r => r.relatedMemberId === relatedMemberId)?.relationship;
+        if (savedRelationship) {
+            dropdown.value = savedRelationship;
+        }
+
+        // Add change listener
+        dropdown.addEventListener('change', async function() {
+            await handleRelationshipChange(clientId, memberId, relatedMemberId, this.value);
+        });
+    });
+}
+
+function wireSpouseDropdowns(clientId) {
+    document.querySelectorAll('.spouse-dropdown').forEach(dropdown => {
+        const memberId = dropdown.id.replace('spouse-dropdown-', '');
+        const members = getHouseholdMembers();
+        const member = members.find(m => m.householdMemberId === memberId);
+
+        // Prepopulate saved value
+        if (member?.previousSpouseId) {
+            dropdown.value = member.previousSpouseId;
+        }
+
+        // Add change listener
+        dropdown.addEventListener('change', async function() {
+            if (this.value) {
+                await handlePreviousSpouseChange(clientId, memberId, this.value);
+            }
+        });
+    });
+}
+
+// ══════════════════════════════════════════════════════════════
+// SIDEBAR VISIBILITY
+// ══════════════════════════════════════════════════════════════
+
+function applySidebarVisibility(clientData) {
+    const sidebarContainer = document.getElementById('leftSidebarContainer');
+    const snapContainer = document.getElementById('snap-household-container');
+    const liheapContainer = document.getElementById('liheap-household-container');
+    const householdContainer = document.getElementById('household-members-container');
+
+    if (!sidebarContainer) return;
+
+    sidebarContainer.style.display = 'block';
+
+    const showBenefits = clientData?.screeningInProgress;
+    
+    if (snapContainer) snapContainer.style.display = showBenefits ? '' : 'none';
+    if (liheapContainer) liheapContainer.style.display = showBenefits ? '' : 'none';
+    if (householdContainer) householdContainer.style.display = showBenefits ? '' : 'none';
+}
+
+// ══════════════════════════════════════════════════════════════
+// NAVIGATION HANDLERS
+// ══════════════════════════════════════════════════════════════
+
+function goToCurrentEnrollmentsEdit() {
+    const clientId = getQueryParam('id');
     if (clientId) {
         window.location.href = `currentenrollmentsedit.html?id=${clientId}`;
     } else {
-        console.error('Client ID not found in query parameters.');
+        console.error('Client ID not found.');
     }
 }
 
-async function redirectToRelationshipsView() {
-    const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
+async function saveAndReleaseProfile() {
+    const clientId = getQueryParam('id');
+    if (!clientId) {
+        console.error('Client ID not found.');
+        return;
+    }
+
+    if (!confirm("Are you sure you want to save and release this profile?")) {
+        return;
+    }
+
+    const activeUser = sessionStorage.getItem('loggedInUser');
+    if (!activeUser) {
+        console.error("No active user found.");
+        return;
+    }
+
+    try {
+        await setCheckedOutStatus(clientId, false);
+        await addNoteToClient(clientId, "Profile released.");
+        window.location.href = `relationshipsview.html?id=${clientId}`;
+    } catch (error) {
+        console.error("Error releasing profile:", error);
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// MAIN DATA LOADER
+// ══════════════════════════════════════════════════════════════
+
+async function loadPageData() {
+    const clientId = getQueryParam('id');
     if (!clientId) {
         console.error('Client ID not found in query parameters.');
         return;
     }
 
-    const confirmAction = confirm("Are you sure you want to save and release this profile?");
-    if (!confirmAction) {
-        return;
-    }
-
-    const noteContent = "Profile released.";
-    const timestamp = new Date().toLocaleString();
-    const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
-
-    if (!activeUser) {
-        console.error("No active user found in sessionStorage.");
-        return;
-    }
-
     try {
+        // Single fetch for all data
+        const clientData = await fetchClient(clientId, true);
+        if (!clientData) return;
 
-        await setCheckedOutStatus(clientId, false);
+        // Apply sidebar visibility
+        applySidebarVisibility(clientData);
 
-        // Save relationships data (if applicable)
-        await saveRelationshipsData();
+        // Render household members with relationships
+        const members = clientData.householdMembers || [];
+        renderHouseholdMembers(clientId, members);
 
-        // Add a note about the action
-        const note = {
-            text: noteContent,
-            timestamp: timestamp,
-            username: activeUser
-        };
+        // Run initial eligibility checks
+        await runAllEligibilityChecks();
 
-        const noteResponse = await fetch(`/add-note-to-client`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ clientId, note }),
-        });
-
-        if (!noteResponse.ok) {
-            throw new Error(`Failed to add note: ${noteResponse.statusText}`);
-        }
-
-        // Redirect to relationships view
-        window.location.href = `relationshipsview.html?id=${clientId}`;
     } catch (error) {
-        console.error("Error during redirectToRelationshipsView:", error);
+        console.error('Error loading page data:', error);
     }
 }
 
-async function saveRelationshipsData() {
-    // Implement logic to save relationships data if needed
-    console.log("Saving relationships data...");
-}
+// ══════════════════════════════════════════════════════════════
+// INITIALIZATION
+// ══════════════════════════════════════════════════════════════
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadPageData();
+
+    // Wire up action buttons
+    document.getElementById('save-exit')?.addEventListener('click', saveAndReleaseProfile);
+    document.getElementById('save-continue')?.addEventListener('click', goToCurrentEnrollmentsEdit);
+});

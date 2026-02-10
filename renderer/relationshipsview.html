@@ -7,71 +7,58 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="householdedit.css">
     <link rel="stylesheet" href="notes.css">
-    <link rel="stylesheet" href="incomeedit.css">
     <script src="userInfo.js"></script>
-
-
     <style>
-/* ...existing code... */
-
-body {
-    max-width: 1200px; /* Adjust the max-width as needed */
-    margin: 0 auto;
-    padding: 20px;
-    margin-top: 60px; /* Adjust this value to match the height of the navigation container */
-
-}
-
-.narrow-body {
-        margin-left: 385px; /* Space for the left sidebar */
-        margin-right: 10px; /* Optional: Space on the right */
-        max-width: calc(100% - 395px); /* Ensure the body doesn't exceed the available space */
-        margin: 0 auto; /* Center the content horizontally */
-        margin-top: 60px; /* Adjust this value to match the height of the navigation container */
-
-    }
-
-.household-member-container {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    width: 100%;
-    align-items: center; /* Center the content horizontally */
-}
-
-.household-member {
-    display: flex;
-    flex-direction: column;
-    padding: 20px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    background-color: #f9f9f9;
-    width: 80%; /* Adjust the width as needed */
-    align-items: center; /* Center the content horizontally */
-}
-
-.selection-box {
-    margin-top: 10px;
-    text-align: center; /* Center the text inside the selection box */
-}
-
-.selection-option {
-    display: inline-block;
-    padding: 5px 10px;
-    margin-right: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.selection-option.selected {
-    background-color: #007bff;
-    color: white;
-    border-color: #007bff;
-}
-
-/* ...existing code... */
-        
+        body {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            margin-top: 60px;
+        }
+        .narrow-body {
+            margin-left: 385px;
+            margin-right: 10px;
+            max-width: calc(100% - 395px);
+            margin: 0 auto;
+            margin-top: 60px;
+        }
+        .household-member-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            align-items: center;
+            text-align: center;
+        }
+        .household-member {
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            width: 80%;
+            align-items: center;
+            text-align: center;
+            margin: 0 auto;
+        }
+        .relationship-entry {
+            text-align: center;
+            margin: 10px 0;
+        }
+        .relationship-label {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            margin-top: 5px;
+        }
+        .read-only {
+            pointer-events: none;
+            opacity: 0.6;
+        }
     </style>
     <script src="viewnavigation.js"></script>
 </head>
@@ -79,21 +66,15 @@ body {
 
     <h1>Relationships</h1>
 
-    <style>
-      
-        .read-only {
-    pointer-events: none;
-    opacity: 0.6;
-}
-    </style>
+    <div id="notes-container">
+        <textarea id="note-input" placeholder="Add Note..."></textarea>
+        <button id="save-note">Save Note</button>
+        <div id="notes-list"></div>
+    </div>
 
-<div id="notes-container">
-    <textarea id="note-input" placeholder="Add Note..."></textarea>
-    <button id="save-note">Save Note</button>
-    <div id="notes-list">
-        </div>
-        </div>
+    <div id="householdMemberContainer" class="household-member-container"></div>
 
-    </body>
     <script src="notes.js"></script>
     <script src="relationshipsview.js"></script>
+</body>
+</html>

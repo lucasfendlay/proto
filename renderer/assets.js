@@ -1,542 +1,597 @@
-document.addEventListener('DOMContentLoaded', async function () {
-    const clientId = getQueryParameter('id'); // Get the client ID from the query parameter
-    const modal = document.getElementById('asset-modal');
-    const modalTitle = document.getElementById('modal-title');
-    const closeModal = document.getElementById('close-modal');
-    const addAssetButton = document.getElementById('add-asset-button');
-    const assetForm = document.getElementById('asset-form');
-    let currentMemberId = null;
-    let isEditing = false;
-    let editingAssetId = null;
+// ══════════════════════════════════════════════════════════════
+// CONSTANTS
+// ══════════════════════════════════════════════════════════════
 
-    // Load household members
-    async function loadHouseholdMembers() {
-        try {
-            const response = await fetch(`/get-client/${clientId}`);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch client data: ${response.statusText}`);
-            }
-    
-            const client = await response.json();
-            if (!client || !client.householdMembers) {
-                console.error('No household members found for this client.');
-                return [];
-            }
-            return client.householdMembers;
-        } catch (error) {
-            console.error('Error loading household members:', error);
-            return [];
+const BACKEND_URL = window.location.origin || "http://localhost:3000";
+
+const GROSS_INCOME_LIMITS = [
+    0, 2510, 3408, 4304, 5200, 6098, 6994, 7890, 8788, 9686, 10584,
+    11482, 12380, 13278, 14176, 15074
+];
+
+// ══════════════════════════════════════════════════════════════
+// UTILITIES
+// ══════════════════════════════════════════════════════════════
+
+function getQueryParameter(name) {
+    return new URLSearchParams(window.location.search).get(name);
+}
+
+// ══════════════════════════════════════════════════════════════
+// CLIENT DATA CACHE
+// ══════════════════════════════════════════════════════════════
+
+let clientDataCache = null;
+let cacheTimestamp = null;
+const CACHE_DURATION = 5000;
+
+async function fetchClientData(forceRefresh = false) {
+    const now = Date.now();
+    if (!forceRefresh && clientDataCache && cacheTimestamp && (now - cacheTimestamp < CACHE_DURATION)) {
+        return clientDataCache;
+    }
+
+    const clientId = getQueryParameter('id');
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return null;
+    }
+
+    try {
+        const response = await fetch(`${BACKEND_URL}/get-client/${clientId}`);
+        if (!response.ok) throw new Error('Failed to fetch client data.');
+        
+        clientDataCache = await response.json();
+        cacheTimestamp = now;
+        return clientDataCache;
+    } catch (error) {
+        console.error('Error fetching client data:', error);
+        return null;
+    }
+}
+
+function invalidateCache() {
+    clientDataCache = null;
+    cacheTimestamp = null;
+}
+
+// ══════════════════════════════════════════════════════════════
+// ELIGIBILITY CHECKS
+// ══════════════════════════════════════════════════════════════
+
+async function runAllEligibilityChecks(members) {
+    if (!window.eligibilityChecks) return;
+
+    const checks = [
+        'PACEEligibilityCheck',
+        'LISEligibilityCheck',
+        'MSPEligibilityCheck',
+        'PTRREligibilityCheck',
+        'SNAPEligibilityCheck',
+        'LIHEAPEligibilityCheck'
+    ];
+
+    for (const check of checks) {
+        if (window.eligibilityChecks[check]) {
+            await window.eligibilityChecks[check](members);
         }
     }
 
-// Close the asset modal when clicking outside of it
-document.addEventListener('click', (event) => {
-    if (!modal.contains(event.target) && !event.target.closest('#asset-modal') && !event.target.closest('.add-asset-button')) {
-        modal.classList.add('hidden');
-        assetForm.reset(); // Reset the form
-        isEditing = false; // Reset editing mode
-        editingAssetId = null; // Reset editing ID
-        addAssetButton.textContent = 'Add Asset'; // Reset button text
+    if (window.eligibilityChecks.refreshAllDisplays) {
+        await window.eligibilityChecks.refreshAllDisplays();
     }
-});
+}
 
-    // Save asset to the database
-async function saveAsset(memberId, asset) {
+// ══════════════════════════════════════════════════════════════
+// CLIENT API HELPERS
+// ══════════════════════════════════════════════════════════════
+
+async function setCheckedOutStatus(clientId, status) {
     try {
-        const response = await fetch(`/add-asset`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+        const response = await fetch(`${BACKEND_URL}/update-client`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 clientId,
-                memberId,
-                asset
+                clientData: {
+                    checkedOut: [{
+                        status,
+                        timestamp: status ? new Date().toISOString() : null,
+                        user: status ? sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User' : null
+                    }]
+                }
             })
         });
 
-        if (!response.ok) {
-            throw new Error(`Failed to save asset: ${response.statusText}`);
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            console.error('Failed to update checkedOut status:', result.message);
         }
-
-        console.log(`Asset saved for member ${memberId}:`, asset);
     } catch (error) {
-        console.error('Error saving asset:', error);
+        console.error('Error updating checkedOut status:', error);
     }
-
-    // Run eligibility checks and update the UI
-    const members = await loadHouseholdMembers();
-        // Trigger eligibility checks
-        await window.eligibilityChecks.PACEEligibilityCheck(members);
-        await window.eligibilityChecks.LISEligibilityCheck(members);
-        await window.eligibilityChecks.MSPEligibilityCheck(members);
-        await window.eligibilityChecks.PTRREligibilityCheck(members);
-        await window.eligibilityChecks.SNAPEligibilityCheck(members);
-        await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
-
-        // Single refresh after all checks complete
-        if (window.eligibilityChecks && window.eligibilityChecks.refreshAllDisplays) {
-            await window.eligibilityChecks.refreshAllDisplays();
-        }
 }
 
-async function displayHouseholdMembers() {
-    const householdMemberContainer = document.getElementById('household-member-container');
+async function loadHouseholdMembers() {
+    const client = await fetchClientData();
+    return client?.householdMembers || [];
+}
 
-    householdMemberContainer.align = 'center'; // Center the container
-    householdMemberContainer.style.minWidth = '925px'; // Ensure minimum width
-    householdMemberContainer.style.maxWidth = '925px'; // Adjust the width as needed
-    householdMemberContainer.style.margin = '0 auto'; // Center the container
+// ══════════════════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════════════════
 
-    const members = await loadHouseholdMembers();
-
-    householdMemberContainer.innerHTML = ''; // Clear existing content
-
-    if (members.length === 0) {
-        const noMembersMessage = document.createElement('p');
-        noMembersMessage.textContent = 'No household members found.';
-        householdMemberContainer.appendChild(noMembersMessage);
+function goToExpensesEdit() {
+    const clientId = getQueryParameter('id');
+    if (clientId) {
+        window.location.href = `expensesedit.html?id=${clientId}`;
     } else {
-        // Sort members to show headOfHousehold: true first
-        members.sort((a, b) => {
-            if (a.headOfHousehold === b.headOfHousehold) return 0;
-            return a.headOfHousehold ? -1 : 1;
-        });
+        console.error('Client ID not found.');
+    }
+}
 
-        members.forEach(member => {
-            const memberDiv = document.createElement('div');
-            memberDiv.classList.add('household-member1-box'); // Add a class for styling
-    
-                // Populate member details
-                memberDiv.innerHTML = `
-                    <h3>${member.firstName} ${member.middleInitial || ''} ${member.lastName}</h3>
-                    <p><strong>Date of Birth:</strong> ${member.dob || 'N/A'}</p>
-                    <div class="asset-list">
-                        <h4>Assets:</h4>
-                        <ul id="asset-list-${member.householdMemberId}">
-                            ${
-                                member.assets && Array.isArray(member.assets)
-    ? member.assets.map(asset => `
+async function goToAssetView() {
+    const clientId = getQueryParameter('id');
+    if (!clientId) {
+        console.error('Client ID not found.');
+        return;
+    }
+
+    if (!confirm("Are you sure you want to save and release this profile?")) return;
+
+    const activeUser = sessionStorage.getItem('loggedInUser');
+    if (!activeUser) {
+        console.error("No active user found.");
+        return;
+    }
+
+    try {
+        await setCheckedOutStatus(clientId, false);
+
+        const note = {
+            text: "Profile released.",
+            timestamp: new Date().toLocaleString(),
+            username: activeUser
+        };
+
+        await fetch(`${BACKEND_URL}/add-note-to-client`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, note })
+        });
+    } catch (error) {
+        console.error("Error during goToAssetView:", error);
+    } finally {
+        window.location.href = `assetsview.html?id=${clientId}`;
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// SIDEBAR VISIBILITY
+// ══════════════════════════════════════════════════════════════
+
+async function toggleSidebarVisibility() {
+    const client = await fetchClientData();
+    const leftSidebar = document.getElementById('leftSidebarContainer');
+    const snapContainer = document.getElementById('snap-household-container');
+    const liheapContainer = document.getElementById('liheap-household-container');
+    const householdContainer = document.getElementById('household-members-container');
+
+    if (!leftSidebar) return;
+
+    leftSidebar.style.display = 'block';
+
+    const containers = [snapContainer, liheapContainer, householdContainer];
+
+    if (client?.screeningInProgress) {
+        containers.forEach(el => { if (el) el.style.display = ''; });
+    } else {
+        containers.forEach(el => { if (el) el.style.display = 'none'; });
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// ASSET HTML GENERATION
+// ══════════════════════════════════════════════════════════════
+
+function generateAssetItemHTML(asset, memberId) {
+    return `
         <li class="list-item" data-asset-id="${asset.id}">
             <p><strong>Type:</strong> ${asset.type}</p>
             <p><strong>Description:</strong> ${asset.description}</p>
             <p><strong>Value:</strong> $${asset.value}</p>
             <div class="button-container">
-<button 
-    class="button edit-asset-button" 
-    data-member-id="${member.householdMemberId}" 
-    data-asset-id="${asset.id}" 
-    style="background-color: #007bff; color: white; border: 1px solid #000000;"
-    onmouseover="this.style.backgroundColor='#0056b3';" 
-    onmouseout="this.style.backgroundColor='#007bff';">
-    Edit
-</button>
-<button 
-    class="button delete-asset-button" 
-    data-member-id="${member.householdMemberId}" 
-    data-asset-id="${asset.id}" 
-    style="background-color: red; color: white; border: 1px solid #000000;"
-    onmouseover="this.style.backgroundColor='#a71d2a';" 
-    onmouseout="this.style.backgroundColor='red';"
->
-    Delete
-</button>        </li>
-    `).join('')
-                                    : ''
-                            }
-                        </ul>
-                    </div>
-                `;
-    
-                // Check if "LIS" or "MSP" is "no" in the selections object
-                const selections = member.selections || {};
-                // Log the entire SNAP object for debugging
-console.log(`Member ID: ${member.householdMemberId}, SNAP Object:`, member.SNAP);
+                <button class="button edit-asset-button" 
+                    data-member-id="${memberId}" 
+                    data-asset-id="${asset.id}"
+                    style="background-color: #007bff; color: white; border: 1px solid #000000;">
+                    Edit
+                </button>
+                <button class="button delete-asset-button" 
+                    data-member-id="${memberId}" 
+                    data-asset-id="${asset.id}"
+                    style="background-color: red; color: white; border: 1px solid #000000;">
+                    Delete
+                </button>
+            </div>
+        </li>
+    `;
+}
 
-// Extract combinedMonthlyIncome directly from the SNAP object
-const combinedMonthlyIncome = member.SNAP?.combinedMonthlyIncome;
+function generateAssetListHTML(assets, memberId) {
+    if (!assets || !Array.isArray(assets) || assets.length === 0) return '';
+    return assets.map(asset => generateAssetItemHTML(asset, memberId)).join('');
+}
 
-// Log the extracted combinedMonthlyIncome for debugging
-console.log(`Member ID: ${member.householdMemberId}, Combined Monthly Income: ${combinedMonthlyIncome}`);
+// ══════════════════════════════════════════════════════════════
+// ASSET BUTTON VISIBILITY LOGIC
+// ══════════════════════════════════════════════════════════════
 
-const grossIncomeLimits = [
-    0, 2510, 3408, 4304, 5200, 6098, 6994, 7890, 8788, 9686, 10584,
-    11482, 12380, 13278, 14176, 15074
-];
+function shouldShowAddAssetButton(member, members) {
+    const hasActiveScreening =
+        member.LIS?.screeningInProgress === true ||
+        member.MSP?.screeningInProgress === true ||
+        member.SNAP?.screeningInProgress === true ||
+        member.LIHEAP?.screeningInProgress === true ||
+        (member.currentSpouseId && members.some(spouse =>
+            spouse.householdMemberId === member.currentSpouseId &&
+            (spouse.LIS?.screeningInProgress === true || spouse.MSP?.screeningInProgress === true)
+        ));
 
-const hasActiveScreening = 
-    member.LIS?.screeningInProgress === true || 
-    member.MSP?.screeningInProgress === true ||
-    member.SNAP?.screeningInProgress === true ||
-    member.LIHEAP?.screeningInProgress === true ||
-    (member.currentSpouseId && members.some(spouse =>
-        spouse.householdMemberId === member.currentSpouseId &&
-        (
-            spouse.LIS?.screeningInProgress === true ||
-            spouse.MSP?.screeningInProgress === true
-        )
-    ));
+    if (!hasActiveScreening) return false;
 
-const showAddAssetButton = hasActiveScreening && (
-    member.LIS?.screeningInProgress === true || 
-    member.MSP?.screeningInProgress === true ||
-    (member.SNAP?.screeningInProgress === true && member.meals?.toLowerCase() === 'yes' && 
-        (combinedMonthlyIncome !== undefined && parseFloat(combinedMonthlyIncome) <= 150)) ||
-    (member.SNAP?.screeningInProgress === true &&
+    const combinedMonthlyIncome = member.SNAP?.combinedMonthlyIncome;
+    const householdSize = member.SNAP?.householdSize;
+
+    // Check various conditions for showing the button
+    if (member.LIS?.screeningInProgress || member.MSP?.screeningInProgress) return true;
+    if (member.LIHEAP?.screeningInProgress) return true;
+
+    // SNAP with meals condition
+    if (member.SNAP?.screeningInProgress && member.meals?.toLowerCase() === 'yes' &&
+        combinedMonthlyIncome !== undefined && parseFloat(combinedMonthlyIncome) <= 150) {
+        return true;
+    }
+
+    // SNAP with elderly/disabled and over gross income limit
+    if (member.SNAP?.screeningInProgress &&
         (parseInt(member.age) >= 60 || member.disability === 'yes') &&
-        (member.SNAP?.householdSize !== undefined && 
-         member.SNAP?.combinedMonthlyIncome > grossIncomeLimits[member.SNAP.householdSize])) ||
-    member.LIHEAP?.screeningInProgress === true ||
-    (member.currentSpouseId && members.some(spouse =>
-        spouse.householdMemberId === member.currentSpouseId &&
-        (
-            spouse.LIS?.screeningInProgress === true ||
-            spouse.MSP?.screeningInProgress === true
-        )
-    ))
-);                           
-                if (showAddAssetButton) {
-                    const addAssetButton = document.createElement('button');
-                    addAssetButton.classList.add('add-asset-button');
-                    addAssetButton.dataset.memberId = member.householdMemberId;
-                    addAssetButton.textContent = 'Add Asset';
-                    memberDiv.appendChild(addAssetButton);
-                }
-    
-                householdMemberContainer.appendChild(memberDiv);
-            });
-    
-            // Attach event listeners for Edit and Delete buttons
-            document.querySelectorAll('.edit-asset-button').forEach(button => {
-                button.addEventListener('click', async function () {
-                    const assetId = this.dataset.assetId;
-                    const memberId = this.dataset.memberId;
-    
-                    // Fetch asset details from the database
-const fetchedAsset = await fetch(`/get-asset/${memberId}/${assetId}`)
-.then(response => {
-    if (!response.ok) {
-        throw new Error(`Failed to fetch asset: ${response.statusText}`);
+        householdSize !== undefined &&
+        combinedMonthlyIncome > GROSS_INCOME_LIMITS[householdSize]) {
+        return true;
     }
-    return response.json();
-})
-.catch(error => {
-    console.error('Error fetching asset:', error);
-    return null;
-});
 
-if (fetchedAsset) {
-// Populate modal with asset details
-document.getElementById('asset-type').value = fetchedAsset.type;
-document.getElementById('asset-description').value = fetchedAsset.description;
-document.getElementById('asset-value').value = fetchedAsset.value;
+    // Spouse screening
+    if (member.currentSpouseId) {
+        const spouse = members.find(m => m.householdMemberId === member.currentSpouseId);
+        if (spouse?.LIS?.screeningInProgress || spouse?.MSP?.screeningInProgress) {
+            return true;
+        }
+    }
 
-currentMemberId = memberId; // Set current member ID
-editingAssetId = assetId; // Set editing ID
-isEditing = true; // Set editing mode
-
-modalTitle.textContent = `Edit Asset`;
-addAssetButton.textContent = 'Save and Update'; // Change button text
-modal.classList.remove('hidden');
-} else {
-alert('Failed to fetch asset details.');
+    return false;
 }
-                });
-            });
-    
-            document.querySelectorAll('.delete-asset-button').forEach(button => {
-                button.addEventListener('click', async function () {
-                    const assetId = this.dataset.assetId;
-                    const memberId = this.dataset.memberId;
-            
-                    // Ask for confirmation before deleting
-                    const confirmDelete = confirm('Are you sure you want to delete this asset entry?');
-                    if (!confirmDelete) return;
-            
-                    try {
-                        // Delete asset from the database
-                        const response = await fetch(`/delete-asset`, {
-                            method: 'DELETE',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ memberId, assetId })
-                        });
-            
-                        if (!response.ok) {
-                            throw new Error(`Failed to delete asset: ${response.statusText}`);
-                        }
-            
-                        const result = await response.json();
-            
-                        if (result.success) {
-                            // Remove asset from the UI
-                            const assetItem = document.querySelector(`[data-asset-id="${assetId}"]`);
-                            if (assetItem) assetItem.remove();
-            
-                            // Run eligibility checks and update the UI
-                            const members = await loadHouseholdMembers();
-        // Trigger eligibility checks
-        await window.eligibilityChecks.PACEEligibilityCheck(members);
-        await window.eligibilityChecks.LISEligibilityCheck(members);
-        await window.eligibilityChecks.MSPEligibilityCheck(members);
-        await window.eligibilityChecks.PTRREligibilityCheck(members);
-        await window.eligibilityChecks.SNAPEligibilityCheck(members);
-        await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
 
-        // Single refresh after all checks complete
-        if (window.eligibilityChecks && window.eligibilityChecks.refreshAllDisplays) {
-            await window.eligibilityChecks.refreshAllDisplays();
-        }
-                        } else {
-                            alert('Failed to delete asset.');
-                        }
-                    } catch (error) {
-                        console.error('Error deleting asset:', error);
-                        alert('An error occurred while deleting the asset.');
-                    }
-                });
-            });
-    
-            // Add event listeners for asset buttons
-            document.querySelectorAll('.add-asset-button').forEach(button => {
-                button.addEventListener('click', function () {
-                    console.log('Add Asset button clicked'); // Debugging log
-                    console.log('Member ID:', this.dataset.memberId); // Debugging log
-    
-                    currentMemberId = this.dataset.memberId;
-    
-                    modalTitle.textContent = `Add Asset`;
-                    modal.classList.remove('hidden'); // Show the modal
-                });
-            });
-    
-        }
+// ══════════════════════════════════════════════════════════════
+// DISPLAY HOUSEHOLD MEMBERS
+// ══════════════════════════════════════════════════════════════
+
+async function displayHouseholdMembers() {
+    const container = document.getElementById('household-member-container');
+    if (!container) return;
+
+    container.innerHTML = '';
+    container.style.textAlign = 'center';
+    container.style.minWidth = '925px';
+    container.style.maxWidth = '925px';
+    container.style.margin = '0 auto';
+
+    const members = await loadHouseholdMembers();
+
+    if (members.length === 0) {
+        container.innerHTML = '<p>No household members found.</p>';
+        return;
     }
-    // Close modal
-    closeModal.addEventListener('click', () => {
-        modal.classList.add('hidden');
-        assetForm.reset();
-    });
 
-    document.addEventListener('click', (event) => {
-        const modalContent = document.querySelector('#asset-modal .modal-content'); // Replace '.modal-content' with the actual class or ID of your modal content
-        if (!modalContent.contains(event.target) && !event.target.closest('.add-asset-button') && !modal.classList.contains('hidden')) {
-            modal.classList.add('hidden'); // Hide the modal
-            assetForm.reset(); // Reset the form
-            isEditing = false; // Reset editing mode
-            editingAssetId = null; // Reset editing ID
-            addAssetButton.textContent = 'Add Asset'; // Reset button text
+    // Sort: head of household first
+    members.sort((a, b) => (b.headOfHousehold ? 1 : 0) - (a.headOfHousehold ? 1 : 0));
+
+    members.forEach(member => {
+        const memberDiv = document.createElement('div');
+        memberDiv.classList.add('household-member1-box');
+        memberDiv.dataset.memberId = member.householdMemberId;
+
+        const assetListHTML = generateAssetListHTML(member.assets, member.householdMemberId);
+
+        memberDiv.innerHTML = `
+            <h3>${member.firstName} ${member.middleInitial || ''} ${member.lastName}</h3>
+            <p><strong>Date of Birth:</strong> ${member.dob || 'N/A'}</p>
+            <div class="asset-list">
+                <h4>Assets:</h4>
+                <ul id="asset-list-${member.householdMemberId}">${assetListHTML}</ul>
+            </div>
+        `;
+
+        if (shouldShowAddAssetButton(member, members)) {
+            const addBtn = document.createElement('button');
+            addBtn.className = 'add-asset-button';
+            addBtn.dataset.memberId = member.householdMemberId;
+            addBtn.textContent = 'Add Asset';
+            memberDiv.appendChild(addBtn);
         }
+
+        container.appendChild(memberDiv);
     });
-
-    addAssetButton.addEventListener('click', async () => {
-        const asset = {
-            id: isEditing ? editingAssetId : crypto.randomUUID(), // Use existing ID if editing
-            type: document.getElementById('asset-type').value,
-            description: document.getElementById('asset-description').value,
-            value: parseFloat(document.getElementById('asset-value').value),
-        };
-    
-        if (currentMemberId && asset.type && asset.value) {
-            if (isEditing) {
-                try {
-                    // Update existing asset in the database
-                    const response = await fetch(`/update-asset`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            memberId: currentMemberId,
-                            assetId: editingAssetId,
-                            updatedAsset: asset
-                        })
-                    });
-    
-                    if (!response.ok) {
-                        throw new Error(`Failed to update asset: ${response.statusText}`);
-                    }
-    
-                    // Update the UI for the existing asset entry
-                    const assetItem = document.querySelector(`[data-asset-id="${editingAssetId}"]`);
-                    if (assetItem) {
-                        assetItem.querySelector('p:nth-child(1)').innerHTML = `<strong>Type:</strong> ${asset.type}`;
-                        assetItem.querySelector('p:nth-child(2)').innerHTML = `<strong>Description:</strong> ${asset.description}`;
-                        assetItem.querySelector('p:nth-child(3)').innerHTML = `<strong>Value:</strong> $${asset.value}`;
-                    }
-    
-                    // Run eligibility checks and update the UI
-                    const members = await loadHouseholdMembers();
-        // Trigger eligibility checks
-        await window.eligibilityChecks.PACEEligibilityCheck(members);
-        await window.eligibilityChecks.LISEligibilityCheck(members);
-        await window.eligibilityChecks.MSPEligibilityCheck(members);
-        await window.eligibilityChecks.PTRREligibilityCheck(members);
-        await window.eligibilityChecks.SNAPEligibilityCheck(members);
-        await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
-
-        // Single refresh after all checks complete
-        if (window.eligibilityChecks && window.eligibilityChecks.refreshAllDisplays) {
-            await window.eligibilityChecks.refreshAllDisplays();
-        }
-    
-                    // Reset modal state
-                    isEditing = false;
-                    editingAssetId = null; // Reset editing ID
-                    addAssetButton.textContent = 'Add Asset'; // Reset button text
-                    modal.classList.add('hidden'); // Close the modal
-                    assetForm.reset(); // Reset the form
-                } catch (error) {
-                    console.error('Error updating asset:', error);
-                    alert('Failed to update asset.');
-                }
-            } else {
-                // Add new asset
-await saveAsset(currentMemberId, asset);
-
-// Update the UI with the new asset entry
-const assetList = document.getElementById(`asset-list-${currentMemberId}`);
-const assetItem = document.createElement('li');
-assetItem.setAttribute('data-asset-id', asset.id);
-assetItem.classList.add('list-item'); // Add the same class as the existing list items
-assetItem.innerHTML = `
-    <p><strong>Type:</strong> ${asset.type}</p>
-    <p><strong>Description:</strong> ${asset.description}</p>
-    <p><strong>Value:</strong> $${asset.value}</p>
-    <div class="button-container">
-        <button 
-            class="button edit-asset-button" 
-            data-member-id="${currentMemberId}" 
-            data-asset-id="${asset.id}" 
-            style="background-color: #007bff; color: white; border: 1px solid #000000;"
-            onmouseover="this.style.backgroundColor='#0056b3';" 
-            onmouseout="this.style.backgroundColor='#007bff';">
-            Edit
-        </button>
-        <button 
-            class="button delete-asset-button" 
-            data-member-id="${currentMemberId}" 
-            data-asset-id="${asset.id}" 
-            style="background-color: red; color: white; border: 1px solid #000000;"
-            onmouseover="this.style.backgroundColor='#a71d2a';" 
-            onmouseout="this.style.backgroundColor='red';">
-            Delete
-        </button>
-    </div>
-`;
-
-assetList.appendChild(assetItem);
-
-// Add event listeners for the new Edit and Delete buttons
-attachAssetEventListeners(assetItem);
-
-// Close the modal and reset the form
-modal.classList.add('hidden'); // Close the modal
-assetForm.reset(); // Reset the form
-            }
-        } else {
-            alert('Please fill out all fields.');
-        }
-    });
-
-    // Helper function to attach event listeners to asset items
-    function attachAssetEventListeners(assetItem) {
-        assetItem.querySelector('.edit-asset-button').addEventListener('click', async function () {
-            const assetId = this.dataset.assetId;
-
-            // Fetch asset details from the database
-const fetchedAsset = await fetch(`/get-asset/${currentMemberId}/${assetId}`)
-.then(response => {
-    if (!response.ok) {
-        throw new Error(`Failed to fetch asset: ${response.statusText}`);
-    }
-    return response.json();
-})
-.catch(error => {
-    console.error('Error fetching asset:', error);
-    return null;
-});
-
-if (fetchedAsset) {
-// Populate modal with asset details
-document.getElementById('asset-type').value = fetchedAsset.type;
-document.getElementById('asset-description').value = fetchedAsset.description;
-document.getElementById('asset-value').value = fetchedAsset.value;
-
-editingAssetId = assetId;
-isEditing = true;
-
-modalTitle.textContent = `Edit Asset`;
-addAssetButton.textContent = 'Save and Update'; // Change button text
-modal.classList.remove('hidden');
-} else {
-alert('Failed to fetch asset details.');
 }
+
+// ══════════════════════════════════════════════════════════════
+// ASSET CRUD OPERATIONS
+// ══════════════════════════════════════════════════════════════
+
+async function saveAsset(memberId, asset) {
+    const clientId = getQueryParameter('id');
+
+    try {
+        const response = await fetch(`${BACKEND_URL}/add-asset`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, memberId, asset })
         });
 
-        assetItem.querySelector('.delete-asset-button').addEventListener('click', async function () {
-            const assetId = this.dataset.assetId;
-        
-            // Ask for confirmation before deleting
-            const confirmDelete = confirm('Are you sure you want to delete this asset entry?');
-            if (!confirmDelete) return;
-        
-            try {
-                // Delete asset from the database
-                const response = await fetch(`/delete-asset`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ memberId: currentMemberId, assetId })
-                });
-        
-                if (!response.ok) {
-                    throw new Error(`Failed to delete asset: ${response.statusText}`);
-                }
-        
-                const result = await response.json();
-        
-                if (result.success) {
-                    // Remove asset from the UI
-                    assetItem.remove();
-        
-                    // Run eligibility checks and update the UI
-                    const members = await loadHouseholdMembers();
-                    // Trigger eligibility checks
-                    await window.eligibilityChecks.PACEEligibilityCheck(members);
-                    await window.eligibilityChecks.LISEligibilityCheck(members);
-                    await window.eligibilityChecks.MSPEligibilityCheck(members);
-                    await window.eligibilityChecks.PTRREligibilityCheck(members);
-                    await window.eligibilityChecks.SNAPEligibilityCheck(members);
-                    await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
+        if (!response.ok) throw new Error('Failed to save asset.');
 
-                    // Single refresh after all checks complete
-                    if (window.eligibilityChecks && window.eligibilityChecks.refreshAllDisplays) {
-                        await window.eligibilityChecks.refreshAllDisplays();
-                    }
+        invalidateCache();
+        await refreshAfterAssetChange();
+        return true;
+    } catch (error) {
+        console.error('Error saving asset:', error);
+        return false;
+    }
+}
 
-                } else {
-                    alert('Failed to delete asset.');
-                }
-            } catch (error) {
-                console.error('Error deleting asset:', error);
-                alert('An error occurred while deleting the asset.');
-            }
+async function updateAsset(memberId, assetId, updatedAsset) {
+    try {
+        const response = await fetch(`${BACKEND_URL}/update-asset`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ memberId, assetId, updatedAsset })
         });
+
+        if (!response.ok) throw new Error('Failed to update asset.');
+
+        invalidateCache();
+        await refreshAfterAssetChange();
+        return true;
+    } catch (error) {
+        console.error('Error updating asset:', error);
+        return false;
     }
+}
 
-    // Helper function to get query parameters
-    function getQueryParameter(name) {
-        const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get(name);
+async function deleteAsset(memberId, assetId) {
+    try {
+        const response = await fetch(`${BACKEND_URL}/delete-asset`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ memberId, assetId })
+        });
+
+        if (!response.ok) throw new Error('Failed to delete asset.');
+
+        invalidateCache();
+        await refreshAfterAssetChange();
+        return true;
+    } catch (error) {
+        console.error('Error deleting asset:', error);
+        return false;
     }
+}
 
-        // Expose refresh so estimations.js can trigger re-render via refreshAllDisplays
-        window.refreshAssetDisplay = displayHouseholdMembers;
+async function fetchAssetDetails(memberId, assetId) {
+    try {
+        const response = await fetch(`${BACKEND_URL}/get-asset/${memberId}/${assetId}`);
+        if (!response.ok) throw new Error('Failed to fetch asset details.');
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching asset details:', error);
+        return null;
+    }
+}
 
-    // Display household members on page load
+// ══════════════════════════════════════════════════════════════
+// REFRESH AFTER ASSET CHANGE
+// ══════════════════════════════════════════════════════════════
+
+async function refreshAfterAssetChange() {
+    const members = await loadHouseholdMembers();
+    await runAllEligibilityChecks(members);
     await displayHouseholdMembers();
-});
+}
 
+// ══════════════════════════════════════════════════════════════
+// MODAL MANAGEMENT
+// ══════════════════════════════════════════════════════════════
+
+let modalState = {
+    currentMemberId: null,
+    isEditing: false,
+    editingAssetId: null
+};
+
+function getModalElements() {
+    return {
+        modal: document.getElementById('asset-modal'),
+        modalTitle: document.getElementById('modal-title'),
+        closeModalBtn: document.getElementById('close-modal'),
+        addAssetBtn: document.getElementById('add-asset-button'),
+        assetForm: document.getElementById('asset-form'),
+        assetType: document.getElementById('asset-type'),
+        assetDescription: document.getElementById('asset-description'),
+        assetValue: document.getElementById('asset-value')
+    };
+}
+
+function resetModal() {
+    const { modal, assetForm, addAssetBtn } = getModalElements();
+
+    assetForm.reset();
+    modalState = {
+        currentMemberId: null,
+        isEditing: false,
+        editingAssetId: null
+    };
+    addAssetBtn.textContent = 'Add Asset';
+    modal.classList.add('hidden');
+}
+
+function showModal() {
+    const { modal } = getModalElements();
+    modal.classList.remove('hidden');
+}
+
+function openAddAssetModal(memberId) {
+    const { modalTitle } = getModalElements();
+
+    resetModal();
+    modalState.currentMemberId = memberId;
+
+    modalTitle.textContent = 'Add Asset';
+    showModal();
+}
+
+async function openEditAssetModal(memberId, assetId) {
+    const { modalTitle, addAssetBtn, assetType, assetDescription, assetValue } = getModalElements();
+
+    const asset = await fetchAssetDetails(memberId, assetId);
+    if (!asset) {
+        alert('Failed to fetch asset details.');
+        return;
+    }
+
+    assetType.value = asset.type;
+    assetDescription.value = asset.description;
+    assetValue.value = asset.value;
+
+    modalState.currentMemberId = memberId;
+    modalState.editingAssetId = assetId;
+    modalState.isEditing = true;
+
+    modalTitle.textContent = 'Edit Asset';
+    addAssetBtn.textContent = 'Save and Update';
+    showModal();
+}
+
+async function handleAssetSubmit() {
+    const { assetType, assetDescription, assetValue } = getModalElements();
+
+    const asset = {
+        id: modalState.isEditing ? modalState.editingAssetId : crypto.randomUUID(),
+        type: assetType.value,
+        description: assetDescription.value,
+        value: parseFloat(assetValue.value)
+    };
+
+    if (!modalState.currentMemberId || !asset.type || isNaN(asset.value)) {
+        alert('Please fill out all required fields.');
+        return;
+    }
+
+    let success;
+    if (modalState.isEditing) {
+        success = await updateAsset(modalState.currentMemberId, modalState.editingAssetId, asset);
+    } else {
+        success = await saveAsset(modalState.currentMemberId, asset);
+    }
+
+    if (success) {
+        resetModal();
+    } else {
+        alert('Failed to save asset. Please try again.');
+    }
+}
+
+async function handleDeleteAsset(memberId, assetId) {
+    if (!memberId || memberId === "null" || !assetId) {
+        alert('Missing or invalid asset or member ID.');
+        return;
+    }
+
+    if (!confirm('Are you sure you want to delete this asset entry?')) return;
+
+    const success = await deleteAsset(memberId, assetId);
+    if (!success) {
+        alert('Failed to delete asset. Please try again.');
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// EVENT HANDLER SETUP
+// ══════════════════════════════════════════════════════════════
+
+function setupModalEventListeners() {
+    const { modal, closeModalBtn, addAssetBtn } = getModalElements();
+    const container = document.getElementById('household-member-container');
+
+    // Close modal button
+    closeModalBtn.addEventListener('click', resetModal);
+
+    // Click outside modal to close
+    document.addEventListener('click', e => {
+        const isVisible = !modal.classList.contains('hidden');
+        const modalContent = modal.querySelector('.modal-content');
+
+        if (isVisible &&
+            !modalContent.contains(e.target) &&
+            !e.target.closest('.add-asset-button') &&
+            !e.target.closest('.edit-asset-button')) {
+            resetModal();
+        }
+    });
+
+    // Event delegation for container clicks
+    container.addEventListener('click', async e => {
+        const target = e.target;
+
+        if (target.classList.contains('add-asset-button')) {
+            openAddAssetModal(target.dataset.memberId);
+        }
+
+        if (target.classList.contains('edit-asset-button')) {
+            await openEditAssetModal(target.dataset.memberId, target.dataset.assetId);
+        }
+
+        if (target.classList.contains('delete-asset-button')) {
+            await handleDeleteAsset(target.dataset.memberId, target.dataset.assetId);
+        }
+    });
+
+    // Submit asset button
+    addAssetBtn.addEventListener('click', handleAssetSubmit);
+}
+
+function setupNavigationHandlers() {
+    document.getElementById('save-exit')?.addEventListener('click', goToAssetView);
+    document.getElementById('save-continue')?.addEventListener('click', goToExpensesEdit);
+}
+
+// ══════════════════════════════════════════════════════════════
+// GLOBAL EXPORTS
+// ══════════════════════════════════════════════════════════════
+
+window.refreshAssetDisplay = displayHouseholdMembers;
+
+// ══════════════════════════════════════════════════════════════
+// SINGLE DOMContentLoaded INITIALIZATION
+// ══════════════════════════════════════════════════════════════
+
+document.addEventListener('DOMContentLoaded', async () => {
+    // Setup all event listeners
+    setupModalEventListeners();
+    setupNavigationHandlers();
+
+    // Load initial data
+    await Promise.all([
+        displayHouseholdMembers(),
+        toggleSidebarVisibility()
+    ]);
+});

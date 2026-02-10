@@ -8,337 +8,72 @@
     <link rel="stylesheet" href="householdedit.css">
     <link rel="stylesheet" href="notes.css">
     <script src="userInfo.js"></script>
-
-
     <style>
-/* ...existing code... */
+        .narrow-body {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            margin-top: 60px;
+        }
 
-.read-only {
-    pointer-events: none; /* Disable all interactions */
-    opacity: 0.6; /* Optional: Dim the page to indicate read-only mode */
-}
+        .household-member-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+            align-items: center;
+        }
 
+        .household-member {
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            width: 80%;
+            align-items: center;
+        }
 
-.selection-box.readonly {
-    pointer-events: none; /* Makes the selection box readonly */
-    opacity: 0.6; /* Applies the desired opacity */
-}
+        .household-member.no-questions {
+            opacity: 0.5;
+        }
 
-.narrow-body {
-        margin-left: 385px; /* Space for the left sidebar */
-        margin-right: 10px; /* Optional: Space on the right */
-        max-width: calc(100% - 395px); /* Ensure the body doesn't exceed the available space */
-        margin: 0 auto; /* Center the content horizontally */
-        margin-top: 60px; /* Adjust this value to match the height of the navigation container */
+        .selection-box {
+            margin-top: 10px;
+            text-align: center;
+            pointer-events: none;
+            opacity: 0.8;
+        }
 
-    }
+        .selection-option {
+            display: inline-block;
+            padding: 5px 10px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: default;
+        }
 
-.household-member.no-questions {
-    opacity: 0.5;
-}
-
-body {
-    max-width: 1200px; /* Adjust the max-width as needed */
-    margin: 0 auto;
-    padding: 20px;
-}
-
-.household-member-container {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    width: 100%;
-    align-items: center; /* Center the content horizontally */
-}
-
-.household-member {
-    display: flex;
-    flex-direction: column;
-    padding: 20px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    background-color: #f9f9f9;
-    width: 80%; /* Adjust the width as needed */
-    align-items: center; /* Center the content horizontally */
-}
-
-.selection-box {
-    margin-top: 10px;
-    text-align: center; /* Center the text inside the selection box */
-}
-
-.selection-option {
-    display: inline-block;
-    padding: 5px 10px;
-    margin-right: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.selection-option.selected {
-    background-color: #007bff;
-    color: white;
-    border-color: #007bff;
-}
-
-.grayed-out {
-    opacity: 0.5;
-    pointer-events: none;
-}
-
-
-
-/* ...existing code... */
-        
+        .selection-option.selected {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
     </style>
 </head>
 <body class="narrow-body">
-
     <h1>Current Enrollments</h1>
 
-<div id="notes-container">
-    <textarea id="note-input" placeholder="Add Note..."></textarea>
-    <button id="save-note">Save Note</button>
-    <div id="notes-list">
-        </div>
-        </div>
+    <div id="notes-container">
+        <textarea id="note-input" placeholder="Add Note..."></textarea>
+        <button id="save-note">Save Note</button>
+        <div id="notes-list"></div>
+    </div>
     
     <div id="householdMemberContainer" class="household-member-container"></div>
 
     <script src="currentenrollmentsview.js"></script>
-    <script>
-        // Function to get query parameter by name
-        function getQueryParameter(name) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get(name);
-        }
-
-        // Add event listeners to form elements
-        document.querySelectorAll('#householdMemberForm input, #householdMemberForm select').forEach(element => {
-            element.addEventListener('change', saveData);
-        });
-        
-        async function redirecttoCurrentEnrollments() {
-    const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
-    const confirmAction = confirm("Are you sure you want to save and release this profile?");
-    if (!confirmAction) {
-        return;
-    }
-
-    const noteContent = "Profile released.";
-    const timestamp = new Date().toLocaleString();
-    const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
-
-    if (!activeUser) {
-        console.error("No active user found in sessionStorage.");
-        return;
-    }
-
-    try {
-        // Save current enrollments data (if applicable)
-        await saveCurrentEnrollmentsData();
-
-        // Add a note about the action
-        const note = {
-            text: noteContent,
-            timestamp: timestamp,
-            username: activeUser
-        };
-
-        const noteResponse = await fetch('/add-note-to-client', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ clientId, note })
-        });
-
-        if (!noteResponse.ok) {
-            console.warn(`Failed to add note: ${noteResponse.statusText}`);
-        }
-
-        // Update screening status in the database
-        console.log('Payload for /update-client:', {
-            clientId,
-            clientData: { screeningInProgress: false }
-        });
-
-        const updateResponse = await fetch('/update-client', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                clientId,
-                clientData: { screeningInProgress: false }
-            })
-        });
-
-        if (!updateResponse.ok) {
-            console.warn(`Failed to update client: ${updateResponse.statusText}`);
-        }
-
-        // Redirect to current enrollments view regardless of the update result
-        window.location.href = `currentenrollmentsview.html?id=${clientId}`;
-    } catch (error) {
-        console.error("Error during redirecttoCurrentEnrollments:", error);
-
-        // Redirect to current enrollments view even if an error occurs
-        window.location.href = `currentenrollmentsview.html?id=${clientId}`;
-    }
-}
-
-    async function checkScreeningStatus() {
-    const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
-    try {
-        // Fetch client data from the server using an HTTP API call
-        const response = await fetch(`/get-client/${clientId}`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client data: ${response.statusText}`);
-        }
-
-        const clientData = await response.json();
-
-        // Check if screeningInProgress is true
-        if (clientData && clientData.screeningInProgress) {
-            document.getElementById('leftSidebarContainer').style.display = 'flex';
-        } else {
-            document.getElementById('leftSidebarContainer').style.display = 'none';
-        }
-    } catch (error) {
-        console.error('Error fetching client data:', error);
-    }
-}
-
-// Call the function on page load
-window.addEventListener('load', checkScreeningStatus);
-
-    async function saveCurrentEnrollmentsData() {
-        // Implement logic to save current enrollments data if needed
-        console.log("Saving current enrollments data...");
-    }
-
-        const householdMemberContainer = document.getElementById('householdMemberContainer');
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'childList' && mutation.removedNodes.length > 0) {
-                    console.log('Household member container was cleared:', mutation);
-                }
-            });
-        });
-
-        observer.observe(householdMemberContainer, { childList: true });
-
-        function gotoIncome() {
-        const clientId = getQueryParameter('id');
-        if (clientId) {
-            window.location.href = `incomeedit.html?id=${clientId}`;
-        } else {
-            console.error('Client ID not found in query parameters.');
-        }
-    }
-
-    function GoToProfileEdit() {
-        const clientId = getQueryParameter('id');
-        if (clientId) {
-            window.location.href = `profileedit.html?id=${clientId}`;
-        } else {
-            console.error('Client ID not found in query parameters.');
-        }
-    }
-    
-
-    function GoToIncomeedit() {
-            const clientId = getQueryParameter('id');
-            console.log(`Retrieved clientId from query parameters: ${clientId}`);
-            if (clientId) {
-                console.log(`Redirecting to currentenrollmentsview.html with clientId: ${clientId}`);
-                window.location.href = `incomeedit.html?id=${clientId}`;
-            } else {
-                console.error('Client ID not found in query parameters.');
-            }
-        }
-
-        function goToAssetsedit() {
-            const clientId = getQueryParameter('id');
-            console.log(`Retrieved clientId from query parameters: ${clientId}`);
-            if (clientId) {
-                console.log(`Redirecting to currentenrollmentsview.html with clientId: ${clientId}`);
-                window.location.href = `assetsedit.html?id=${clientId}`;
-            } else {
-                console.error('Client ID not found in query parameters.');
-            }
-        }
-
-        function goToExpensesedit() {
-            const clientId = getQueryParameter('id');
-            console.log(`Retrieved clientId from query parameters: ${clientId}`);
-            if (clientId) {
-                console.log(`Redirecting to currentenrollmentsview.html with clientId: ${clientId}`);
-                window.location.href = `expensesedit.html?id=${clientId}`;
-            } else {
-                console.error('Client ID not found in query parameters.');
-            }
-        }
-
-        document.getElementById('relationships-edit-button').addEventListener('click', function() {
-            const clientId = getQueryParameter('id');
-            if (clientId) {
-                window.location.href = `relationshipsedit.html?id=${clientId}`;
-            } else {
-                console.error('Client ID not found in query parameters.');
-            }
-        });
-
-        function goToHouseholdEdit() {
-        const clientId = getQueryParameter('id');
-        if (clientId) {
-            window.location.href = `householdedit.html?id=${clientId}`;
-        } else {
-            console.error('Client ID not found in query parameters.');
-        }
-    }
-
-        function getQueryParameter(name) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get(name);
-        }
-
-        function gotoReferrals() {
-            const clientId = getQueryParameter('id');
-            console.log(`Retrieved clientId from query parameters: ${clientId}`);
-            if (clientId) {
-                console.log(`Redirecting to currentenrollmentsview.html with clientId: ${clientId}`);
-                window.location.href = `referralsedit.html?id=${clientId}`;
-            } else {
-                console.error('Client ID not found in query parameters.');
-            }
-        }
-
-        function gotoEstimations() {
-            const clientId = getQueryParameter('id');
-            console.log(`Retrieved clientId from query parameters: ${clientId}`);
-            if (clientId) {
-                console.log(`Redirecting to currentenrollmentsview.html with clientId: ${clientId}`);
-                window.location.href = `estimationsedit.html?id=${clientId}`;
-            } else {
-                console.error('Client ID not found in query parameters.');
-            }
-        }
-
-
-    </script>
     <script src="notes.js"></script>
     <script src="viewnavigation.js"></script>
 </body>

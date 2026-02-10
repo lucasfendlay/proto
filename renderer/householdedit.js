@@ -1,55 +1,133 @@
-document.addEventListener('DOMContentLoaded', async () => {
-    await loadSavedData(); // Load and display saved data
-});
+// ══════════════════════════════════════════════════════════════
+// UTILITIES
+// ══════════════════════════════════════════════════════════════
 
-// Function to save the selection using the `/update-client` handler
+function getQueryParam(param) {
+    return new URLSearchParams(window.location.search).get(param);
+}
+
+function capitalizeFirstLetter(str) {
+    return str ? str.toUpperCase() : '';
+}
+
+function calculateAge(dob, endDateStr) {
+    if (!dob) return { years: 0, months: 0, days: 0 };
+    const birthDate = new Date(dob);
+    const endDate = endDateStr ? new Date(endDateStr) : new Date();
+    if (!endDateStr) endDate.setDate(endDate.getDate() - 1);
+
+    let years = endDate.getFullYear() - birthDate.getFullYear();
+    let months = endDate.getMonth() - birthDate.getMonth();
+    let days = endDate.getDate() - birthDate.getDate();
+
+    if (days < 0) {
+        months -= 1;
+        days += new Date(endDate.getFullYear(), endDate.getMonth(), 0).getDate();
+    }
+    if (months < 0) {
+        years -= 1;
+        months += 12;
+    }
+    return { years, months, days };
+}
+
+function formatAge(age) {
+    return `${age.years} Years, ${age.months} Months, ${age.days} Days`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// SELECTION HELPERS
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * Highlight a single option within a group identified by element IDs.
+ * @param {string[]} elementIds - Array of DOM element IDs in the group
+ * @param {HTMLElement|string|null} selected - The selected element, or a data-value string
+ */
+function highlightSelection(elementIds, selected) {
+    elementIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        if (selected instanceof HTMLElement) {
+            el.classList.toggle('selected', el === selected);
+        } else {
+            // selected is a data-value string or null
+            el.classList.toggle('selected', el.getAttribute('data-value') === selected);
+        }
+    });
+}
+
+/**
+ * Highlight by data-value within a NodeList of elements.
+ */
+function highlightByValue(elements, value) {
+    elements.forEach(el => {
+        el.classList.toggle('selected', el.getAttribute('data-value') === value);
+    });
+}
+
+// ══════════════════════════════════════════════════════════════
+// ELIGIBILITY CHECKS
+// ══════════════════════════════════════════════════════════════
+
+async function runAllEligibilityChecks(members) {
+    if (!window.eligibilityChecks) return;
+
+    const checks = [
+        'PACEEligibilityCheck', 'LISEligibilityCheck', 'MSPEligibilityCheck',
+        'PTRREligibilityCheck', 'SNAPEligibilityCheck', 'LIHEAPEligibilityCheck'
+    ];
+
+    for (const check of checks) {
+        if (window.eligibilityChecks[check]) {
+            await window.eligibilityChecks[check](members);
+        }
+    }
+
+    if (window.eligibilityChecks.refreshAllDisplays) {
+        await window.eligibilityChecks.refreshAllDisplays();
+    }
+}
+
+async function runLIHEAPCheckAndDisplay() {
+    const clientId = getQueryParam('id');
+    if (!clientId) return;
+
+    const response = await fetch(`/get-client/${clientId}`);
+    if (!response.ok) return;
+    const updatedClient = await response.json();
+
+    if (window.eligibilityChecks?.LIHEAPEligibilityCheck) {
+        await window.eligibilityChecks.LIHEAPEligibilityCheck(updatedClient);
+    }
+    if (window.eligibilityChecks?.displayLIHEAPHouseholds) {
+        await window.eligibilityChecks.displayLIHEAPHouseholds();
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// CLIENT API HELPERS
+// ══════════════════════════════════════════════════════════════
+
+async function fetchClient(clientId) {
+    const response = await fetch(`/get-client/${clientId}`);
+    if (!response.ok) throw new Error(`Failed to fetch client data: ${response.statusText}`);
+    return response.json();
+}
+
 async function saveClientUpdate(clientId, key, value) {
     try {
-        console.log(`Updating ${key} to ${value} for client ${clientId}`); // Debugging log
-
         const response = await fetch('/update-client', {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                clientId,
-                clientData: { [key]: value },
-            }),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, clientData: { [key]: value } }),
         });
 
         if (response.ok) {
             console.log(`Successfully updated ${key}: ${value}`);
-        
-            // Load household members for eligibility checks
             const members = await loadHouseholdMembers();
-
-            // Trigger all eligibility checks
-            if (window.eligibilityChecks) {
-                if (window.eligibilityChecks.PACEEligibilityCheck) {
-                    await window.eligibilityChecks.PACEEligibilityCheck(members);
-                }
-                if (window.eligibilityChecks.LISEligibilityCheck) {
-                    await window.eligibilityChecks.LISEligibilityCheck(members);
-                }
-                if (window.eligibilityChecks.MSPEligibilityCheck) {
-                    await window.eligibilityChecks.MSPEligibilityCheck(members);
-                }
-                if (window.eligibilityChecks.PTRREligibilityCheck) {
-                    await window.eligibilityChecks.PTRREligibilityCheck(members);
-                }
-                if (window.eligibilityChecks.SNAPEligibilityCheck) {
-                    await window.eligibilityChecks.SNAPEligibilityCheck(members);
-                }
-                if (window.eligibilityChecks.LIHEAPEligibilityCheck) {
-                    await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
-                }
-
-                // Single refresh after all checks complete
-                if (window.eligibilityChecks.refreshAllDisplays) {
-                    await window.eligibilityChecks.refreshAllDisplays();
-                }
-            }
+            await runAllEligibilityChecks(members);
         } else {
             console.error(`Failed to update ${key}: ${value}`);
         }
@@ -58,1485 +136,586 @@ async function saveClientUpdate(clientId, key, value) {
     }
 }
 
-function getQueryParam(param) {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get(param);
-}
-
-// Function to check for existing members and dynamically add the button
-async function checkAndAddSelfButton(clientData) {
-    const householdMemberContainer = document.getElementById('householdMemberContainer');
-
-    // Remove the button if it already exists
-    const existingButton = document.getElementById('add-self-button');
-    if (existingButton) {
-        existingButton.remove();
-    }
-
-    // Check if a member with the same first and last name exists
-    const existingMember = clientData.householdMembers?.some(
-        (member) =>
-            member.firstName === clientData.firstName &&
-            member.lastName === clientData.lastName
-    );
-
-    if (!existingMember) {
-        const addSelfButton = document.createElement('button');
-        addSelfButton.id = 'add-self-button';
-        addSelfButton.textContent = 'Add Primary Client as Household Member';
-        addSelfButton.style.marginBottom = '10px';
-        addSelfButton.style.border = '1px solid black'; // Add a solid black border
-        addSelfButton.style.transition = 'background-color 0.3s ease, color 0.3s ease'; // Smooth transition for hover effects
-    
-        // Add hover effect using JavaScript
-        addSelfButton.addEventListener('mouseover', () => {
-            addSelfButton.style.backgroundColor = '#0056b3'; // Light gray background on hover
-            addSelfButton.style.color = 'white'; // Ensure text color is black
-        });
-    
-        addSelfButton.addEventListener('mouseout', () => {
-            addSelfButton.style.backgroundColor = ''; // Reset background color
-            addSelfButton.style.color = ''; // Reset text color
-        });
-    
-        // Add the button above the householdMemberContainer
-        householdMemberContainer.parentNode.insertBefore(addSelfButton, householdMemberContainer);
-    
-        // Add click event listener to the button
-        addSelfButton.addEventListener('click', async () => {
-            const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-            if (!clientId) {
-                console.error('Client ID not found in query parameters.');
-                return;
-            }
-    
-            try {
-                // Fetch the client data to check household size
-                const response = await fetch(`/get-client/${clientId}`);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch client data: ${response.statusText}`);
-                }
-                const clientData = await response.json();
-    
-                if (!clientData) {
-                    console.error('Client data not found.');
-                    return;
-                }
-    
-                // Check if household size is not set or is 0
-                if (!clientData.householdSize || clientData.householdSize === 0) {
-                    alert('Household size is not set. Please select a valid household size before adding members.');
-                    return; // Prevent further actions
-                }
-    
-                // Check if the number of household members exceeds the household size
-                if (clientData.householdMembers.length >= clientData.householdSize) {
-                    alert('The number of household members cannot exceed the selected household size.');
-                    return; // Prevent further actions
-                }
-    
-                // Set the modal to "Add" mode
-                setModalHeader('add');
-    
-                // Prepare the modal
-                await prepareHouseholdMemberModal();
-    
-                // Autofill first and last name
-                document.getElementById('firstName').value = clientData.firstName;
-                document.getElementById('lastName').value = clientData.lastName;
-    
-                // Set up the button for adding a new member
-                setupAddOrUpdateButton(false);
-    
-                // Show the modal
-                document.getElementById('householdMemberModal').style.display = 'block';
-            } catch (error) {
-                console.error('Error fetching client data:', error);
-            }
-        });
-    }
-}
-
-// Modify the loadSavedData function to call checkAndAddSelfButton
-async function loadSavedData() {
-    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
-    try {
-        // Fetch the client data from the backend
-        const response = await fetch(`/get-client/${clientId}`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client data: ${response.statusText}`);
-        }
-        const clientData = await response.json();
-
-        if (clientData) {
-            // Highlight saved selections for main questions
-            const mainQuestions = [
-                { id: 'disability', elements: ['disability-yes', 'disability-no'] },
-                { id: 'medicare', elements: ['medicare-yes', 'medicare-no'] },
-                { id: 'medicaid', elements: ['medicaid-yes', 'medicaid-no'] },
-                { id: 'student', elements: ['student-yes', 'student-no'] },
-                { id: 'snap', elements: ['snap-yes', 'snap-no', 'snap-notinterested'] },
-                { id: 'liheap', elements: ['liheap-yes', 'liheap-no', 'liheap-notinterested'] },
-                { id: 'subsidizedHousing', elements: ['subsidizedHousing-yes', 'subsidizedHousing-no'] },
-                { id: 'heatingCost', elements: ['heatingCost-yes', 'heatingCost-no'] },
-                { id: 'heatingCrisis', elements: ['heatingCrisis-yes', 'heatingCrisis-no'] },
-                { id: 'residenceStatusCurrent', elements: ['residenceStatusCurrent-owned', 'residenceStatusCurrent-rented', 'residenceStatusCurrent-rentedowned', 'residenceStatusCurrent-other'] },
-                { id: 'residenceStatus', elements: ['residenceStatus-owned', 'residenceStatus-rented', 'residenceStatus-rentedowned', 'residenceStatus-other'] },
-                { id: 'citizen', elements: ['citizen-yes', 'citizen-no'] }
-            ];
-
-            mainQuestions.forEach((question) => {
-                const savedValue = clientData[question.id];
-                if (savedValue) {
-                    question.elements.forEach((elementId) => {
-                        const element = document.getElementById(elementId);
-                        if (element && element.getAttribute('data-value') === savedValue) {
-                            element.classList.add('selected'); // Highlight the saved selection
-                        } else if (element) {
-                            element.classList.remove('selected'); // Ensure others are not highlighted
-                        }
-                    });
-                }
-            });
-
-            // Display household size
-            const householdSizeDropdown = document.getElementById('household-size');
-            if (householdSizeDropdown && clientData.householdSize) {
-                householdSizeDropdown.value = clientData.householdSize; // Set the dropdown value
-            }
-
-            // Display all previously saved household members
-            if (clientData.householdMembers && Array.isArray(clientData.householdMembers)) {
-                householdMemberContainer.innerHTML = ''; // Clear existing members
-            
-                // Sort members to display the head of household at the top
-                const sortedMembers = clientData.householdMembers.sort((a, b) => {
-                    return b.headOfHousehold - a.headOfHousehold; // `true` (1) comes before `false` (0)
-                });
-            
-                sortedMembers.forEach((member) => {
-                    const memberElement = document.createElement('div');
-                    memberElement.classList.add('household-member'); // Add a class for styling
-                
-                    const isDeceased = member.deceased === 'yes';
-                    memberElement.innerHTML = `
-                        <p class="household-member-info"><strong>Name:</strong> ${member.prefix || ''} ${capitalizeFirstLetter(member.firstName || '')} ${member.middleInitial ? capitalizeFirstLetter(member.middleInitial || '') : ''} ${capitalizeFirstLetter(member.lastName || '') } ${member.suffix || ''}</p>
-                        <p class="household-member-info"><strong>DOB:</strong> ${member.dob}</p>
-                                              ${isDeceased ? `<p class="household-member-info"><strong>Deceased: YES</strong></p>` : ''}
-                        ${isDeceased ? `<p class="household-member-info"><strong>Date of Death: ${member.dateOfDeath || 'N/A'}</strong></p>` : ''}
-
-                        <p class="household-member-info"><strong>Age:</strong> ${member.age}</p>
-                        <p class="household-member-info"><strong>Legal Sex:</strong> ${capitalizeFirstLetter(member.legalSex)}</p>
-                                
-                        ${!isDeceased ? `<p class="household-member-info"><strong>Marital Status:</strong> ${capitalizeFirstLetter(member.maritalStatus)}</p>` : ''}
-                        ${
-                            !isDeceased && member.previousMaritalStatus && typeof member.previousMaritalStatus === 'string' && member.previousMaritalStatus.toLowerCase() !== 'n/a'
-                                ? `<p class="household-member-info"><strong>Previous Marital Status:</strong> ${capitalizeFirstLetter(member.previousMaritalStatus)}</p>`
-                                : ''
-                        }
-                        <p class="household-member-info"><strong>SSN:</strong> ${member.socialSecurityNumber ? member.socialSecurityNumber : 'N/A'}</p>
-                
-                        ${!isDeceased ? `<p class="household-member-info"><strong>Disability:</strong> ${capitalizeFirstLetter(member.disability)}</p>` : ''}
-                        ${!isDeceased ? `<p class="household-member-info"><strong>Medicare:</strong> ${capitalizeFirstLetter(member.medicare)}</p>` : ''}
-                        ${!isDeceased ? `<p class="household-member-info"><strong>Medicaid:</strong> ${capitalizeFirstLetter(member.medicaid)}</p>` : ''}
-                        ${!isDeceased ? `<p class="household-member-info"><strong>US Citizen:</strong> ${capitalizeFirstLetter(member.citizen)}</p>` : ''}
-                        ${
-                            !isDeceased && member.nonCitizenStatus && member.nonCitizenStatus.toLowerCase() !== 'citizen'
-                                ? `<p class="household-member-info"><strong>Non-Citizen Status:</strong> ${capitalizeFirstLetter(member.nonCitizenStatus)}</p>`
-                                : ''
-                        }
-                        ${!isDeceased ? `<p class="household-member-info"><strong>Student:</strong> ${capitalizeFirstLetter(member.student)}</p>` : ''}
-                        ${
-                            !isDeceased && member.studentStatus && member.studentStatus.toLowerCase() !== 'notstudent'
-                                ? `<p class="household-member-info"><strong>Student Status:</strong> ${capitalizeFirstLetter(member.studentStatus)}</p>`
-                                : ''
-                        }
-                        ${!isDeceased ? `<p class="household-member-info"><strong>Included in SNAP Household:</strong> ${capitalizeFirstLetter(member.meals)}</p>` : ''}
-                
-                        <div class="button-container">
-                            <button class="edit-member-button" data-member-id="${member.householdMemberId}">Edit</button>
-                            <button class="delete-member-button" data-member-id="${member.householdMemberId}" style="color: white; background-color: red" 
-                                onmouseover="this.style.backgroundColor='darkred'" 
-                                onmouseout="this.style.backgroundColor='red'">Delete</button>
-                            ${
-                                !member.headOfHousehold
-                                    ? `<button class="make-head-button" data-member-id="${member.householdMemberId}">Make Head of Household</button>`
-                                    : `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block;"><strong>Head of Household</strong></p>`
-                            }
-                        </div>
-                    `;
-                    householdMemberContainer.appendChild(memberElement);
-                });
-                            
-                // Add event listeners to "Make Head of Household" buttons
-                document.querySelectorAll('.make-head-button').forEach((button) => {
-                    button.addEventListener('click', async (event) => {
-                        const memberId = event.target.getAttribute('data-member-id');
-                        await makeHeadOfHousehold(memberId); // Call the function to update head of household
-                    });
-                });
-            
-            
-            
-                // Add event listeners to all "Edit" buttons
-                document.querySelectorAll('.edit-member-button').forEach((button) => {
-                    button.addEventListener('click', (event) => {
-                        const memberId = event.target.getAttribute('data-member-id');
-                        const member = clientData.householdMembers.find((m) => m.householdMemberId === memberId);
-                        if (member) {
-                            openEditModal(member); // Open the modal in edit mode
-                        }
-                    });
-                });
-            
-                // Add event listeners to all "Delete" buttons
-                document.querySelectorAll('.delete-member-button').forEach((button) => {
-                    button.addEventListener('click', async (event) => {
-                        const memberId = event.target.getAttribute('data-member-id');
-                        await deleteHouseholdMember(memberId); // Call the delete function
-                    });
-                });
-            }
-
-            // Check and add the "Add Self" button
-            await checkAndAddSelfButton(clientData);
-
-                        // Handle LIHEAP-specific logic
-                        const liheapEnrollment = clientData.liheapEnrollment;
-                        const heatingCrisis = clientData.heatingCrisis;
-                        const residenceStatusContainer = document.getElementById('residenceStatusCurrent-container');
-                        const heatingCrisisContainer = document.getElementById('heatingCrisis-container');
-                        const subsidizedHousingContainer = document.getElementById('subsidizedHousing-container');
-                        const heatingCostContainer = document.getElementById('heatingCost-container');
-            
-                        if (liheapEnrollment === 'notinterested') {
-                            residenceStatusContainer.style.display = 'none';
-                            heatingCrisisContainer.style.display = 'none';
-                            subsidizedHousingContainer.style.display = 'none';
-                            heatingCostContainer.style.display = 'none';
-                        } else if (liheapEnrollment === 'yes' && heatingCrisis === 'no') {
-                            residenceStatusContainer.style.display = 'none';
-                            subsidizedHousingContainer.style.display = 'none';
-                            heatingCostContainer.style.display = 'none';
-                        } else {
-                            residenceStatusContainer.style.display = 'block';
-                            heatingCrisisContainer.style.display = 'block';
-            
-                            if (clientData.residenceStatusCurrent === 'owned') {
-                                subsidizedHousingContainer.style.display = 'none';
-                                heatingCostContainer.style.display = 'none';
-                            } else {
-                                subsidizedHousingContainer.style.display = 'block';
-                                if (clientData.subsidizedHousing === 'yes') {
-                                    heatingCostContainer.style.display = 'block';
-                                } else {
-                                    heatingCostContainer.style.display = 'none';
-                                }
-                            }
-                        }
-
-        // Load household members before running eligibility checks
-        const members = await loadHouseholdMembers();
-
-        // Trigger eligibility checks
-        await window.eligibilityChecks.PACEEligibilityCheck(members);
-        await window.eligibilityChecks.LISEligibilityCheck(members);
-        await window.eligibilityChecks.MSPEligibilityCheck(members);
-        await window.eligibilityChecks.PTRREligibilityCheck(members);
-        await window.eligibilityChecks.SNAPEligibilityCheck(members);
-        await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
-
-        // Single refresh after all checks complete
-        if (window.eligibilityChecks && window.eligibilityChecks.refreshAllDisplays) {
-            await window.eligibilityChecks.refreshAllDisplays();
-        }
-        }
-    } catch (error) {
-        console.error('Error loading saved data:', error);
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function () {
-    const subsidizedHousingContainer = document.getElementById('subsidizedHousing-container');
-    const heatingCostContainer = document.getElementById('heatingCost-container');
-
-    // Function to highlight the selected option
-function highlightSelection(options, selectedValue) {
-    options.forEach(option => {
-        if (option.getAttribute('data-value') === selectedValue) {
-            option.classList.add('selected'); // Add 'selected' class to the clicked option
-        } else {
-            option.classList.remove('selected'); // Remove 'selected' class from others
-        }
-    });
-}
-
-    // Function to load the saved selection
-    async function loadSelection(clientId) {
-        try {
-            const response = await fetch(`/get-client/${clientId}`);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch client data: ${response.statusText}`);
-            }
-            const client = await response.json();
-
-            // Recall residence status
-        const residenceStatusCurrent = client?.residenceStatusCurrent;
-        if (residenceStatusCurrent) {
-            const residenceStatusOptions = document.querySelectorAll('[id^="residenceStatusCurrent-"]');
-            highlightSelection(residenceStatusOptions, residenceStatusCurrent);
-
-            // Show or hide the subsidized housing question based on current residence status
-            if (residenceStatusCurrent === 'owned') {
-                subsidizedHousingContainer.style.display = 'none';
-                heatingCostContainer.style.display = 'none'; // Hide heating cost question as well
-            } else {
-                subsidizedHousingContainer.style.display = 'block';
-            }
-        }
-
-            // Recall subsidized housing selection
-            const subsidizedHousing = client?.subsidizedHousing;
-            if (subsidizedHousing) {
-                const subsidizedHousingOptions = document.querySelectorAll('[id^="subsidizedHousing-"]');
-                highlightSelection(subsidizedHousingOptions, subsidizedHousing);
-                if (subsidizedHousing === 'yes') {
-                    heatingCostContainer.style.display = 'block';
-                }
-            }
-
-            // Recall heating cost selection
-            const heatingCost = client?.heatingCost;
-            if (heatingCost) {
-                const heatingCostOptions = document.querySelectorAll('[id^="heatingCost-"]');
-                highlightSelection(heatingCostOptions, heatingCost);
-            }
-        } catch (error) {
-            console.error('Error loading client data:', error);
-        }
-    }
-
-    // Save the selected residence status to the client object
-async function saveResidenceStatus() {
-    const clientId = getQueryParam('id');
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
-    const selectedElement = document.querySelector('.selection-box #residenceStatusCurrent-owned.selected, .selection-box #residenceStatusCurrent-rented.selected, .selection-box #residenceStatusCurrent-rentedowned.selected, .selection-box #residenceStatusCurrent-other.selected');
-    if (!selectedElement) {
-        console.error('No residence status selected.');
-        return;
-    }
-
-    const residenceStatus = selectedElement.getAttribute('data-value');
-
-    try {
-        const response = await fetch(`/update-client`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                clientId,
-                clientData: { residenceStatusCurrent: residenceStatus },
-            }),
-        });
-
-        if (response.ok) {
-            console.log('Residence status updated successfully.');
-        } else {
-            const error = await response.json();
-            console.error('Error updating residence status:', error.message);
-        }
-    } catch (error) {
-        console.error('Error saving residence status:', error);
-    }
-}
-
-// Highlight the selected residence status
-function highlightResidenceStatus(selectedElement) {
-    const options = document.querySelectorAll('.selection-box #residenceStatusCurrent-owned, .selection-box #residenceStatusCurrent-rented, .selection-box #residenceStatusCurrent-rentedowned, .selection-box #residenceStatusCurrent-other');
-    options.forEach(option => option.classList.remove('selected'));
-    selectedElement.classList.add('selected');
-}
-
-// Recall the saved residence status on page load
-async function recallResidenceStatus() {
-    const clientId = getQueryParam('id');
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
-    try {
-        const response = await fetch(`/get-client/${clientId}`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client data: ${response.statusText}`);
-        }
-
-        const client = await response.json();
-        const savedStatus = client?.residenceStatusCurrent;
-
-        if (savedStatus) {
-            const selectedElement = document.querySelector(`.selection-box #residenceStatusCurrent-${savedStatus}`);
-            if (selectedElement) {
-                highlightResidenceStatus(selectedElement);
-            }
-        }
-    } catch (error) {
-        console.error('Error recalling residence status:', error);
-    }
-}
-
-// Add event listeners to residence status options
-function setupResidenceStatusListeners() {
-    const options = document.querySelectorAll('.selection-box #residenceStatusCurrent-owned, .selection-box #residenceStatusCurrent-rented, .selection-box #residenceStatusCurrent-rentedowned, .selection-box #residenceStatusCurrent-other');
-    options.forEach(option => {
-        option.addEventListener('click', () => {
-            highlightResidenceStatus(option);
-            saveResidenceStatus();
-        });
-    });
-}
-
-    // Add event listeners for residence status options
-    async function handleResidenceStatus(clientId) {
-        const residenceStatusOptions = document.querySelectorAll('#residenceStatusCurrent-container > div'); // Select child divs directly
-        const subsidizedHousingContainer = document.getElementById('subsidizedHousing-container');
-        const heatingCostContainer = document.getElementById('heatingCost-container');
-    
-        residenceStatusOptions.forEach(option => {
-            option.addEventListener('click', async function () {
-                const selectedValue = option.getAttribute('data-value'); // Directly get data-value from the div
-                if (!selectedValue) {
-                    console.error('No data-value attribute found on the clicked element.');
-                    return;
-                }
-    
-                // Save residence status and update UI
-                await saveClientUpdate(clientId, 'residenceStatus', selectedValue);
-                highlightSelection(residenceStatusOptions, selectedValue);
-    
-                if (selectedValue === 'owned') {
-                    // Hide subsidized housing and heating cost questions
-                    subsidizedHousingContainer.style.display = 'none';
-                    heatingCostContainer.style.display = 'none';
-    
-                    // Save "no" for both fields and update UI
-                    await saveClientUpdate(clientId, 'subsidizedHousing', null);
-                    await saveClientUpdate(clientId, 'heatingCost', null);
-                    highlightSelection(document.querySelectorAll('[id^="subsidizedHousing-"]'), null);
-                    highlightSelection(document.querySelectorAll('[id^="heatingCost-"]'), null);
-                } else {
-                    // Show subsidized housing question and reset heating cost
-                    subsidizedHousingContainer.style.display = 'block';
-                    heatingCostContainer.style.display = 'none';
-                }
-            });
-        });
-    }
-
-// Add event listeners for subsidized housing options
-async function handleSubsidizedHousing(clientId) {
-    const subsidizedHousingOptions = document.querySelectorAll('[id^="subsidizedHousing-"]');
-    const heatingCostContainer = document.getElementById('heatingCost-container');
-    const heatingCostOptions = document.querySelectorAll('[id^="heatingCost-"]');
-
-    subsidizedHousingOptions.forEach(option => {
-        option.addEventListener('click', async function (event) {
-            const selectedValue = event.target.getAttribute('data-value');
-
-            // Validate the selected value
-            if (!selectedValue) {
-                console.error('No data-value found for the clicked element.');
-                return;
-            }
-
-            // Disable all options to prevent multiple clicks
-            subsidizedHousingOptions.forEach(opt => opt.classList.add('disabled'));
-
-            try {
-                // Save the subsidized housing selection to the database
-                const response = await fetch('/update-client', {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        clientId,
-                        clientData: { subsidizedHousing: selectedValue },
-                    }),
-                });
-
-                if (response.ok) {
-                    console.log(`Successfully updated subsidizedHousing: ${selectedValue}`);
-                
-                    // Highlight the selection immediately after saving
-                    highlightSelection(subsidizedHousingOptions, selectedValue);
-                
-                    // Show or hide the heating cost question based on the selection
-                    if (selectedValue === 'yes') {
-                        heatingCostContainer.style.display = 'block';
-                    } else {
-                        heatingCostContainer.style.display = 'none';
-                
-                        // Automatically set heating cost to null when hiding it
-                        const heatingCostResponse = await fetch('/update-client', {
-                            method: 'PUT',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                clientId,
-                                clientData: { heatingCost: null },
-                            }),
-                        });
-                
-                        if (heatingCostResponse.ok) {
-                            console.log('Heating cost set to null as subsidized housing is "No".');
-                        } else {
-                        }
-                
-                        // Clear the heating cost selection in the UI
-                        highlightSelection(heatingCostOptions, null);
-                    }
-
-                    saveClientUpdate(clientId, 'subsidizedHousing', selectedValue);
-                
-                    // Fetch the updated client data
-                    const updatedClientResponse = await fetch(`/get-client/${clientId}`);
-                    if (updatedClientResponse.ok) {
-                        const updatedClient = await updatedClientResponse.json();
-
-                        // Trigger LIHEAP eligibility check
-                        if (window.eligibilityChecks && window.eligibilityChecks.LIHEAPEligibilityCheck) {
-                            await window.eligibilityChecks.LIHEAPEligibilityCheck(updatedClient);
-                        } else {
-                            console.error('LIHEAPEligibilityCheck function not found.');
-                        }
-
-                        // Trigger display updates
-                        if (window.eligibilityChecks && window.eligibilityChecks.displayLIHEAPHouseholds) {
-                            await window.eligibilityChecks.displayLIHEAPHouseholds();
-                        } else {
-                            console.error('displayLIHEAPHouseholds function not found.');
-                        }
-
-} else {
-}
-                } else {
-                }
-            } catch (error) {
-            } finally {
-                // Re-enable all options after the operation
-                subsidizedHousingOptions.forEach(opt => opt.classList.remove('disabled'));
-            }
-        });
-    });
-}
-
-async function handleHeatingCost(clientId) {
-    const heatingCostOptions = document.querySelectorAll('[id^="heatingCost-"]');
-
-    heatingCostOptions.forEach(option => {
-        option.addEventListener('click', async function (event) {
-            const selectedValue = event.target.getAttribute('data-value');
-
-            // Validate the selected value
-            if (!selectedValue) {
-                return;
-            }
-
-            // Disable all options to prevent multiple clicks
-            heatingCostOptions.forEach(opt => opt.classList.add('disabled'));
-
-            try {
-                // Save the selection to the database
-                const response = await fetch('/update-client', {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        clientId,
-                        clientData: { heatingCost: selectedValue },
-                    }),
-                });
-
-                if (response.ok) {
-                    console.log(`Successfully updated heatingCost: ${selectedValue}`);
-
-                    // Highlight the selection immediately after saving
-                    highlightSelection(heatingCostOptions, selectedValue);
-
-                    // Fetch the updated client data
-                    const updatedClientResponse = await fetch(`/get-client/${clientId}`);
-                    if (updatedClientResponse.ok) {
-                        const updatedClient = await updatedClientResponse.json();
-
-                        // Trigger LIHEAP eligibility check
-                        if (window.eligibilityChecks && window.eligibilityChecks.LIHEAPEligibilityCheck) {
-                            await window.eligibilityChecks.LIHEAPEligibilityCheck(updatedClient);
-                        } else {
-                            console.error('LIHEAPEligibilityCheck function not found.');
-                        }
-
-                        // Trigger display updates
-                        if (window.eligibilityChecks && window.eligibilityChecks.displayLIHEAPHouseholds) {
-                            await window.eligibilityChecks.displayLIHEAPHouseholds();
-                        } else {
-                            console.error('displayLIHEAPHouseholds function not found.');
-                        }
-                    } else {
-                        console.error('Failed to fetch updated client data.');
-                    }
-                } else {
-                    console.error('Failed to update heatingCost.');
-                }
-            } catch (error) {
-                console.error('Error updating heatingCost:', error);
-            } finally {
-                // Re-enable all options after the operation
-                heatingCostOptions.forEach(opt => opt.classList.remove('disabled'));
-            }
-        });
-    });
-}
-
-    // Initialize handlers and load selections
-    const clientId = getQueryParam('id');
-    if (clientId) {
-        loadSelection(clientId);
-        handleResidenceStatus(clientId);
-        handleSubsidizedHousing(clientId);
-        handleHeatingCost(clientId);
-        recallResidenceStatus();
-        setupResidenceStatusListeners();
-    }
-});
-
-function capitalizeFirstLetter(string) {
-    if (!string) return ''; // Return an empty string if input is falsy
-    return string.toUpperCase(); // Convert the entire string to uppercase
-}
-
-async function makeHeadOfHousehold(memberId) {
-    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
-    try {
-        // Fetch the current household members
-        const response = await fetch(`/get-client/${clientId}`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client data: ${response.statusText}`);
-        }
-        const clientData = await response.json();
-
-        if (clientData && clientData.householdMembers) {
-            // Update headOfHousehold property
-            const updatedMembers = clientData.householdMembers.map((member) => ({
-                ...member,
-                headOfHousehold: member.householdMemberId === memberId,
-            }));
-
-            // Send the updated members to the backend
-            const updateResponse = await fetch(`/update-household-members`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    clientId,
-                    members: updatedMembers,
-                }),
-            });
-
-            if (updateResponse.ok) {
-                console.log(`Successfully updated head of household to member ID: ${memberId}`);
-                await loadSavedData(); // Reload the data to reflect changes
-            } else {
-                console.error('Failed to update head of household:', updateResponse.statusText);
-            }
-        } else {
-            console.error('No household members found to update.');
-        }
-    } catch (error) {
-        console.error('Error updating head of household:', error);
-    }
-}
-
-// Function to handle saving the selection
 async function saveSelectionToClient(questionId, value) {
-    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
+    const clientId = getQueryParam('id');
+    if (!clientId) return;
 
     try {
-        // Prepare the data to update
-        const updateData = {};
-        updateData[questionId] = value;
-
-        // Send the update to the backend
-        const response = await fetch(`/update-client`, {
+        const response = await fetch('/update-client', {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                clientId,
-                clientData: updateData,
-            }),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, clientData: { [questionId]: value } }),
         });
 
-        if (!response.ok) {
-            throw new Error(`Failed to save ${questionId}: ${response.statusText}`);
-        }
-
+        if (!response.ok) throw new Error(`Failed to save ${questionId}: ${response.statusText}`);
         console.log(`Saved ${questionId}: ${value} for client ${clientId}`);
-
         await loadSavedData();
     } catch (error) {
         console.error(`Error saving ${questionId}: ${value}`, error);
     }
 }
 
-// Function to highlight the selected option
-function highlightSelection(elements, selectedElement) {
-    elements.forEach((elementId) => {
-        const element = document.getElementById(elementId);
-        if (element) {
-            if (element === selectedElement) {
-                element.classList.add('selected'); // Add the 'selected' class to the clicked element
-            } else {
-                element.classList.remove('selected'); // Remove the 'selected' class from others
-            }
-        }
-    });
-}
-
-// Function to save the heating crisis selection to the client object
-async function saveHeatingCrisisSelection(selection) {
+async function loadHouseholdMembers() {
     const clientId = getQueryParam('id');
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
+    if (!clientId) return [];
 
     try {
-        const response = await fetch('/update-client', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                clientId,
-                clientData: { heatingCrisis: selection },
-            }),
-        });
-
-        if (response.ok) {
-            console.log(`Heating crisis selection saved successfully: ${selection}`);
-
-            // Re-fetch client data to check LIHEAP enrollment
-            const updatedClientResponse = await fetch(`/get-client/${clientId}`);
-            if (updatedClientResponse.ok) {
-                const updatedClient = await updatedClientResponse.json();
-                const liheapEnrollment = updatedClient?.liheapEnrollment;
-
-                const residenceStatusContainer = document.getElementById('residenceStatusCurrent-container');
-                const subsidizedHousingContainer = document.getElementById('subsidizedHousing-container');
-                const heatingCostContainer = document.getElementById('heatingCost-container');
-
-                if (liheapEnrollment === 'yes' && selection === 'no') {
-                    // Hide the residenceStatusCurrent container and set its value to null
-                    residenceStatusContainer.style.display = 'none';
-                    subsidizedHousingContainer.style.display = 'none';
-                    heatingCostContainer.style.display = 'none';
-                    await saveClientUpdate(clientId, 'subsidizedHousing', null);
-                    await saveClientUpdate(clientId, 'heatingCost', null);
-                    await saveClientUpdate(clientId, 'residenceStatusCurrent', null);
-                    document.querySelectorAll('[id^="residenceStatusCurrent-"]').forEach(option => {
-                        option.classList.remove('selected');
-                    });
-                } else {
-                    // Show the residenceStatusCurrent container
-                    residenceStatusContainer.style.display = 'block';
-                }
-
-                // Trigger LIHEAP eligibility check
-                if (window.eligibilityChecks && window.eligibilityChecks.LIHEAPEligibilityCheck) {
-                    await window.eligibilityChecks.LIHEAPEligibilityCheck(updatedClient);
-                } else {
-                    console.error('LIHEAPEligibilityCheck function not found.');
-                }
-
-                // Trigger display function
-                if (window.eligibilityChecks && window.eligibilityChecks.displayLIHEAPHouseholds) {
-                    await window.eligibilityChecks.displayLIHEAPHouseholds();
-                } else {
-                    console.error('displayLIHEAPHouseholds function not found.');
-                }
-            } else {
-                console.error('Failed to fetch updated client data.');
-            }
-        } else {
-            const error = await response.json();
-            console.error('Error saving heating crisis selection:', error.message);
-        }
+        const clientData = await fetchClient(clientId);
+        return clientData?.householdMembers || [];
     } catch (error) {
-        console.error('Error saving heating crisis selection:', error);
+        console.error('Error loading household members:', error);
+        return [];
     }
 }
 
-// Function to highlight the selected heating crisis option
-function highlightHeatingCrisisSelection(selectedValue) {
-    const options = document.querySelectorAll('#heatingCrisis-yes, #heatingCrisis-no');
-    options.forEach((option) => {
-        if (option.getAttribute('data-value') === selectedValue) {
-            option.classList.add('selected');
-        } else {
-            option.classList.remove('selected');
-        }
+// ══════════════════════════════════════════════════════════════
+// MODAL QUESTION DEFINITIONS
+// ══════════════════════════════════════════════════════════════
+
+const MAIN_QUESTIONS = [
+    { id: 'disability', elements: ['disability-yes', 'disability-no'] },
+    { id: 'medicare', elements: ['medicare-yes', 'medicare-no'] },
+    { id: 'medicaid', elements: ['medicaid-yes', 'medicaid-no'] },
+    { id: 'student', elements: ['student-yes', 'student-no'] },
+    { id: 'snap', elements: ['snap-yes', 'snap-no', 'snap-notinterested'] },
+    { id: 'liheap', elements: ['liheap-yes', 'liheap-no', 'liheap-notinterested'] },
+    { id: 'subsidizedHousing', elements: ['subsidizedHousing-yes', 'subsidizedHousing-no'] },
+    { id: 'heatingCost', elements: ['heatingCost-yes', 'heatingCost-no'] },
+    { id: 'heatingCrisis', elements: ['heatingCrisis-yes', 'heatingCrisis-no'] },
+    { id: 'residenceStatusCurrent', elements: ['residenceStatusCurrent-owned', 'residenceStatusCurrent-rented', 'residenceStatusCurrent-rentedowned', 'residenceStatusCurrent-other'] },
+    { id: 'residenceStatus', elements: ['residenceStatus-owned', 'residenceStatus-rented', 'residenceStatus-rentedowned', 'residenceStatus-other'] },
+    { id: 'citizen', elements: ['citizen-yes', 'citizen-no'] },
+];
+
+const MODAL_QUESTIONS = [
+    { id: 'disability', elements: ['modal-disability-yes', 'modal-disability-no'] },
+    { id: 'medicare', elements: ['modal-medicare-yes', 'modal-medicare-no'] },
+    { id: 'medicaid', elements: ['modal-medicaid-yes', 'modal-medicaid-no'] },
+    { id: 'student', elements: ['modal-student-yes', 'modal-student-no'] },
+    { id: 'meals', elements: ['modal-meals-yes', 'modal-meals-no'] },
+    { id: 'citizen', elements: ['modal-citizen-yes', 'modal-citizen-no'] },
+    { id: 'deceased', elements: ['modal-deceased-yes', 'modal-deceased-no'] },
+];
+
+const MODAL_FIELD_IDS = [
+    'firstName', 'middleInitial', 'lastName', 'dob',
+    'socialSecurityNumber', 'legalSex', 'maritalStatus',
+    'previousMaritalStatus', 'studentStatus', 'nonCitizenStatus'
+];
+
+const MODAL_QUESTION_CONTAINER_IDS = [
+    'disabilityQuestion', 'medicareQuestion', 'medicaidQuestion',
+    'studentQuestion', 'mealsQuestion', 'citizenQuestion',
+];
+
+// ══════════════════════════════════════════════════════════════
+// LIHEAP / RESIDENCE / HOUSING VISIBILITY LOGIC
+// ══════════════════════════════════════════════════════════════
+
+function getContainerRefs() {
+    return {
+        residenceStatus: document.getElementById('residenceStatusCurrent-container'),
+        heatingCrisis: document.getElementById('heatingCrisis-container'),
+        subsidizedHousing: document.getElementById('subsidizedHousing-container'),
+        heatingCost: document.getElementById('heatingCost-container'),
+    };
+}
+
+function hideAllLiheapContainers() {
+    const c = getContainerRefs();
+    Object.values(c).forEach(el => { if (el) el.style.display = 'none'; });
+}
+
+function clearSelectionsForPrefix(...prefixes) {
+    prefixes.forEach(prefix => {
+        document.querySelectorAll(`[id^="${prefix}-"]`).forEach(opt => opt.classList.remove('selected'));
     });
 }
 
-// Function to recall the heating crisis selection on page load
-async function recallHeatingCrisisSelection() {
-    const clientId = getQueryParam('id');
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
+async function applyLiheapVisibility(clientData) {
+    const c = getContainerRefs();
+    const liheap = clientData.liheapEnrollment;
+    const crisis = clientData.heatingCrisis;
+    const residence = clientData.residenceStatusCurrent;
+    const subsidized = clientData.subsidizedHousing;
+
+    if (liheap === 'notinterested') {
+        hideAllLiheapContainers();
         return;
     }
 
-    try {
-        const response = await fetch(`/get-client/${clientId}`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client data: ${response.statusText}`);
-        }
-
-        const client = await response.json();
-        const heatingCrisis = client?.heatingCrisis;
-
-        // Highlight the saved selection
-        if (heatingCrisis) {
-            highlightHeatingCrisisSelection(heatingCrisis);
-        }
-
-        // Hide the question if LIHEAP eligibility is "Not Likely Eligible for LIHEAP"
-        const liheapEligibility = client?.liheap?.eligibility;
-        if (liheapEligibility === 'Not Likely Eligible for LIHEAP') {
-            document.getElementById('heatingCrisis-container').style.display = 'none';
-        }
-    } catch (error) {
-        console.error('Error recalling heating crisis selection:', error);
-    }
-}
-
-// Add event listeners to the heating crisis options
-document.querySelectorAll('#heatingCrisis-yes, #heatingCrisis-no').forEach((option) => {
-    option.addEventListener('click', async () => {
-        const selection = option.getAttribute('data-value');
-        highlightHeatingCrisisSelection(selection);
-        await saveHeatingCrisisSelection(selection);
-    });
-});
-
-// Recall the heating crisis selection on page load
-document.addEventListener('DOMContentLoaded', () => {
-    recallHeatingCrisisSelection();
-    
-});
-
-document.addEventListener('DOMContentLoaded', async () => {
-    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-    if (clientId) {
-        await handleLiheapEligibility(clientId); // Call the LIHEAP eligibility handler on page load
-    }
-
-    await loadSavedData(); // Load and display saved data
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-    const questions = [
-        { id: 'disability', elements: ['disability-yes', 'disability-no'] },
-        { id: 'medicare', elements: ['medicare-yes', 'medicare-no'] },
-        { id: 'medicaid', elements: ['medicaid-yes', 'medicaid-no'] },
-        { id: 'student', elements: ['student-yes', 'student-no'] },
-        { id: 'snap', elements: ['snap-yes', 'snap-no', 'snap-notinterested'] },
-        { id: 'residenceStatus', elements: ['residenceStatus-owned', 'residenceStatus-rented', 'residenceStatus-rentedowned', 'residenceStatus-other'] },
-        { id: 'citizen', elements: ['citizen-yes', 'citizen-no'] } // Add this line
-    ];
-
-    questions.forEach((question) => {
-        question.elements.forEach((elementId) => {
-            const element = document.getElementById(elementId);
-            if (element) {
-                element.addEventListener('click', async () => {
-                    const value = element.getAttribute('data-value');
-
-                    // Highlight the selected option
-                    highlightSelection(question.elements, element);
-
-                    // Save the selection for the client
-                    await saveSelectionToClient(question.id, value);
-
-                    // Apply specific logic based on the question
-                    if (['disability', 'medicare', 'medicaid'].includes(question.id) && value === 'no') {
-                        // Automatically assign "no" to all members for these questions
-                        await updateAllMembers(question.id, 'no');
-                    } else if (['student'].includes(question.id) && value === 'no') {
-                        // Automatically assign "no" to all members for "student"
-                        await updateAllMembers('student', 'no');
-                        await updateAllMembers('studentStatus', 'notstudent'); // Set student status to "not student"
-                    } else if (['citizen'].includes(question.id) && value === 'yes') {
-                        // Automatically assign "no" to all members for "citizen"
-                        await updateAllMembers('citizen', 'yes');
-                        await updateAllMembers('nonCitizenStatus', 'citizen'); // Set non-citizen status to "citizen"
-                    } else if (question.id === 'snap' && (value === 'yes' || value === 'notinterested')) {
-                        // Automatically assign "no" to all members for "snap" if "yes" or "not interested"
-                        await updateAllMembers('meals', 'no');
-                    } else if (question.id === 'residenceStatus') {
-                        // Assign the selected residence status to all members
-                        await updateAllMembers('residenceStatus', value);
-                    }
-                });
-            }
-        });
-    });
-
-    // Add listener for the household size dropdown
-    const householdSizeDropdown = document.getElementById('household-size');
-    if (householdSizeDropdown) {
-        householdSizeDropdown.addEventListener('change', async () => {
-            const value = householdSizeDropdown.value; // Get the selected value
-            if (value) {
-                await saveSelectionToClient('householdSize', value); // Save the selection
-                console.log(`Household size updated to: ${value}`);
-            }
-        });
-    }
-});
-
-async function prepareHouseholdMemberModal() {
-    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
+    if (liheap === 'yes' && crisis === 'no') {
+        c.residenceStatus.style.display = 'none';
+        c.subsidizedHousing.style.display = 'none';
+        c.heatingCost.style.display = 'none';
+        c.heatingCrisis.style.display = 'block';
         return;
     }
 
-    try {
-        // Clear all modal data
-        const modalFields = [
-            'firstName',
-            'middleInitial',
-            'lastName',
-            'dob',
-            'socialSecurityNumber',
-            'legalSex',
-            'maritalStatus',
-            'previousMaritalStatus',
-            'studentStatus',
-            'nonCitizenStatus'
-        ];
+    c.residenceStatus.style.display = 'block';
+    c.heatingCrisis.style.display = 'block';
 
-        // Make SSN field editable and hide the "Edit SSN" button
-        const ssnInput = document.getElementById('socialSecurityNumber');
-        const editSSNButton = document.getElementById('editSSNButton');
-        ssnInput.readOnly = false; // Make the SSN field editable
-        if (editSSNButton) {
-            editSSNButton.style.display = 'none'; // Hide the "Edit SSN" button
-        }
-
-        resetSSNFields();
-
-        modalFields.forEach((fieldId) => {
-            const field = document.getElementById(fieldId);
-            if (field) {
-                field.value = ''; // Clear the input field
-            }
-        });
-
-        // Hide the "Next" button initially
-        const nextButton = document.getElementById('nextSSNButton');
-        if (nextButton) {
-            nextButton.style.display = 'none';
-        }
-
-        // Reset visibility of all modal questions
-        const modalQuestions = [
-            'disabilityQuestion',
-            'medicareQuestion',
-            'medicaidQuestion',
-            'studentQuestion',
-            'mealsQuestion',
-            'citizenQuestion',
-        ];
-        modalQuestions.forEach((questionId) => {
-            const question = document.getElementById(questionId);
-            if (question) {
-                question.style.display = 'block'; // Reset to visible by default
-            }
-        });
-
-        // Hide Date of Death container by default
-        const dateOfDeathContainer = document.getElementById('dateOfDeathContainer');
-        const dateOfDeathInput = document.getElementById('dateOfDeath');
-        if (dateOfDeathContainer) dateOfDeathContainer.style.display = 'none';
-        if (dateOfDeathInput) dateOfDeathInput.value = '';
-
-        // Reset all question selections
-        const questionOptions = [
-            'modal-disability-yes',
-            'modal-disability-no',
-            'modal-medicare-yes',
-            'modal-medicare-no',
-            'modal-medicaid-yes',
-            'modal-medicaid-no',
-            'modal-student-yes',
-            'modal-student-no',
-            'modal-meals-yes',
-            'modal-meals-no',
-            'modal-citizen-yes',
-            'modal-citizen-no',
-            'modal-deceased-yes',
-            'modal-deceased-no'
-        ];
-        questionOptions.forEach((optionId) => {
-            const option = document.getElementById(optionId);
-            if (option) {
-                option.classList.remove('selected'); // Remove the 'selected' class
-            }
-        });
-
-        // Default deceased to "no": highlight UI option and set input value (if present)
-        const deceasedNo = document.getElementById('modal-deceased-no');
-        if (deceasedNo) {
-            deceasedNo.classList.add('selected');
-        }
-        const deceasedInput = document.getElementById('deceased');
-        if (deceasedInput) {
-            deceasedInput.value = 'no';
-        }
-
-        // Hide the nonCitizenStatusContainer and studentStatusContainer by default
-        const nonCitizenStatusContainer = document.getElementById('nonCitizenStatusContainer');
-        const studentStatusContainer = document.getElementById('studentStatusContainer');
-        if (nonCitizenStatusContainer) {
-            nonCitizenStatusContainer.style.display = 'none';
-        }
-        if (studentStatusContainer) {
-            studentStatusContainer.style.display = 'none';
-        }
-
-        // Fetch the client data from the backend
-        const response = await fetch(`/get-client/${clientId}`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client data: ${response.statusText}`);
-        }
-        const clientData = await response.json();
-
-        // Update the modal questions based on the saved data
-        if (clientData) {
-            const disabilityQuestion = document.getElementById('disabilityQuestion');
-            const medicareQuestion = document.getElementById('medicareQuestion');
-            const medicaidQuestion = document.getElementById('medicaidQuestion');
-            const studentQuestion = document.getElementById('studentQuestion');
-            const mealsQuestion = document.getElementById('mealsQuestion');
-            const previousMaritalStatusContainer = document.getElementById('previousMaritalStatus').parentNode; // Get the container
-
-            // Hide or show the previousMaritalStatus dropdown based on headOfHousehold status
-            const hasHeadOfHousehold = clientData.householdMembers?.some(member => member.headOfHousehold);
-
-            if (hasHeadOfHousehold) {
-                // Hide for members who are not the head of household
-                if (!clientData.headOfHousehold) {
-                    previousMaritalStatusContainer.style.display = 'none'; // Hide the dropdown
-                } else {
-                    previousMaritalStatusContainer.style.display = 'block'; // Show the dropdown for the head of household
-                }
-            } else {
-                // Show if there is no head of household
-                previousMaritalStatusContainer.style.display = 'block';
-            }
-
-            if (clientData.disability === 'yes') {
-                disabilityQuestion.style.display = 'block';
-            } else {
-                disabilityQuestion.style.display = 'none';
-            }
-
-            if (clientData.medicare === 'yes') {
-                medicareQuestion.style.display = 'block';
-            } else {
-                medicareQuestion.style.display = 'none';
-            }
-
-            if (clientData.medicaid === 'yes') {
-                medicaidQuestion.style.display = 'block';
-            } else {
-                medicaidQuestion.style.display = 'none';
-            }
-
-            if (clientData.citizen === 'no') {
-                citizenQuestion.style.display = 'block';
-            } else {
-                citizenQuestion.style.display = 'none';
-            }
-
-            if (clientData.student === 'yes') {
-                studentQuestion.style.display = 'block';
-            } else {
-                studentQuestion.style.display = 'none';
-            }
-
-            if (clientData.snap === 'yes' || clientData.snap === 'notinterested') {
-                mealsQuestion.style.display = 'none';
-            } else {
-                mealsQuestion.style.display = 'block';
-            }
-
-            // Add listeners to highlight the selected options
-            const modalQuestions = [
-                { id: 'disability', elements: ['modal-disability-yes', 'modal-disability-no'] },
-                { id: 'medicare', elements: ['modal-medicare-yes', 'modal-medicare-no'] },
-                { id: 'medicaid', elements: ['modal-medicaid-yes', 'modal-medicaid-no'] },
-                { id: 'student', elements: ['modal-student-yes', 'modal-student-no'] },
-                { id: 'meals', elements: ['modal-meals-yes', 'modal-meals-no'] },
-                { id: 'citizen', elements: ['modal-citizen-yes', 'modal-citizen-no'] },
-                { id: 'deceased', elements: ['modal-deceased-yes', 'modal-deceased-no'] }
-            ];
-
-            modalQuestions.forEach((question) => {
-                question.elements.forEach((elementId) => {
-                    const element = document.getElementById(elementId);
-                    if (element) {
-                        element.addEventListener('click', () => {
-                            // Ensure toggling between yes/no keeps a single selection
-                            question.elements.forEach((id) => {
-                                const el = document.getElementById(id);
-                                if (el) el.classList.remove('selected');
-                            });
-                            element.classList.add('selected');
-
-                            // Keep the hidden/select input synchronized for deceased
-                            if (question.id === 'deceased') {
-                                const val = element.getAttribute('data-value');
-                                const input = document.getElementById('deceased');
-                                if (input) input.value = val;
-
-                                // Toggle Date of Death visibility
-                                const dodContainer = document.getElementById('dateOfDeathContainer');
-                                const dodInput = document.getElementById('dateOfDeath');
-                                if (dodContainer) {
-                                    if (val === 'yes') {
-                                        dodContainer.style.display = 'block';
-                                    } else {
-                                        dodContainer.style.display = 'none';
-                                        if (dodInput) dodInput.value = '';
-                                    }
-                                }
-                            }
-                        });
-                    }
-                });
-            });
-        }
-    } catch (error) {
-        console.error('Error fetching client data:', error);
-    }
-}
-
-document.getElementById('add-household-member').addEventListener('click', async () => {
-    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
-    try {
-        // Fetch the client data to check household size
-        const response = await fetch(`/get-client/${clientId}`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client data: ${response.statusText}`);
-        }
-        const clientData = await response.json();
-
-        if (!clientData) {
-            console.error('Client data not found.');
-            return;
-        }
-
-        // Check if household size is not set or is 0
-        if (!clientData.householdSize || clientData.householdSize === 0) {
-            alert('Household size is not set. Please select a valid household size before adding members.');
-            return; // Prevent the modal from opening
-        }
-
-        // Check if the number of household members exceeds the household size
-        if (clientData.householdMembers.length >= clientData.householdSize) {
-            alert('The number of household members cannot exceed the selected household size.');
-            return; // Prevent the modal from opening
-        }
-
-        // If validation passes, open the modal in "Add" mode
-        setModalHeader('add');
-        await prepareHouseholdMemberModal(); // Clear and prepare the modal
-        setupAddOrUpdateButton(false); // Set up the button for adding a new member
-        document.getElementById('householdMemberModal').style.display = 'block'; // Show the modal
-    } catch (error) {
-        console.error('Error fetching client data:', error);
-    }
-});
-
-function setModalHeader(mode) {
-    const modalHeader = document.getElementById('modal-header');
-    if (mode === 'edit') {
-        modalHeader.textContent = 'Edit Household Member';
+    if (residence === 'owned') {
+        c.subsidizedHousing.style.display = 'none';
+        c.heatingCost.style.display = 'none';
     } else {
-        modalHeader.textContent = 'Add Household Member';
+        c.subsidizedHousing.style.display = 'block';
+        c.heatingCost.style.display = subsidized === 'yes' ? 'block' : 'none';
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    const addHouseholdMemberButton = document.getElementById('add-household-member');
-    setModalHeader('add');
-    const householdMemberModal = document.getElementById('householdMemberModal');
-    const closeModalButton = document.getElementById('closeHouseholdMemberModal');
+// ══════════════════════════════════════════════════════════════
+// LOAD SAVED DATA (MAIN PAGE RENDER)
+// ══════════════════════════════════════════════════════════════
 
-    if (addHouseholdMemberButton && householdMemberModal) {
-        addHouseholdMemberButton.addEventListener('click', async () => {
-            const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-            if (!clientId) {
-                console.error('Client ID not found in query parameters.');
+async function loadSavedData() {
+    const clientId = getQueryParam('id');
+    if (!clientId) return;
+
+    try {
+        const clientData = await fetchClient(clientId);
+        if (!clientData) return;
+
+        // Highlight saved selections for main questions
+        MAIN_QUESTIONS.forEach(q => {
+            const savedValue = clientData[q.id];
+            if (savedValue) {
+                highlightSelection(q.elements, savedValue);
+            }
+        });
+
+        // Household size dropdown
+        const sizeDropdown = document.getElementById('household-size');
+        if (sizeDropdown && clientData.householdSize) {
+            sizeDropdown.value = clientData.householdSize;
+        }
+
+        // Render household members
+        renderHouseholdMembers(clientData);
+
+        // "Add Self" button
+        await checkAndAddSelfButton(clientData);
+
+        // LIHEAP visibility
+        await applyLiheapVisibility(clientData);
+
+        // Run eligibility checks
+        const members = clientData.householdMembers || [];
+        await runAllEligibilityChecks(members);
+
+    } catch (error) {
+        console.error('Error loading saved data:', error);
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// RENDER HOUSEHOLD MEMBERS
+// ══════════════════════════════════════════════════════════════
+
+function renderHouseholdMembers(clientData) {
+    const container = document.getElementById('householdMemberContainer');
+    if (!clientData.householdMembers?.length) return;
+
+    container.innerHTML = '';
+
+    const sorted = [...clientData.householdMembers].sort((a, b) => b.headOfHousehold - a.headOfHousehold);
+
+    sorted.forEach(member => {
+        const el = document.createElement('div');
+        el.classList.add('household-member');
+        el.innerHTML = buildMemberHTML(member);
+        container.appendChild(el);
+    });
+
+    // Wire up buttons via event delegation
+    container.addEventListener('click', async (e) => {
+        const target = e.target;
+        const memberId = target.getAttribute('data-member-id');
+        if (!memberId) return;
+
+        if (target.classList.contains('edit-member-button')) {
+            const member = clientData.householdMembers.find(m => m.householdMemberId === memberId);
+            if (member) openEditModal(member);
+        } else if (target.classList.contains('delete-member-button')) {
+            await deleteHouseholdMember(memberId);
+        } else if (target.classList.contains('make-head-button')) {
+            await makeHeadOfHousehold(memberId);
+        }
+    });
+}
+
+function buildMemberHTML(member) {
+    const deceased = member.deceased === 'yes';
+    const name = [
+        member.prefix, capitalizeFirstLetter(member.firstName),
+        member.middleInitial ? capitalizeFirstLetter(member.middleInitial) : '',
+        capitalizeFirstLetter(member.lastName), member.suffix
+    ].filter(Boolean).join(' ');
+
+    const info = (label, value) => `<p class="household-member-info"><strong>${label}:</strong> ${value}</p>`;
+    const conditionalInfo = (show, label, value) => show ? info(label, value) : '';
+
+    const showPrevMarital = !deceased && member.previousMaritalStatus
+        && typeof member.previousMaritalStatus === 'string'
+        && member.previousMaritalStatus.toLowerCase() !== 'n/a';
+
+    const showNonCitizen = !deceased && member.nonCitizenStatus
+        && member.nonCitizenStatus.toLowerCase() !== 'citizen';
+
+    const showStudentStatus = !deceased && member.studentStatus
+        && member.studentStatus.toLowerCase() !== 'notstudent';
+
+    return `
+        ${info('Name', name)}
+        ${info('DOB', member.dob)}
+        ${deceased ? `<p class="household-member-info"><strong>Deceased: YES</strong></p>` : ''}
+        ${deceased ? info('Date of Death', member.dateOfDeath || 'N/A') : ''}
+        ${info('Age', member.age)}
+        ${info('Legal Sex', capitalizeFirstLetter(member.legalSex))}
+        ${conditionalInfo(!deceased, 'Marital Status', capitalizeFirstLetter(member.maritalStatus))}
+        ${conditionalInfo(showPrevMarital, 'Previous Marital Status', capitalizeFirstLetter(member.previousMaritalStatus))}
+        ${info('SSN', member.socialSecurityNumber || 'N/A')}
+        ${conditionalInfo(!deceased, 'Disability', capitalizeFirstLetter(member.disability))}
+        ${conditionalInfo(!deceased, 'Medicare', capitalizeFirstLetter(member.medicare))}
+        ${conditionalInfo(!deceased, 'Medicaid', capitalizeFirstLetter(member.medicaid))}
+        ${conditionalInfo(!deceased, 'US Citizen', capitalizeFirstLetter(member.citizen))}
+        ${conditionalInfo(showNonCitizen, 'Non-Citizen Status', capitalizeFirstLetter(member.nonCitizenStatus))}
+        ${conditionalInfo(!deceased, 'Student', capitalizeFirstLetter(member.student))}
+        ${conditionalInfo(showStudentStatus, 'Student Status', capitalizeFirstLetter(member.studentStatus))}
+        ${conditionalInfo(!deceased, 'Included in SNAP Household', capitalizeFirstLetter(member.meals))}
+        <div class="button-container">
+            <button class="edit-member-button" data-member-id="${member.householdMemberId}">Edit</button>
+            <button class="delete-member-button" data-member-id="${member.householdMemberId}"
+                style="color: white; background-color: red">Delete</button>
+            ${!member.headOfHousehold
+                ? `<button class="make-head-button" data-member-id="${member.householdMemberId}">Make Head of Household</button>`
+                : `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block;"><strong>Head of Household</strong></p>`
+            }
+        </div>
+    `;
+}
+
+// ══════════════════════════════════════════════════════════════
+// ADD SELF BUTTON
+// ══════════════════════════════════════════════════════════════
+
+async function checkAndAddSelfButton(clientData) {
+    const container = document.getElementById('householdMemberContainer');
+    document.getElementById('add-self-button')?.remove();
+
+    const hasSelf = clientData.householdMembers?.some(
+        m => m.firstName === clientData.firstName && m.lastName === clientData.lastName
+    );
+
+    if (hasSelf) return;
+
+    const btn = document.createElement('button');
+    btn.id = 'add-self-button';
+    btn.textContent = 'Add Primary Client as Household Member';
+    btn.style.cssText = 'margin-bottom: 10px; border: 1px solid black; transition: background-color 0.3s ease, color 0.3s ease;';
+
+    btn.addEventListener('mouseover', () => { btn.style.backgroundColor = '#0056b3'; btn.style.color = 'white'; });
+    btn.addEventListener('mouseout', () => { btn.style.backgroundColor = ''; btn.style.color = ''; });
+
+    btn.addEventListener('click', async () => {
+        const clientId = getQueryParam('id');
+        if (!clientId) return;
+
+        try {
+            const data = await fetchClient(clientId);
+            if (!data.householdSize || data.householdSize === 0) {
+                alert('Household size is not set. Please select a valid household size before adding members.');
+                return;
+            }
+            if (data.householdMembers.length >= data.householdSize) {
+                alert('The number of household members cannot exceed the selected household size.');
                 return;
             }
 
-            try {
-                // Fetch the client data to check household size
-                const response = await fetch(`/get-client/${clientId}`);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch client data: ${response.statusText}`);
-                }
-                const clientData = await response.json();
-
-                if (!clientData) {
-                    console.error('Client data not found.');
-                    return;
-                }
-
-                // Check if the number of household members exceeds the household size
-if (!clientData.householdSize || clientData.householdSize === 0) {
-    return;
-}
-
-if (clientData.householdMembers.length >= clientData.householdSize) {
-    return;
-}
-
-                // Prepare the modal based on saved data
-                await prepareHouseholdMemberModal();
-                setupAddOrUpdateButton(false);
-
-                householdMemberModal.style.display = 'block'; // Show the modal
-            } catch (error) {
-                console.error('Error fetching client data:', error);
-            }
-        });
-    }
-
-    // Add listener to close the modal
-    if (closeModalButton && householdMemberModal) {
-        closeModalButton.addEventListener('click', () => {
-            householdMemberModal.style.display = 'none'; // Hide the modal
-        });
-    }
-
-    // Close the modal when clicking outside of it
-    window.addEventListener('click', (event) => {
-        if (event.target === householdMemberModal) {
-            householdMemberModal.style.display = 'none'; // Hide the modal
+            setModalHeader('add');
+            await prepareHouseholdMemberModal();
+            document.getElementById('firstName').value = data.firstName;
+            document.getElementById('lastName').value = data.lastName;
+            setupAddOrUpdateButton(false);
+            document.getElementById('householdMemberModal').style.display = 'block';
+        } catch (error) {
+            console.error('Error fetching client data:', error);
         }
     });
-});
 
-document.addEventListener('DOMContentLoaded', () => {
-    const addMemberButton = document.getElementById('add-member');
-    if (addMemberButton) {
-        addMemberButton.addEventListener('click', async (event) => {
-            event.preventDefault(); // Prevent form submission
-            await addHouseholdMember(); // Call the function to add the member
-        });
-    }
-});
+    container.parentNode.insertBefore(btn, container);
+}
 
-async function addHouseholdMember() {
-    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
+// ══════════════════════════════════════════════════════════════
+// HEAD OF HOUSEHOLD
+// ══════════════════════════════════════════════════════════════
+
+async function makeHeadOfHousehold(memberId) {
+    const clientId = getQueryParam('id');
+    if (!clientId) return;
 
     try {
-        // Gather data from the modal
-        const ssnInput = document.getElementById('socialSecurityNumber');
-        const prefix = document.getElementById('prefix').value.trim();
-        const firstName = document.getElementById('firstName').value.trim();
-        const lastName = document.getElementById('lastName').value.trim();
-        const suffix = document.getElementById('suffix').value.trim();
-        const socialSecurityNumber = ssnInput.value.trim();
-        const middleInitial = document.getElementById('middleInitial').value.trim();
-        const dob = document.getElementById('dob').value;
-        const legalSex = document.getElementById('legalSex').value;
-        const maritalStatus = document.getElementById('maritalStatus').value;
-        const previousMaritalStatus = document.getElementById('previousMaritalStatus').value;
-        const nonCitizenStatus = document.getElementById('nonCitizenStatus').value;
-        const studentStatus = document.getElementById('studentStatus').value;
-        const dateOfDeath = document.getElementById('dateOfDeath')?.value || '';
+        const clientData = await fetchClient(clientId);
+        if (!clientData?.householdMembers) return;
 
-        
-        // Calculate age in Years, Months, and Days
-        const calculateAge = (dob, endDateStr) => {
-            if (!dob) return { years: 0, months: 0, days: 0 };
-            const birthDate = new Date(dob);
-            // Use Date of Death if provided, otherwise use "today - 1 day"
-            const endDate = endDateStr ? new Date(endDateStr) : new Date();
-            if (!endDateStr) endDate.setDate(endDate.getDate() - 1);
+        const updatedMembers = clientData.householdMembers.map(m => ({
+            ...m,
+            headOfHousehold: m.householdMemberId === memberId,
+        }));
 
-            let years = endDate.getFullYear() - birthDate.getFullYear();
-            let months = endDate.getMonth() - birthDate.getMonth();
-            let days = endDate.getDate() - birthDate.getDate();
-
-            if (days < 0) {
-                months -= 1;
-                days += new Date(endDate.getFullYear(), endDate.getMonth(), 0).getDate();
-            }
-            if (months < 0) {
-                years -= 1;
-                months += 12;
-            }
-
-            return { years, months, days };
-        };
-
-        const age = calculateAge(dob, dateOfDeath);
-
-        // Gather answers to modal questions
-        const modalQuestions = [
-            { id: 'disability', elements: ['modal-disability-yes', 'modal-disability-no'] },
-            { id: 'medicare', elements: ['modal-medicare-yes', 'modal-medicare-no'] },
-            { id: 'medicaid', elements: ['modal-medicaid-yes', 'modal-medicaid-no'] },
-            { id: 'student', elements: ['modal-student-yes', 'modal-student-no'] },
-            { id: 'meals', elements: ['modal-meals-yes', 'modal-meals-no'] },
-            { id: 'citizen', elements: ['modal-citizen-yes', 'modal-citizen-no'] },
-            { id: 'deceased', elements: ['modal-deceased-yes', 'modal-deceased-no'] } // added
-        ];
-
-        const answers = {};
-        modalQuestions.forEach((question) => {
-            const questionContainer = document.getElementById(`${question.id}Question`);
-            const visible = !questionContainer || questionContainer.style.display !== 'none';
-            if (visible) {
-                question.elements.forEach((elementId) => {
-                    const element = document.getElementById(elementId);
-                    if (element && element.classList.contains('selected')) {
-                        answers[question.id] = element.getAttribute('data-value');
-                    }
-                });
-            } else {
-                answers[question.id] = 'no';
-            }
-        });
-
-        // Automatically set citizen status to "yes" if the citizen question is not shown
-        const citizenQuestion = document.getElementById('citizenQuestion');
-        if (citizenQuestion && citizenQuestion.style.display === 'none') {
-            answers.citizen = 'yes';
-        }
-
-        // Set nonCitizenStatus to "citizen" if citizen is "yes"
-        if (answers.citizen === 'yes') {
-            answers.nonCitizenStatus = 'citizen';
-        }
-
-        // Set studentStatus to "not student" if student is "no"
-        if (answers.student === 'no') {
-            answers.studentStatus = 'notstudent';
-        }
-
-                // Fetch clientData to determine headOfHousehold safely
-                const clientResp = await fetch(`/get-client/${clientId}`);
-                if (!clientResp.ok) {
-                    throw new Error(`Failed to fetch client data: ${clientResp.statusText}`);
-                }
-                const clientDataForHOH = await clientResp.json();
-                const isFirstMember = !(clientDataForHOH.householdMembers && clientDataForHOH.householdMembers.length > 0);
-        
-                // Prepare the data to save
-                const householdMemberData = {
-                    householdMemberId: crypto.randomUUID(),
-                    prefix,
-                    firstName,
-                    middleInitial,
-                    lastName,
-                    suffix,
-                    dob,
-                    legalSex,
-                    socialSecurityNumber,
-                    age: `${age.years} Years, ${age.months} Months, ${age.days} Days`,
-                    maritalStatus,
-                    previousMaritalStatus,
-                    nonCitizenStatus,
-                    studentStatus,
-                    ...answers, // includes deceased
-                    // Only include dateOfDeath if deceased is yes
-                    dateOfDeath: answers.deceased === 'yes' ? dateOfDeath : '',
-                    headOfHousehold: isFirstMember
-                };
-
-        // If nonCitizenStatus is "ineligible non-citizen", set meals to "no"
-        if (nonCitizenStatus.toLowerCase() === 'ineligible non-citizen') {
-            householdMemberData.meals = 'no';
-        }
-
-        // If studentStatus is "ineligible student", set meals to "no"
-        if (studentStatus.toLowerCase() === 'ineligible student') {
-            householdMemberData.meals = 'no';
-        }
-
-        // Save the data to the backend
-        const response = await fetch(`/save-household-member`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                clientId,
-                member: householdMemberData,
-            }),
+        const response = await fetch('/update-household-members', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, members: updatedMembers }),
         });
 
         if (response.ok) {
-            console.log('Household member added successfully:', householdMemberData);
-
-            // Reload the household members to reflect the changes
+            console.log(`Head of household updated to: ${memberId}`);
             await loadSavedData();
+        } else {
+            console.error('Failed to update head of household:', response.statusText);
+        }
+    } catch (error) {
+        console.error('Error updating head of household:', error);
+    }
+}
 
-            // Close the modal and reset the form
-            const householdMemberModal = document.getElementById('householdMemberModal');
-            householdMemberModal.style.display = 'none';
-            document.getElementById('householdMemberForm').reset();
+// ══════════════════════════════════════════════════════════════
+// MODAL PREPARATION
+// ══════════════════════════════════════════════════════════════
+
+function setModalHeader(mode) {
+    const header = document.getElementById('modal-header');
+    header.textContent = mode === 'edit' ? 'Edit Household Member' : 'Add Household Member';
+}
+
+async function prepareHouseholdMemberModal() {
+    const clientId = getQueryParam('id');
+    if (!clientId) return;
+
+    // Clear all fields
+    MODAL_FIELD_IDS.forEach(id => {
+        const field = document.getElementById(id);
+        if (field) field.value = '';
+    });
+
+    // Make SSN editable, reset SSN state
+    const ssnInput = document.getElementById('socialSecurityNumber');
+    ssnInput.readOnly = false;
+    document.getElementById('editSSNButton')?.remove();
+    resetSSNFields();
+
+    // Hide Next button
+    const nextBtn = document.getElementById('nextSSNButton');
+    if (nextBtn) nextBtn.style.display = 'none';
+
+    // Reset question container visibility
+    MODAL_QUESTION_CONTAINER_IDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'block';
+    });
+
+    // Hide date of death
+    const dodContainer = document.getElementById('dateOfDeathContainer');
+    const dodInput = document.getElementById('dateOfDeath');
+    if (dodContainer) dodContainer.style.display = 'none';
+    if (dodInput) dodInput.value = '';
+
+    // Clear all modal option selections
+    MODAL_QUESTIONS.forEach(q => {
+        q.elements.forEach(id => {
+            document.getElementById(id)?.classList.remove('selected');
+        });
+    });
+
+    // Default deceased to "no"
+    document.getElementById('modal-deceased-no')?.classList.add('selected');
+
+    // Hide conditional containers
+    document.getElementById('nonCitizenStatusContainer').style.display = 'none';
+    document.getElementById('studentStatusContainer').style.display = 'none';
+
+    // Fetch client data to conditionally show/hide questions
+    try {
+        const clientData = await fetchClient(clientId);
+        if (!clientData) return;
+
+        const questionVisibility = {
+            disabilityQuestion: clientData.disability === 'yes',
+            medicareQuestion: clientData.medicare === 'yes',
+            medicaidQuestion: clientData.medicaid === 'yes',
+            citizenQuestion: clientData.citizen === 'no',
+            studentQuestion: clientData.student === 'yes',
+            mealsQuestion: !(clientData.snap === 'yes' || clientData.snap === 'notinterested'),
+        };
+
+        Object.entries(questionVisibility).forEach(([id, visible]) => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = visible ? 'block' : 'none';
+        });
+
+        // Previous marital status visibility
+        const prevMaritalContainer = document.getElementById('previousMaritalStatus')?.closest('.selection-box')
+            || document.getElementById('previousMaritalStatus')?.parentNode;
+        const hasHOH = clientData.householdMembers?.some(m => m.headOfHousehold);
+
+        if (prevMaritalContainer) {
+            prevMaritalContainer.style.display = (hasHOH && !clientData.headOfHousehold) ? 'none' : 'block';
+        }
+
+        // Set up modal question click listeners
+        setupModalQuestionListeners();
+
+    } catch (error) {
+        console.error('Error preparing modal:', error);
+    }
+}
+
+function setupModalQuestionListeners() {
+    MODAL_QUESTIONS.forEach(question => {
+        question.elements.forEach(elementId => {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+
+            // Clone to remove old listeners
+            const fresh = element.cloneNode(true);
+            element.parentNode.replaceChild(fresh, element);
+
+            fresh.addEventListener('click', () => {
+                // Toggle selection
+                question.elements.forEach(id => document.getElementById(id)?.classList.remove('selected'));
+                fresh.classList.add('selected');
+
+                const value = fresh.getAttribute('data-value');
+
+                // Deceased toggle
+                if (question.id === 'deceased') {
+                    const dodContainer = document.getElementById('dateOfDeathContainer');
+                    const dodInput = document.getElementById('dateOfDeath');
+                    if (value === 'yes') {
+                        if (dodContainer) dodContainer.style.display = 'block';
+                    } else {
+                        if (dodContainer) dodContainer.style.display = 'none';
+                        if (dodInput) dodInput.value = '';
+                    }
+                }
+
+                // Citizen toggle
+                if (question.id === 'citizen') {
+                    const ncContainer = document.getElementById('nonCitizenStatusContainer');
+                    const mealsQ = document.getElementById('mealsQuestion');
+                    if (value === 'yes') {
+                        if (ncContainer) ncContainer.style.display = 'none';
+                        if (mealsQ) mealsQ.style.display = 'block';
+                    } else {
+                        if (ncContainer) ncContainer.style.display = 'block';
+                    }
+                }
+
+                // Student toggle
+                if (question.id === 'student') {
+                    const ssContainer = document.getElementById('studentStatusContainer');
+                    const mealsQ = document.getElementById('mealsQuestion');
+                    if (value === 'yes') {
+                        if (ssContainer) ssContainer.style.display = 'block';
+                    } else {
+                        if (ssContainer) ssContainer.style.display = 'none';
+                        if (mealsQ) mealsQ.style.display = 'block';
+                    }
+                }
+            });
+        });
+    });
+}
+
+// ══════════════════════════════════════════════════════════════
+// ADD / EDIT / DELETE HOUSEHOLD MEMBERS
+// ══════════════════════════════════════════════════════════════
+
+function gatherModalData() {
+    const dob = document.getElementById('dob').value;
+    const dateOfDeath = document.getElementById('dateOfDeath')?.value || '';
+
+    // Gather yes/no answers
+    const answers = {};
+    MODAL_QUESTIONS.forEach(q => {
+        const container = document.getElementById(`${q.id}Question`);
+        const visible = !container || container.style.display !== 'none';
+        if (visible) {
+            q.elements.forEach(id => {
+                const el = document.getElementById(id);
+                if (el?.classList.contains('selected')) {
+                    answers[q.id] = el.getAttribute('data-value');
+                }
+            });
+        } else {
+            answers[q.id] = 'no';
+        }
+    });
+
+    // Citizen question hidden means all citizens
+    const citizenQ = document.getElementById('citizenQuestion');
+    if (citizenQ?.style.display === 'none') {
+        answers.citizen = 'yes';
+    }
+
+    // Derived statuses
+    if (answers.citizen === 'yes') answers.nonCitizenStatus = 'citizen';
+    if (answers.student === 'no') answers.studentStatus = 'notstudent';
+
+    const nonCitizenStatus = document.getElementById('nonCitizenStatus').value;
+    const studentStatus = document.getElementById('studentStatus').value;
+    const age = calculateAge(dob, answers.deceased === 'yes' ? dateOfDeath : '');
+
+    const data = {
+        prefix: document.getElementById('prefix').value.trim(),
+        firstName: document.getElementById('firstName').value.trim(),
+        middleInitial: document.getElementById('middleInitial').value.trim(),
+        lastName: document.getElementById('lastName').value.trim(),
+        suffix: document.getElementById('suffix').value.trim(),
+        dob,
+        socialSecurityNumber: document.getElementById('socialSecurityNumber').value.trim(),
+        legalSex: document.getElementById('legalSex').value,
+        maritalStatus: document.getElementById('maritalStatus').value,
+        previousMaritalStatus: document.getElementById('previousMaritalStatus').value,
+        age: formatAge(age),
+        nonCitizenStatus,
+        studentStatus,
+        ...answers,
+        dateOfDeath: answers.deceased === 'yes' ? dateOfDeath : '',
+    };
+
+    // Ineligible non-citizen / student → meals = no
+    if (nonCitizenStatus.toLowerCase() === 'ineligible non-citizen') data.meals = 'no';
+    if (studentStatus.toLowerCase() === 'ineligible student') data.meals = 'no';
+
+    return data;
+}
+
+async function addHouseholdMember() {
+    const clientId = getQueryParam('id');
+    if (!clientId) return;
+
+    try {
+        const clientData = await fetchClient(clientId);
+        const isFirstMember = !clientData.householdMembers?.length;
+
+        const memberData = {
+            householdMemberId: crypto.randomUUID(),
+            ...gatherModalData(),
+            headOfHousehold: isFirstMember,
+        };
+
+        const response = await fetch('/save-household-member', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, member: memberData }),
+        });
+
+        if (response.ok) {
+            console.log('Household member added:', memberData);
+            await loadSavedData();
+            closeModal();
         } else {
             console.error('Failed to save household member.');
         }
@@ -1545,434 +724,55 @@ async function addHouseholdMember() {
     }
 }
 
-// Function to set up the button for adding or updating a member
-function setupAddOrUpdateButton(isEditing, member = null) {
-    const addMemberButton = document.getElementById('add-member');
-    const householdMemberModal = document.getElementById('householdMemberModal');
-
-    // Update button text based on the context
-    addMemberButton.textContent = isEditing ? 'Save and Update' : 'Add Member';
-
-    // Remove any existing event listeners to avoid duplication
-    const newAddMemberButton = addMemberButton.cloneNode(true);
-    addMemberButton.parentNode.replaceChild(newAddMemberButton, addMemberButton);
-
-    // Add the appropriate event listener
-    newAddMemberButton.addEventListener('click', async (event) => {
-        event.preventDefault(); // Prevent form submission
-        if (isEditing && member) {
-            console.log('Updating household member:', member.householdMemberId); // Log for debugging
-            await updateHouseholdMember(member.householdMemberId); // Update the member
-        } else {
-            console.log('Adding new household member'); // Log for debugging
-            await addHouseholdMember(); // Add a new member
-        }
-
-        // Close the modal and reset the form after the operation
-        householdMemberModal.style.display = 'none';
-        document.getElementById('householdMemberForm').reset();
-    });
-}
-
-async function openEditModal(member) {
-    setModalHeader('edit'); // Set the modal header to "Edit Household Member"
-    const householdMemberModal = document.getElementById('householdMemberModal');
-
-    // Step 1: Prepare the modal (reuse the logic from add modal)
-    await prepareHouseholdMemberModal();
-
-// Step 2: Autofill the modal with the member's data
-document.getElementById('prefix').value = member.prefix || '';
-document.getElementById('firstName').value = member.firstName || '';
-document.getElementById('middleInitial').value = member.middleInitial || '';
-document.getElementById('lastName').value = member.lastName || '';
-document.getElementById('suffix').value = member.suffix || '';
-document.getElementById('dob').value = member.dob || '';
-document.getElementById('socialSecurityNumber').value = member.socialSecurityNumber || '';
-document.getElementById('legalSex').value = member.legalSex || '';
-document.getElementById('maritalStatus').value = member.maritalStatus || '';
-document.getElementById('previousMaritalStatus').value = member.previousMaritalStatus || '';
-document.getElementById('studentStatus').value = member.studentStatus || '';
-document.getElementById('nonCitizenStatus').value = member.nonCitizenStatus || '';
-
-// If deceased is null or undefined, default it to 'no'
-if (member.deceased == null) {
-    member.deceased = 'no';
-}
-
-    // Make SSN field read-only and add "Edit SSN" button if a valid 9-digit SSN exists
-const ssnInput = document.getElementById('socialSecurityNumber');
-const confirmSSNContainer = document.getElementById('confirmSSNContainer');
-
-if (ssnInput.value && /^\d{3}-\d{2}-\d{4}$/.test(ssnInput.value)) { // Check if SSN is in the format xxx-xx-xxxx
-    const editSSNButton = document.createElement('button'); // Create the "Edit SSN" button
-    ssnInput.readOnly = true; // Make the SSN field read-only
-    confirmSSNContainer.style.display = 'none'; // Hide the confirm SSN container
-
-    // Configure the "Edit SSN" button
-    editSSNButton.id = 'editSSNButton';
-    editSSNButton.textContent = 'Edit SSN';
-
-    // Apply the same styles as #nextSSNButton
-    editSSNButton.style.display = 'none'; // Initially hidden
-    editSSNButton.style.marginTop = '10px';
-    editSSNButton.style.padding = '10px 15px';
-    editSSNButton.style.cursor = 'pointer';
-    editSSNButton.style.border = '1px solid #000000';
-    editSSNButton.style.borderRadius = '5px';
-    editSSNButton.style.transition = 'background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease';
-
-    // Add hover effect
-    editSSNButton.addEventListener('mouseover', () => {
-        editSSNButton.style.backgroundColor = '#0056b3';
-        editSSNButton.style.color = 'white';
-        editSSNButton.style.borderColor = '#003f7f';
-    });
-    editSSNButton.addEventListener('mouseout', () => {
-        editSSNButton.style.backgroundColor = '';
-        editSSNButton.style.color = '';
-        editSSNButton.style.borderColor = '#000000';
-    });
-
-    // Add a click event listener to trigger the resetSSN function
-    editSSNButton.addEventListener('click', (event) => {
-        event.preventDefault(); // Prevent the default button behavior
-        resetSSNFields(); // Call the resetSSN function
-        editSSNButton.style.display = 'none'; // Hide the "Edit SSN" button
-    });
-
-    // Insert the "Edit SSN" button after the SSN input field
-    ssnInput.parentNode.insertBefore(editSSNButton, ssnInput.nextSibling);
-}
-
-    // Initialize Date of Death visibility and value
-    const dodContainer = document.getElementById('dateOfDeathContainer');
-    const dodInput = document.getElementById('dateOfDeath');
-    if (dodContainer) {
-        if (member.deceased === 'yes') {
-            dodContainer.style.display = 'block';
-            if (dodInput) dodInput.value = member.dateOfDeath || '';
-        } else {
-            dodContainer.style.display = 'none';
-            if (dodInput) dodInput.value = '';
-        }
-    }
-
-    // Step 3: Highlight the selected options for modal questions
-    const modalQuestions = [
-        { id: 'disability', elements: ['modal-disability-yes', 'modal-disability-no'] },
-        { id: 'medicare', elements: ['modal-medicare-yes', 'modal-medicare-no'] },
-        { id: 'medicaid', elements: ['modal-medicaid-yes', 'modal-medicaid-no'] },
-        { id: 'student', elements: ['modal-student-yes', 'modal-student-no'] },
-        { id: 'meals', elements: ['modal-meals-yes', 'modal-meals-no'] },
-        { id: 'citizen', elements: ['modal-citizen-yes', 'modal-citizen-no'] },
-        { id: 'deceased', elements: ['modal-deceased-yes', 'modal-deceased-no'] } // include deceased
-    ];
-
-    modalQuestions.forEach((question) => {
-        question.elements.forEach((elementId) => {
-            const element = document.getElementById(elementId);
-            if (element) {
-                // Highlight the saved selection
-                if (element.getAttribute('data-value') === member[question.id]) {
-                    element.classList.add('selected');
-                } else {
-                    element.classList.remove('selected');
-                }
-            }
-        });
-    });
-
-    // Toggle visibility of fields based on deceased selection
-    (function applyDeceasedVisibility() {
-        const isDeceased = member.deceased === 'yes';
-
-        const maritalStatusWrapper = document.querySelector('label[for="maritalStatus"]')?.closest('.selection-box');
-        const previousMaritalStatusWrapper = document.getElementById('previousMaritalStatus')?.closest('.selection-box')
-            || document.querySelector('label[for="previousMaritalStatus"]')?.closest('.selection-box');
-
-        if (maritalStatusWrapper) maritalStatusWrapper.style.display = isDeceased ? 'none' : '';
-        if (previousMaritalStatusWrapper) previousMaritalStatusWrapper.style.display = isDeceased ? 'none' : '';
-
-        const toToggleIds = [
-            'disabilityQuestion',
-            'medicareQuestion',
-            'medicaidQuestion',
-            'studentQuestion',
-            'mealsQuestion',
-            'citizenQuestion',
-            'nonCitizenStatusContainer',
-            'studentStatusContainer',
-        ];
-        toToggleIds.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.style.display = isDeceased ? 'none' : '';
-        });
-    })();
-
-    // Step 4: Handle visibility of conditional fields
-    const nonCitizenStatusContainer = document.getElementById('nonCitizenStatusContainer');
-    const studentStatusContainer = document.getElementById('studentStatusContainer');
-    const mealsQuestion = document.getElementById('mealsQuestion');
-    const previousMaritalStatusContainer = document.getElementById('previousMaritalStatus').parentNode;
-
-    // If deceased, keep all dependent containers hidden and skip conditional logic
-    if (member.deceased === 'yes') {
-        if (nonCitizenStatusContainer) nonCitizenStatusContainer.style.display = 'none';
-        if (studentStatusContainer) studentStatusContainer.style.display = 'none';
-        if (mealsQuestion) mealsQuestion.style.display = 'none';
-        if (previousMaritalStatusContainer) previousMaritalStatusContainer.style.display = 'none';
-    } else {
-        // Existing conditional logic applies only when not deceased
-        if (member.citizen === 'no') {
-            nonCitizenStatusContainer.style.display = 'block';
-            if (member.nonCitizenStatus?.toLowerCase() === 'ineligible non-citizen') {
-                mealsQuestion.style.display = 'none';
-            } else {
-                mealsQuestion.style.display = 'block';
-            }
-        } else {
-            nonCitizenStatusContainer.style.display = 'none';
-        }
-
-        if (member.student === 'yes') {
-            studentStatusContainer.style.display = 'block';
-            if (member.studentStatus?.toLowerCase() === 'ineligible student') {
-                mealsQuestion.style.display = 'none';
-            }
-        } else {
-            studentStatusContainer.style.display = 'none';
-        }
-    }
-
-    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-    const response = await fetch(`/get-client/${clientId}`);
-    if (response.ok) {
-        const clientData = await response.json();
-        const hasHeadOfHousehold = clientData.householdMembers?.some(m => m.headOfHousehold);
-
-        // Ensure we have the container reference
-        const previousMaritalStatusContainer = document.getElementById('previousMaritalStatus')?.closest('.selection-box')
-            || document.getElementById('previousMaritalStatus')?.parentNode;
-
-        // Always hide if deceased, regardless of HOH rules
-        if (member.deceased === 'yes') {
-            if (previousMaritalStatusContainer) previousMaritalStatusContainer.style.display = 'none';
-        } else if (hasHeadOfHousehold) {
-            // Show only for the head of household
-            if (member.headOfHousehold) {
-                previousMaritalStatusContainer.style.display = 'block';
-            } else {
-                // Check if the member is within 30 days of their 65th birthday
-                const today = new Date();
-                const dob = new Date(member.dob);
-                const ageInDays = Math.floor((today - dob) / (1000 * 60 * 60 * 24)); // Calculate age in days
-                const daysUntil65 = (65 * 365) - ageInDays;
-        
-                if (daysUntil65 <= 30) {
-                    previousMaritalStatusContainer.style.display = 'block';
-                } else {
-                    previousMaritalStatusContainer.style.display = 'none';
-                }
-            }
-        } else {
-            // Show if there is no head of household
-            previousMaritalStatusContainer.style.display = 'block';
-        }
-    }
-    // Step 5: Set up the button for updating the member
-    setupAddOrUpdateButton(true, member);
-
-    // Step 6: Show the modal
-    householdMemberModal.style.display = 'block';
-}
-
 async function updateHouseholdMember(memberId) {
-    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
+    const clientId = getQueryParam('id');
+    if (!clientId) return;
 
     try {
-        // Gather updated data from the modal
-        const prefix = document.getElementById('prefix').value.trim();
-        const firstName = document.getElementById('firstName').value.trim();
-        const middleInitial = document.getElementById('middleInitial').value.trim();
-        const lastName = document.getElementById('lastName').value.trim();
-        const suffix = document.getElementById('suffix').value.trim();
-        const dob = document.getElementById('dob').value;
-        const socialSecurityNumber = document.getElementById('socialSecurityNumber').value.trim();
-        const legalSex = document.getElementById('legalSex').value;
-        const maritalStatus = document.getElementById('maritalStatus').value;
-        const previousMaritalStatus = document.getElementById('previousMaritalStatus').value;
-        const nonCitizenStatus = document.getElementById('nonCitizenStatus').value;
-        const studentStatus = document.getElementById('studentStatus').value;
-                // Date of Death (only if deceased === 'yes')
-                const dateOfDeath = document.getElementById('dateOfDeath')?.value || '';
-
-                // Calculate age in Years, Months, and Days
-                const calculateAge = (dob, endDateStr) => {
-                    if (!dob) return { years: 0, months: 0, days: 0 };
-                    const birthDate = new Date(dob);
-                    const endDate = endDateStr ? new Date(endDateStr) : new Date();
-                    if (!endDateStr) endDate.setDate(endDate.getDate() - 1);
-        
-                    let years = endDate.getFullYear() - birthDate.getFullYear();
-                    let months = endDate.getMonth() - birthDate.getMonth();
-                    let days = endDate.getDate() - birthDate.getDate();
-        
-                    if (days < 0) {
-                        months -= 1;
-                        days += new Date(endDate.getFullYear(), endDate.getMonth(), 0).getDate();
-                    }
-                    if (months < 0) {
-                        years -= 1;
-                        months += 12;
-                    }
-        
-                    return { years, months, days };
-                };
-        
-                const age = calculateAge(dob, dateOfDeath);
-        
-        // Gather answers to modal questions
-        const modalQuestions = [
-            { id: 'disability', elements: ['modal-disability-yes', 'modal-disability-no'] },
-            { id: 'medicare', elements: ['modal-medicare-yes', 'modal-medicare-no'] },
-            { id: 'medicaid', elements: ['modal-medicaid-yes', 'modal-medicaid-no'] },
-            { id: 'student', elements: ['modal-student-yes', 'modal-student-no'] },
-            { id: 'meals', elements: ['modal-meals-yes', 'modal-meals-no'] },
-            { id: 'citizen', elements: ['modal-citizen-yes', 'modal-citizen-no'] },
-            { id: 'deceased', elements: ['modal-deceased-yes', 'modal-deceased-no'] } // added
-        ];
-
-        const answers = {};
-        modalQuestions.forEach((question) => {
-            const questionContainer = document.getElementById(`${question.id}Question`);
-            const visible = !questionContainer || questionContainer.style.display !== 'none';
-            if (visible) {
-                question.elements.forEach((elementId) => {
-                    const element = document.getElementById(elementId);
-                    if (element && element.classList.contains('selected')) {
-                        answers[question.id] = element.getAttribute('data-value');
-                    }
-                });
-            } else {
-                // default hidden questions to "no"
-                answers[question.id] = 'no';
-            }
-        });
-
-        // Set nonCitizenStatus to "citizen" if citizen is "yes"
-        if (answers.citizen === 'yes') {
-            answers.nonCitizenStatus = 'citizen';
-        }
-
-        // Set studentStatus to "not student" if student is "no"
-        if (answers.student === 'no') {
-            answers.studentStatus = 'notstudent';
-        }
-
-        // Prepare the updated data
-        const updatedMemberData = {
+        const updatedData = {
             householdMemberId: memberId,
-            prefix,
-            firstName,
-            middleInitial,
-            lastName,
-            suffix,
-            dob,
-            socialSecurityNumber,
-            legalSex,
-            age: `${age.years} Years, ${age.months} Months, ${age.days} Days`,
-            maritalStatus,
-            previousMaritalStatus,
-            studentStatus,
-            nonCitizenStatus,
-            ...answers, // includes deceased
-                        // Only include dateOfDeath if deceased is yes
-                        dateOfDeath: answers.deceased === 'yes' ? dateOfDeath : '',
-                    };            
+            ...gatherModalData(),
+        };
 
-        // If nonCitizenStatus is "ineligible non-citizen", set meals to "no"
-        if (nonCitizenStatus.toLowerCase() === 'ineligible non-citizen') {
-            updatedMemberData.meals = 'no';
+        const { previousMaritalStatus, maritalStatus } = updatedData;
+
+        // Clear previousSpouseId if previous marital status changed
+        if (previousMaritalStatus !== 'Married (Living Together)') {
+            updatedData.previousSpouseId = null;
         }
 
-        // If studentStatus is "ineligible student", set meals to "no"
-        if (studentStatus.toLowerCase() === 'ineligible student') {
-            updatedMemberData.meals = 'no';
-        }
-
-                // Check if previousMaritalStatus is not "Married (Living Together)"
-                if (previousMaritalStatus !== 'Married (Living Together)') {
-                    updatedMemberData.previousSpouseId = null; // Set previousSpouseId to null
-                }
-
-        // Check if marital status is changed to anything other than "Married (Living Together)"
+        // Clear spouse relationships if no longer married
         if (maritalStatus !== 'Married (Living Together)') {
-            // Fetch the current household members
-            const response = await fetch(`/get-client/${clientId}`);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch client data: ${response.statusText}`);
-            }
-            const clientData = await response.json();
+            const clientData = await fetchClient(clientId);
+            const currentMember = clientData.householdMembers?.find(m => m.householdMemberId === memberId);
 
-            if (clientData && clientData.householdMembers) {
-                // Find the current member
-                const currentMember = clientData.householdMembers.find((m) => m.householdMemberId === memberId);
-
-                if (currentMember) {
-                    // Overwrite the relationships field to null
-                    updatedMemberData.relationships = null;
-
-                    // If the member has a spouse, clear the spouse's reference as well
-                    const spouseId = currentMember.relationships?.spouse;
-                    if (spouseId) {
-                        const spouse = clientData.householdMembers.find((m) => m.householdMemberId === spouseId);
-                        if (spouse) {
-                            spouse.relationships = null;
-
-                            // Update the spouse in the backend
-                            await fetch(`/update-household-member`, {
-                                method: 'PUT',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({
-                                    clientId,
-                                    member: spouse,
-                                }),
-                            });
-                        }
+            if (currentMember) {
+                updatedData.relationships = null;
+                const spouseId = currentMember.relationships?.spouse;
+                if (spouseId) {
+                    const spouse = clientData.householdMembers.find(m => m.householdMemberId === spouseId);
+                    if (spouse) {
+                        spouse.relationships = null;
+                        await fetch('/update-household-member', {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ clientId, member: spouse }),
+                        });
                     }
                 }
             }
         }
 
-        // Send the updated data to the backend
-        const response = await fetch(`/update-household-member`, {
+        const response = await fetch('/update-household-member', {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                clientId,
-                member: updatedMemberData,
-            }),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, member: updatedData }),
         });
 
         if (response.ok) {
-            console.log('Household member updated successfully:', updatedMemberData);
-
-            // Reload the household members to reflect the changes
+            console.log('Household member updated:', updatedData);
             await loadSavedData();
-
-            // Close the modal and reset the form
-            const householdMemberModal = document.getElementById('householdMemberModal');
-            householdMemberModal.style.display = 'none';
-            document.getElementById('householdMemberForm').reset();
+            closeModal();
         } else {
             console.error('Failed to update household member.');
         }
@@ -1982,33 +782,19 @@ async function updateHouseholdMember(memberId) {
 }
 
 async function deleteHouseholdMember(memberId) {
-    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
+    const clientId = getQueryParam('id');
+    if (!clientId) return;
+    if (!confirm('Are you sure you want to delete this household member? This action cannot be undone.')) return;
 
     try {
-        // Confirm deletion with the user
-        const confirmDelete = confirm('Are you sure you want to delete this household member? This action cannot be undone.');
-        if (!confirmDelete) return;
-
-        // Send the delete request to the backend
-        const response = await fetch(`/delete-household-member`, {
+        const response = await fetch('/delete-household-member', {
             method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                clientId,
-                memberId,
-            }),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, memberId }),
         });
 
         if (response.ok) {
-            console.log(`Household member with ID ${memberId} deleted successfully.`);
-
-            // Reload the household members to reflect the changes
+            console.log(`Household member ${memberId} deleted.`);
             await loadSavedData();
         } else {
             console.error('Failed to delete household member.');
@@ -2018,496 +804,610 @@ async function deleteHouseholdMember(memberId) {
     }
 }
 
-async function updateAllMembers(questionId, value) {
-    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
+function closeModal() {
+    document.getElementById('householdMemberModal').style.display = 'none';
+    document.getElementById('householdMemberForm').reset();
+}
+
+function setupAddOrUpdateButton(isEditing, member = null) {
+    const btn = document.getElementById('add-member');
+    btn.textContent = isEditing ? 'Save and Update' : 'Add Member';
+
+    // Clone to remove old listeners
+    const fresh = btn.cloneNode(true);
+    btn.parentNode.replaceChild(fresh, btn);
+
+    fresh.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (isEditing && member) {
+            await updateHouseholdMember(member.householdMemberId);
+        } else {
+            await addHouseholdMember();
+        }
+    });
+}
+
+// ══════════════════════════════════════════════════════════════
+// OPEN EDIT MODAL
+// ══════════════════════════════════════════════════════════════
+
+async function openEditModal(member) {
+    setModalHeader('edit');
+    await prepareHouseholdMemberModal();
+
+    // Default deceased if missing
+    if (member.deceased == null) member.deceased = 'no';
+
+    // Autofill fields
+    const fieldMap = {
+        prefix: member.prefix, firstName: member.firstName,
+        middleInitial: member.middleInitial, lastName: member.lastName,
+        suffix: member.suffix, dob: member.dob,
+        socialSecurityNumber: member.socialSecurityNumber,
+        legalSex: member.legalSex, maritalStatus: member.maritalStatus,
+        previousMaritalStatus: member.previousMaritalStatus,
+        studentStatus: member.studentStatus, nonCitizenStatus: member.nonCitizenStatus,
+    };
+
+    Object.entries(fieldMap).forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        if (el) el.value = value || '';
+    });
+
+    // SSN read-only + Edit button for existing valid SSNs
+    const ssnInput = document.getElementById('socialSecurityNumber');
+    if (ssnInput.value && /^\d{3}-\d{2}-\d{4}$/.test(ssnInput.value)) {
+        ssnInput.readOnly = true;
+        document.getElementById('confirmSSNContainer').style.display = 'none';
+
+        // Remove existing edit button if any
+        document.getElementById('editSSNButton')?.remove();
+
+        const editBtn = document.createElement('button');
+        editBtn.id = 'editSSNButton';
+        editBtn.textContent = 'Edit SSN';
+        editBtn.type = 'button';
+        editBtn.style.cssText = 'margin-top: 10px; padding: 10px 15px; cursor: pointer; border: 1px solid #000; border-radius: 5px; transition: background-color 0.3s ease, color 0.3s ease;';
+
+        editBtn.addEventListener('mouseover', () => { editBtn.style.backgroundColor = '#0056b3'; editBtn.style.color = 'white'; });
+        editBtn.addEventListener('mouseout', () => { editBtn.style.backgroundColor = ''; editBtn.style.color = ''; });
+        editBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            resetSSNFields();
+            editBtn.style.display = 'none';
+        });
+
+        ssnInput.parentNode.insertBefore(editBtn, ssnInput.nextSibling);
     }
 
-    try {
-        // Fetch the current household members
-        const response = await fetch(`/get-client/${clientId}`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client data: ${response.statusText}`);
-        }
-        const clientData = await response.json();
+    // Date of Death
+    const dodContainer = document.getElementById('dateOfDeathContainer');
+    const dodInput = document.getElementById('dateOfDeath');
+    if (member.deceased === 'yes') {
+        if (dodContainer) dodContainer.style.display = 'block';
+        if (dodInput) dodInput.value = member.dateOfDeath || '';
+    } else {
+        if (dodContainer) dodContainer.style.display = 'none';
+        if (dodInput) dodInput.value = '';
+    }
 
-        if (clientData && clientData.householdMembers) {
-            console.log(`Updating all members for ${questionId} to ${value}`); // Debugging log
+    // Highlight saved modal selections
+    MODAL_QUESTIONS.forEach(q => {
+        q.elements.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.classList.toggle('selected', el.getAttribute('data-value') === member[q.id]);
+        });
+    });
 
-            const updatedMembers = clientData.householdMembers.map((member) => {
-                const updatedMember = {
-                    ...member,
-                    [questionId]: value, // Update the specific question with the new value
-                };
+    // Apply deceased visibility
+    const isDeceased = member.deceased === 'yes';
+    applyDeceasedVisibilityInModal(isDeceased);
 
-                // If residenceStatus is "other", set previousMaritalStatus to "N/A"
-                if (questionId === 'residenceStatus' && value === 'other') {
-                    updatedMember.previousMaritalStatus = 'N/A';
+    // Re-apply client-level question visibility AFTER deceased visibility,
+    // so that questions hidden based on client data stay hidden
+    if (!isDeceased) {
+        const clientId = getQueryParam('id');
+        if (clientId) {
+            try {
+                const clientData = await fetchClient(clientId);
+                if (clientData) {
+                    const questionVisibility = {
+                        disabilityQuestion: clientData.disability === 'yes',
+                        medicareQuestion: clientData.medicare === 'yes',
+                        medicaidQuestion: clientData.medicaid === 'yes',
+                        citizenQuestion: clientData.citizen === 'no',
+                        studentQuestion: clientData.student === 'yes',
+                        mealsQuestion: !(clientData.snap === 'yes' || clientData.snap === 'notinterested'),
+                    };
+
+                    Object.entries(questionVisibility).forEach(([id, visible]) => {
+                        const el = document.getElementById(id);
+                        if (el && !visible) el.style.display = 'none';
+                    });
                 }
-
-                return updatedMember;
-            });
-
-            if (questionId === 'residenceStatus' && value !== 'other') {
-                // If residenceStatus is not "other", reset previousMaritalStatus to an empty string
-                updatedMembers.forEach((member) => {
-                    member.previousMaritalStatus = '';
-                });
+            } catch (error) {
+                console.error('Error re-applying client-level visibility:', error);
             }
+        }
+    }
 
-            console.log('Updated members data to send:', updatedMembers); // Debugging log
+    // Conditional field visibility (only when not deceased)
+    if (!isDeceased) {
+        const ncContainer = document.getElementById('nonCitizenStatusContainer');
+        const ssContainer = document.getElementById('studentStatusContainer');
+        const mealsQ = document.getElementById('mealsQuestion');
 
-            // Send the updated members to the backend
-            const updateResponse = await fetch(`/update-household-members`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    clientId,
-                    members: updatedMembers,
-                }),
-            });
-
-            if (updateResponse.ok) {
-                console.log(`Successfully updated all members for ${questionId} to ${value}`);
-                await loadSavedData(); // Reload the data to reflect changes
-            } else {
-                console.error(`Failed to update all members for ${questionId}:`, updateResponse.statusText);
+        if (member.citizen === 'no') {
+            ncContainer.style.display = 'block';
+            if (member.nonCitizenStatus?.toLowerCase() === 'ineligible non-citizen') {
+                mealsQ.style.display = 'none';
             }
         } else {
-            console.error('No household members found to update.');
+            ncContainer.style.display = 'none';
+        }
+
+        if (member.student === 'yes') {
+            ssContainer.style.display = 'block';
+            if (member.studentStatus?.toLowerCase() === 'ineligible student') {
+                mealsQ.style.display = 'none';
+            }
+        } else {
+            ssContainer.style.display = 'none';
+        }
+    }
+
+    // Previous marital status visibility
+    await applyPreviousMaritalVisibility(member);
+
+    setupAddOrUpdateButton(true, member);
+    document.getElementById('householdMemberModal').style.display = 'block';
+}
+
+function applyDeceasedVisibilityInModal(isDeceased) {
+    const toggleIds = [
+        'disabilityQuestion', 'medicareQuestion', 'medicaidQuestion',
+        'studentQuestion', 'mealsQuestion', 'citizenQuestion',
+        'nonCitizenStatusContainer', 'studentStatusContainer',
+    ];
+    toggleIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = isDeceased ? 'none' : '';
+    });
+
+    const maritalWrapper = document.querySelector('label[for="maritalStatus"]')?.closest('.selection-box');
+    const prevMaritalWrapper = document.getElementById('previousMaritalStatus')?.closest('.selection-box')
+        || document.querySelector('label[for="previousMaritalStatus"]')?.closest('.selection-box');
+
+    if (maritalWrapper) maritalWrapper.style.display = isDeceased ? 'none' : '';
+    if (prevMaritalWrapper) prevMaritalWrapper.style.display = isDeceased ? 'none' : '';
+}
+
+async function applyPreviousMaritalVisibility(member) {
+    const clientId = getQueryParam('id');
+    if (!clientId) return;
+
+    try {
+        const clientData = await fetchClient(clientId);
+        const hasHOH = clientData.householdMembers?.some(m => m.headOfHousehold);
+        const container = document.getElementById('previousMaritalStatus')?.closest('.selection-box')
+            || document.getElementById('previousMaritalStatus')?.parentNode;
+
+        if (!container) return;
+
+        if (member.deceased === 'yes') {
+            container.style.display = 'none';
+        } else if (hasHOH) {
+            if (member.headOfHousehold) {
+                container.style.display = 'block';
+            } else {
+                // Show if within 30 days of 65th birthday
+                const today = new Date();
+                const dob = new Date(member.dob);
+                const ageInDays = Math.floor((today - dob) / (1000 * 60 * 60 * 24));
+                const daysUntil65 = (65 * 365) - ageInDays;
+                container.style.display = daysUntil65 <= 30 ? 'block' : 'none';
+            }
+        } else {
+            container.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error checking previous marital visibility:', error);
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// UPDATE ALL MEMBERS (BULK)
+// ══════════════════════════════════════════════════════════════
+
+async function updateAllMembers(questionId, value) {
+    const clientId = getQueryParam('id');
+    if (!clientId) return;
+
+    try {
+        const clientData = await fetchClient(clientId);
+        if (!clientData?.householdMembers) return;
+
+        const updatedMembers = clientData.householdMembers.map(member => {
+            const updated = { ...member, [questionId]: value };
+            if (questionId === 'residenceStatus' && value === 'other') {
+                updated.previousMaritalStatus = 'N/A';
+            }
+            return updated;
+        });
+
+        const response = await fetch('/update-household-members', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, members: updatedMembers }),
+        });
+
+        if (response.ok) {
+            console.log(`Updated all members: ${questionId} = ${value}`);
+        } else {
+            console.error(`Failed to update all members for ${questionId}:`, response.statusText);
         }
     } catch (error) {
         console.error(`Error updating all members for ${questionId}:`, error);
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    const citizenYes = document.getElementById('modal-citizen-yes');
-    const citizenNo = document.getElementById('modal-citizen-no');
-    const nonCitizenStatusContainer = document.getElementById('nonCitizenStatusContainer');
-    const nonCitizenStatus = document.getElementById('nonCitizenStatus');
-    const mealsQuestion = document.getElementById('mealsQuestion');
-
-    // Initialize dropdown visibility based on the current citizen value
-    const initializeCitizenStatus = () => {
-        if (citizenYes.classList.contains('selected')) {
-            // If "Yes" is selected for citizen
-            nonCitizenStatusContainer.style.display = 'none';
-            mealsQuestion.style.display = 'block'; // Show the meals question
-        } else if (citizenNo.classList.contains('selected')) {
-            // If "No" is selected for citizen
-            nonCitizenStatusContainer.style.display = 'block';
-        }
-    };
-
-    // Call the initialization function on page load
-    initializeCitizenStatus();
-
-    // Add event listeners for clicks
-    citizenYes.addEventListener('click', () => {
-        nonCitizenStatusContainer.style.display = 'none';
-        mealsQuestion.style.display = 'block'; // Show the meals question
-        console.log('Citizenship status saved: uscitizen');
-    });
-
-    citizenNo.addEventListener('click', () => {
-        nonCitizenStatusContainer.style.display = 'block';
-        console.log('Citizenship status saved: noncitizen');
-    });
-
-    nonCitizenStatus.addEventListener('change', () => {
-        const selectedStatus = nonCitizenStatus.value;
-        console.log('Non-citizenship status selected:', selectedStatus);
-
-        // Hide the mealsQuestion if "Ineligible Non-Citizen" is selected
-        if (selectedStatus.toLowerCase() === 'ineligible non-citizen') {
-            mealsQuestion.style.display = 'none';
-        } else {
-            mealsQuestion.style.display = 'block';
-        }
-    });
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-    const studentYes = document.getElementById('modal-student-yes');
-    const studentNo = document.getElementById('modal-student-no');
-    const studentStatusContainer = document.getElementById('studentStatusContainer');
-    const studentStatus = document.getElementById('studentStatus');
-    const mealsQuestion = document.getElementById('mealsQuestion');
-
-    let studentEnrollmentStatus = null;
-
-    studentNo.addEventListener('click', () => {
-        studentEnrollmentStatus = 'student';
-        studentStatusContainer.style.display = 'none';
-        mealsQuestion.style.display = 'block'; // Show the meals question
-        console.log('Student status saved:', studentEnrollmentStatus);
-    });
-
-    studentYes.addEventListener('click', () => {
-        studentEnrollmentStatus = 'nonstudent';
-        studentStatusContainer.style.display = 'block';
-    });
-
-    studentStatus.addEventListener('change', () => {
-        const selectedStatus = studentStatus.value;
-        console.log('Student status selected:', selectedStatus);
-
-        // Hide the mealsQuestion if "Ineligible Student" is selected
-        if (selectedStatus.toLowerCase() === 'ineligible student') {
-            mealsQuestion.style.display = 'none';
-        } else {
-            mealsQuestion.style.display = 'block';
-        }
-
-        // Hide the studentStatusContainer if there is no value
-        if (!selectedStatus) {
-            studentStatusContainer.style.display = 'none';
-        }
-    });
-
-    // Initial check to hide studentStatusContainer if no value is set
-    if (!studentStatus.value) {
-        studentStatusContainer.style.display = 'none';
-    }
-});
+// ══════════════════════════════════════════════════════════════
+// LIHEAP SELECTION
+// ══════════════════════════════════════════════════════════════
 
 async function saveLiheapSelection(selection) {
     const clientId = getQueryParam('id');
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
-    const requestBody = {
-        clientId,
-        clientData: {
-            liheapEnrollment: selection
-        }
-    };
+    if (!clientId || !selection) return;
 
     try {
-        const response = await fetch(`/update-client`, {
+        const response = await fetch('/update-client', {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestBody),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, clientData: { liheapEnrollment: selection } }),
         });
 
-        if (response.ok) {
-            console.log('LIHEAP selection saved successfully:', selection);
-
-            const residenceStatusContainer = document.getElementById('residenceStatusCurrent-container');
-            const heatingCostContainer = document.getElementById('heatingCost-container');
-            const subsidizedHousingContainer = document.getElementById('subsidizedHousing-container');
-            const heatingCrisisContainer = document.getElementById('heatingCrisis-container');
-            const residenceStatusOptions = document.querySelectorAll('[id^="residenceStatusCurrent-"]');
-            const heatingCostOptions = document.querySelectorAll('[id^="heatingCost-"]'); // Fixed: Use querySelectorAll
-            const subsidizedHousingOptions = document.querySelectorAll('[id^="subsidizedHousing-"]'); // Fixed: Use querySelectorAll
-            const heatingCrisisOptions = document.querySelectorAll('[id^="heatingCrisis-"]');
-
-            // Fetch the updated client data
-            const updatedClientResponse = await fetch(`/get-client/${clientId}`);
-            if (updatedClientResponse.ok) {
-                const updatedClient = await updatedClientResponse.json();
-                const heatingCrisis = updatedClient?.heatingCrisis;
-
-                if (selection === 'yes' && heatingCrisis === 'no') {
-                    residenceStatusContainer.style.display = 'none';
-                    heatingCostContainer.style.display = 'none';
-                    subsidizedHousingContainer.style.display = 'none';
-                    await saveClientUpdate(clientId, 'residenceStatusCurrent', null);
-                    await saveClientUpdate(clientId, 'heatingCost', null);
-                    await saveClientUpdate(clientId, 'subsidizedHousing', null);
-                    residenceStatusOptions.forEach(option => option.classList.remove('selected'));
-                    heatingCostOptions.forEach(option => option.classList.remove('selected'));
-                    subsidizedHousingOptions.forEach(option => option.classList.remove('selected'));
-                } else {
-                    // Show the residenceStatusCurrent container
-                    residenceStatusContainer.style.display = 'block';
-                    heatingCostContainer.style.display = 'block';
-                    subsidizedHousingContainer.style.display = 'block';
-                    heatingCrisisContainer.style.display = 'block';
-                }
-
-                // Handle the "notinterested" case
-                if (selection === 'notinterested') {
-                    heatingCrisisContainer.style.display = 'none';
-                    residenceStatusContainer.style.display = 'none';
-                    heatingCostContainer.style.display = 'none';
-                    subsidizedHousingContainer.style.display = 'none';
-
-                    await saveClientUpdate(clientId, 'heatingCrisis', null);
-                    await saveClientUpdate(clientId, 'residenceStatusCurrent', null);
-                    await saveClientUpdate(clientId, 'heatingCost', null);
-                    await saveClientUpdate(clientId, 'subsidizedHousing', null);
-                    heatingCrisisOptions.forEach(option => option.classList.remove('selected'));
-                    heatingCostOptions.forEach(option => option.classList.remove('selected'));
-                    subsidizedHousingOptions.forEach(option => option.classList.remove('selected'));
-                    residenceStatusOptions.forEach(option => option.classList.remove('selected'));
-                    residenceStatusOptions.forEach(option => option.classList.remove('selected'));
-                } else {
-                    heatingCrisisContainer.style.display = 'block';
-                }
-
-                // Trigger LIHEAP eligibility check
-                if (window.eligibilityChecks && window.eligibilityChecks.LIHEAPEligibilityCheck) {
-                    await window.eligibilityChecks.LIHEAPEligibilityCheck(updatedClient);
-                } else {
-                    console.error('LIHEAPEligibilityCheck function not found.');
-                }
-
-                // Trigger display function
-                if (window.eligibilityChecks && window.eligibilityChecks.displayLIHEAPHouseholds) {
-                    await window.eligibilityChecks.displayLIHEAPHouseholds();
-                } else {
-                    console.error('displayLIHEAPHouseholds function not found.');
-                }
-            } else {
-                console.error('Failed to fetch updated client data.');
-            }
-        } else {
-            const error = await response.json();
-            console.error('Error saving LIHEAP selection:', error);
+        if (!response.ok) {
+            console.error('Error saving LIHEAP selection:', await response.json());
+            return;
         }
+
+        console.log('LIHEAP selection saved:', selection);
+        const updatedClient = await fetchClient(clientId);
+
+        if (selection === 'notinterested') {
+            hideAllLiheapContainers();
+            await saveClientUpdate(clientId, 'heatingCrisis', null);
+            await saveClientUpdate(clientId, 'residenceStatusCurrent', null);
+            await saveClientUpdate(clientId, 'heatingCost', null);
+            await saveClientUpdate(clientId, 'subsidizedHousing', null);
+            clearSelectionsForPrefix('heatingCrisis', 'residenceStatusCurrent', 'heatingCost', 'subsidizedHousing');
+        } else if (selection === 'yes' && updatedClient?.heatingCrisis === 'no') {
+            const c = getContainerRefs();
+            c.residenceStatus.style.display = 'none';
+            c.subsidizedHousing.style.display = 'none';
+            c.heatingCost.style.display = 'none';
+            c.heatingCrisis.style.display = 'block';
+            await saveClientUpdate(clientId, 'residenceStatusCurrent', null);
+            await saveClientUpdate(clientId, 'heatingCost', null);
+            await saveClientUpdate(clientId, 'subsidizedHousing', null);
+            clearSelectionsForPrefix('residenceStatusCurrent', 'heatingCost', 'subsidizedHousing');
+        } else {
+            const c = getContainerRefs();
+            Object.values(c).forEach(el => { if (el) el.style.display = 'block'; });
+        }
+
+        await runLIHEAPCheckAndDisplay();
     } catch (error) {
         console.error('Error saving LIHEAP selection:', error);
     }
 }
 
-async function handleLiheapEligibility(clientId) {
+// ══════════════════════════════════════════════════════════════
+// HEATING CRISIS SELECTION
+// ══════════════════════════════════════════════════════════════
+
+async function saveHeatingCrisisSelection(selection) {
+    const clientId = getQueryParam('id');
+    if (!clientId) return;
+
     try {
-        const response = await fetch(`/get-client/${clientId}`);
+        const response = await fetch('/update-client', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, clientData: { heatingCrisis: selection } }),
+        });
+
         if (!response.ok) {
-            throw new Error(`Failed to fetch client data: ${response.statusText}`);
+            console.error('Error saving heating crisis:', await response.json());
+            return;
         }
 
-        const member = await response.json();
-        const residenceStatusContainer = document.getElementById('residenceStatusCurrent-container');
-        const heatingCrisisContainer = document.getElementById('heatingCrisis-container');
-        const subsidizedHousingContainer = document.getElementById('subsidizedHousing-container');
-        const heatingCostContainer = document.getElementById('heatingCost-container');
+        const updatedClient = await fetchClient(clientId);
+        const c = getContainerRefs();
 
-        if     (   !member.LIHEAP?.eligibility?.includes('Already Enrolled')
-    ) {
-            // Hide the relevant elements
-            residenceStatusContainer.style.display = 'none';
-            heatingCrisisContainer.style.display = 'none';
-            subsidizedHousingContainer.style.display = 'none';
-            heatingCostContainer.style.display = 'none';
-
-            // Optionally clear any selections
-            document.querySelectorAll('[id^="residenceStatusCurrent-"]').forEach(option => option.classList.remove('selected'));
-            document.querySelectorAll('[id^="heatingCrisis-"]').forEach(option => option.classList.remove('selected'));
+        if (updatedClient.liheapEnrollment === 'yes' && selection === 'no') {
+            c.residenceStatus.style.display = 'none';
+            c.subsidizedHousing.style.display = 'none';
+            c.heatingCost.style.display = 'none';
+            await saveClientUpdate(clientId, 'subsidizedHousing', null);
+            await saveClientUpdate(clientId, 'heatingCost', null);
+            await saveClientUpdate(clientId, 'residenceStatusCurrent', null);
+            clearSelectionsForPrefix('residenceStatusCurrent');
         } else {
-            // Show the relevant elements
-            residenceStatusContainer.style.display = 'block';
-            heatingCrisisContainer.style.display = 'block';
+            c.residenceStatus.style.display = 'block';
+        }
+
+        await runLIHEAPCheckAndDisplay();
+    } catch (error) {
+        console.error('Error saving heating crisis:', error);
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// RESIDENCE / SUBSIDIZED / HEATING COST HANDLERS
+// ══════════════════════════════════════════════════════════════
+
+async function handleResidenceStatusClick(selectedValue) {
+    const clientId = getQueryParam('id');
+    if (!clientId) return;
+
+    const c = getContainerRefs();
+    await saveClientUpdate(clientId, 'residenceStatusCurrent', selectedValue);
+
+    if (selectedValue === 'owned') {
+        c.subsidizedHousing.style.display = 'none';
+        c.heatingCost.style.display = 'none';
+        await saveClientUpdate(clientId, 'subsidizedHousing', null);
+        await saveClientUpdate(clientId, 'heatingCost', null);
+        clearSelectionsForPrefix('subsidizedHousing', 'heatingCost');
+    } else {
+        c.subsidizedHousing.style.display = 'block';
+        c.heatingCost.style.display = 'none';
+    }
+}
+
+async function handleSubsidizedHousingClick(selectedValue) {
+    const clientId = getQueryParam('id');
+    if (!clientId) return;
+
+    const c = getContainerRefs();
+
+    await fetch('/update-client', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId, clientData: { subsidizedHousing: selectedValue } }),
+    });
+
+    highlightByValue(document.querySelectorAll('[id^="subsidizedHousing-"]'), selectedValue);
+
+    if (selectedValue === 'yes') {
+        c.heatingCost.style.display = 'block';
+    } else {
+        c.heatingCost.style.display = 'none';
+        await saveClientUpdate(clientId, 'heatingCost', null);
+        clearSelectionsForPrefix('heatingCost');
+    }
+
+    await runLIHEAPCheckAndDisplay();
+}
+
+async function handleHeatingCostClick(selectedValue) {
+    const clientId = getQueryParam('id');
+    if (!clientId) return;
+
+    await fetch('/update-client', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId, clientData: { heatingCost: selectedValue } }),
+    });
+
+    highlightByValue(document.querySelectorAll('[id^="heatingCost-"]'), selectedValue);
+    await runLIHEAPCheckAndDisplay();
+}
+
+// ══════════════════════════════════════════════════════════════
+// LIHEAP ELIGIBILITY CHECK ON LOAD
+// ══════════════════════════════════════════════════════════════
+
+async function handleLiheapEligibility(clientId) {
+    try {
+        const member = await fetchClient(clientId);
+        const c = getContainerRefs();
+
+        if (!member.LIHEAP?.eligibility?.includes('Already Enrolled')) {
+            Object.values(c).forEach(el => { if (el) el.style.display = 'none'; });
+            clearSelectionsForPrefix('residenceStatusCurrent', 'heatingCrisis');
+        } else {
+            c.residenceStatus.style.display = 'block';
+            c.heatingCrisis.style.display = 'block';
         }
     } catch (error) {
         console.error('Error handling LIHEAP eligibility:', error);
     }
 }
 
-// Call this function on page load
-document.addEventListener('DOMContentLoaded', () => {
-    const clientId = getQueryParam('id');
-    if (clientId) {
-        handleLiheapEligibility(clientId);
-        saveLiheapSelection(); // Ensure LIHEAP selection is saved on load
-    }
-});
+// ══════════════════════════════════════════════════════════════
+// MAIN QUESTION CLICK HANDLER
+// ══════════════════════════════════════════════════════════════
 
-// Function to highlight the selected LIHEAP option
-function highlightLiheapSelection(selection) {
-    const options = document.querySelectorAll('#liheap-yes, #liheap-no, #liheap-notinterested');
-    options.forEach(option => {
-        if (option.dataset.value === selection) {
-            option.classList.add('selected');
-        } else {
-            option.classList.remove('selected');
-        }
-    });
-}
+const SAVEABLE_QUESTIONS = [
+    { id: 'disability', elements: ['disability-yes', 'disability-no'] },
+    { id: 'medicare', elements: ['medicare-yes', 'medicare-no'] },
+    { id: 'medicaid', elements: ['medicaid-yes', 'medicaid-no'] },
+    { id: 'student', elements: ['student-yes', 'student-no'] },
+    { id: 'snap', elements: ['snap-yes', 'snap-no', 'snap-notinterested'] },
+    { id: 'residenceStatus', elements: ['residenceStatus-owned', 'residenceStatus-rented', 'residenceStatus-rentedowned', 'residenceStatus-other'] },
+    { id: 'citizen', elements: ['citizen-yes', 'citizen-no'] },
+];
 
-// Function to recall the LIHEAP selection on page load
-async function recallLiheapSelection() {
+async function handleMainQuestionClick(question, element) {
     const clientId = getQueryParam('id');
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
+    if (!clientId) return;
+
+    const value = element.getAttribute('data-value');
+    highlightSelection(question.elements, element);
+
+    // Save to backend
+    try {
+        const response = await fetch('/update-client', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, clientData: { [question.id]: value } }),
+        });
+        if (!response.ok) throw new Error(`Failed to save ${question.id}`);
+    } catch (error) {
+        console.error(`Error saving ${question.id}:`, error);
         return;
     }
 
-    try {
-        const response = await fetch(`/get-client/${clientId}`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client data: ${response.statusText}`);
-        }
-
-        const client = await response.json();
-        const liheapSelection = client?.liheapEnrollment;
-
-        // Highlight the saved LIHEAP selection
-        if (liheapSelection) {
-            highlightLiheapSelection(liheapSelection);
-        }
-
-        // Handle visibility of questions based on the saved LIHEAP selection
-        const residenceStatusContainer = document.getElementById('residenceStatusCurrent-container');
-        const heatingCrisisContainer = document.getElementById('heatingCrisis-container');
-        const residenceStatusOptions = document.querySelectorAll('[id^="residenceStatusCurrent-"]');
-        const heatingCrisisOptions = document.querySelectorAll('[id^="heatingCrisis-"]');
-
-        if (liheapSelection === 'notinterested') {
-            // Hide the questions and unhighlight options
-            residenceStatusContainer.style.display = 'none';
-            heatingCrisisContainer.style.display = 'none';
-            residenceStatusOptions.forEach(option => option.classList.remove('selected'));
-            heatingCrisisOptions.forEach(option => option.classList.remove('selected'));
-        } else {
-            // Show the questions
-            residenceStatusContainer.style.display = 'block';
-            heatingCrisisContainer.style.display = 'block';
-        }
-    } catch (error) {
-        console.error('Error recalling LIHEAP selection:', error);
+    // Apply cascading logic
+    if (['disability', 'medicare', 'medicaid'].includes(question.id) && value === 'no') {
+        await updateAllMembers(question.id, 'no');
+    } else if (question.id === 'student' && value === 'no') {
+        await updateAllMembers('student', 'no');
+        await updateAllMembers('studentStatus', 'notstudent');
+    } else if (question.id === 'citizen' && value === 'yes') {
+        await updateAllMembers('citizen', 'yes');
+        await updateAllMembers('nonCitizenStatus', 'citizen');
+    } else if (question.id === 'snap' && (value === 'yes' || value === 'notinterested')) {
+        await updateAllMembers('meals', 'no');
+    } else if (question.id === 'residenceStatus') {
+        await updateAllMembers('residenceStatus', value);
     }
+
+    await loadSavedData();
+    const members = await loadHouseholdMembers();
+    await runAllEligibilityChecks(members);
 }
 
-// Add event listeners to the LIHEAP options
-document.querySelectorAll('#liheap-yes, #liheap-no, #liheap-notinterested').forEach(option => {
-    option.addEventListener('click', () => {
-        const selection = option.dataset.value;
-        highlightLiheapSelection(selection);
-        saveLiheapSelection(selection);
+// ══════════════════════════════════════════════════════════════
+// NON-CITIZEN / STUDENT STATUS DROPDOWN HANDLERS
+// ══════════════════════════════════════════════════════════════
+
+function setupNonCitizenDropdown() {
+    document.getElementById('nonCitizenStatus')?.addEventListener('change', function () {
+        const mealsQ = document.getElementById('mealsQuestion');
+        mealsQ.style.display = this.value.toLowerCase() === 'ineligible non-citizen' ? 'none' : 'block';
     });
-});
-
-// Recall the LIHEAP selection on page load
-document.addEventListener('DOMContentLoaded', () => {
-    recallLiheapSelection();
-});
-
-async function loadHouseholdMembers() {
-    const clientId = getQueryParameter('id'); // Retrieve the client ID from the URL
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return [];
-    }
-
-    try {
-        // Fetch the client data from the backend
-        const response = await fetch(`/get-client/${clientId}`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client data: ${response.statusText}`);
-        }
-
-        const clientData = await response.json();
-
-        if (!clientData || !clientData.householdMembers) {
-            console.error('No household members found for this client.');
-            return [];
-        }
-
-        console.log('Household members:', clientData.householdMembers);
-        return clientData.householdMembers;
-    } catch (error) {
-        console.error('Error loading household members:', error);
-        return [];
-    }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    const citizenYes = document.getElementById('modal-citizen-yes');
-    const citizenNo = document.getElementById('modal-citizen-no');
-    const nonCitizenStatusContainer = document.getElementById('nonCitizenStatusContainer');
-    const nonCitizenStatus = document.getElementById('nonCitizenStatus');
-    const mealsQuestion = document.getElementById('mealsQuestion');
-
-    // Initialize dropdown visibility based on the current citizen value
-    const initializeCitizenStatus = () => {
-        if (citizenYes.classList.contains('selected')) {
-            // If "Yes" is selected for citizen
-            nonCitizenStatusContainer.style.display = 'none';
-            mealsQuestion.style.display = 'block'; // Show the meals question
-        } else if (citizenNo.classList.contains('selected')) {
-            // If "No" is selected for citizen
-            nonCitizenStatusContainer.style.display = 'block';
-        }
-    };
-
-    // Call the initialization function on page load
-    initializeCitizenStatus();
-
-    // Add event listeners for clicks
-    citizenYes.addEventListener('click', () => {
-        nonCitizenStatusContainer.style.display = 'none';
-        mealsQuestion.style.display = 'block'; // Show the meals question
-        console.log('Citizenship status saved: uscitizen');
+function setupStudentDropdown() {
+    document.getElementById('studentStatus')?.addEventListener('change', function () {
+        const mealsQ = document.getElementById('mealsQuestion');
+        mealsQ.style.display = this.value.toLowerCase() === 'ineligible student' ? 'none' : 'block';
     });
+}
 
-    citizenNo.addEventListener('click', () => {
-        nonCitizenStatusContainer.style.display = 'block';
-        console.log('Citizenship status saved: noncitizen');
-    });
-
-    nonCitizenStatus.addEventListener('change', () => {
-        const selectedStatus = nonCitizenStatus.value;
-        console.log('Non-citizenship status selected:', selectedStatus);
-
-        // Hide the mealsQuestion if "Ineligible Non-Citizen" is selected
-        if (selectedStatus.toLowerCase() === 'ineligible non-citizen') {
-            mealsQuestion.style.display = 'none';
-        } else {
-            mealsQuestion.style.display = 'block';
-        }
-    });
-});
+// ══════════════════════════════════════════════════════════════
+// SINGLE DOMContentLoaded INITIALIZATION
+// ══════════════════════════════════════════════════════════════
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-    const subsidizedHousingContainer = document.getElementById('subsidizedHousing-container');
-    const heatingCostContainer = document.getElementById('heatingCost-container');
+    const clientId = getQueryParam('id');
 
-    // Function to apply show/hide logic based on residence status
-    async function applyShowHideLogic() {
-        try {
-            const response = await fetch(`/get-client/${clientId}`);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch client data: ${response.statusText}`);
+    // ── Wire up main page question click handlers ──
+    SAVEABLE_QUESTIONS.forEach(question => {
+        question.elements.forEach(elementId => {
+            const el = document.getElementById(elementId);
+            if (el) {
+                el.addEventListener('click', () => handleMainQuestionClick(question, el));
             }
+        });
+    });
 
-            const client = await response.json();
-            const residenceStatusCurrent = client?.residenceStatusCurrent;
-            const subsidizedHousing = client?.subsidizedHousing;
-
-            // Apply logic for residence status
-            if (residenceStatusCurrent === 'owned') {
-                subsidizedHousingContainer.style.display = 'none';
-                heatingCostContainer.style.display = 'none';
-            } else {
-                subsidizedHousingContainer.style.display = 'block';
-                if (subsidizedHousing === 'yes') {
-                    heatingCostContainer.style.display = 'block';
-                } else {
-                    heatingCostContainer.style.display = 'none';
-                }
-            }
-        } catch (error) {
-            console.error('Error applying show/hide logic:', error);
+    // ── Household size dropdown ──
+    document.getElementById('household-size')?.addEventListener('change', async function () {
+        if (this.value) {
+            await saveSelectionToClient('householdSize', this.value);
+            console.log(`Household size updated to: ${this.value}`);
         }
-    }
+    });
 
-    // Call the function to apply the logic on page load
+    // ── Add Household Member button ──
+    document.getElementById('add-household-member')?.addEventListener('click', async () => {
+        if (!clientId) return;
+
+        try {
+            const clientData = await fetchClient(clientId);
+            if (!clientData.householdSize || clientData.householdSize === 0) {
+                alert('Household size is not set. Please select a valid household size before adding members.');
+                return;
+            }
+            if (clientData.householdMembers.length >= clientData.householdSize) {
+                alert('The number of household members cannot exceed the selected household size.');
+                return;
+            }
+
+            setModalHeader('add');
+            await prepareHouseholdMemberModal();
+            setupAddOrUpdateButton(false);
+            document.getElementById('householdMemberModal').style.display = 'block';
+        } catch (error) {
+            console.error('Error opening add modal:', error);
+        }
+    });
+
+    // ── Close modal on outside click ──
+    window.addEventListener('click', (e) => {
+        const modal = document.getElementById('householdMemberModal');
+        if (e.target === modal) modal.style.display = 'none';
+    });
+
+    // ── Heating Crisis options ──
+    document.querySelectorAll('#heatingCrisis-yes, #heatingCrisis-no').forEach(option => {
+        option.addEventListener('click', async () => {
+            const val = option.getAttribute('data-value');
+            highlightByValue(document.querySelectorAll('#heatingCrisis-yes, #heatingCrisis-no'), val);
+            await saveHeatingCrisisSelection(val);
+        });
+    });
+
+    // ── LIHEAP options ──
+    document.querySelectorAll('#liheap-yes, #liheap-no, #liheap-notinterested').forEach(option => {
+        option.addEventListener('click', () => {
+            const val = option.dataset.value;
+            highlightByValue(document.querySelectorAll('#liheap-yes, #liheap-no, #liheap-notinterested'), val);
+            saveLiheapSelection(val);
+        });
+    });
+
+    // ── Residence Status Current options ──
+    document.querySelectorAll('[id^="residenceStatusCurrent-"]').forEach(option => {
+        if (option.tagName !== 'DIV' || !option.getAttribute('data-value')) return;
+        option.addEventListener('click', async () => {
+            const val = option.getAttribute('data-value');
+            highlightByValue(document.querySelectorAll('[id^="residenceStatusCurrent-"]'), val);
+            await handleResidenceStatusClick(val);
+        });
+    });
+
+    // ── Subsidized Housing options ──
+    document.querySelectorAll('[id^="subsidizedHousing-"]').forEach(option => {
+        option.addEventListener('click', async () => {
+            const val = option.getAttribute('data-value');
+            if (!val) return;
+            await handleSubsidizedHousingClick(val);
+        });
+    });
+
+    // ── Heating Cost options ──
+    document.querySelectorAll('[id^="heatingCost-"]').forEach(option => {
+        option.addEventListener('click', async () => {
+            const val = option.getAttribute('data-value');
+            if (!val) return;
+            await handleHeatingCostClick(val);
+        });
+    });
+
+    // ── Non-citizen / Student dropdowns ──
+    setupNonCitizenDropdown();
+    setupStudentDropdown();
+
+    // ── LIHEAP eligibility on load ──
     if (clientId) {
-        await applyShowHideLogic();
+        await handleLiheapEligibility(clientId);
     }
 
-    // Initialize other event listeners or logic
-    await loadSavedData(); // Load and display saved data
+    // ── Load all saved data ──
+    await loadSavedData();
 });
