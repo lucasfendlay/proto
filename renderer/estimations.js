@@ -3069,7 +3069,69 @@ async function LIHEAPEligibilityCheck() {
                 return sum + yearlyAmount;
             }, 0);
 
-            combinedYearlyIncome += yearlyIncome;
+            // Calculate Medicare premium deductions (deducted from SS or pension)
+            let medicarePremiumDeduction = 0;
+            const expenses = member.expenses || [];
+            
+            expenses.forEach(expense => {
+                // Check if it's a Medicare premium deducted from Social Security or pension
+                const isMedicarePremium = expense.kind?.toLowerCase().includes('medicare') && 
+                                          expense.kind?.toLowerCase().includes('premium');
+                const isDeductedFromSSOrPension = expense.deductedFromSSOrPension?.toLowerCase() === 'yes';
+
+                if (isMedicarePremium && isDeductedFromSSOrPension) {
+                    const startDate = new Date(expense.startDate);
+                    const endDate = new Date(expense.endDate);
+                    const today = new Date();
+                    
+                    // Define the current year boundaries
+                    const currentYear = today.getFullYear();
+                    const yearStart = new Date(`${currentYear}-01-01`);
+                    const yearEnd = new Date(`${currentYear}-12-31`);
+                    
+                    // Calculate the effective start and end within the current year
+                    const effectiveStart = startDate > yearStart ? startDate : yearStart;
+                    const effectiveEnd = endDate < yearEnd ? endDate : yearEnd;
+                    
+                    // Only count if the expense is active within this year
+                    if (effectiveStart <= effectiveEnd && effectiveStart <= today) {
+                        // Cap the effective end at today if it's in the future
+                        const cappedEnd = effectiveEnd > today ? today : effectiveEnd;
+                        
+                        // Calculate days active within the year
+                        const daysActive = Math.max(0, 
+                            Math.floor((cappedEnd - effectiveStart) / (1000 * 60 * 60 * 24)) + 1
+                        );
+                        const totalDaysInYear = 365;
+                        
+                        // Determine yearly amount based on frequency
+                        let yearlyAmount;
+                        switch (expense.frequency?.toLowerCase()) {
+                            case 'one-time': yearlyAmount = expense.amount; break;
+                            case 'weekly': yearlyAmount = expense.amount * 52; break;
+                            case 'bi-weekly': yearlyAmount = expense.amount * 26; break;
+                            case 'semi-monthly': yearlyAmount = expense.amount * 24; break;
+                            case 'monthly': yearlyAmount = expense.amount * 12; break;
+                            case 'quarterly': yearlyAmount = expense.amount * 4; break;
+                            case 'annually': yearlyAmount = expense.amount; break;
+                            default: yearlyAmount = 0; break;
+                        }
+
+                        if (yearlyAmount > 0) {
+                            // Prorate based on days active within the year
+                            const proratedDeduction = yearlyAmount * (daysActive / totalDaysInYear);
+                            medicarePremiumDeduction += proratedDeduction;
+                            console.log(`Medicare premium deduction for ${member.firstName} ${member.lastName}: $${proratedDeduction.toFixed(2)} (${daysActive} days active)`);
+                        }
+                    }
+                }
+            });
+
+            // Subtract Medicare premium deductions from yearly income
+            const adjustedYearlyIncome = Math.max(0, yearlyIncome - medicarePremiumDeduction);
+            combinedYearlyIncome += adjustedYearlyIncome;
+
+            console.log(`LIHEAP Income for ${member.firstName} ${member.lastName}: Gross: $${yearlyIncome.toFixed(2)}, Medicare Deduction: $${medicarePremiumDeduction.toFixed(2)}, Adjusted: $${adjustedYearlyIncome.toFixed(2)}`);
         });
 
         // Determine LIHEAP eligibility using only non-deceased members
