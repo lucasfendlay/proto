@@ -4,73 +4,321 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Client Expenses</title>
-    <!-- Stylesheets -->
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="incomeedit.css">
-        <link rel="stylesheet" href="householdedit.css">
+    <link rel="stylesheet" href="householdedit.css">
     <link rel="stylesheet" href="notes.css">
     <script src="userInfo.js"></script>
+    <style>
+    .narrow-body {
+        margin-left: 385px;
+        margin-right: 10px;
+        max-width: calc(100% - 395px);
+        margin: 0 auto;
+        margin-top: 60px;
+    }
 
+    body {
+        margin-left: 400px;
+        margin-right: 20px;
+        padding: 10px;
+        box-sizing: border-box;
+        max-width: calc(100% - 800px);
+        margin-top: 60px;
+    }
+
+    #household-member-container {
+        min-width: 1250px;
+        width: 100%;
+        max-width: 1400px;
+        padding: 10px;
+        box-sizing: border-box;
+    }
+
+        .multi-select-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .multi-select-search {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+
+        .multi-select-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: white;
+            z-index: 1000;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .multi-select-dropdown.hidden {
+            display: none;
+        }
+
+        .dropdown-item {
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        .dropdown-item:hover {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .selected-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .selected-item {
+            display: flex;
+            align-items: center;
+            background-color: #007bff;
+            color: white;
+            border-radius: 5px;
+            padding: 5px 10px;
+            font-size: 1.2rem;
+        }
+
+        .selected-item .remove-item {
+            margin-left: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            color: white;
+            background-color: red;
+            border-radius: 50%;
+            padding: 0 5px;
+        }
+
+        .selection-box div.selected {
+            background-color: #007bff;
+            color: white;
+            border: 1px solid #0056b3;
+            border-radius: 5px;
+            padding: 5px;
+        }
+
+        #utility-modal .modal-content {
+            background: #f9f9f9;
+            border-radius: 12px;
+            width: 60%;
+            max-width: 500px;
+            padding: 30px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .household-member1-box {
+        min-width: 1250px;
+        width: 100%;
+        max-width: 1350px;
+        margin: 0;
+        padding: 20px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        flex: none;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+        .modal.hidden {
+            display: none;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            width: 400px;
+            padding: 0px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .selection-box-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .selection-box {
+            padding: 10px 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .selection-box.selected {
+            background-color: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .save-button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .save-button:hover {
+            background-color: #218838;
+        }
+
+        #utility-modal {
+            width: 80%;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .expense-list {
+            list-style-type: none;
+            justify-self: center;
+            padding: 0;
+            margin: 0;
+            width: 100%;
+            flex: none;
+        }
+
+        .expense-list li {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        grid-auto-rows: minmax(40px);
+        gap: 10px;
+        align-self: center;
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        background-color: #f9f9f9;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        max-width: 1200px;
+        justify-self: center;
+    }
+
+    .expense-list li.has-lease {
+        grid-template-columns: repeat(7, 1fr);
+    }
+
+        .expense-list li p {
+            margin: 0;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .expense-list li .button-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            grid-column: 1 / -1;
+        }
+
+        .expense-list li .button-container button {
+            padding: 8px 16px;
+            border: 1px solid #000000;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .expense-list li .button-container button:hover {
+            background-color: #0056b3;
+        }
+
+        .expense-list li .button-container .delete-expense-button {
+            padding: 8px 16px;
+            border: 1px solid #000000;
+            background-color: red;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .expense-list li .button-container .delete-expense-button:hover {
+            background-color: darkred;
+        }
+
+        #save-exit, #save-continue {
+            border: 1px solid #000000;
+            border-radius: 5px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        #save-exit:hover, #save-continue:hover {
+            background-color: #0056b3;
+            color: white;
+        }
+
+        details > summary {
+            cursor: pointer;
+        }
+    </style>
 </head>
 
-<style>
-
-.narrow-body {
-        margin-left: 385px; /* Space for the left sidebar */
-        margin-right: 10px; /* Optional: Space on the right */
-        max-width: calc(100% - 395px); /* Ensure the body doesn't exceed the available space */
-        margin: 0 auto; /* Center the content horizontally */
-        margin-top: 60px; /* Adjust this value to match the height of the navigation container */
-
-    }
-    body {
-        margin-left: 400px; /* Add space to the left to avoid overlap with the left sidebar */
-        margin-right: 20px; /* Add some space on the right for better readability */
-        padding: 10px; /* Optional: Add padding for better spacing */
-        box-sizing: border-box; /* Ensure padding and margin are included in the total width */
-        max-width: calc(100% - 800px); /* Ensure the body content fits within the available space */
-        margin-top: 60px; /* Adjust this value to match the height of the navigation container */
-
-
-    }
-</style>
 <body class="narrow-body">
-
     <h1>Expenses</h1>
 
-    
-
-    <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
+    <div class="left-sidebar-container" id="leftSidebarContainer" style="display: block;">
         <div id="snap-household-container" class="left-sidebar"></div>
         <div id="liheap-household-container" class="left-sidebar"></div>
-
         <div id="household-members-container" class="left-sidebar"></div>
     </div>
 
     <div id="notes-container">
         <textarea id="note-input" placeholder="Add Note..."></textarea>
         <button id="save-note">Save Note</button>
-        <div id="notes-list">
-            </div>
-            </div>
+        <div id="notes-list"></div>
+    </div>
 
-    <!-- Household Members Section -->
     <div id="household-member-container"></div>
 
-    <!-- Modal for Adding/Editing Expense -->
+    <!-- Expense Modal -->
     <div id="shelter-modal" class="modal hidden">
         <div class="modal-content">
-            <!-- Close Button -->
             <button id="close-modal" class="close">&times;</button>
-
-            <!-- Modal Title -->
-
-            <!-- Expense Form -->
             <form id="shelter-form">
-
                 <h2 id="modal-title"></h2>
 
-                <!-- Type of Expense -->
                 <label for="expense-kind">Kind of Expense:</label>
                 <select id="expense-kind" required>
                     <option value="" disabled selected>Select Kind of Expense</option>
@@ -91,97 +339,15 @@
                     </select>
                 </div>
 
-                <!-- Place inside the general expense modal markup, below Kind and before Frequency -->
-<div id="lease-persons-container" class="form-field hidden" style="margin-top:10px;">
-    <label for="leasePersons">Person(s) on Lease/Deed:</label>
-    <div id="lease-container" class="multi-select-container">
-      <input type="text" id="lease-search" class="multi-select-search" placeholder="Type to search..." autocomplete="off">
-      <div id="lease-dropdown" class="multi-select-dropdown hidden"><!-- items populated dynamically --></div>
-      <div id="selected-lease-list" class="selected-items"></div>
-    </div>
-  </div>
+                <div id="lease-persons-container" class="form-field hidden" style="margin-top:10px;">
+                    <label for="leasePersons">Person(s) on Lease/Deed:</label>
+                    <div id="lease-container" class="multi-select-container">
+                        <input type="text" id="lease-search" class="multi-select-search" placeholder="Type to search..." autocomplete="off">
+                        <div id="lease-dropdown" class="multi-select-dropdown hidden"></div>
+                        <div id="selected-lease-list" class="selected-items"></div>
+                    </div>
+                </div>
 
-              <style>
-.multi-select-container {
-    position: relative;
-    width: 100%;
-    max-width: 800px;
-}
-
-.multi-select-search {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    font-size: 1rem;
-    box-sizing: border-box;
-}
-
-.multi-select-dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    max-height: 200px;
-    overflow-y: auto;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    background-color: white;
-    z-index: 1000;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.multi-select-dropdown.hidden {
-    display: none;
-}
-
-.dropdown-item {
-    padding: 10px;
-    cursor: pointer;
-}
-
-.dropdown-item:hover {
-    background-color: #007bff;
-    color: white;
-}
-
-.selected-items {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    margin-top: 10px;
-}
-
-.selected-item {
-    display: fixed;
-    align-items: center;
-    background-color: #007bff;
-    color: white;
-    border-radius: 5px;
-    padding: 5px 10px;
-    font-size: 1.2rem;
-}
-
-.selected-item .remove-item {
-    margin-left: 5px;
-    cursor: pointer;
-    font-weight: bold;
-    color: white;
-    background-color: red;
-    border-radius: 50%;
-    padding: 0 5px;
-}
-
-.selection-box div.selected {
-    background-color: #007bff;
-    color: white;
-    border: 1px solid #0056b3;
-    border-radius: 5px;
-    padding: 5px;
-}
-</style>
-
-                <!-- Frequency -->
                 <label for="expense-frequency">Frequency:</label>
                 <select id="expense-frequency" required>
                     <option value="" disabled selected>Select Frequency</option>
@@ -192,447 +358,56 @@
                     <option value="Annually">Annually</option>
                 </select>
 
-                <!-- Start Date -->
                 <label for="expense-start-date">Start Date:</label>
                 <input type="date" id="expense-start-date" class="large-input" required>
 
-                <!-- End Date -->
                 <label for="expense-end-date">End Date:</label>
                 <input type="date" id="expense-end-date" class="large-input" required>
 
-                <!-- Amount -->
                 <label for="expense-amount">Amount:</label>
                 <input type="text" id="expense-amount" class="text-input" required>
 
-                <!-- Submit Button -->
                 <button type="button" id="add-expense-button" class="submit-button">Add Expense</button>
             </form>
         </div>
     </div>
 
     <!-- Utility Modal -->
-<div id="utility-modal" class="modal hidden">
-    <div class="modal-content">
-        <!-- Modal Header -->
-        <div class="modal-header">
-            <h2 id="utility-modal-title">Add Utility Expense</h2>
-        </div>
-
-        <!-- Modal Body -->
-        <div class="modal-body">
-            <p>Which utility expenses is this individual responsible for?</p>
-            <div id="utility-expense-list" class="selection-box-container">
-                <div class="selection-box" data-utility-type="Heating and/or Cooling">Heating and/or Cooling</div>
-                <div class="selection-box" data-utility-type="Gas">Gas</div>
-                <div class="selection-box" data-utility-type="Oil">Oil</div>
-                <div class="selection-box" data-utility-type="Propane">Propane</div>
-                <div class="selection-box" data-utility-type="Wood">Wood</div>
-                <div class="selection-box" data-utility-type="Coal">Coal</div>
-                <div class="selection-box" data-utility-type="Electric">Electric</div>
-                <div class="selection-box" data-utility-type="Water">Water</div>
-                <div class="selection-box" data-utility-type="Sewage">Sewage</div>
-                <div class="selection-box" data-utility-type="Phone">Phone</div>
-                <div class="selection-box" data-utility-type="Trash">Trash</div>
+    <div id="utility-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="utility-modal-title">Add Utility Expense</h2>
+            </div>
+            <div class="modal-body">
+                <p>Which utility expenses is this individual responsible for?</p>
+                <div id="utility-expense-list" class="selection-box-container">
+                    <div class="selection-box" data-utility-type="Heating and/or Cooling">Heating and/or Cooling</div>
+                    <div class="selection-box" data-utility-type="Gas">Gas</div>
+                    <div class="selection-box" data-utility-type="Oil">Oil</div>
+                    <div class="selection-box" data-utility-type="Propane">Propane</div>
+                    <div class="selection-box" data-utility-type="Wood">Wood</div>
+                    <div class="selection-box" data-utility-type="Coal">Coal</div>
+                    <div class="selection-box" data-utility-type="Electric">Electric</div>
+                    <div class="selection-box" data-utility-type="Water">Water</div>
+                    <div class="selection-box" data-utility-type="Sewage">Sewage</div>
+                    <div class="selection-box" data-utility-type="Phone">Phone</div>
+                    <div class="selection-box" data-utility-type="Trash">Trash</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="save-utility-expenses" class="save-button">Save and Update Utility Expenses</button>
             </div>
         </div>
-
-        <!-- Modal Footer -->
-        <div class="modal-footer">
-            <button id="save-utility-expenses" class="save-button">Save and Update Utility Expenses</button>
-        </div>
     </div>
-</div>
-
-<!-- Styles for the modal -->
-<style>
-
-#utility-modal .modal-content {
-        background: #f9f9f9; /* Light gray background */
-        border-radius: 12px; /* Rounded corners */
-        width: 60%; /* Wider modal */
-        max-width: 500px; /* Limit the maximum width */
-        padding: 30px; /* Add padding inside the modal */
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); /* Add a subtle shadow */
-        animation: fadeIn 0.3s ease-in-out; /* Add a fade-in animation */
-    }
-    .modal {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-    }
-
-    .household-member1-box {
-    width: 1200px; /* Set a maximum width */
-    margin: 0; /* Center the container */
-    padding: 20px; /* Add some padding */
-    border: 1px solid #ccc; /* Optional: Add a border */
-    border-radius: 8px; /* Optional: Add rounded corners */
-    width: 100%;
-    flex: none;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Optional: Add a shadow */
-}
-
-    .modal.hidden {
-        display: none;
-    }
-
-    .modal-content {
-        background: white;
-        border-radius: 8px;
-        width: 400px;
-        padding: 0px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    .modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-        position: relative;
-    }
-
-    .selection-box-container {
-        display: flex;
-        flex-direction: column; /* Stack items vertically */
-        gap: 10px;
-    }
-
-    .selection-box {
-        padding: 10px 15px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        cursor: pointer;
-        user-select: none;
-    }
-
-    .selection-box.selected {
-        background-color: #007bff;
-        color: white;
-        border-color: #007bff;
-    }
-
-    .save-button {
-        background-color: #28a745;
-        color: white;
-        border: none;
-        padding: 10px 15px;
-        border-radius: 4px;
-        cursor: pointer;
-    }
-
-    .save-button:hover {
-        background-color: #218838;
-    }
-
-    #utility-modal {
-    width: 80%; /* Adjust the width as needed */
-    padding: 20px; /* Add padding inside the modal */
-    box-sizing: border-box; /* Ensure padding doesn't affect the width */
-}
-
-/* Style for the expense list */
-.expense-list {
-    list-style-type: none; /* Remove default bullet points */
-    justify-self: center;
-    padding: 0; /* Remove default padding */
-    margin: 0; /* Remove default margin */
-    width: 100%; /* Set a width for the list */
-    flex: none;
-}
-
-/* Style for each expense list item */
-.expense-list li {
-    display: grid; /* Use CSS Grid for layout */
-    grid-template-columns: repeat(6, 1fr); /* Default: 6 equal columns */
-    grid-auto-rows: minmax(40px);
-    gap: 10px;
-    align-self: center;
-    padding: 10px;
-    margin-bottom: 10px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    background-color: #f9f9f9;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    width: 1200px;
-    justify-self: center;
-}
-
-/* When leasePersons exists, use 7 columns */
-.expense-list li.has-lease {
-    grid-template-columns: repeat(7, 1fr);
-}
-
-/* Style for the expense details */
-.expense-list li p {
-    margin: 0; /* Remove default margin */
-    font-size: 0.9rem; /* Adjust font size */
-    line-height: 1.4; /* Adjust line height for readability */
-}
-
-/* Style for the expense list item buttons */
-.expense-list li .button-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    grid-column: 1 / -1; /* Span all columns (works for 6 or 7) */
-}
-
-/* Style for individual buttons */
-.expense-list li .button-container button {
-    padding: 8px 16px; /* Add padding for better appearance */
-    border: 1px solid #000000; /* Optional: Add a border */
-    color: white; /* Button text color */
-    cursor: pointer; /* Pointer cursor on hover */
-    transition: background-color 0.3s; /* Smooth hover effect */
-}
-
-/* Hover effect for buttons */
-.expense-list li .button-container button:hover {
-    background-color: #0056b3; /* Darker blue on hover */
-}
-
-/* Style for the delete button */
-.expense-list li .button-container .delete-expense-button {
-    padding: 8px 16px;
-    border: 1px solid #000000;
-    background-color: red; /* Red background */
-    color: white;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-/* Hover effect for the delete button */
-.expense-list li .button-container .delete-expense-button:hover {
-    background-color: darkred; /* Darker red on hover */
-}
-</style>
-
-<!-- JavaScript for selection functionality -->
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const utilityExpenseList = document.getElementById('utility-expense-list');
-        const closeUtilityModal = document.getElementById('close-utility-modal');
-        const utilityModal = document.getElementById('utility-modal');
-
-        // Toggle selection on click
-        utilityExpenseList.addEventListener('click', (event) => {
-            if (event.target.classList.contains('selection-box')) {
-                event.target.classList.toggle('selected');
-            }
-        });
-
-        // Close modal on clicking the close button
-        closeUtilityModal.addEventListener('click', () => {
-            utilityModal.classList.add('hidden');
-        });
-    });
-</script>
 
     <div class="button-container">
-        <button id="save-exit" onclick="goToExpenseView()">Save and Release Profile</button>
-        <button id="save-continue" onclick="GoToEstimationsStep()">Save and Continue</button> <br>
+        <button id="save-exit">Save and Release Profile</button>
+        <button id="save-continue">Save and Continue</button><br>
     </div>
-
-    <style>
-        /* Add a border to the Save and Release Profile and Save and Continue buttons */
-        #save-exit, #save-continue {
-            border: 1px solid #000000;
-            border-radius: 5px; /* Rounded corners */
-            padding: 10px 20px; /* Add padding for better spacing */
-            background-color: #007bff; /* Light background color */
-            color: white; /* Blue text color */
-            transition: background-color 0.3s, color 0.3s; /* Smooth hover effect */
-        }
-    
-        /* Hover effect for the buttons */
-        #save-exit:hover, #save-continue:hover {
-            background-color: #0056b3; /* Blue background on hover */
-            color: white; /* White text on hover */
-        }
-
-        details > summary {
-    cursor: pointer; /* Change cursor to hand */
-}
-    </style>
-
-    <script>
-
-function getQueryParameter(name) {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get(name);
-}
-
-function GoToEstimationsStep() {
-    const clientId = getQueryParameter('id');
-    if (clientId) {
-        window.location.href = `estimationsstep.html?id=${clientId}`;
-    } else {
-        console.error('Client ID not found in query parameters.');
-    }
-}
-
-// ...existing code...
-
-async function goToExpenseView() {
-    const clientId = getQueryParameter('id'); // Reuse the getQueryParameter function
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
-    const confirmAction = confirm("Are you sure you want to save and release this profile?");
-    if (!confirmAction) {
-        return;
-    }
-
-    const noteContent = "Profile released.";
-    const timestamp = new Date().toLocaleString();
-    const activeUser = sessionStorage.getItem('loggedInUser'); // Retrieve the active user
-
-    if (!activeUser) {
-        console.error("No active user found in sessionStorage.");
-        return;
-    }
-
-    try {
-
-        await setCheckedOutStatus(clientId, false);
-
-        // Save expenses data (if applicable)
-        await saveExpensesData();
-
-        // Add a note about the action
-        const note = {
-            text: noteContent,
-            timestamp: timestamp,
-            username: activeUser
-        };
-
-        const addNoteResponse = await fetch('/add-note-to-client', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ clientId, note }),
-        });
-
-        if (!addNoteResponse.ok) {
-            console.warn('Failed to add note to client.');
-        }
-
-    } catch (error) {
-        console.error("Error during goToExpenseView:", error);
-    } finally {
-        // Redirect to expenses view regardless of success or failure
-        window.location.href = `expensesview.html?id=${clientId}`;
-    }
-}
-
-    async function saveExpensesData() {
-        // Implement logic to save expenses data if needed
-        console.log("Saving expenses data...");
-    }
-
-
-    // Define the getQueryParam function
-function getQueryParam(name) {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get(name);
-}
-
-async function toggleSidebarVisibility() {
-    const clientId = getQueryParam('id');
-    try {
-        // Fetch client data via REST API
-        const response = await fetch(`/get-client/${clientId}`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client data: ${response.statusText}`);
-        }
-        const client = await response.json();
-        console.log('Client data:', client); // Debugging
-        console.log('screeningInProgress:', client?.screeningInProgress); // Debugging
-
-        if (client && client.screeningInProgress) {
-            document.getElementById('leftSidebarContainer').style.display = 'block';
-            // Show all sub-containers
-            const snapContainer = document.getElementById('snap-household-container');
-            const liheapContainer = document.getElementById('liheap-household-container');
-            const householdContainer = document.getElementById('household-members-container');
-            if (snapContainer) snapContainer.style.display = '';
-            if (liheapContainer) liheapContainer.style.display = '';
-            if (householdContainer) householdContainer.style.display = '';
-            console.log('Sidebar is now visible'); // Debugging
-        } else {
-            // Still show the sidebar container so the stop-screening / reopen button is visible
-            document.getElementById('leftSidebarContainer').style.display = 'block';
-            // Hide the individual benefit containers
-            const snapContainer = document.getElementById('snap-household-container');
-            const liheapContainer = document.getElementById('liheap-household-container');
-            const householdContainer = document.getElementById('household-members-container');
-            if (snapContainer) snapContainer.style.display = 'none';
-            if (liheapContainer) liheapContainer.style.display = 'none';
-            if (householdContainer) householdContainer.style.display = 'none';
-            console.log('Sidebar visible with only stop-screening container'); // Debugging
-        }
-    } catch (error) {
-        console.error('Error toggling sidebar visibility:', error);
-    }
-}
-
-async function setCheckedOutStatus(clientId, status) {
-    try {
-        const response = await fetch('/update-client', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-                clientId, 
-                clientData: { 
-                    checkedOut: [
-                        {
-                            status: status, // Set status to false
-                            timestamp: status ? new Date().toISOString() : null, // Clear timestamp if status is false
-                            user: status ? sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User' : null // Clear user if status is false
-                        }
-                    ] 
-                } 
-            }),
-        });
-
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-            console.error(`Failed to update checkedOut status to ${status}:`, result.message);
-        } else {
-            console.log(`Successfully updated checkedOut status to ${status}.`);
-        }
-    } catch (error) {
-        console.error(`Error updating checkedOut status to ${status}:`, error);
-    }
-}
-
-
-    // Call the function after the page loads
-    window.onload = function () {
-        toggleSidebarVisibility();
-    };
-
-    </script>
-
-    <!-- Scripts -->
 
     <script src="estimations.js"></script>
     <script src="notes.js"></script>
     <script src="expenses.js"></script>
     <script src="editnavigation.js"></script>
-
 </body>
 </html>

@@ -110,6 +110,18 @@ document.addEventListener('DOMContentLoaded', async function () {
         const householdMemberContainer = document.getElementById('household-members-container');
         const members = await loadHouseholdMembers();
 
+        // Fetch client to check screening status
+        let isScreeningInProgress = false;
+        try {
+            const clientRes = await fetch(`/get-client/${clientId}`);
+            if (clientRes.ok) {
+                const clientData = await clientRes.json();
+                isScreeningInProgress = clientData.screeningInProgress === true;
+            }
+        } catch (e) {
+            console.error('Error fetching client screening status:', e);
+        }
+
         householdMemberContainer.innerHTML = '';
 
         if (members.length === 0) {
@@ -231,8 +243,9 @@ document.addEventListener('DOMContentLoaded', async function () {
                                             <hr class="separator-bar">
                                             <p><strong>Gross Adjusted Income:</strong> $${bObj.combinedIncome?.toFixed(2) || 'N/A'}</p>
                                         </details>
-                                                                                    <button class="benefit-apply-button" data-benefit="PACE" data-member-id="${member.householdMemberId}" 
+                                            <button class="benefit-apply-button" data-benefit="PACE" data-member-id="${member.householdMemberId}" 
                                                 style="display: ${
+                                                    !isScreeningInProgress ? 'none' :
                                                     bObj.eligibility?.some(e => e.includes('Not') || e.toLowerCase().includes('needs') || e.toLowerCase().includes('already'))
                                                         ? 'none'
                                                         : 'block'
@@ -676,8 +689,9 @@ document.addEventListener('DOMContentLoaded', async function () {
                           }</p>`
                         : ''
                 }
-                                    <br>
+                    <br>
                     <button class="btn-close-member-screening" data-member-id="${member.householdMemberId}" style="
+                        display: ${isScreeningInProgress ? 'inline-block' : 'none'};
                         background-color: #dc3545;
                         color: white;
                         border: none;
@@ -934,48 +948,50 @@ await checkAndAutoTerminateScreening(members);
     }
 
     // --- Close Member Screening Modal (with checkboxes for open benefits) ---
-function createCloseMemberModal() {
-    if (document.getElementById('close-member-modal')) return;
-
-    const modalOverlay = document.createElement('div');
-    modalOverlay.id = 'close-member-modal';
-    modalOverlay.style.cssText = `
-        display: none;
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0,0,0,0.5);
-        z-index: 9999;
-        justify-content: center;
-        align-items: center;
-    `;
-
-    modalOverlay.innerHTML = `
-        <div style="background: white; padding: 24px; border-radius: 8px; min-width: 380px; max-width: 520px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-            <h3 id="close-member-modal-title" style="margin-top: 0;">Close Screening</h3>
-            <div id="close-member-benefits-checkboxes" style="margin: 12px 0;"></div>
-            <label for="close-member-reason-select"><strong>Select a reason:</strong></label>
-            <select id="close-member-reason-select" style="width: 100%; padding: 8px; margin: 12px 0; font-size: 14px;">
-                <option value="">-- Select a reason --</option>
-            </select>
-            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 16px;">
-                <button id="close-member-cancel-btn" style="padding: 8px 16px; cursor: pointer;">Cancel</button>
-                <button id="close-member-confirm-btn" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#d9534f'">Confirm Close</button>
+    function createCloseMemberModal() {
+        if (document.getElementById('close-member-modal')) return;
+    
+        const modalOverlay = document.createElement('div');
+        modalOverlay.id = 'close-member-modal';
+        modalOverlay.style.cssText = `
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        `;
+    
+        modalOverlay.innerHTML = `
+            <div style="background: white; padding: 24px; border-radius: 8px; min-width: 380px; max-width: 520px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                <h3 id="close-member-modal-title" style="margin-top: 0; flex-shrink: 0;">Close Screening</h3>
+                <div id="close-member-benefits-checkboxes" style="margin: 12px 0; overflow-y: auto; flex: 1; max-height: 40vh; padding-right: 8px;"></div>
+                <div style="flex-shrink: 0;">
+                    <label for="close-member-reason-select"><strong>Select a reason:</strong></label>
+                    <select id="close-member-reason-select" style="width: 100%; padding: 8px; margin: 12px 0; font-size: 14px;">
+                        <option value="">-- Select a reason --</option>
+                    </select>
+                    <div style="display: flex; gap: 10px; justify-content: center; margin-top: 16px;">
+                        <button id="close-member-cancel-btn" style="padding: 8px 16px; cursor: pointer;">Cancel</button>
+                        <button id="close-member-confirm-btn" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Confirm Close</button>
+                    </div>
+                </div>
             </div>
-        </div>
-    `;
-
-    document.body.appendChild(modalOverlay);
-
-    document.getElementById('close-member-cancel-btn').addEventListener('click', () => {
-        modalOverlay.style.display = 'none';
-    });
-
-    modalOverlay.addEventListener('click', (e) => {
-        if (e.target === modalOverlay) {
+        `;
+    
+        document.body.appendChild(modalOverlay);
+    
+        document.getElementById('close-member-cancel-btn').addEventListener('click', () => {
             modalOverlay.style.display = 'none';
-        }
-    });
-}
+        });
+    
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) {
+                modalOverlay.style.display = 'none';
+            }
+        });
+    }
 
 function getCloseReasonsForBenefits(selectedBenefits) {
     const commonReasons = [
@@ -1192,15 +1208,23 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
     const toggleAllTiles = (selected) => {
         const allTiles = checkboxContainer.querySelectorAll('.close-member-benefit-tile');
         allTiles.forEach(tile => {
+            const isNotEligibleTile = tile.dataset.isNotEligible === 'true';
             tile.dataset.selected = selected ? 'true' : 'false';
             if (selected) {
                 tile.style.borderColor = 'black';
                 tile.style.backgroundColor = '#007bff';
                 tile.style.color = 'white';
             } else {
-                tile.style.borderColor = '#ccc';
-                tile.style.backgroundColor = '#f9f9f9';
-                tile.style.color = '#333';
+                // Immediately apply correct styling based on eligibility
+                if (isNotEligibleTile) {
+                    tile.style.borderColor = '#f5c6cb';
+                    tile.style.backgroundColor = '#f8d7da';
+                    tile.style.color = '#721c24';
+                } else {
+                    tile.style.borderColor = '#ccc';
+                    tile.style.backgroundColor = '#f9f9f9';
+                    tile.style.color = '#333';
+                }
             }
         });
         const selectedBenefits = selected
@@ -1543,6 +1567,19 @@ function mapHardDeterminationReason(benefit, ineligibilityReason) {
         }
 
         const members = await loadHouseholdMembers();
+        
+        // Fetch client to check screening status
+        let isScreeningInProgress = false;
+        try {
+            const clientRes = await fetch(`/get-client/${clientId}`);
+            if (clientRes.ok) {
+                const clientData = await clientRes.json();
+                isScreeningInProgress = clientData.screeningInProgress === true;
+            }
+        } catch (e) {
+            console.error('Error fetching client screening status:', e);
+        }
+
         snapHouseholdContainer.innerHTML = '';
 
         const snapHouseholds = [];
@@ -1740,7 +1777,7 @@ function mapHardDeterminationReason(benefit, ineligibilityReason) {
                             <p><strong>Adjusted Net Income:</strong> $${totalNetIncome.toFixed(2)}</p>
                             <p><strong>Combined Assets:</strong> $${combinedAssets.toFixed(2)}</p>
                         </details>
-                        <button class="benefit-apply-button" data-benefit="SNAP" style="display: ${isLikelyEligible ? 'block' : 'none'}; margin: 0 auto;">
+                        <button class="benefit-apply-button" data-benefit="SNAP" style="display: ${isScreeningInProgress && isLikelyEligible ? 'block' : 'none'}; margin: 0 auto;">
                                 ${household.every(member => member.SNAP?.application?.some(app => app.applying)) ? 'Stop Applying' : 'Apply for SNAP'}
                             </button>
                         
@@ -1748,7 +1785,7 @@ function mapHardDeterminationReason(benefit, ineligibilityReason) {
                             data-benefit="SNAP" 
                             data-member-ids="${snapMemberIds.join(',')}" 
                             data-display-name="SNAP Household"
-                            style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 11px; cursor: pointer; margin: 8px 0; transition: background-color 0.3s;"
+                            style="display: ${isScreeningInProgress ? 'block' : 'none'}; background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 11px; cursor: pointer; margin: 8px 0; transition: background-color 0.3s;"
                             onmouseover="this.style.backgroundColor='#a71d2a'" 
                             onmouseout="this.style.backgroundColor='#dc3545'">
                             Close SNAP Screening
@@ -1907,6 +1944,19 @@ function mapHardDeterminationReason(benefit, ineligibilityReason) {
         }
 
         const members = await loadHouseholdMembers();
+        
+        // Fetch client to check screening status
+        let isScreeningInProgress = false;
+        try {
+            const clientRes = await fetch(`/get-client/${clientId}`);
+            if (clientRes.ok) {
+                const clientData = await clientRes.json();
+                isScreeningInProgress = clientData.screeningInProgress === true;
+            }
+        } catch (e) {
+            console.error('Error fetching client screening status:', e);
+        }
+
         liheapHouseholdContainer.innerHTML = '';
 
         const activeMembersForLIHEAP = members.filter(
@@ -2052,13 +2102,13 @@ function mapHardDeterminationReason(benefit, ineligibilityReason) {
                         <hr class="separator-bar">
                         <p><strong>Combined Yearly Income:</strong> $${combinedYearlyIncome.toFixed(2)}</p>
                     </details>
-                    <button class="benefit-apply-button" data-benefit="LIHEAP" style="display: ${isLikelyEligible ? 'block' : 'none'}; margin: 0 auto;">
+                    <button class="benefit-apply-button" data-benefit="LIHEAP" style="display: ${isScreeningInProgress && isLikelyEligible ? 'block' : 'none'}; margin: 0 auto;">
                         ${activeMembersForLIHEAP.every(m => m.LIHEAP?.application?.some(app => app.applying)) ? 'Stop Applying' : 'Apply for LIHEAP'}
                     </button>
                     <button class="close-liheap-btn" 
                         data-member-ids="${liheapMemberIds.join(',')}"
                         data-is-not-eligible="${liheapIsNotEligible ? 'true' : 'false'}"
-                        style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 11px; cursor: pointer; margin: 8px 0; transition: background-color 0.3s;"
+                        style="display: ${isScreeningInProgress ? 'block' : 'none'}; background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 11px; cursor: pointer; margin: 8px 0; transition: background-color 0.3s;"
                         onmouseover="this.style.backgroundColor='#a71d2a'" 
                         onmouseout="this.style.backgroundColor='#dc3545'">
                         Close LIHEAP Screening
@@ -3484,6 +3534,9 @@ if (!client) {
     console.error("Client data could not be retrieved.");
     return;
 }
+
+// Store screeningInProgress status globally for use in display functions
+const isScreeningInProgress = client.screeningInProgress === true;
 
 // Log the isFarmworker property from the client object
 console.log("isFarmworker:", client.isFarmworker);

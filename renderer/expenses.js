@@ -1,36 +1,237 @@
-document.addEventListener('DOMContentLoaded', async function () {
-    const clientId = getQueryParameter('id'); // Get the client ID from the query parameter
-    const modal = document.getElementById('shelter-modal'); // Modal element
-    const utilityModal = document.getElementById('utility-modal'); // Utility modal element
-    const modalTitle = document.getElementById('modal-title'); // Modal title element
-    const closeModal = document.getElementById('close-modal'); // Close button
-    const closeUtilityModal = document.getElementById('close-utility-modal'); // Close button for utility modal
-    const addExpenseButton = document.getElementById('add-expense-button'); // Add Expense button
-    const saveUtilityExpensesButton = document.getElementById('save-utility-expenses'); // Save Utility Expenses button
-    const utilityExpenseList = document.getElementById('utility-expense-list'); // Utility expense list
-    let currentMemberId = null;
-    const leaseSelectContainer = document.createElement('div');
-    leaseSelectContainer.id = 'lease-persons-container';
-    leaseSelectContainer.classList.add('hidden');
-    leaseSelectContainer.style.marginTop = '10px';
+// ══════════════════════════════════════════════════════════════
+// CONSTANTS
+// ══════════════════════════════════════════════════════════════
 
-// Internal state for selected lease persons
-let leaseSelectedPersons = [];
+const CURRENT_YEAR = 2026;
+const PREVIOUS_YEAR = 2025;
+const BACKEND_URL = window.location.origin || "http://localhost:3000";
 
-// Cache household members for option population
+// ══════════════════════════════════════════════════════════════
+// DROPDOWN OPTIONS
+// ══════════════════════════════════════════════════════════════
+
+const dropdownOptions = {
+    Shelter: [
+        { value: 'Rent', label: 'Rent' },
+        { value: 'Mortgage', label: 'Mortgage' },
+        { value: 'Property Taxes', label: 'Property Taxes' },
+        { value: 'Homeowners Insurance', label: 'Homeowners Insurance' }
+    ],
+    Medical: [
+        { value: 'Medicare Part B Premium', label: 'Medicare Part B Premium' },
+        { value: 'Medicare Part D Premium', label: 'Medicare Part D Premium' },
+        { value: 'Other Insurance Premium', label: 'Other Insurance Premium' },
+        { value: 'Hospital Co-Pay', label: 'Hospital Co-Pay' },
+        { value: 'Doctor Co-Pay', label: 'Doctor Co-Pay' },
+        { value: 'Prescription Medication', label: 'Prescription Medication' },
+        { value: 'Over-the-Counter Medication', label: 'Over-the-Counter Medication' },
+        { value: 'Medical Equipment', label: 'Medical Equipment' },
+        { value: 'Transportation', label: 'Transportation' },
+        { value: 'Dental', label: 'Dental' },
+        { value: 'Vision', label: 'Vision' },
+        { value: 'Hearing', label: 'Hearing' },
+        { value: 'Long-Term Care', label: 'Long-Term Care' },
+        { value: 'Home Health Aide', label: 'Home Health Aide' },
+        { value: 'Nursing Home', label: 'Nursing Home' },
+        { value: 'Assisted Living', label: 'Assisted Living' },
+        { value: 'Durable Medical Equipment', label: 'Durable Medical Equipment' }
+    ],
+    Other: [
+        { value: 'Childcare for Work or Training', label: 'Childcare for Work or Training' },
+        { value: 'Child Support', label: 'Child Support' }
+    ],
+    'Previous Year': [
+        { value: 'Medicare Part B Premium', label: 'Medicare Part B Premium' },
+        { value: 'Property Taxes', label: 'Property Taxes' },
+        { value: 'Rent', label: 'Rent' }
+    ]
+};
+
+// ══════════════════════════════════════════════════════════════
+// UTILITIES
+// ══════════════════════════════════════════════════════════════
+
+function getQueryParameter(name) {
+    return new URLSearchParams(window.location.search).get(name);
+}
+
+function formatAmount(amount) {
+    return Number.isInteger(amount) ? amount : amount.toFixed(2);
+}
+
+// ══════════════════════════════════════════════════════════════
+// HOUSEHOLD MEMBERS CACHE
+// ══════════════════════════════════════════════════════════════
+
 let cachedHouseholdMembers = null;
+
 async function getHouseholdMembersCached() {
     if (cachedHouseholdMembers) return cachedHouseholdMembers;
     cachedHouseholdMembers = await loadHouseholdMembers();
     return cachedHouseholdMembers;
 }
 
-// Populate dropdown items from household members
+function invalidateHouseholdCache() {
+    cachedHouseholdMembers = null;
+}
+
+async function loadHouseholdMembers() {
+    const clientId = getQueryParameter('id');
+    if (!clientId) {
+        console.error('Client ID not found in query parameters.');
+        return [];
+    }
+
+    try {
+        const response = await fetch(`/get-client/${clientId}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch client data: ${response.statusText}`);
+        }
+
+        const client = await response.json();
+        if (!client || !client.householdMembers) {
+            console.error('No household members found for this client.');
+            return [];
+        }
+
+        return client.householdMembers;
+    } catch (error) {
+        console.error('Error loading household members:', error);
+        return [];
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// STATE MANAGEMENT
+// ══════════════════════════════════════════════════════════════
+
+const memberState = {
+    currentMemberId: null,
+    setCurrentMemberId(id) { this.currentMemberId = id; },
+    getCurrentMemberId() { return this.currentMemberId; },
+    resetCurrentMemberId() { this.currentMemberId = null; }
+};
+
+let modalState = {
+    isEditing: false,
+    currentExpenseId: null,
+    leaseSelectedPersons: []
+};
+
+function resetModalState() {
+    modalState.isEditing = false;
+    modalState.currentExpenseId = null;
+    modalState.leaseSelectedPersons = [];
+}
+
+// ══════════════════════════════════════════════════════════════
+// DOM ELEMENT GETTERS
+// ══════════════════════════════════════════════════════════════
+
+function getModalElements() {
+    return {
+        modal: document.getElementById('shelter-modal'),
+        modalTitle: document.getElementById('modal-title'),
+        closeModal: document.getElementById('close-modal'),
+        addExpenseButton: document.getElementById('add-expense-button'),
+        expenseForm: document.getElementById('shelter-form'),
+        expenseKind: document.getElementById('expense-kind'),
+        expenseFrequency: document.getElementById('expense-frequency'),
+        expenseStartDate: document.getElementById('expense-start-date'),
+        expenseEndDate: document.getElementById('expense-end-date'),
+        expenseAmount: document.getElementById('expense-amount'),
+        ssPensionContainer: document.getElementById('ss-pension-deduction-container'),
+        ssPensionSelect: document.getElementById('ss-pension-deduction'),
+        leaseContainer: document.getElementById('lease-persons-container'),
+        leaseSearch: document.getElementById('lease-search'),
+        leaseDropdown: document.getElementById('lease-dropdown'),
+        selectedLeaseList: document.getElementById('selected-lease-list')
+    };
+}
+
+function getUtilityModalElements() {
+    return {
+        modal: document.getElementById('utility-modal'),
+        expenseList: document.getElementById('utility-expense-list'),
+        saveBtn: document.getElementById('save-utility-expenses')
+    };
+}
+
+// ══════════════════════════════════════════════════════════════
+// EXPENSE BUTTON VISIBILITY CONDITIONS
+// ══════════════════════════════════════════════════════════════
+
+function shouldShowShelterButton(member) {
+    return member.SNAP?.screeningInProgress === true && 
+           member.meals?.toLowerCase() === "yes";
+}
+
+function shouldShowUtilityButton(member) {
+    if (!(member.SNAP?.screeningInProgress === true && member.meals?.toLowerCase() === "yes")) {
+        return false;
+    }
+    // Hide if utility expenses already exist
+    return !member.expenses?.some(expense => expense.type === 'Utility');
+}
+
+function shouldShowMedicalButton(member) {
+    // SNAP path: needs meals=yes AND (age >= 60 OR disability)
+    const snapMedical = member.SNAP?.screeningInProgress === true && 
+                        member.meals?.toLowerCase() === "yes" &&
+                        (parseInt(member.age?.split('Y')[0]) >= 60 || member.disability?.toLowerCase() === "yes");
+    
+    return snapMedical;
+}
+
+function shouldShowLiheapMedicalButton(member) {
+    // LIHEAP-only path: show if LIHEAP is in progress AND SNAP medical button wasn't already shown
+    const snapAlreadyShowsMedical = member.SNAP?.screeningInProgress === true && 
+                                     member.meals?.toLowerCase() === "yes" &&
+                                     (parseInt(member.age?.split('Y')[0]) >= 60 || member.disability?.toLowerCase() === "yes");
+    
+    return member.LIHEAP?.screeningInProgress === true && !snapAlreadyShowsMedical;
+}
+
+function shouldShowOtherButton(member) {
+    return member.SNAP?.screeningInProgress === true && 
+           member.meals?.toLowerCase() === "yes";
+}
+
+function shouldShowPreviousYearButton(member, allMembers) {
+    // Direct eligibility
+    if (member.PTRR?.screeningInProgress === true || member.PACE?.screeningInProgress === true) {
+        return true;
+    }
+    
+    // Spouse eligibility
+    if (member.previousSpouseId) {
+        const spouse = allMembers.find(m => m.householdMemberId === member.previousSpouseId);
+        if (spouse?.PTRR?.screeningInProgress === true || spouse?.PACE?.screeningInProgress === true) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+// ══════════════════════════════════════════════════════════════
+// LEASE/DEED DROPDOWN LOGIC
+// ══════════════════════════════════════════════════════════════
+
+function shouldShowLeaseDropdown(expenseType, kind) {
+    return expenseType === 'Previous Year' && (kind === 'Rent' || kind === 'Property Taxes');
+}
+
 function renderLeaseDropdownItems(members) {
     const dropdown = document.getElementById('lease-dropdown');
     if (!dropdown) return;
 
     dropdown.innerHTML = '';
+    
     const options = [
         ...members.map(m => ({
             id: String(m.householdMemberId),
@@ -45,14 +246,13 @@ function renderLeaseDropdownItems(members) {
         div.setAttribute('data-value', opt.id);
         div.textContent = opt.label;
 
-        // Hide item if already selected
-        if (leaseSelectedPersons.some(p => p.id === opt.id)) {
+        if (modalState.leaseSelectedPersons.some(p => p.id === opt.id)) {
             div.style.display = 'none';
         }
 
         div.addEventListener('click', () => {
-            if (!leaseSelectedPersons.some(p => p.id === opt.id)) {
-                leaseSelectedPersons.push({ id: opt.id, label: opt.label });
+            if (!modalState.leaseSelectedPersons.some(p => p.id === opt.id)) {
+                modalState.leaseSelectedPersons.push({ id: opt.id, label: opt.label });
                 renderLeaseSelectedTags();
                 div.style.display = 'none';
             }
@@ -65,34 +265,29 @@ function renderLeaseDropdownItems(members) {
     });
 }
 
-// Render selected tags (chips)
 function renderLeaseSelectedTags() {
     const selectedList = document.getElementById('selected-lease-list');
     const dropdown = document.getElementById('lease-dropdown');
     if (!selectedList) return;
 
     selectedList.innerHTML = '';
-    leaseSelectedPersons.forEach(sel => {
+    
+    modalState.leaseSelectedPersons.forEach(sel => {
         const item = document.createElement('div');
         item.classList.add('selected-item');
         item.setAttribute('data-value', sel.id);
-        item.innerHTML = `
-            ${sel.label}
-            <span class="remove-item" data-value="${sel.id}">&times;</span>
-        `;
+        item.innerHTML = `${sel.label} <span class="remove-item" data-value="${sel.id}">&times;</span>`;
         selectedList.appendChild(item);
     });
 
-    // Remove handler restores the option in dropdown
     selectedList.querySelectorAll('.remove-item').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
-            e.stopPropagation(); // prevent modal close or other global click handlers
+            e.stopPropagation();
 
             const id = e.target.getAttribute('data-value');
-            leaseSelectedPersons = leaseSelectedPersons.filter(p => p.id !== id);
+            modalState.leaseSelectedPersons = modalState.leaseSelectedPersons.filter(p => p.id !== id);
 
-            // Re-enable the option in the dropdown
             const dropdownItem = Array.from(dropdown.children).find(item => item.getAttribute('data-value') === id);
             if (dropdownItem) dropdownItem.style.display = 'block';
 
@@ -101,890 +296,359 @@ function renderLeaseSelectedTags() {
     });
 }
 
-// Search/filter and visibility like race dropdown
-document.addEventListener('focusin', (e) => {
-    if (e.target && e.target.id === 'lease-search') {
-        const dropdown = document.getElementById('lease-dropdown');
-        dropdown?.classList.remove('hidden');
-    }
-});
-
-document.addEventListener('input', (e) => {
-    if (e.target && e.target.id === 'lease-search') {
-        const filter = e.target.value.toLowerCase();
-        const dropdown = document.getElementById('lease-dropdown');
-        if (!dropdown) return;
-        const items = dropdown.querySelectorAll('.dropdown-item');
-        items.forEach(item => {
-            const text = item.textContent.toLowerCase();
-            item.style.display = text.includes(filter) ? 'block' : 'none';
-
-            // Keep already-selected items hidden
-            const val = item.getAttribute('data-value');
-            if (leaseSelectedPersons.some(p => p.id === val)) {
-                item.style.display = 'none';
-            }
-        });
-    }
-});
-
-// Hide dropdown when clicking outside
-document.addEventListener('click', (event) => {
-    const dropdown = document.getElementById('lease-dropdown');
-    const search = document.getElementById('lease-search');
-    if (!dropdown || !search) return;
-    if (!dropdown.contains(event.target) && event.target !== search) {
-        dropdown.classList.add('hidden');
-    }
-});
-
-// When to show Lease/Deed selector
-function shouldShowLeaseDropdown(expenseType, kind) {
-    return expenseType === 'Previous Year' && (kind === 'Rent' || kind === 'Property Taxes');
-}
-
-// Ensure visibility and populate items
 async function ensureLeaseDropdownVisibility() {
+    const { modalTitle, leaseContainer } = getModalElements();
     const expenseType = modalTitle.textContent.includes('Previous Year') ? 'Previous Year' : modalTitle.textContent.split(' ')[1];
     const kind = document.getElementById('expense-kind')?.value;
-    const container = document.getElementById('lease-persons-container');
 
-    if (!container) return;
+    if (!leaseContainer) return;
 
     if (shouldShowLeaseDropdown(expenseType, kind)) {
-        container.classList.remove('hidden'); // show (block via CSS)
+        leaseContainer.classList.remove('hidden');
         const members = await getHouseholdMembersCached();
         renderLeaseDropdownItems(members);
         renderLeaseSelectedTags();
     } else {
-        container.classList.add('hidden'); // hide
-        leaseSelectedPersons = [];
+        leaseContainer.classList.add('hidden');
+        modalState.leaseSelectedPersons = [];
         renderLeaseSelectedTags();
     }
 }
 
-// Call on kind change and modal open
-document.getElementById('expense-kind').addEventListener('change', () => {
-    // ...existing autofill...
-    ensureLeaseDropdownVisibility();
-});
+// ══════════════════════════════════════════════════════════════
+// SS/PENSION DEDUCTION VISIBILITY
+// ══════════════════════════════════════════════════════════════
 
-document.addEventListener('click', async (event) => {
-    if (event.target.classList.contains('add-expense-button')) {
-        // ...existing modal logic...
-        if (expenseType !== 'Utility') {
-            modal.classList.remove('hidden');
-            await ensureLeaseDropdownVisibility();
-        }
-    }
-});
-
-// Edit flow prefill
-document.addEventListener('click', async function (event) {
-    if (event.target.classList.contains('edit-expense-button')) {
-        // ...existing fetch...
-        modal.classList.remove('hidden');
-        await ensureLeaseDropdownVisibility();
-        if (shouldShowLeaseDropdown(expense.type, expense.kind) && Array.isArray(expense.leasePersons)) {
-            const members = await getHouseholdMembersCached();
-            leaseSelectedPersons = expense.leasePersons.map(label => {
-                const match = members.find(m =>
-                    `${m.firstName} ${m.middleInitial || ''} ${m.lastName}`.replace(/\s+/g, ' ').trim() === label
-                );
-                return { id: match ? String(match.householdMemberId) : '__outside__', label };
-            });
-            renderLeaseDropdownItems(members);
-            renderLeaseSelectedTags();
-        }
-    }
-});
-
-// State management object for currentMemberId
-const memberState = {
-    currentMemberId: null,
-    setCurrentMemberId(id) {
-        this.currentMemberId = id;
-    },
-    getCurrentMemberId() {
-        return this.currentMemberId;
-    },
-    resetCurrentMemberId() {
-        this.currentMemberId = null;
-    }
-};
-
-// Add event listener to autofill fields based on dropdown selection
-document.getElementById('expense-kind').addEventListener('change', async function () {
-    const selectedValue = this.value; // Get the selected dropdown value
-    const expenseType = modalTitle.textContent.includes('Previous Year') ? 'Previous Year' : 'Medical'; // Determine the expense type
-    const amountInput = document.getElementById('expense-amount');
-    const frequencyInput = document.getElementById('expense-frequency');
-
-    if (expenseType === 'Medical' && selectedValue === 'Medicare Part B Premium') {
-        // Autofill for Medical -> Medicare Part B Premium
-        amountInput.value = '202.90';
-        frequencyInput.value = 'Monthly';
-    } else if (expenseType === 'Previous Year' && selectedValue === 'Medicare Part B Premium') {
-        // Autofill for Previous Year -> Medicare Part B Premium
-        amountInput.value = '185';
-        frequencyInput.value = 'Monthly';
-    } else {
-        // Clear autofilled fields if a different dropdown is selected
-        amountInput.value = '';
-        frequencyInput.value = '';
-    }
-
-    // Show/hide SS/Pension deduction question for Medical + Medicare Part B + LIHEAP
-    await updateSSPensionDeductionVisibility(expenseType, selectedValue);
-
-    // Show/hide and populate Lease/Deed dropdown when applicable
-    ensureLeaseDropdownVisibility();
-});
-
-// Function to check if SS/Pension deduction question should be shown
 async function updateSSPensionDeductionVisibility(expenseType, kind) {
-    const container = document.getElementById('ss-pension-deduction-container');
-    const select = document.getElementById('ss-pension-deduction');
-    if (!container || !select) return;
+    const { ssPensionContainer, ssPensionSelect } = getModalElements();
+    if (!ssPensionContainer || !ssPensionSelect) return;
 
     if (expenseType === 'Medical' && (kind === 'Medicare Part B Premium' || kind === 'Medicare Part D Premium')) {
-        // Check if the current member has LIHEAP screening in progress
         const currentMemberId = memberState.getCurrentMemberId();
         if (currentMemberId) {
             const members = await getHouseholdMembersCached();
             const member = members.find(m => String(m.householdMemberId) === String(currentMemberId));
-            if (member && member.LIHEAP?.screeningInProgress === true) {
-                container.classList.remove('hidden');
+            if (member?.LIHEAP?.screeningInProgress === true) {
+                ssPensionContainer.classList.remove('hidden');
                 return;
             }
         }
     }
 
-    // Hide and reset if conditions not met
-    container.classList.add('hidden');
-    select.value = '';
+    ssPensionContainer.classList.add('hidden');
+    ssPensionSelect.value = '';
 }
 
-    // Define dropdown options for each expense type
-    const dropdownOptions = {
-        Shelter: [
-            { value: 'Rent', label: 'Rent' },
-            { value: 'Mortgage', label: 'Mortgage' },
-            { value: 'Property Taxes', label: 'Property Taxes' },
-            { value: 'Homeowners Insurance', label: 'Homeowners Insurance' }
-        ],
-        Medical: [
-            { value: 'Medicare Part B Premium', label: 'Medicare Part B Premium' },
-            { value: 'Medicare Part D Premium', label: 'Medicare Part D Premium' },
-            { value: 'Other Insurance Premium', label: 'Other Insurance Premium' },
-            { value: 'Hospital Co-Pay', label: 'Hospital Co-Pay' },
-            { value: 'Doctor Co-Pay', label: 'Doctor Co-Pay' },
-            { value: 'Prescription Medication', label: 'Prescription Medication' },
-            { value: 'Over-the-Counter Medication', label: 'Over-the-Counter Medication' },
-            { value: 'Medical Equipment', label: 'Medical Equipment' },
-            { value: 'Transportation', label: 'Transportation' },
-            { value: 'Dental', label: 'Dental' },
-            { value: 'Vision', label: 'Vision' },
-            { value: 'Hearing', label: 'Hearing' },
-            { value: 'Long-Term Care', label: 'Long-Term Care' },
-            { value: 'Home Health Aide', label: 'Home Health Aide' },
-            { value: 'Nursing Home', label: 'Nursing Home' },
-            { value: 'Assisted Living', label: 'Assisted Living' },
-            { value: 'Durable Medical Equipment', label: 'Durable Medical Equipment' },
-            { value: 'Transportation', label: 'Transportation' }
-        ],
-        Other: [
-            { value: 'Childcare for Work or Training', label: 'Childcare for Work or Training' },
-            { value: 'Child Support', label: 'Child Support' }
-        ],
-        'Previous Year': [
-    { value: 'Medicare Part B Premium', label: 'Medicare Part B Premium' },
-    { value: 'Property Taxes', label: 'Property Taxes' },
-    { value: 'Rent', label: 'Rent' }
-]
+// ══════════════════════════════════════════════════════════════
+// EXPENSE HTML GENERATION
+// ══════════════════════════════════════════════════════════════
 
-    };
-    // Load household members
-    async function loadHouseholdMembers() {
-        try {
-            const client = await fetch(`/get-client/${clientId}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            })
-                .then((response) => {
-                    if (!response.ok) {
-                        throw new Error(`Failed to fetch client data: ${response.statusText}`);
-                    }
-                    return response.json();
-                })
-                .catch((error) => {
-                    console.error('Error fetching client data:', error);
-                    return null;
-                });            if (!client || !client.householdMembers) {
-                console.error('No household members found for this client.');
-                return [];
-            }
-            return client.householdMembers;
-        } catch (error) {
-            console.error('Error loading household members:', error);
-            return [];
-        }
+function generateExpenseButtons(member, allMembers) {
+    let buttons = '';
+
+    // Shelter button (SNAP + meals = yes)
+    if (shouldShowShelterButton(member)) {
+        buttons += `<button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Shelter">Add Shelter Expense</button>`;
     }
 
-// ...existing code...
+    // Utility button (SNAP + meals = yes, no existing utility expenses)
+    if (shouldShowUtilityButton(member)) {
+        buttons += `<button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Utility">Add Utility Expense</button>`;
+    }
 
-    // Function to display household members and their expenses
-    let isDisplaying = false; // Guard against re-entrant calls
-    async function displayHouseholdMembers(skipEligibilityChecks = false) {
-        if (isDisplaying) return; // Prevent infinite loop
-        isDisplaying = true;
+    // Medical button (SNAP + meals + age>=60 or disability)
+    if (shouldShowMedicalButton(member)) {
+        buttons += `<button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Medical">Add Medical Expense</button>`;
+    }
 
-        try {
-        const householdMemberContainer = document.getElementById('household-member-container');
+    // Other button (SNAP + meals = yes)
+    if (shouldShowOtherButton(member)) {
+        buttons += `<button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Other">Add Other Expense</button>`;
+    }
+
+    // LIHEAP-only Medical button
+    if (shouldShowLiheapMedicalButton(member)) {
+        buttons += `<button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Medical" data-liheap-only="true">Add Medical Expense</button>`;
+    }
+
+    // Previous Year button (PTRR or PACE, or spouse has PTRR/PACE)
+    if (shouldShowPreviousYearButton(member, allMembers)) {
+        buttons += `<button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Previous Year">Add Previous Year Expense</button>`;
+    }
+
+    return buttons;
+}
+
+function renderExpenseList(expenses, title) {
+    if (expenses.length === 0) return '';
+    
+    return `
+        <div class="${title.toLowerCase().replace(/\s+/g, '-')}-expenses-container" style="margin: 20px 0;">
+            <h4>${title} Expenses</h4>
+            <ul>
+            ${expenses.map(expense => `
+                <li data-expense-id="${expense.id}" class="${Array.isArray(expense.leasePersons) && expense.leasePersons.length > 0 ? 'has-lease' : ''}">
+                    <p><strong>Type:</strong><br> ${expense.type}</p>
+                    <p><strong>Kind:</strong><br> ${expense.kind}</p>
+                    ${Array.isArray(expense.leasePersons) && expense.leasePersons.length > 0 ? `
+                        <p><strong>Person(s) on Lease/Deed:</strong><br> ${expense.leasePersons.join(', ')}</p>
+                    ` : ''}
+                    <p><strong>Amount:</strong><br> $${formatAmount(expense.amount)}</p>
+                    <p><strong>Frequency:</strong><br> ${expense.frequency}</p>
+                    ${expense.deductedFromSSOrPension ? `
+                        <p><strong>Deducted from SS/Pension:</strong><br> ${expense.deductedFromSSOrPension}</p>
+                    ` : ''}
+                    <p><strong>Start Date:</strong><br> ${expense.startDate}</p>
+                    <p><strong>End Date:</strong><br> ${expense.endDate}</p>
+                    <div class="button-container">
+                        <button class="edit-expense-button" data-expense-id="${expense.id}">Edit</button>
+                        <button class="delete-expense-button" data-expense-id="${expense.id}" style="color: white; background-color: red;">Delete</button>
+                    </div>
+                </li>
+            `).join('')}
+            </ul>
+        </div>
+    `;
+}
+
+function renderUtilityExpenses(expenses) {
+    if (expenses.length === 0) return '';
+    
+    return `
+        <div class="utility-expenses-container" style="text-align: center; margin: 20px 0;">
+            <h4>Utility Expenses</h4>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
+                ${expenses.map(expense => `
+                    <span style="padding: 5px 10px; border: 1px solid #ccc; border-radius: 5px;">
+                        ${expense.kind}
+                    </span>
+                `).join('')}
+            </div>
+            <div style="margin-top: 10px;">
+                <button class="edit-utility-expenses-button" style="margin-right: 10px;">Edit</button>
+                <button class="delete-utility-expenses-button" style="color: white; background-color: red;">Delete</button>
+            </div>
+        </div>
+    `;
+}
+
+function populateExpenses(expenses) {
+    const shelterExpenses = expenses.filter(e => e.type === 'Shelter');
+    const utilityExpenses = expenses.filter(e => e.type === 'Utility');
+    const medicalExpenses = expenses.filter(e => e.type === 'Medical');
+    const otherExpenses = expenses.filter(e => e.type === 'Other');
+    const previousYearExpenses = expenses.filter(e => e.type === 'Previous Year');
+
+    return `
+        ${renderExpenseList(shelterExpenses, 'Shelter')}
+        ${renderUtilityExpenses(utilityExpenses)}
+        ${renderExpenseList(medicalExpenses, 'Medical')}
+        ${renderExpenseList(otherExpenses, 'Other')}
+        ${renderExpenseList(previousYearExpenses, 'Previous Year')}
+    `;
+}
+
+// ══════════════════════════════════════════════════════════════
+// DISPLAY HOUSEHOLD MEMBERS
+// ══════════════════════════════════════════════════════════════
+
+let isDisplaying = false;
+
+async function displayHouseholdMembers(skipEligibilityChecks = false) {
+    if (isDisplaying) return;
+    isDisplaying = true;
+
+    try {
+        const container = document.getElementById('household-member-container');
         const members = await loadHouseholdMembers();
-    
-        householdMemberContainer.innerHTML = ''; // Clear existing content
-    
+
+        container.innerHTML = '';
+
         if (members.length === 0) {
-            const noMembersMessage = document.createElement('p');
-            noMembersMessage.textContent = 'No household members found.';
-            householdMemberContainer.appendChild(noMembersMessage);
-        } else {
-            // Sort members to show headOfHousehold: true first
-            members.sort((a, b) => {
-                if (a.headOfHousehold === b.headOfHousehold) return 0;
-                return a.headOfHousehold ? -1 : 1;
-            });
-    
-            for (const member of members) {
-                const memberDiv = document.createElement('div');
-                memberDiv.classList.add('household-member1-box');
-    
-                // Fetch expenses for the member
-                const expenses = await fetch(`/get-expense?householdMemberId=${member.householdMemberId}`, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                })
-                    .then((response) => {
-                        if (!response.ok) {
-                            throw new Error(`Failed to fetch expenses: ${response.statusText}`);
-                        }
-                        return response.json();
-                    })
-                    .catch((error) => {
-                        console.error('Error fetching expenses:', error);
-                        return [];
-                    });
-    
-                // Filter out invalid expenses
-                member.expenses = expenses.filter(expense => expense && expense.type);
-    
-                // Populate member details
-                memberDiv.innerHTML = `
-                    <h3>${member.firstName} ${member.middleInitial || ''} ${member.lastName}</h3>
-                    <p><strong>Date of Birth:</strong> ${member.dob || 'N/A'}</p>
-                    <p><strong>Marital Status:</strong> ${member.maritalStatus || 'N/A'}</p>
-                    <div class="expense-list">
-                        <ul id="expense-list-${member.householdMemberId}">
-                            ${populateExpenses(member.expenses)}
-                        </ul>
-                    </div>
-<div class="add-expense-buttons">
-                        ${
-                            member.SNAP?.screeningInProgress === true && member.meals?.toLowerCase() === "yes"
-                                ? `
-                                    <button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Shelter">Add Shelter Expense</button>
-                                    ${
-                                        member.expenses.some(expense => expense.type === 'Utility')
-                                            ? '' // Do not show the button if Utility expenses exist
-                                            : `<button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Utility">Add Utility Expense</button>`
-                                    }
-                                    ${
-                                        (parseInt(member.age?.split('Y')[0]) >= 60 || member.disability?.toLowerCase() === "yes")
-                                            ? `<button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Medical">Add Medical Expense</button>`
-                                            : ''
-                                    }
-                                    <button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Other">Add Other Expense</button>
-                                `
-                                : ''
-                        }
-                        ${
-                            // Show Medical button for LIHEAP-only members (when SNAP conditions above didn't already render it)
-                            member.LIHEAP?.screeningInProgress === true &&
-                            !(member.SNAP?.screeningInProgress === true && member.meals?.toLowerCase() === "yes" && (parseInt(member.age?.split('Y')[0]) >= 60 || member.disability?.toLowerCase() === "yes"))
-                                ? `<button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Medical" data-liheap-only="true">Add Medical Expense</button>`
-                                : ''
-                        }
-                        ${
-                            (member.PTRR?.screeningInProgress === true ||
-                             member.PACE?.screeningInProgress === true ||
-                             (member.previousSpouseId && members.some(spouse =>
-                                spouse.householdMemberId === member.previousSpouseId &&
-                                (
-                                    spouse.PTRR?.screeningInProgress === true ||
-                                    spouse.PACE?.screeningInProgress === true
-                                )
-                            )))
-                                ? `<button class="add-expense-button" data-member-id="${member.householdMemberId}" data-expense-type="Previous Year">Add Previous Year Expense</button>`
-                                : ''
-                        }
-                    </div>
-
-                `;
-    
-                householdMemberContainer.appendChild(memberDiv);
-            }
-        }
-
-        // Skip eligibility checks if called from within eligibility flow
-        if (skipEligibilityChecks) return;
-    
-        // Ensure eligibilityChecks is defined
-        if (!window.eligibilityChecks) {
-            console.error('Eligibility checks are not loaded.');
+            container.innerHTML = '<p>No household members found.</p>';
             return;
         }
-    
-        // Ensure all required methods exist
-        const requiredChecks = [
-            'PACEEligibilityCheck',
-            'LISEligibilityCheck',
-            'MSPEligibilityCheck',
-            'PTRREligibilityCheck',
-            'SNAPEligibilityCheck',
-            'LIHEAPEligibilityCheck',
-            'updateAndDisplayHouseholdMembers',
-            'displaySNAPHouseholds'
-        ];
-    
-        for (const check of requiredChecks) {
-            if (typeof window.eligibilityChecks[check] !== 'function') {
-                console.error(`Missing eligibility check method: ${check}`);
-                return;
-            }
-        }
-    
-        // Run eligibility checks and update the UI
-        const membersForEligibility = await loadHouseholdMembers();
-        // Trigger eligibility checks
-        await window.eligibilityChecks.PACEEligibilityCheck(membersForEligibility);
-        await window.eligibilityChecks.LISEligibilityCheck(membersForEligibility);
-        await window.eligibilityChecks.MSPEligibilityCheck(membersForEligibility);
-        await window.eligibilityChecks.PTRREligibilityCheck(membersForEligibility);
-        await window.eligibilityChecks.SNAPEligibilityCheck(membersForEligibility);
-        await window.eligibilityChecks.LIHEAPEligibilityCheck(membersForEligibility);
 
-        // Single refresh after all checks complete
-        if (window.eligibilityChecks && window.eligibilityChecks.refreshAllDisplays) {
-            await window.eligibilityChecks.refreshAllDisplays();
-        }
+        // Sort: head of household first
+        members.sort((a, b) => (b.headOfHousehold ? 1 : 0) - (a.headOfHousehold ? 1 : 0));
 
-        } finally {
-            isDisplaying = false; // Always release the guard
-        }
-    }
+        for (const member of members) {
+            // Fetch expenses for member
+            const expenses = await fetch(`/get-expense?householdMemberId=${member.householdMemberId}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            })
+                .then(res => res.ok ? res.json() : [])
+                .catch(() => []);
 
+            member.expenses = expenses.filter(e => e && e.type);
 
-// Generic function to close a modal when clicking outside its content or on the modal itself
-function setupModalClose(modalId, formId = null, additionalReset = null) {
-    document.addEventListener('click', (event) => {
-        const modal = document.getElementById(modalId);
-        if (modal && (event.target === modal || (!modal.contains(event.target) && !event.target.closest('.add-expense-button')))) {
-            modal.classList.add('hidden');
-            if (formId) {
-                document.getElementById(formId).reset(); // Reset the form if provided
-            }
-            if (additionalReset) {
-                additionalReset(); // Perform additional reset actions if provided
-            }
-        }
-    });
-}
-
-// Close the shelter modal
-setupModalClose('shelter-modal', 'shelter-form', () => {
-    isEditing = false; // Reset editing mode
-    currentExpenseId = null; // Reset editing ID
-    addExpenseButton.textContent = 'Add Expense'; // Reset button text
-});
-
-// Close the utility modal
-setupModalClose('utility-modal', null, () => {
-    utilityExpenseList.querySelectorAll('.selection-box').forEach(box => box.classList.remove('selected')); // Deselect all utility types
-});
-
-// Close the medical modal
-setupModalClose('medical-modal', 'medical-form');
-
-// Close the other expense modal
-setupModalClose('other-modal', 'other-form');
-
-// Close the previous year expense modal
-setupModalClose('previous-year-modal', 'previous-year-form');
-
-    function populateExpenses(expenses) {
-        // Group expenses by type
-        const shelterExpenses = expenses.filter(expense => expense.type === 'Shelter');
-        const utilityExpenses = expenses.filter(expense => expense.type === 'Utility');
-        const medicalExpenses = expenses.filter(expense => expense.type === 'Medical');
-        const otherExpenses = expenses.filter(expense => expense.type === 'Other');
-        const previousYearExpenses = expenses.filter(expense => expense.type === 'Previous Year');
-
-        // Helper function to format amounts
-    const formatAmount = (amount) => {
-        return Number.isInteger(amount) ? amount : amount.toFixed(2);
-    };
-    
-        // Helper function to render a list of expenses
-        const renderExpenseList = (expenses, title) => {
-            if (expenses.length === 0) return '';
-            return `
-                <div class="${title.toLowerCase().replace(/\s+/g, '-')}-expenses-container" style="margin: 20px 0;">
-                    <h4>${title} Expenses</h4>
-                    <ul>
-                    ${expenses.map(expense => `
-                        <li data-expense-id="${expense.id}" class="${Array.isArray(expense.leasePersons) && expense.leasePersons.length > 0 ? 'has-lease' : ''}">
-                            <p><strong>Type:</strong><br> ${expense.type}</p>
-                            <p><strong>Kind:</strong><br> ${expense.kind}</p>
-                            ${Array.isArray(expense.leasePersons) && expense.leasePersons.length > 0 ? `
-                                <p><strong>Person(s) on Lease/Deed:</strong><br> ${expense.leasePersons.join(', ')}</p>
-                            ` : ''}
-                            <p><strong>Amount:</strong><br> $${formatAmount(expense.amount)}</p>
-                            <p><strong>Frequency:</strong><br> ${expense.frequency}</p>
-                            ${expense.deductedFromSSOrPension ? `
-                                <p><strong>Deducted from SS/Pension:</strong><br> ${expense.deductedFromSSOrPension}</p>
-                            ` : ''}
-                            <p><strong>Start Date:</strong><br> ${expense.startDate}</p>
-                            <p><strong>End Date:</strong><br> ${expense.endDate}</p>
-                            <div class="button-container">
-                                <button class="edit-expense-button" data-expense-id="${expense.id}">Edit</button>
-                                <button class="delete-expense-button" data-expense-id="${expense.id}" style="color: white; background-color: red;">Delete</button>
-                            </div>
-                        </li>
-                    `).join('')}
+            const memberDiv = document.createElement('div');
+            memberDiv.classList.add('household-member1-box');
+            memberDiv.innerHTML = `
+                <h3>${member.firstName} ${member.middleInitial || ''} ${member.lastName}</h3>
+                <p><strong>Date of Birth:</strong> ${member.dob || 'N/A'}</p>
+                <p><strong>Marital Status:</strong> ${member.maritalStatus || 'N/A'}</p>
+                <div class="expense-list">
+                    <ul id="expense-list-${member.householdMemberId}">
+                        ${populateExpenses(member.expenses)}
                     </ul>
                 </div>
-            `;
-        };
-
-        // Add event listeners for mouseover and mouseout to change the button color
-document.addEventListener('mouseover', (event) => {
-    if (event.target.classList.contains('delete-expense-button')) {
-        event.target.style.backgroundColor = 'darkred'; // Change to dark red on hover
-    }
-});
-
-document.addEventListener('mouseout', (event) => {
-    if (event.target.classList.contains('delete-expense-button')) {
-        event.target.style.backgroundColor = 'red'; // Restore original red color
-    }
-});
-    
-        // Render utility expenses separately (centered and simplified)
-        const renderUtilityExpenses = (expenses) => {
-            if (expenses.length === 0) return '';
-            return `
-                <div class="utility-expenses-container" style="text-align: center; margin: 20px 0;">
-                    <h4>Utility Expenses</h4>
-                    <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
-                        ${expenses.map(expense => `
-                            <span style="padding: 5px 10px; border: 1px solid #ccc; border-radius: 5px;">
-                                ${expense.kind}
-                            </span>
-                        `).join('')}
-                    </div>
-                    <div style="margin-top: 10px;">
-                        <button class="edit-utility-expenses-button" style="margin-right: 10px;">Edit</button>
-                        <button class="delete-utility-expenses-button" style="color: white; background-color: red;">Delete</button>
-                    </div>
+                <div class="add-expense-buttons">
+                    ${generateExpenseButtons(member, members)}
                 </div>
             `;
-        };
 
-        // Add event listeners for mouseover and mouseout to change the button color
-document.addEventListener('mouseover', (event) => {
-    if (event.target.classList.contains('delete-utility-expenses-button')) {
-        event.target.style.backgroundColor = 'darkred'; // Change to dark red on hover
-    }
-});
+            container.appendChild(memberDiv);
+        }
 
-document.addEventListener('mouseout', (event) => {
-    if (event.target.classList.contains('delete-utility-expenses-button')) {
-        event.target.style.backgroundColor = 'red'; // Restore original red color
+        if (skipEligibilityChecks) return;
+
+        // Run eligibility checks
+        await runEligibilityChecks(members);
+
+    } finally {
+        isDisplaying = false;
     }
-});
-    
-         // Combine all expense sections in the desired order
-    return `
-    ${renderExpenseList(shelterExpenses, 'Shelter')}
-    ${renderUtilityExpenses(utilityExpenses, 'Utility')}
-    ${renderExpenseList(medicalExpenses, 'Medical')}
-    ${renderExpenseList(otherExpenses, 'Other')}
-    ${renderExpenseList(previousYearExpenses, 'Previous Year')}
-`;
 }
 
-    // Save utility expenses
-    saveUtilityExpensesButton.addEventListener('click', async () => {
-        // Retrieve clientId dynamically from the query parameter
-        const urlParams = new URLSearchParams(window.location.search);
-        const clientId = urlParams.get('id'); // Get the client ID from the query parameter
-    
-        // Retrieve currentMemberId dynamically from the modal or selected context
-        const currentMemberId = memberState.getCurrentMemberId();
-    
-        // Debugging: Log the retrieved IDs
-        console.log('clientId:', clientId, 'currentMemberId:', currentMemberId);
-    
-        if (!clientId || !currentMemberId) {
-            alert('Both clientId and memberId are required to save utility expenses.');
-            return;
-        }
-    
-        const selectedUtilities = Array.from(utilityExpenseList.querySelectorAll('.selection-box.selected'))
-            .map(box => box.dataset.utilityType);
-    
-        if (selectedUtilities.length === 0) {
-            alert('Please select at least one utility type.');
-            return;
-        }
-    
-        try {
-    // Step 1: Fetch existing utility expenses for the current member
-    const existingExpenses = await fetch(`/get-expense?householdMemberId=${currentMemberId}`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-    })
-        .then((response) => {
-            if (!response.ok) {
-                throw new Error(`Failed to fetch expenses: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .catch((error) => {
-            console.error('Error fetching expenses:', error);
-            return [];
-        });
+async function runEligibilityChecks(members) {
+    if (!window.eligibilityChecks) {
+        console.error('Eligibility checks are not loaded.');
+        return;
+    }
 
-    // Filter for utility expenses
-    const utilityExpenses = existingExpenses.filter(expense => expense.type === 'Utility');
+    const requiredChecks = [
+        'PACEEligibilityCheck',
+        'LISEligibilityCheck',
+        'MSPEligibilityCheck',
+        'PTRREligibilityCheck',
+        'SNAPEligibilityCheck',
+        'LIHEAPEligibilityCheck',
+        'updateAndDisplayHouseholdMembers',
+        'displaySNAPHouseholds'
+    ];
 
-    // If no utility expenses exist, skip deletion and proceed to adding new ones
-    if (utilityExpenses.length === 0) {
-        console.log('No utility expenses found for this member. Proceeding to add new ones.');
-    } else {
-        // Step 2: Delete all existing utility expenses for the current member
-        const deleteResponse = await fetch('/delete-utility-expenses', {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                clientId,
-                memberId: currentMemberId,
-            }),
-        })
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error(`Failed to delete utility expenses: ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .catch((error) => {
-                console.error('Error deleting utility expenses:', error);
-                return { success: false };
-            });
-
-        if (!deleteResponse.success) {
-            alert('Failed to delete existing utility expenses. Please try again.');
+    for (const check of requiredChecks) {
+        if (typeof window.eligibilityChecks[check] !== 'function') {
+            console.error(`Missing eligibility check method: ${check}`);
             return;
         }
     }
 
-    // Step 3: Add the new utility expenses
-    const newExpenses = selectedUtilities.map(type => ({
-        id: `expense-${Date.now()}-${type}`,
-        type: 'Utility',
-        kind: type,
-        amount: 0,
-        frequency: 'N/A',
-        startDate: 'N/A',
-        endDate: 'N/A'
-    }));
+    await window.eligibilityChecks.PACEEligibilityCheck(members);
+    await window.eligibilityChecks.LISEligibilityCheck(members);
+    await window.eligibilityChecks.MSPEligibilityCheck(members);
+    await window.eligibilityChecks.PTRREligibilityCheck(members);
+    await window.eligibilityChecks.SNAPEligibilityCheck(members);
+    await window.eligibilityChecks.LIHEAPEligibilityCheck(members);
 
-    for (const expense of newExpenses) {
-        await fetch('/add-utility-expense', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                clientId,
-                memberId: currentMemberId,
-                utilityExpense: expense,
-            }),
-        })
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error(`Failed to add utility expense: ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .catch((error) => {
-                console.error('Error adding utility expense:', error);
-            });
+    if (window.eligibilityChecks.refreshAllDisplays) {
+        await window.eligibilityChecks.refreshAllDisplays();
     }
-
-    // Step 4: Refresh the UI and close the modal
-    await displayHouseholdMembers();
-    utilityModal.classList.add('hidden');
-} catch (error) {
-    console.error('Error saving utility expenses:', error);
-    alert('An error occurred while saving utility expenses. Please try again.');
 }
-    });
 
-// Attach event listener for the "Add Utility Expense" button
-document.addEventListener('click', (event) => {
-    if (event.target.classList.contains('add-expense-button') && event.target.dataset.expenseType === 'Utility') {
-        const memberId = event.target.dataset.memberId; // Get the member ID from the button
+// ══════════════════════════════════════════════════════════════
+// EXPENSE VALIDATION
+// ══════════════════════════════════════════════════════════════
 
-        if (!memberId) {
-            alert('Failed to retrieve the member ID. Please try again.');
-            return;
-        }
+function validateExpenseDates(expenseType, startDate, endDate) {
+    const start = new Date(`${startDate}T00:00:00Z`);
+    const end = new Date(`${endDate}T00:00:00Z`);
+    const startYear = start.getUTCFullYear();
+    const endYear = end.getUTCFullYear();
 
-        // Set the current member ID dynamically
-        memberState.setCurrentMemberId(memberId);
-        console.log('Set currentMemberId:', memberId);
-
-        // Clear the modal fields
-        utilityExpenseList.querySelectorAll('.selection-box').forEach(box => {
-            box.classList.remove('selected'); // Deselect all utility types
-        });
-
-        // Show the utility modal
-        utilityModal.classList.remove('hidden');
+    if (expenseType === 'Previous Year' && (startYear !== PREVIOUS_YEAR || endYear !== PREVIOUS_YEAR)) {
+        alert(`For Previous Year Expenses, both Start Date and End Date must be in ${PREVIOUS_YEAR}.`);
+        return false;
     }
-});
 
-// Attach event listener to the parent container using event delegation
-document.addEventListener('click', async (event) => {
-    if (event.target.classList.contains('add-expense-button')) {
-        const expenseType = event.target.dataset.expenseType; // Get the expense type from the button
-        const memberId = event.target.dataset.memberId; // Get the member ID from the button
-
-        if (!memberId) {
-            alert('Failed to retrieve the member ID. Please try again.');
-            return;
-        }
-
-        // Set the current member ID dynamically
-        memberState.setCurrentMemberId(memberId);
-        console.log('Set currentMemberId:', memberId);
-
-        if (expenseType === 'Utility') {
-            // Show the utility modal
-            utilityModal.classList.remove('hidden');
-        } else {
-            // Show the general modal for other expense types
-            modalTitle.textContent = `Add ${expenseType} Expense`;
-
-            // Populate the dropdown options dynamically
-            const expenseKindDropdown = document.getElementById('expense-kind');
-            expenseKindDropdown.innerHTML = ''; // Clear existing options
-
-            // Add a default placeholder option
-            const placeholderOption = document.createElement('option');
-            placeholderOption.value = '';
-            placeholderOption.textContent = `Select ${expenseType} Kind`;
-            placeholderOption.disabled = true;
-            placeholderOption.selected = true;
-            expenseKindDropdown.appendChild(placeholderOption);
-
-            // Determine if this is a LIHEAP-only medical button
-            const isLiheapOnly = event.target.dataset.liheapOnly === 'true';
-
-            // Populate dropdown options based on the expense type
-            if (dropdownOptions[expenseType]) {
-                const options = isLiheapOnly
-                ? dropdownOptions[expenseType].filter(opt => opt.value === 'Medicare Part B Premium' || opt.value === 'Medicare Part D Premium')
-                : dropdownOptions[expenseType];
-
-                options.forEach(option => {
-                    const optionElement = document.createElement('option');
-                    optionElement.value = option.value;
-                    optionElement.textContent = option.label;
-                    expenseKindDropdown.appendChild(optionElement);
-                });
-            }
-
-            // Autofill start and end dates
-            const startDateInput = document.getElementById('expense-start-date');
-            const endDateInput = document.getElementById('expense-end-date');
-            if (expenseType === 'Previous Year') {
-                startDateInput.value = '2025-01-01';
-                endDateInput.value = '2025-12-31';
-            } else {
-                startDateInput.value = '2026-01-01';
-                endDateInput.value = '2026-12-31';
-            }
-
-            // Show the general modal
-            modal.classList.remove('hidden');
-
-            // Ensure Lease/Deed dropdown visibility and option population
-            await ensureLeaseDropdownVisibility();
-        }
-        // Reset the "Add Expense" button text to default
-        addExpenseButton.textContent = 'Add Expense';
+    if (expenseType !== 'Previous Year' && (startYear !== CURRENT_YEAR || endYear !== CURRENT_YEAR)) {
+        alert(`For ${expenseType} Expenses, both Start Date and End Date must be in ${CURRENT_YEAR}.`);
+        return false;
     }
-});
 
-// Track the current mode (add or edit)
-let isEditing = false;
-let currentExpenseId = null; // Track the expense ID being edited
+    return true;
+}
 
-// Attach event listener to the "Add Expense" button
-addExpenseButton.addEventListener('click', async () => {
-    if (isEditing) {
-        // Editing mode: Call the overwriteExpense function
-        await overwriteExpense();
-    } else {
-        // Adding mode: Call the saveExpense function
-        await saveExpense();
-    }
-});
+function getExpenseTypeFromModalTitle(title) {
+    return title.includes('Previous Year') ? 'Previous Year' : title.split(' ')[1];
+}
 
-// Function to save a new expense
+// ══════════════════════════════════════════════════════════════
+// EXPENSE CRUD OPERATIONS
+// ══════════════════════════════════════════════════════════════
+
 async function saveExpense() {
-    // Ensure clientId is retrieved correctly
     const clientId = getQueryParameter('id');
+    const currentMemberId = memberState.getCurrentMemberId();
+    const elements = getModalElements();
+
     if (!clientId) {
-        console.error('clientId is missing. Ensure the URL contains the "id" query parameter.');
         alert('Client ID is missing. Please check the URL.');
         return;
     }
 
-    // Ensure memberId is set correctly
-    const currentMemberId = memberState.getCurrentMemberId();
     if (!currentMemberId) {
-        console.error('currentMemberId is missing. Ensure a member is selected.');
         alert('Member ID is missing. Please select a member.');
         return;
     }
 
-    console.log('clientId:', clientId, 'currentMemberId:', currentMemberId);
+    const expenseKind = elements.expenseKind.value;
+    const expenseFrequency = elements.expenseFrequency.value;
+    const expenseStartDate = elements.expenseStartDate.value;
+    const expenseEndDate = elements.expenseEndDate.value;
+    const expenseAmount = elements.expenseAmount.value;
 
-    // Get values from the form
-    const expenseKind = document.getElementById('expense-kind').value;
-    const expenseFrequency = document.getElementById('expense-frequency').value;
-    const expenseStartDate = document.getElementById('expense-start-date').value;
-    const expenseEndDate = document.getElementById('expense-end-date').value;
-    const expenseAmount = document.getElementById('expense-amount').value;
-
-    // Get SS/Pension deduction value if visible
-    const ssPensionContainer = document.getElementById('ss-pension-deduction-container');
-    const ssPensionSelect = document.getElementById('ss-pension-deduction');
-    const ssPensionDeduction = ssPensionContainer && !ssPensionContainer.classList.contains('hidden')
-        ? ssPensionSelect.value
+    const ssPensionDeduction = !elements.ssPensionContainer.classList.contains('hidden')
+        ? elements.ssPensionSelect.value
         : undefined;
 
-    // Validate input fields
     if (!expenseKind || !expenseFrequency || !expenseStartDate || !expenseEndDate || !expenseAmount) {
         alert('Please fill out all fields.');
         return;
     }
 
-    // Validate SS/Pension deduction if the question is visible
-    if (ssPensionContainer && !ssPensionContainer.classList.contains('hidden') && !ssPensionDeduction) {
+    if (!elements.ssPensionContainer.classList.contains('hidden') && !ssPensionDeduction) {
         alert('Please indicate whether this expense is deducted from a Social Security or pension payment.');
         return;
     }
 
-    // Validate the year of the expense
-    const startDate = new Date(`${expenseStartDate}T00:00:00Z`);
-    const endDate = new Date(`${expenseEndDate}T00:00:00Z`);
-    const startYear = startDate.getUTCFullYear();
-    const endYear = endDate.getUTCFullYear();
+    const expenseType = getExpenseTypeFromModalTitle(elements.modalTitle.textContent);
 
-    const expenseType = modalTitle.textContent.includes('Previous Year') ? 'Previous Year' : modalTitle.textContent.split(' ')[1];
+    if (!validateExpenseDates(expenseType, expenseStartDate, expenseEndDate)) return;
 
-    if (expenseType === 'Previous Year' && (startYear !== 2025 || endYear !== 2025)) {
-        alert(`For ${expenseType} Expenses, both Start Date and End Date must be in 2025.`);
-        return;
-    }
-
-    if (expenseType === 'Previous Year' && (startYear !== 2025 || endYear !== 2025)) {
-        alert(`For ${expenseType} Expenses, both Start Date and End Date must be in 2025.`);
-        return;
-    }
-
-    if (expenseType !== 'Previous Year' && (startYear !== 2026 || endYear !== 2026)) {
-        alert(`For ${expenseType} Expenses, both Start Date and End Date must be in 2026.`);
-        return;
-    }
-
-    // Create a new expense object
     const newExpense = {
-        id: `expense-${Date.now()}`, // Generate a unique ID
-        type: modalTitle.textContent.includes('Previous Year') 
-        ? 'Previous Year' 
-        : modalTitle.textContent.split(' ')[1],
+        id: `expense-${Date.now()}`,
+        type: expenseType,
         amount: parseFloat(expenseAmount),
         kind: expenseKind,
         frequency: expenseFrequency,
         startDate: expenseStartDate,
         endDate: expenseEndDate,
-        leasePersons: shouldShowLeaseDropdown(
-            modalTitle.textContent.includes('Previous Year') ? 'Previous Year' : modalTitle.textContent.split(' ')[1],
-            expenseKind
-        ) ? leaseSelectedPersons.map(p => p.label) : undefined,
+        leasePersons: shouldShowLeaseDropdown(expenseType, expenseKind)
+            ? modalState.leaseSelectedPersons.map(p => p.label)
+            : undefined,
         deductedFromSSOrPension: ssPensionDeduction || undefined
     };
 
-    console.log('New Expense:', newExpense);
-
     try {
-        // Save the expense using the `save-expense` handler
         const response = await fetch('/save-expense', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 clientId,
                 memberId: currentMemberId,
-                expense: newExpense,
-            }),
-        })
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error(`Failed to save expense: ${response.statusText}`);
-                }
-                return response.json();
+                expense: newExpense
             })
-            .catch((error) => {
-                console.error('Error saving expense:', error);
-                return { success: false };
-            });
+        });
 
-        console.log('Save Expense Response:', response);
+        const result = await response.json();
 
-        if (response.success) {
-            console.log('Expense saved successfully.');
-
-            // Reset the form and close the modal
-            document.getElementById('shelter-form').reset();
-            modal.classList.add('hidden');
-
-            // Update the UI
+        if (result.success) {
+            elements.expenseForm.reset();
+            elements.modal.classList.add('hidden');
+            invalidateHouseholdCache();
             await displayHouseholdMembers();
         } else {
             alert('Failed to save the expense. Please try again.');
@@ -996,473 +660,730 @@ async function saveExpense() {
 }
 
 async function overwriteExpense() {
-    if (!currentExpenseId) {
+    if (!modalState.currentExpenseId) {
         alert('No expense selected for overwriting. Please try again.');
         return;
     }
 
-    // Extract memberId and validate structure
-    const memberContainer = document.querySelector(`.household-member1-box [data-expense-id="${currentExpenseId}"]`)?.closest('.household-member1-box');
+    const elements = getModalElements();
+    const memberContainer = document.querySelector(`.household-member1-box [data-expense-id="${modalState.currentExpenseId}"]`)?.closest('.household-member1-box');
     const memberId = memberContainer?.querySelector('.add-expense-button')?.dataset.memberId;
 
     if (!memberId) {
-        console.error('Failed to extract memberId. Ensure the parent container has a valid structure.');
         alert('Failed to identify the member. Please try again.');
         return;
     }
 
-    console.log('Overwriting expense with:', { memberId, currentExpenseId });
+    const expenseKind = elements.expenseKind.value;
+    const expenseFrequency = elements.expenseFrequency.value;
+    const expenseStartDate = elements.expenseStartDate.value;
+    const expenseEndDate = elements.expenseEndDate.value;
+    const expenseAmount = elements.expenseAmount.value;
 
-    // Retrieve form values
-    const expenseKind = document.getElementById('expense-kind').value;
-    const expenseFrequency = document.getElementById('expense-frequency').value;
-    const expenseStartDate = document.getElementById('expense-start-date').value;
-    const expenseEndDate = document.getElementById('expense-end-date').value;
-    const expenseAmount = document.getElementById('expense-amount').value;
-
-    // Get SS/Pension deduction value if visible
-    const ssPensionContainer = document.getElementById('ss-pension-deduction-container');
-    const ssPensionSelect = document.getElementById('ss-pension-deduction');
-    const ssPensionDeduction = ssPensionContainer && !ssPensionContainer.classList.contains('hidden')
-        ? ssPensionSelect.value
+    const ssPensionDeduction = !elements.ssPensionContainer.classList.contains('hidden')
+        ? elements.ssPensionSelect.value
         : undefined;
 
-    // Validate input fields
     if (!expenseKind || !expenseFrequency || !expenseStartDate || !expenseEndDate || !expenseAmount) {
         alert('Please fill out all fields.');
         return;
     }
 
-    // Validate SS/Pension deduction if the question is visible
-    if (ssPensionContainer && !ssPensionContainer.classList.contains('hidden') && !ssPensionDeduction) {
+    if (!elements.ssPensionContainer.classList.contains('hidden') && !ssPensionDeduction) {
         alert('Please indicate whether this expense is deducted from a Social Security or pension payment.');
         return;
     }
 
-    // Validate input fields
-    if (!expenseKind || !expenseFrequency || !expenseStartDate || !expenseEndDate || !expenseAmount) {
-        alert('Please fill out all fields.');
-        return;
-    }
+    const expenseType = getExpenseTypeFromModalTitle(elements.modalTitle.textContent);
 
-    // Validate the year of the expense
-    const startDate = new Date(`${expenseStartDate}T00:00:00Z`);
-    const endDate = new Date(`${expenseEndDate}T00:00:00Z`);
-    const startYear = startDate.getUTCFullYear();
-    const endYear = endDate.getUTCFullYear();
+    if (!validateExpenseDates(expenseType, expenseStartDate, expenseEndDate)) return;
 
-    const expenseType = modalTitle.textContent.includes('Previous Year') ? 'Previous Year' : modalTitle.textContent.split(' ')[1];
-
-    if (expenseType === 'Previous Year' && (startYear !== 2025 || endYear !== 2025)) {
-        alert(`For ${expenseType} Expenses, both Start Date and End Date must be in 2025.`);
-        return;
-    }
-
-    if (expenseType !== 'Previous Year' && (startYear !== 2026 || endYear !== 2026)) {
-        alert(`For ${expenseType} Expenses, both Start Date and End Date must be in 2026.`);
-        return;
-    }
-
-    // Construct the updated expense object
     const updatedExpense = {
-        id: currentExpenseId,
-        type: modalTitle.textContent.includes('Previous Year') 
-            ? 'Previous Year' 
-            : modalTitle.textContent.split(' ')[1],
+        id: modalState.currentExpenseId,
+        type: expenseType,
         kind: expenseKind,
         amount: parseFloat(expenseAmount),
         frequency: expenseFrequency,
         startDate: expenseStartDate,
         endDate: expenseEndDate,
-        leasePersons: shouldShowLeaseDropdown(
-            modalTitle.textContent.includes('Previous Year') ? 'Previous Year' : modalTitle.textContent.split(' ')[1],
-            expenseKind
-        ) ? leaseSelectedPersons.map(p => p.label) : undefined,
+        leasePersons: shouldShowLeaseDropdown(expenseType, expenseKind)
+            ? modalState.leaseSelectedPersons.map(p => p.label)
+            : undefined,
         deductedFromSSOrPension: ssPensionDeduction || undefined
     };
 
-    console.log('Updated Expense Payload:', updatedExpense);
-
     try {
-        // Send the updated expense to the server
         const response = await fetch('/update-expense', {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                householdMemberId: memberId, // Include memberId in the request
-                expense: updatedExpense,
-            }),
+                householdMemberId: memberId,
+                expense: updatedExpense
+            })
         });
 
-        const responseText = await response.text();
-        console.log('Raw Response Text:', responseText);
+        const result = await response.json();
 
-        if (!response.ok) {
-            throw new Error(`Failed to overwrite expense: ${responseText}`);
+        if (result.success) {
+            elements.expenseForm.reset();
+            elements.modal.classList.add('hidden');
+            resetModalState();
+            invalidateHouseholdCache();
+            await displayHouseholdMembers();
+        } else {
+            alert(result.message || 'Failed to overwrite the expense. Please try again.');
         }
-
-        const responseData = JSON.parse(responseText);
-
-        if (!responseData.success) {
-            console.error('Failed to overwrite expense:', responseData);
-            alert(responseData.message || 'Failed to overwrite the expense. Please try again.');
-            return;
-        }
-
-        console.log('Expense overwritten successfully.');
-        await refreshUIAfterExpenseUpdate();
     } catch (error) {
         console.error('Error overwriting expense:', error);
         alert(`An error occurred while overwriting the expense: ${error.message}`);
     }
 }
 
-// Helper function to refresh the UI after an expense update
-async function refreshUIAfterExpenseUpdate() {
+async function deleteExpense(expenseId) {
+    if (!expenseId) {
+        alert('Failed to identify the expense. Please try again.');
+        return;
+    }
+
+    if (!confirm('Are you sure you want to delete this expense?')) return;
+
     try {
-        await displayHouseholdMembers(); // Refresh the household members UI
-        document.getElementById('shelter-form').reset(); // Reset the form
-        modal.classList.add('hidden'); // Close the modal
+        const response = await fetch('/delete-expense', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ expenseId })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            invalidateHouseholdCache();
+            await displayHouseholdMembers();
+        } else {
+            alert('Failed to delete the expense. Please try again.');
+        }
     } catch (error) {
-        console.error('Error refreshing UI:', error);
-        alert('An error occurred while refreshing the UI. Please try again.');
+        console.error('Error deleting expense:', error);
+        alert('An error occurred while deleting the expense. Please try again.');
     }
 }
 
-document.addEventListener('click', async function (event) {
-    if (event.target.classList.contains('edit-expense-button')) {
-        // Extract expenseId from the button's dataset
-        const expenseId = event.target.dataset.expenseId;
+// ══════════════════════════════════════════════════════════════
+// UTILITY EXPENSE OPERATIONS
+// ══════════════════════════════════════════════════════════════
 
-        // Extract memberId from the closest parent container
-        const memberContainer = event.target.closest('.household-member1-box');
-        const memberId = memberContainer?.querySelector('.add-expense-button')?.dataset.memberId;
+async function saveUtilityExpenses() {
+    const clientId = getQueryParameter('id');
+    const currentMemberId = memberState.getCurrentMemberId();
+    const { expenseList, modal } = getUtilityModalElements();
 
-        // Validate memberId and expenseId
-        if (!memberId) {
-            console.error('Failed to extract memberId. Ensure the parent container has a valid structure.');
-            alert('Failed to identify the member. Please try again.');
-            return;
-        }
+    if (!clientId || !currentMemberId) {
+        alert('Both clientId and memberId are required to save utility expenses.');
+        return;
+    }
 
-        if (!expenseId) {
-            console.error('Failed to extract expenseId. Ensure the button has a valid data-expense-id attribute.');
-            alert('Failed to identify the expense. Please try again.');
-            return;
-        }
+    const selectedUtilities = Array.from(expenseList.querySelectorAll('.selection-box.selected'))
+        .map(box => box.dataset.utilityType);
 
-        console.log('Fetching expense with:', { memberId, expenseId });
+    if (selectedUtilities.length === 0) {
+        alert('Please select at least one utility type.');
+        return;
+    }
 
-        try {
-            // Fetch the expense data from the database
-            const expense = await fetch(`/get-expense?householdMemberId=${memberId}&expenseId=${expenseId}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            })
-                .then((response) => {
-                    if (!response.ok) {
-                        throw new Error(`Failed to fetch expense: ${response.statusText}`);
-                    }
-                    return response.json();
-                })
-                .catch((error) => {
-                    console.error('Error fetching expense:', error);
-                    return null;
-                });
+    try {
+        // Fetch existing utility expenses
+        const existingExpenses = await fetch(`/get-expense?householdMemberId=${currentMemberId}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        }).then(res => res.ok ? res.json() : []).catch(() => []);
 
-            if (!expense) {
-                alert('Expense not found.');
+        const utilityExpenses = existingExpenses.filter(e => e.type === 'Utility');
+
+        // Delete existing utility expenses if any
+        if (utilityExpenses.length > 0) {
+            const deleteResponse = await fetch('/delete-utility-expenses', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, memberId: currentMemberId })
+            }).then(res => res.json()).catch(() => ({ success: false }));
+
+            if (!deleteResponse.success) {
+                alert('Failed to delete existing utility expenses. Please try again.');
                 return;
             }
-
-            console.log('Fetched expense:', expense);
-
-            // Autofill the modal fields with the expense data
-            const expenseKindDropdown = document.getElementById('expense-kind');
-            const startDateInput = document.getElementById('expense-start-date');
-            const endDateInput = document.getElementById('expense-end-date');
-            const frequencyInput = document.getElementById('expense-frequency');
-            const amountInput = document.getElementById('expense-amount');
-
-            const expenseType = expense.type;
-            if (!dropdownOptions[expenseType]) {
-                console.error(`No dropdown options found for expense type: ${expenseType}`);
-                alert('Invalid expense type. Please try again.');
-                return;
-            }
-
-            // Populate dropdown options
-            expenseKindDropdown.innerHTML = '';
-            dropdownOptions[expenseType].forEach(option => {
-                const optionElement = document.createElement('option');
-                optionElement.value = option.value;
-                optionElement.textContent = option.label;
-                if (option.value === expense.kind) {
-                    optionElement.selected = true;
-                }
-                expenseKindDropdown.appendChild(optionElement);
-            });
-
-            // Autofill other fields
-            startDateInput.value = expense.startDate || '';
-            endDateInput.value = expense.endDate || '';
-            frequencyInput.value = expense.frequency || '';
-            amountInput.value = expense.amount || '';
-
-            console.log('Autofilling modal fields:', {
-                kind: expense.kind,
-                startDate: expense.startDate,
-                endDate: expense.endDate,
-                frequency: expense.frequency,
-                amount: expense.amount,
-            });
-
-            // Update the modal title
-            modalTitle.textContent = `Edit ${expenseType} Expense`;
-
-            // Update the modal title
-            modalTitle.textContent = `Edit ${expenseType} Expense`;
-
-            // Set the current expense ID and switch to editing mode
-            currentExpenseId = expense.id;
-            isEditing = true;
-
-            // Show the modal
-            modal.classList.remove('hidden');
-
-            // Show/hide and prefill SS/Pension deduction question
-            await updateSSPensionDeductionVisibility(expenseType, expense.kind);
-            if (expense.deductedFromSSOrPension) {
-                const ssPensionSelect = document.getElementById('ss-pension-deduction');
-                if (ssPensionSelect) {
-                    ssPensionSelect.value = expense.deductedFromSSOrPension;
-                }
-            }
-
-                        // Ensure Lease/Deed dropdown visibility and prefill when applicable
-            try {
-                await ensureLeaseDropdownVisibility();
-                const isPrevYearLeaseKind =
-                    expense.type === 'Previous Year' &&
-                    (expense.kind === 'Rent' || expense.kind === 'Property Taxes');
-
-                if (isPrevYearLeaseKind) {
-                    const members = await getHouseholdMembersCached();
-                    // Rehydrate leaseSelectedPersons from saved labels
-                    leaseSelectedPersons = Array.isArray(expense.leasePersons)
-                        ? expense.leasePersons.map(label => {
-                            const match = members.find(m =>
-                                `${m.firstName} ${m.middleInitial || ''} ${m.lastName}`.replace(/\s+/g, ' ').trim() === label
-                            );
-                            return {
-                                id: match ? String(match.householdMemberId) : '__outside__',
-                                label
-                            };
-                        })
-                        : [];
-                    renderLeaseDropdownItems(members);
-                    renderLeaseSelectedTags();
-                }
-            } catch (e) {
-                console.warn('Lease/Deed dropdown prefill error:', e);
-            }
-
-            // Change the button text to "Save and Update"
-            addExpenseButton.textContent = 'Save and Update';
-        } catch (error) {
-            console.error('Error fetching expense:', error);
-            alert('An error occurred while fetching the expense. Please try again.');
-        }
-    }
-});
-
-// Reset the mode when the modal is closed
-closeModal.addEventListener('click', () => {
-    isEditing = false;
-    currentExpenseId = null;
-    addExpenseButton.textContent = 'Add Expense'; // Reset button text
-});
-
-document.addEventListener('click', async (event) => {
-    if (event.target.classList.contains('delete-expense-button')) {
-        const expenseId = event.target.dataset.expenseId;
-
-        if (!expenseId) {
-            alert('Failed to identify the expense. Please try again.');
-            return;
         }
 
-        const confirmDelete = confirm('Are you sure you want to delete this expense?');
-        if (!confirmDelete) return;
+        // Add new utility expenses
+        const newExpenses = selectedUtilities.map(type => ({
+            id: `expense-${Date.now()}-${type}`,
+            type: 'Utility',
+            kind: type,
+            amount: 0,
+            frequency: 'N/A',
+            startDate: 'N/A',
+            endDate: 'N/A'
+        }));
 
-        try {
-            const response = await fetch('/delete-expense', {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ expenseId }),
-            })
-                .then((response) => {
-                    if (!response.ok) {
-                        throw new Error(`Failed to delete expense: ${response.statusText}`);
-                    }
-                    return response.json();
-                })
-                .catch((error) => {
-                    console.error('Error deleting expense:', error);
-                    return { success: false };
-                });
-            
-            if (response.success) {
-                console.log('Expense deleted successfully.');
-                await displayHouseholdMembers(); // Refresh the UI
-            } else {
-                console.error('Failed to delete expense:', response.message);
-                alert('Failed to delete the expense. Please try again.');
-            }
-            if (response.success) {
-                console.log('Expense deleted successfully.');
-                await displayHouseholdMembers(); // Refresh the UI
-            } else {
-                console.error('Failed to delete expense:', response.message);
-                alert('Failed to delete the expense. Please try again.');
-            }
-        } catch (error) {
-            console.error('Error deleting expense:', error);
-            alert('An error occurred while deleting the expense. Please try again.');
-        }
-    }
-});
-
-document.addEventListener('click', async (event) => {
-    if (event.target.classList.contains('delete-utility-expenses-button')) {
-        const confirmDelete = confirm('Are you sure you want to delete all utility expenses?');
-        if (!confirmDelete) return;
-
-        try {
-            // Retrieve clientId from the query parameter
-            const clientId = getQueryParameter('id'); // Assuming this function is already defined
-
-            // Retrieve currentMemberId from the button's dataset or another source
-            const memberContainer = event.target.closest('.household-member1-box');
-            const currentMemberId = memberContainer?.querySelector('.add-expense-button')?.dataset.memberId;
-
-            if (!clientId || !currentMemberId) {
-                throw new Error('Both clientId and memberId are required.');
-            }
-
-            // Invoke the backend handler with clientId and memberId
-            const response = await fetch('/delete-utility-expenses', {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+        for (const expense of newExpenses) {
+            await fetch('/add-utility-expense', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     clientId,
                     memberId: currentMemberId,
-                }),
-            })
-                .then((response) => {
-                    if (!response.ok) {
-                        throw new Error(`Failed to delete utility expenses: ${response.statusText}`);
-                    }
-                    return response.json();
+                    utilityExpense: expense
                 })
-                .catch((error) => {
-                    console.error('Error deleting utility expenses:', error);
-                    return { success: false };
-                });
-            
-            if (response.success) {
-                console.log('Utility expenses deleted successfully.');
-                await displayHouseholdMembers(); // Refresh the UI
-            } else {
-                console.error('Failed to delete utility expenses:', response.message);
-                alert('Failed to delete the utility expenses. Please try again.');
-            }
-
-
-            if (response.success) {
-                console.log('Utility expenses deleted successfully.');
-                await displayHouseholdMembers(); // Refresh the UI
-            } else {
-                console.error('Failed to delete utility expenses:', response.message);
-                alert('Failed to delete the utility expenses. Please try again.');
-            }
-        } catch (error) {
-            console.error('Error deleting utility expenses:', error);
-            alert('An error occurred while deleting the utility expenses. Please try again.');
+            });
         }
+
+        invalidateHouseholdCache();
+        await displayHouseholdMembers();
+        modal.classList.add('hidden');
+    } catch (error) {
+        console.error('Error saving utility expenses:', error);
+        alert('An error occurred while saving utility expenses. Please try again.');
     }
-});
+}
 
-document.addEventListener('click', async (event) => {
-    if (event.target.classList.contains('edit-utility-expenses-button')) {
-        try {
-            // Retrieve clientId from the query parameter
-            const clientId = getQueryParameter('id'); // Assuming this function is already defined
+async function deleteUtilityExpenses(memberId) {
+    if (!confirm('Are you sure you want to delete all utility expenses?')) return;
 
-            // Retrieve currentMemberId from the button's dataset or another source
-            const memberContainer = event.target.closest('.household-member1-box');
-            const currentMemberId = memberContainer?.querySelector('.add-expense-button')?.dataset.memberId;
+    const clientId = getQueryParameter('id');
 
-            if (!clientId || !currentMemberId) {
-                alert('Both clientId and memberId are required to edit utility expenses.');
-                return;
-            }
+    if (!clientId || !memberId) {
+        alert('Both clientId and memberId are required.');
+        return;
+    }
 
-            // Fetch utility expenses for the selected member
-            const expenses = await fetch(`/get-expense?householdMemberId=${currentMemberId}`, {
-    method: 'GET',
-    headers: {
-        'Content-Type': 'application/json',
-    },
-})
-    .then((response) => {
-        if (!response.ok) {
-            throw new Error(`Failed to fetch expenses: ${response.statusText}`);
+    try {
+        const response = await fetch('/delete-utility-expenses', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, memberId })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            invalidateHouseholdCache();
+            await displayHouseholdMembers();
+        } else {
+            alert('Failed to delete the utility expenses. Please try again.');
         }
-        return response.json();
-    })
-    .catch((error) => {
-        console.error('Error fetching expenses:', error);
-        return [];
+    } catch (error) {
+        console.error('Error deleting utility expenses:', error);
+        alert('An error occurred while deleting the utility expenses. Please try again.');
+    }
+}
+
+async function openEditUtilityModal(memberId) {
+    const { modal, expenseList } = getUtilityModalElements();
+
+    try {
+        const expenses = await fetch(`/get-expense?householdMemberId=${memberId}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        }).then(res => res.ok ? res.json() : []).catch(() => []);
+
+        const utilityExpenses = expenses.filter(e => e.type === 'Utility');
+
+        modal.classList.remove('hidden');
+
+        expenseList.querySelectorAll('.selection-box').forEach(box => {
+            const utilityType = box.dataset.utilityType;
+            if (utilityExpenses.some(e => e.kind === utilityType)) {
+                box.classList.add('selected');
+            } else {
+                box.classList.remove('selected');
+            }
+        });
+
+        memberState.setCurrentMemberId(memberId);
+    } catch (error) {
+        console.error('Error editing utility expenses:', error);
+        alert('An error occurred while editing utility expenses. Please try again.');
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// MODAL MANAGEMENT
+// ══════════════════════════════════════════════════════════════
+
+function openAddExpenseModal(memberId, expenseType, isLiheapOnly = false) {
+    const elements = getModalElements();
+
+    memberState.setCurrentMemberId(memberId);
+    resetModalState();
+
+    elements.modalTitle.textContent = `Add ${expenseType} Expense`;
+
+    // Populate dropdown options
+    elements.expenseKind.innerHTML = '';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = `Select ${expenseType} Kind`;
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    elements.expenseKind.appendChild(placeholder);
+
+    if (dropdownOptions[expenseType]) {
+        const options = isLiheapOnly
+            ? dropdownOptions[expenseType].filter(opt => opt.value === 'Medicare Part B Premium' || opt.value === 'Medicare Part D Premium')
+            : dropdownOptions[expenseType];
+
+        options.forEach(option => {
+            const optionElement = document.createElement('option');
+            optionElement.value = option.value;
+            optionElement.textContent = option.label;
+            elements.expenseKind.appendChild(optionElement);
+        });
+    }
+
+    // Set default dates
+    if (expenseType === 'Previous Year') {
+        elements.expenseStartDate.value = `${PREVIOUS_YEAR}-01-01`;
+        elements.expenseEndDate.value = `${PREVIOUS_YEAR}-12-31`;
+    } else {
+        elements.expenseStartDate.value = `${CURRENT_YEAR}-01-01`;
+        elements.expenseEndDate.value = `${CURRENT_YEAR}-12-31`;
+    }
+
+    elements.addExpenseButton.textContent = 'Add Expense';
+    elements.modal.classList.remove('hidden');
+
+    ensureLeaseDropdownVisibility();
+}
+
+async function openEditExpenseModal(memberId, expenseId) {
+    const elements = getModalElements();
+
+    try {
+        const expense = await fetch(`/get-expense?householdMemberId=${memberId}&expenseId=${expenseId}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        }).then(res => res.ok ? res.json() : null).catch(() => null);
+
+        if (!expense) {
+            alert('Expense not found.');
+            return;
+        }
+
+        const expenseType = expense.type;
+
+        if (!dropdownOptions[expenseType]) {
+            alert('Invalid expense type. Please try again.');
+            return;
+        }
+
+        // Populate dropdown
+        elements.expenseKind.innerHTML = '';
+        dropdownOptions[expenseType].forEach(option => {
+            const optionElement = document.createElement('option');
+            optionElement.value = option.value;
+            optionElement.textContent = option.label;
+            if (option.value === expense.kind) optionElement.selected = true;
+            elements.expenseKind.appendChild(optionElement);
+        });
+
+        elements.expenseStartDate.value = expense.startDate || '';
+        elements.expenseEndDate.value = expense.endDate || '';
+        elements.expenseFrequency.value = expense.frequency || '';
+        elements.expenseAmount.value = expense.amount || '';
+
+        elements.modalTitle.textContent = `Edit ${expenseType} Expense`;
+
+        modalState.currentExpenseId = expense.id;
+        modalState.isEditing = true;
+
+        elements.modal.classList.remove('hidden');
+
+        // Handle SS/Pension visibility
+        await updateSSPensionDeductionVisibility(expenseType, expense.kind);
+        if (expense.deductedFromSSOrPension) {
+            elements.ssPensionSelect.value = expense.deductedFromSSOrPension;
+        }
+
+        // Handle Lease/Deed dropdown
+        await ensureLeaseDropdownVisibility();
+        if (shouldShowLeaseDropdown(expense.type, expense.kind) && Array.isArray(expense.leasePersons)) {
+            const members = await getHouseholdMembersCached();
+            modalState.leaseSelectedPersons = expense.leasePersons.map(label => {
+                const match = members.find(m =>
+                    `${m.firstName} ${m.middleInitial || ''} ${m.lastName}`.replace(/\s+/g, ' ').trim() === label
+                );
+                return { id: match ? String(match.householdMemberId) : '__outside__', label };
+            });
+            renderLeaseDropdownItems(members);
+            renderLeaseSelectedTags();
+        }
+
+        elements.addExpenseButton.textContent = 'Save and Update';
+    } catch (error) {
+        console.error('Error fetching expense:', error);
+        alert('An error occurred while fetching the expense. Please try again.');
+    }
+}
+
+function closeExpenseModal() {
+    const elements = getModalElements();
+    elements.modal.classList.add('hidden');
+    elements.expenseForm.reset();
+    resetModalState();
+    elements.addExpenseButton.textContent = 'Add Expense';
+}
+
+// ══════════════════════════════════════════════════════════════
+// MODAL CLOSE ON OUTSIDE CLICK
+// ══════════════════════════════════════════════════════════════
+
+function setupModalCloseOnOutsideClick() {
+    const shelterModal = document.getElementById('shelter-modal');
+    const utilityModal = document.getElementById('utility-modal');
+
+    document.addEventListener('click', (e) => {
+        // Shelter modal
+        if (shelterModal && !shelterModal.classList.contains('hidden')) {
+            const modalContent = shelterModal.querySelector('.modal-content');
+            if (modalContent && !modalContent.contains(e.target) && 
+                !e.target.closest('.add-expense-button') && 
+                !e.target.closest('.edit-expense-button')) {
+                closeExpenseModal();
+            }
+        }
+
+        // Utility modal
+        if (utilityModal && !utilityModal.classList.contains('hidden')) {
+            const modalContent = utilityModal.querySelector('.modal-content');
+            if (modalContent && !modalContent.contains(e.target) && 
+                !e.target.closest('.add-expense-button') && 
+                !e.target.closest('.edit-utility-expenses-button')) {
+                utilityModal.classList.add('hidden');
+            }
+        }
+    });
+}
+
+// ══════════════════════════════════════════════════════════════
+// DELEGATED EVENT LISTENERS
+// ══════════════════════════════════════════════════════════════
+
+function setupDelegatedEventListeners() {
+    const container = document.getElementById('household-member-container');
+    if (!container) return;
+
+    container.addEventListener('click', async (e) => {
+        const target = e.target;
+
+        // Add expense button
+        if (target.classList.contains('add-expense-button')) {
+            const memberId = target.dataset.memberId;
+            const expenseType = target.dataset.expenseType;
+            const isLiheapOnly = target.dataset.liheapOnly === 'true';
+
+            if (expenseType === 'Utility') {
+                memberState.setCurrentMemberId(memberId);
+                const utilityModal = document.getElementById('utility-modal');
+                if (utilityModal) {
+                    // Clear previous selections
+                    utilityModal.querySelectorAll('.selection-box').forEach(box => {
+                        box.classList.remove('selected');
+                    });
+                    utilityModal.classList.remove('hidden');
+                }
+            } else {
+                openAddExpenseModal(memberId, expenseType, isLiheapOnly);
+            }
+        }
+
+        // Edit expense button
+        if (target.classList.contains('edit-expense-button')) {
+            const expenseId = target.dataset.expenseId;
+            const memberBox = target.closest('.household-member1-box');
+            const memberId = memberBox?.querySelector('.add-expense-button')?.dataset.memberId;
+
+            if (memberId && expenseId) {
+                memberState.setCurrentMemberId(memberId);
+                await openEditExpenseModal(memberId, expenseId);
+            }
+        }
+
+        // Delete expense button
+        if (target.classList.contains('delete-expense-button')) {
+            const expenseId = target.dataset.expenseId;
+            if (expenseId) {
+                await deleteExpense(expenseId);
+            }
+        }
+
+        // Edit utility expenses button
+        if (target.classList.contains('edit-utility-expenses-button')) {
+            const memberBox = target.closest('.household-member1-box');
+            const memberId = memberBox?.querySelector('.add-expense-button')?.dataset.memberId;
+
+            if (memberId) {
+                await openEditUtilityModal(memberId);
+            }
+        }
+
+        // Delete utility expenses button
+        if (target.classList.contains('delete-utility-expenses-button')) {
+            const memberBox = target.closest('.household-member1-box');
+            const memberId = memberBox?.querySelector('.add-expense-button')?.dataset.memberId;
+
+            if (memberId) {
+                await deleteUtilityExpenses(memberId);
+            }
+        }
+    });
+}
+
+// ══════════════════════════════════════════════════════════════
+// CLIENT API HELPERS
+// ══════════════════════════════════════════════════════════════
+
+async function setCheckedOutStatus(clientId, status) {
+    try {
+        const response = await fetch(`${BACKEND_URL}/update-client`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                clientId,
+                clientData: {
+                    checkedOut: [{
+                        status,
+                        timestamp: status ? new Date().toISOString() : null,
+                        user: status ? sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User' : null
+                    }]
+                }
+            })
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+            console.error('Failed to update checkedOut status:', result.message);
+        }
+    } catch (error) {
+        console.error('Error updating checkedOut status:', error);
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════════════════
+
+function goToScreeningEdit() {
+    const clientId = getQueryParameter('id');
+    if (clientId) {
+        window.location.href = `estimationsstep.html?id=${clientId}`;
+    } else {
+        console.error('Client ID not found.');
+    }
+}
+
+async function goToExpensesView() {
+    const clientId = getQueryParameter('id');
+    if (!clientId) {
+        console.error('Client ID not found.');
+        return;
+    }
+
+    if (!confirm("Are you sure you want to save and release this profile?")) return;
+
+    const activeUser = sessionStorage.getItem('loggedInUser');
+    if (!activeUser) {
+        console.error("No active user found.");
+        return;
+    }
+
+    try {
+        await setCheckedOutStatus(clientId, false);
+
+        const note = {
+            text: "Profile released.",
+            timestamp: new Date().toLocaleString(),
+            username: activeUser
+        };
+
+        await fetch(`${BACKEND_URL}/add-note-to-client`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, note })
+        });
+    } catch (error) {
+        console.error("Error during goToExpensesView:", error);
+    } finally {
+        window.location.href = `expensesview.html?id=${clientId}`;
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// EVENT HANDLERS SETUP
+// ══════════════════════════════════════════════════════════════
+
+function setupEventListeners() {
+    const elements = getModalElements();
+    const utilityElements = getUtilityModalElements();
+
+    // Close modal button
+    elements.closeModal.addEventListener('click', closeExpenseModal);
+
+    // Add/Update expense button
+    elements.addExpenseButton.addEventListener('click', async () => {
+        if (modalState.isEditing) {
+            await overwriteExpense();
+        } else {
+            await saveExpense();
+        }
     });
 
-            // Filter for utility expenses
-            const utilityExpenses = expenses.filter(expense => expense.type === 'Utility');
+    // Save utility expenses button
+    utilityElements.saveBtn.addEventListener('click', saveUtilityExpenses);
 
-            // Open the utility modal
-            utilityModal.classList.remove('hidden');
+    // Expense kind change handler
+    elements.expenseKind.addEventListener('change', async function () {
+        const selectedValue = this.value;
+        const expenseType = getExpenseTypeFromModalTitle(elements.modalTitle.textContent);
 
-            // Highlight matching selection boxes
-            const selectionBoxes = utilityExpenseList.querySelectorAll('.selection-box');
-            selectionBoxes.forEach(box => {
-                const utilityType = box.dataset.utilityType;
-                if (utilityExpenses.some(expense => expense.kind === utilityType)) {
-                    box.classList.add('selected'); // Add a visual highlight
-                } else {
-                    box.classList.remove('selected'); // Remove highlight if not matching
-                }
-            });
-
-            // Set the current member ID for saving later
-            memberState.setCurrentMemberId(currentMemberId);
-        } catch (error) {
-            console.error('Error editing utility expenses:', error);
-            alert('An error occurred while editing utility expenses. Please try again.');
+        // Autofill for Medicare Part B Premium
+        if (selectedValue === 'Medicare Part B Premium') {
+            if (expenseType === 'Medical') {
+                elements.expenseAmount.value = '202.90';
+                elements.expenseFrequency.value = 'Monthly';
+            } else if (expenseType === 'Previous Year') {
+                elements.expenseAmount.value = '185';
+                elements.expenseFrequency.value = 'Monthly';
+            }
+        } else {
+            elements.expenseAmount.value = '';
+            elements.expenseFrequency.value = '';
         }
-    }
-});
 
-// Expose displayHouseholdMembers globally so external code (e.g., eligibility toggles) can refresh buttons
+        await updateSSPensionDeductionVisibility(expenseType, selectedValue);
+        await ensureLeaseDropdownVisibility();
+    });
+
+    // Lease search focus
+    document.addEventListener('focusin', (e) => {
+        if (e.target?.id === 'lease-search') {
+            document.getElementById('lease-dropdown')?.classList.remove('hidden');
+        }
+    });
+
+    // Lease search filter
+    document.addEventListener('input', (e) => {
+        if (e.target?.id === 'lease-search') {
+            const filter = e.target.value.toLowerCase();
+            const dropdown = document.getElementById('lease-dropdown');
+            if (!dropdown) return;
+
+            dropdown.querySelectorAll('.dropdown-item').forEach(item => {
+                const text = item.textContent.toLowerCase();
+                const isSelected = modalState.leaseSelectedPersons.some(p => p.id === item.getAttribute('data-value'));
+                item.style.display = text.includes(filter) && !isSelected ? 'block' : 'none';
+            });
+        }
+    });
+
+    // Hide lease dropdown when clicking outside
+    document.addEventListener('click', (event) => {
+        const dropdown = document.getElementById('lease-dropdown');
+        const search = document.getElementById('lease-search');
+        if (!dropdown || !search) return;
+        if (!dropdown.contains(event.target) && event.target !== search) {
+            dropdown.classList.add('hidden');
+        }
+    });
+
+    // Utility modal selection boxes
+    utilityElements.expenseList.addEventListener('click', (e) => {
+        if (e.target.classList.contains('selection-box')) {
+            e.target.classList.toggle('selected');
+        }
+    });
+
+    // Delete button hover effects
+    document.addEventListener('mouseover', (event) => {
+        if (event.target.classList.contains('delete-expense-button') ||
+            event.target.classList.contains('delete-utility-expenses-button')) {
+            event.target.style.backgroundColor = 'darkred';
+        }
+    });
+
+    document.addEventListener('mouseout', (event) => {
+        if (event.target.classList.contains('delete-expense-button') ||
+            event.target.classList.contains('delete-utility-expenses-button')) {
+            event.target.style.backgroundColor = 'red';
+        }
+    });
+
+    // Modal close on outside click
+    setupModalCloseOnOutsideClick();
+}
+
+function setupNavigationHandlers() {
+    document.getElementById('save-exit')?.addEventListener('click', goToExpensesView);
+    document.getElementById('save-continue')?.addEventListener('click', goToScreeningEdit);
+}
+
+// ══════════════════════════════════════════════════════════════
+// SIDEBAR VISIBILITY
+// ══════════════════════════════════════════════════════════════
+
+async function toggleSidebarVisibility() {
+    const clientId = getQueryParameter('id');
+    if (!clientId) return;
+
+    try {
+        const response = await fetch(`${BACKEND_URL}/get-client/${clientId}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!response.ok) return;
+
+        const client = await response.json();
+        const leftSidebar = document.getElementById('leftSidebarContainer');
+        const snapContainer = document.getElementById('snap-household-container');
+        const liheapContainer = document.getElementById('liheap-household-container');
+        const householdContainer = document.getElementById('household-members-container');
+
+        if (!leftSidebar) return;
+
+        leftSidebar.style.display = 'block';
+
+        const containers = [snapContainer, liheapContainer, householdContainer];
+
+        if (client?.screeningInProgress) {
+            containers.forEach(el => { if (el) el.style.display = ''; });
+        } else {
+            containers.forEach(el => { if (el) el.style.display = 'none'; });
+        }
+    } catch (error) {
+        console.error('Error toggling sidebar visibility:', error);
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// GLOBAL EXPORTS
+// ══════════════════════════════════════════════════════════════
+
 window.refreshExpenseButtons = displayHouseholdMembers;
 
-// Display household members on page load
-await displayHouseholdMembers();
+// ══════════════════════════════════════════════════════════════
+// INITIALIZATION
+// ══════════════════════════════════════════════════════════════
+
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('expenses.js DOMContentLoaded');
+    
+    setupEventListeners();
+    setupNavigationHandlers();
+    setupDelegatedEventListeners();
+    
+    await Promise.all([
+        displayHouseholdMembers(),
+        toggleSidebarVisibility()
+    ]);
+    
+    console.log('expenses.js initialization complete');
 });

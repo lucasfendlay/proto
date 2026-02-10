@@ -116,7 +116,7 @@ async function fetchClient(clientId) {
     return response.json();
 }
 
-async function saveClientUpdate(clientId, key, value) {
+async function saveClientField(clientId, key, value) {
     try {
         const response = await fetch('/update-client', {
             method: 'PUT',
@@ -124,15 +124,15 @@ async function saveClientUpdate(clientId, key, value) {
             body: JSON.stringify({ clientId, clientData: { [key]: value } }),
         });
 
-        if (response.ok) {
-            console.log(`Successfully updated ${key}: ${value}`);
-            const members = await loadHouseholdMembers();
-            await runAllEligibilityChecks(members);
-        } else {
+        if (!response.ok) {
             console.error(`Failed to update ${key}: ${value}`);
+            return false;
         }
+        console.log(`Successfully updated ${key}: ${value}`);
+        return true;
     } catch (error) {
         console.error(`Error updating ${key}: ${value}`, error);
+        return false;
     }
 }
 
@@ -169,6 +169,112 @@ async function loadHouseholdMembers() {
 }
 
 // ══════════════════════════════════════════════════════════════
+// PROGRAM STATUS VISIBILITY
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * Check if a program is still "open" (screeningInProgress is true for any member)
+ * @param {object} clientData - The client data object containing householdMembers
+ * @param {string} programKey - The program key (e.g., 'SNAP', 'LIHEAP', 'PACE', 'LIS', 'MSP', 'PTRR')
+ * @returns {boolean} - Whether the program is still open for any member
+ */
+function isProgramOpen(clientData, programKey) {
+    const members = clientData.householdMembers || [];
+    
+    // Program is "open" if ANY member has screeningInProgress = true for this program
+    // Benefits are stored directly on the member (e.g., member.SNAP, member.LIHEAP)
+    return members.some(member => {
+        const benefit = member[programKey];
+        return benefit?.screeningInProgress === true;
+    });
+}
+
+/**
+ * Apply visibility to main page questions based on program eligibility status
+ * @param {object} clientData - The client data object
+ */
+function applyProgramBasedQuestionVisibility(clientData) {
+    // Check program statuses
+    const snapOpen = isProgramOpen(clientData, 'SNAP');
+    const liheapOpen = isProgramOpen(clientData, 'LIHEAP');
+    const paceOpen = isProgramOpen(clientData, 'PACE');
+    const lisOpen = isProgramOpen(clientData, 'LIS');
+    const mspOpen = isProgramOpen(clientData, 'MSP');
+    const ptrrOpen = isProgramOpen(clientData, 'PTRR');
+
+    // Get container references
+    const containers = {
+        snap: document.getElementById('snap-container'),
+        student: document.getElementById('student-container'),
+        citizen: document.getElementById('citizen-container'),
+        liheap: document.getElementById('liheap-container'),
+        heatingCrisis: document.getElementById('heatingCrisis-container'),
+        residenceStatusCurrent: document.getElementById('residenceStatusCurrent-container'),
+        subsidizedHousing: document.getElementById('subsidizedHousing-container'),
+        heatingCost: document.getElementById('heatingCost-container'),
+        medicaid: document.getElementById('medicaid-container'),
+        medicare: document.getElementById('medicare-container'),
+        disability: document.getElementById('disability-container'),
+        residenceStatus: document.getElementById('residenceStatus-container'),
+    };
+
+    // SNAP open → show SNAP enrollment, student question, citizen question
+    if (containers.snap) {
+        containers.snap.style.display = snapOpen ? '' : 'none';
+    }
+    if (containers.student) {
+        containers.student.style.display = snapOpen ? '' : 'none';
+    }
+    if (containers.citizen) {
+        containers.citizen.style.display = snapOpen ? '' : 'none';
+    }
+
+    // LIHEAP open → show LIHEAP enrollment and conditional follow-ups
+    if (containers.liheap) {
+        containers.liheap.style.display = liheapOpen ? '' : 'none';
+    }
+    // Hide all LIHEAP follow-up questions if LIHEAP is closed
+    if (!liheapOpen) {
+        if (containers.heatingCrisis) containers.heatingCrisis.style.display = 'none';
+        if (containers.residenceStatusCurrent) containers.residenceStatusCurrent.style.display = 'none';
+        if (containers.subsidizedHousing) containers.subsidizedHousing.style.display = 'none';
+        if (containers.heatingCost) containers.heatingCost.style.display = 'none';
+    }
+
+    // PACE, LIS, or MSP open → show Medicaid question
+    if (containers.medicaid) {
+        const showMedicaid = paceOpen || lisOpen || mspOpen;
+        containers.medicaid.style.display = showMedicaid ? '' : 'none';
+    }
+
+    // LIS or MSP open → show Medicare question
+    if (containers.medicare) {
+        const showMedicare = lisOpen || mspOpen;
+        containers.medicare.style.display = showMedicare ? '' : 'none';
+    }
+
+    // LIS or MSP open → show Disability question
+    if (containers.disability) {
+        const showDisability = lisOpen || mspOpen;
+        containers.disability.style.display = showDisability ? '' : 'none';
+    }
+
+    // PTRR open → show Previous year residence status
+    if (containers.residenceStatus) {
+        containers.residenceStatus.style.display = ptrrOpen ? '' : 'none';
+    }
+
+    console.log('Program-based visibility applied:', {
+        snapOpen,
+        liheapOpen,
+        paceOpen,
+        lisOpen,
+        mspOpen,
+        ptrrOpen
+    });
+}
+
+// ══════════════════════════════════════════════════════════════
 // MODAL QUESTION DEFINITIONS
 // ══════════════════════════════════════════════════════════════
 
@@ -178,7 +284,7 @@ const MAIN_QUESTIONS = [
     { id: 'medicaid', elements: ['medicaid-yes', 'medicaid-no'] },
     { id: 'student', elements: ['student-yes', 'student-no'] },
     { id: 'snap', elements: ['snap-yes', 'snap-no', 'snap-notinterested'] },
-    { id: 'liheap', elements: ['liheap-yes', 'liheap-no', 'liheap-notinterested'] },
+    { id: 'liheapEnrollment', elements: ['liheap-yes', 'liheap-no', 'liheap-notinterested'] },
     { id: 'subsidizedHousing', elements: ['subsidizedHousing-yes', 'subsidizedHousing-no'] },
     { id: 'heatingCost', elements: ['heatingCost-yes', 'heatingCost-no'] },
     { id: 'heatingCrisis', elements: ['heatingCrisis-yes', 'heatingCrisis-no'] },
@@ -276,6 +382,9 @@ async function loadSavedData() {
         const clientData = await fetchClient(clientId);
         if (!clientData) return;
 
+        // Apply program-based question visibility FIRST
+        applyProgramBasedQuestionVisibility(clientData);
+
         // Highlight saved selections for main questions
         MAIN_QUESTIONS.forEach(q => {
             const savedValue = clientData[q.id];
@@ -296,8 +405,10 @@ async function loadSavedData() {
         // "Add Self" button
         await checkAndAddSelfButton(clientData);
 
-        // LIHEAP visibility
-        await applyLiheapVisibility(clientData);
+        // LIHEAP visibility - only apply if LIHEAP is still open
+        if (isProgramOpen(clientData, 'LIHEAP')) {
+            await applyLiheapVisibility(clientData);
+        }
 
         // Run eligibility checks
         const members = clientData.householdMembers || [];
@@ -1072,41 +1183,29 @@ async function saveLiheapSelection(selection) {
         }
 
         console.log('LIHEAP selection saved:', selection);
-        const updatedClient = await fetchClient(clientId);
 
+        // Clear dependent fields in sequence WITHOUT triggering reloads
         if (selection === 'notinterested') {
-            hideAllLiheapContainers();
-            await saveClientUpdate(clientId, 'heatingCrisis', null);
-            await saveClientUpdate(clientId, 'residenceStatusCurrent', null);
-            await saveClientUpdate(clientId, 'heatingCost', null);
-            await saveClientUpdate(clientId, 'subsidizedHousing', null);
-            clearSelectionsForPrefix('heatingCrisis', 'residenceStatusCurrent', 'heatingCost', 'subsidizedHousing');
-        } else if (selection === 'yes' && updatedClient?.heatingCrisis === 'no') {
-            const c = getContainerRefs();
-            c.residenceStatus.style.display = 'none';
-            c.subsidizedHousing.style.display = 'none';
-            c.heatingCost.style.display = 'none';
-            c.heatingCrisis.style.display = 'block';
-            await saveClientUpdate(clientId, 'residenceStatusCurrent', null);
-            await saveClientUpdate(clientId, 'heatingCost', null);
-            await saveClientUpdate(clientId, 'subsidizedHousing', null);
-            clearSelectionsForPrefix('residenceStatusCurrent', 'heatingCost', 'subsidizedHousing');
-        } else {
-            const c = getContainerRefs();
-            Object.values(c).forEach(el => { if (el) el.style.display = 'block'; });
+            await saveClientField(clientId, 'heatingCrisis', null);
+            await saveClientField(clientId, 'residenceStatusCurrent', null);
+            await saveClientField(clientId, 'heatingCost', null);
+            await saveClientField(clientId, 'subsidizedHousing', null);
+        } else if (selection === 'yes') {
+            const updatedClient = await fetchClient(clientId);
+            if (updatedClient?.heatingCrisis === 'no') {
+                await saveClientField(clientId, 'residenceStatusCurrent', null);
+                await saveClientField(clientId, 'heatingCost', null);
+                await saveClientField(clientId, 'subsidizedHousing', null);
+            }
         }
 
-        await runLIHEAPCheckAndDisplay();
+        // Single reload at the end
+        await loadSavedData();
+
     } catch (error) {
         console.error('Error saving LIHEAP selection:', error);
     }
-}
-
-// ══════════════════════════════════════════════════════════════
-// HEATING CRISIS SELECTION
-// ══════════════════════════════════════════════════════════════
-
-async function saveHeatingCrisisSelection(selection) {
+}async function saveHeatingCrisisSelection(selection) {
     const clientId = getQueryParam('id');
     if (!clientId) return;
 
@@ -1123,21 +1222,16 @@ async function saveHeatingCrisisSelection(selection) {
         }
 
         const updatedClient = await fetchClient(clientId);
-        const c = getContainerRefs();
 
         if (updatedClient.liheapEnrollment === 'yes' && selection === 'no') {
-            c.residenceStatus.style.display = 'none';
-            c.subsidizedHousing.style.display = 'none';
-            c.heatingCost.style.display = 'none';
-            await saveClientUpdate(clientId, 'subsidizedHousing', null);
-            await saveClientUpdate(clientId, 'heatingCost', null);
-            await saveClientUpdate(clientId, 'residenceStatusCurrent', null);
-            clearSelectionsForPrefix('residenceStatusCurrent');
-        } else {
-            c.residenceStatus.style.display = 'block';
+            await saveClientField(clientId, 'subsidizedHousing', null);
+            await saveClientField(clientId, 'heatingCost', null);
+            await saveClientField(clientId, 'residenceStatusCurrent', null);
         }
 
-        await runLIHEAPCheckAndDisplay();
+        // Single reload at the end
+        await loadSavedData();
+
     } catch (error) {
         console.error('Error saving heating crisis:', error);
     }
@@ -1151,58 +1245,71 @@ async function handleResidenceStatusClick(selectedValue) {
     const clientId = getQueryParam('id');
     if (!clientId) return;
 
-    const c = getContainerRefs();
-    await saveClientUpdate(clientId, 'residenceStatusCurrent', selectedValue);
+    try {
+        const response = await fetch('/update-client', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, clientData: { residenceStatusCurrent: selectedValue } }),
+        });
+        if (!response.ok) throw new Error('Failed to save residenceStatusCurrent');
 
-    if (selectedValue === 'owned') {
-        c.subsidizedHousing.style.display = 'none';
-        c.heatingCost.style.display = 'none';
-        await saveClientUpdate(clientId, 'subsidizedHousing', null);
-        await saveClientUpdate(clientId, 'heatingCost', null);
-        clearSelectionsForPrefix('subsidizedHousing', 'heatingCost');
-    } else {
-        c.subsidizedHousing.style.display = 'block';
-        c.heatingCost.style.display = 'none';
+        if (selectedValue === 'owned') {
+            await saveClientField(clientId, 'subsidizedHousing', null);
+            await saveClientField(clientId, 'heatingCost', null);
+        }
+
+        // Single reload at the end
+        await loadSavedData();
+
+    } catch (error) {
+        console.error('Error saving residenceStatusCurrent:', error);
     }
 }
 
+// Refactored handleSubsidizedHousingClick
 async function handleSubsidizedHousingClick(selectedValue) {
     const clientId = getQueryParam('id');
     if (!clientId) return;
 
-    const c = getContainerRefs();
+    try {
+        const response = await fetch('/update-client', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, clientData: { subsidizedHousing: selectedValue } }),
+        });
+        if (!response.ok) throw new Error('Failed to save subsidizedHousing');
 
-    await fetch('/update-client', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId, clientData: { subsidizedHousing: selectedValue } }),
-    });
+        if (selectedValue === 'no') {
+            await saveClientField(clientId, 'heatingCost', null);
+        }
 
-    highlightByValue(document.querySelectorAll('[id^="subsidizedHousing-"]'), selectedValue);
+        // Single reload at the end
+        await loadSavedData();
 
-    if (selectedValue === 'yes') {
-        c.heatingCost.style.display = 'block';
-    } else {
-        c.heatingCost.style.display = 'none';
-        await saveClientUpdate(clientId, 'heatingCost', null);
-        clearSelectionsForPrefix('heatingCost');
+    } catch (error) {
+        console.error('Error saving subsidizedHousing:', error);
     }
-
-    await runLIHEAPCheckAndDisplay();
 }
 
+// Refactored handleHeatingCostClick
 async function handleHeatingCostClick(selectedValue) {
     const clientId = getQueryParam('id');
     if (!clientId) return;
 
-    await fetch('/update-client', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientId, clientData: { heatingCost: selectedValue } }),
-    });
+    try {
+        const response = await fetch('/update-client', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, clientData: { heatingCost: selectedValue } }),
+        });
+        if (!response.ok) throw new Error('Failed to save heatingCost');
 
-    highlightByValue(document.querySelectorAll('[id^="heatingCost-"]'), selectedValue);
-    await runLIHEAPCheckAndDisplay();
+        // Single reload at the end
+        await loadSavedData();
+
+    } catch (error) {
+        console.error('Error saving heatingCost:', error);
+    }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1305,6 +1412,10 @@ function setupStudentDropdown() {
 document.addEventListener('DOMContentLoaded', async () => {
     const clientId = getQueryParam('id');
 
+    // ── Ensure modal is hidden on page load ──
+    const modal = document.getElementById('householdMemberModal');
+    if (modal) modal.style.display = 'none';
+
     // ── Wire up main page question click handlers ──
     SAVEABLE_QUESTIONS.forEach(question => {
         question.elements.forEach(elementId => {
@@ -1373,10 +1484,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ── Residence Status Current options ──
     document.querySelectorAll('[id^="residenceStatusCurrent-"]').forEach(option => {
-        if (option.tagName !== 'DIV' || !option.getAttribute('data-value')) return;
+        if (!option.getAttribute('data-value')) return;
         option.addEventListener('click', async () => {
             const val = option.getAttribute('data-value');
-            highlightByValue(document.querySelectorAll('[id^="residenceStatusCurrent-"]'), val);
+            highlightSelection(
+                ['residenceStatusCurrent-owned', 'residenceStatusCurrent-rented', 'residenceStatusCurrent-rentedowned', 'residenceStatusCurrent-other'],
+                val
+            );
             await handleResidenceStatusClick(val);
         });
     });
@@ -1386,6 +1500,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         option.addEventListener('click', async () => {
             const val = option.getAttribute('data-value');
             if (!val) return;
+            highlightSelection(['subsidizedHousing-yes', 'subsidizedHousing-no'], val);
             await handleSubsidizedHousingClick(val);
         });
     });
@@ -1395,6 +1510,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         option.addEventListener('click', async () => {
             const val = option.getAttribute('data-value');
             if (!val) return;
+            highlightSelection(['heatingCost-yes', 'heatingCost-no'], val);
             await handleHeatingCostClick(val);
         });
     });

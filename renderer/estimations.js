@@ -338,16 +338,18 @@ function createCloseMemberModal() {
     `;
 
     modalOverlay.innerHTML = `
-        <div style="background: white; padding: 24px; border-radius: 8px; min-width: 380px; max-width: 520px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-            <h3 id="close-member-modal-title" style="margin-top: 0;">Close Screening</h3>
-            <div id="close-member-benefits-checkboxes" style="margin: 12px 0;"></div>
-            <label for="close-member-reason-select"><strong>Select a reason:</strong></label>
-            <select id="close-member-reason-select" style="width: 100%; padding: 8px; margin: 12px 0; font-size: 14px;">
-                <option value="">-- Select a reason --</option>
-            </select>
-            <div style="display: flex; gap: 10px; justify-content: center; margin-top: 16px;">
-                <button id="close-member-cancel-btn" style="padding: 8px 16px; cursor: pointer;">Cancel</button>
-                <button id="close-member-confirm-btn" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Confirm Close</button>
+        <div style="background: white; padding: 24px; border-radius: 8px; min-width: 380px; max-width: 520px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+            <h3 id="close-member-modal-title" style="margin-top: 0; flex-shrink: 0;">Close Screening</h3>
+            <div id="close-member-benefits-checkboxes" style="margin: 12px 0; overflow-y: auto; flex: 1; max-height: 40vh; padding-right: 8px;"></div>
+            <div style="flex-shrink: 0;">
+                <label for="close-member-reason-select"><strong>Select a reason:</strong></label>
+                <select id="close-member-reason-select" style="width: 100%; padding: 8px; margin: 12px 0; font-size: 14px;">
+                    <option value="">-- Select a reason --</option>
+                </select>
+                <div style="display: flex; gap: 10px; justify-content: center; margin-top: 16px;">
+                    <button id="close-member-cancel-btn" style="padding: 8px 16px; cursor: pointer;">Cancel</button>
+                    <button id="close-member-confirm-btn" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Confirm Close</button>
+                </div>
             </div>
         </div>
     `;
@@ -537,30 +539,25 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
     title.textContent = `Close Screening(s)`;
 
     // Build a list of all open benefits across all members (excluding SNAP and LIHEAP)
-    const excludedBenefits = ['SNAP', 'LIHEAP'];
     const benefitKeys = ['PACE', 'LIS', 'MSP', 'PTRR'];
-
-    const allOpenBenefitEntries = []; // { memberId, memberName, benefit }
+    const allOpenBenefitEntries = []; // { memberId, memberName, benefit, isNotEligible, ineligibilityReason }
 
     allMembers.forEach(member => {
         const isDeceased = (member.deceased ?? '').toLowerCase() === 'yes';
         const memberName = `${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.lastName)}`;
 
         benefitKeys.forEach(benefit => {
-            // Skip deceased members for PACE, LIS, MSP (PTRR is only for head of household)
             if (isDeceased && benefit !== 'PTRR') return;
-            // PTRR: skip if not head of household
             if (benefit === 'PTRR' && !member.headOfHousehold) return;
-            // Skip deceased for PTRR too
             if (isDeceased && benefit === 'PTRR') return;
 
             const benefitObj = member[benefit];
             if (!benefitObj) return;
-            if (benefitObj.screeningInProgress === false) return; // Already closed
+            if (benefitObj.screeningInProgress === false) return;
             if (benefitObj.eligibility?.includes('Not Checked')) return;
 
-            // Must have eligibility data
             if (benefitObj.eligibility && benefitObj.eligibility.length > 0) {
+
                 // Determine if this benefit is "not likely eligible" (red card)
                 const eligArray = benefitObj.eligibility.map(e => (e || '').toUpperCase());
                 const isNotEligible = eligArray.some(item =>
@@ -619,8 +616,71 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
         });
     });
 
-    // Clear the checkbox container and build tiles
-    checkboxContainer.innerHTML = '';
+    // Build selectable benefit tiles grouped by member
+    checkboxContainer.innerHTML = '<p style="margin-bottom: 10px;"><strong>Select benefits to close:</strong></p>';
+
+    // Add "Select All" / "Deselect All" toggle
+    const selectAllContainer = document.createElement('div');
+    selectAllContainer.style.cssText = 'margin-bottom: 12px; padding: 8px 0; border-bottom: 1px solid #ddd;';
+    const selectAllBtn = document.createElement('button');
+    selectAllBtn.textContent = 'Select All';
+    selectAllBtn.style.cssText = `
+        padding: 6px 14px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        margin-right: 8px;
+        transition: background-color 0.3s;
+    `;
+    const deselectAllBtn = document.createElement('button');
+    deselectAllBtn.textContent = 'Deselect All';
+    deselectAllBtn.style.cssText = `
+        padding: 6px 14px;
+        background-color: #6c757d;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        transition: background-color 0.3s;
+    `;
+
+    const toggleAllTiles = (selected) => {
+        const allTiles = checkboxContainer.querySelectorAll('.close-member-benefit-tile');
+        allTiles.forEach(tile => {
+            const isNotEligibleTile = tile.dataset.isNotEligible === 'true';
+            tile.dataset.selected = selected ? 'true' : 'false';
+            if (selected) {
+                tile.style.borderColor = 'black';
+                tile.style.backgroundColor = '#007bff';
+                tile.style.color = 'white';
+            } else {
+                // Immediately apply correct styling based on eligibility
+                if (isNotEligibleTile) {
+                    tile.style.borderColor = '#f5c6cb';
+                    tile.style.backgroundColor = '#f8d7da';
+                    tile.style.color = '#721c24';
+                } else {
+                    tile.style.borderColor = '#ccc';
+                    tile.style.backgroundColor = '#f9f9f9';
+                    tile.style.color = '#333';
+                }
+            }
+        });
+        const selectedBenefits = selected
+            ? allOpenBenefitEntries.map(e => e.benefit)
+            : [];
+        updateReasonDropdown([...new Set(selectedBenefits)]);
+    };
+
+    selectAllBtn.addEventListener('click', () => toggleAllTiles(true));
+    deselectAllBtn.addEventListener('click', () => toggleAllTiles(false));
+    selectAllContainer.appendChild(selectAllBtn);
+    selectAllContainer.appendChild(deselectAllBtn);
+    checkboxContainer.appendChild(selectAllContainer);
 
     Object.keys(groupedByMember).forEach(mId => {
         const group = groupedByMember[mId];
@@ -655,6 +715,7 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
                 user-select: none;
             `;
 
+            // If this benefit is not eligible (red), add a visual indicator
             if (benefitEntry.isNotEligible) {
                 tile.style.borderColor = '#f5c6cb';
                 tile.style.backgroundColor = '#f8d7da';
@@ -707,6 +768,7 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
                     }
                 }
 
+                // Update reason dropdown based on unique selected benefits
                 const selectedBenefitNames = Array.from(
                     checkboxContainer.querySelectorAll('.close-member-benefit-tile[data-selected="true"]')
                 ).map(t => t.dataset.benefit);
@@ -730,6 +792,7 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
             }
         });
 
+        // Update reason dropdown based on auto-selected benefits
         const autoSelectedBenefitNames = Array.from(
             checkboxContainer.querySelectorAll('.close-member-benefit-tile[data-selected="true"]')
         ).map(t => t.dataset.benefit);
@@ -738,6 +801,7 @@ function openCloseMemberModal(clientId, allMembers, memberId, openBenefits) {
         // Auto-select "Hard Determination" in the dropdown
         select.value = 'Hard Determination';
     } else {
+        // Initialize reason dropdown — nothing pre-selected
         select.innerHTML = '<option value="">-- Select a reason --</option>';
     }
 
@@ -2030,7 +2094,7 @@ if (spouse) {
                         } else if (residenceStatus === "rented") {
                             return isRent && isPreviousYear;
                         } else if (residenceStatus === "rentedowned") {
-                            return (isPropertyTax || isRent) && isPreviousYear;
+                            return (isPropertyTax && isRent) && isPreviousYear;
                         }
                         return false;
                     });

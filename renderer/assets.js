@@ -195,11 +195,16 @@ async function toggleSidebarVisibility() {
 // ══════════════════════════════════════════════════════════════
 
 function generateAssetItemHTML(asset, memberId) {
+    const descriptionHTML = asset.description && asset.description.trim() 
+        ? `<p><strong>Description:</strong> ${asset.description}</p>` 
+        : '';
+
     return `
         <li class="list-item" data-asset-id="${asset.id}">
             <p><strong>Type:</strong> ${asset.type}</p>
-            <p><strong>Description:</strong> ${asset.description}</p>
             <p><strong>Value:</strong> $${asset.value}</p>
+            ${descriptionHTML}
+
             <div class="button-container">
                 <button class="button edit-asset-button" 
                     data-member-id="${memberId}" 

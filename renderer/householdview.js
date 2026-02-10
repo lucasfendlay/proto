@@ -61,7 +61,7 @@ const MAIN_QUESTIONS = [
     { id: 'medicaid', elements: ['medicaid-yes', 'medicaid-no'] },
     { id: 'student', elements: ['student-yes', 'student-no'] },
     { id: 'snap', elements: ['snap-yes', 'snap-no', 'snap-notinterested'] },
-    { id: 'liheap', elements: ['liheap-yes', 'liheap-no', 'liheap-notinterested'] },
+    { id: 'liheapEnrollment', elements: ['liheap-yes', 'liheap-no', 'liheap-notinterested'] },
     { id: 'subsidizedHousing', elements: ['subsidizedHousing-yes', 'subsidizedHousing-no'] },
     { id: 'heatingCost', elements: ['heatingCost-yes', 'heatingCost-no'] },
     { id: 'heatingCrisis', elements: ['heatingCrisis-yes', 'heatingCrisis-no'] },

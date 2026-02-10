@@ -4,137 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>View Client Income</title>
-    <!-- Stylesheets -->
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="householdedit.css">
     <link rel="stylesheet" href="incomeedit.css">
     <link rel="stylesheet" href="notes.css">
     <script src="userInfo.js"></script>
-
     <style>
-        .read-only {
-            background-color: #f0f0f0;
-            color: #666;
-            cursor: not-allowed;
-            padding: 10px;
-            border-radius: 4px;
-        }
+        /* Read-only selection boxes */
+.selection-box.read-only {
+    pointer-events: none;
+}
 
-        .option-button {
-            padding: 10px 20px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background-color: #f9f9f9;
-            color: #333;
-            cursor: pointer;
-            margin-right: 10px;
-            transition: background-color 0.3s, color 0.3s;
-        }
+.selection-box.read-only .option-button {
+    cursor: default;
+}
 
-        .option-button:hover {
-            background-color: #e0e0e0;
-        }
-
-        .option-button.selected {
-            background-color: #007bff;
-            color: white;
-            border: 1px solid #007bff;
-        }
-
-        .narrow-body {
-            margin-left: 385px;
-            margin-right: 10px;
-            max-width: calc(100% - 395px);
-            margin: 0 auto;
-            margin-top: 60px;
-        }
-
-        .selection-box {
-            margin-bottom: 20px;
-        }
-
-        .selection-box label {
-            display: block;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .selection-box div {
-            display: inline-block;
-            padding: 10px 20px;
-            margin-right: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            background-color: #f9f9f9;
-            cursor: pointer;
-            text-align: center;
-        }
-
-        .selection-box div:hover {
-            background-color: #e0e0e0;
-        }
-
-        .selection-box div.selected {
-            background-color: #007bff;
-            color: #fff;
-            border-color: #007bff;
-        }
-
-        .income-list {
-            list-style-type: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .income-list li {
-            display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            grid-auto-rows: minmax(40px, auto);
-            gap: 10px;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            background-color: #f9f9f9;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .income-list li p {
-            margin: 0;
-            font-size: 0.9rem;
-            line-height: 1.4;
-        }
-
-        .income-list li button {
-            margin-top: 10px;
-            padding: 5px 10px;
-            font-size: 0.85rem;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .income-list li .edit-income-button {
-            background-color: #007bff;
-            color: white;
-        }
-
-        .income-list li .delete-income-button {
-            background-color: #dc3545;
-            color: white;
-        }
-
-        .income-list li .edit-income-button + .delete-income-button {
-            margin-left: 10px;
-        }
+/* Ensure selected state still shows in read-only mode */
+.selection-box.read-only .option-button.selected {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
     </style>
 </head>
 <body class="narrow-body">
     <h1>Income</h1>
 
     <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
-        <div id="household-members-container" class="left-sidebar"></div>
         <div id="snap-household-container" class="left-sidebar"></div>
+        <div id="liheap-household-container" class="left-sidebar"></div>
+        <div id="household-members-container" class="left-sidebar"></div>
     </div>
 
     <div id="notes-container">
@@ -143,42 +42,59 @@
         <div id="notes-list"></div>
     </div>
 
-    <div class="selection-box" id="farmworker-question" style="display: none;">
+    <div class="selection-box read-only" id="farmworker-question" style="display: none;">
         <label id="farmworker-label"><strong>Is everyone in the household a migrant or seasonal farmworker?</strong></label>
-        <div id="farmworker-yes" data-value="yes" class="read-only">Yes</div>
-        <div id="farmworker-no" data-value="no" class="read-only">No</div>
+        <div id="farmworker-yes" class="option-button" data-value="yes">Yes</div>
+        <div id="farmworker-no" class="option-button" data-value="no">No</div>
     </div>
 
     <div id="household-member-container"></div>
 
+    <!-- Modal for Adding/Editing Income -->
     <div id="income-modal" class="modal hidden">
         <div class="modal-content">
             <button id="close-modal" class="close">&times;</button>
-            <h2 id="modal-title"></h2>
             <form id="income-form">
+                <h2 id="modal-title"></h2>
+
                 <label for="income-kind">Kind of Income:</label>
                 <select id="income-kind" required>
                     <option value="" disabled selected>Select Kind of Income</option>
                     <option value="SSA Retirement">SSA Retirement</option>
                     <option value="SSDI">SSDI</option>
                     <option value="SSI">SSI</option>
+                    <option value="SSP">SSP</option>
                     <option value="Employment">Employment</option>
                     <option value="Self-Employment">Self-Employment</option>
+                    <option value="Business Loss">Business Loss</option>
+                    <option value="Railroad Retirement Tier 1">Railroad Retirement Tier 1</option>
+                    <option value="Railroad Retirement Tier 2">Railroad Retirement Tier 2</option>
                     <option value="Pension">Pension</option>
                     <option value="Annuity">Annuity</option>
                     <option value="Dividends">Dividends</option>
+                    <option value="IRA Distributions">IRA Distributions</option>
                     <option value="Interest">Interest</option>
                     <option value="Rental Income">Rental Income</option>
+                    <option value="Rental Loss">Rental Loss</option>
                     <option value="Royalties">Royalties</option>
+                    <option value="Cash Assistance">Cash Assistance</option>
                     <option value="Trust Income">Trust Income</option>
                     <option value="VA Benefits">VA Benefits</option>
-                    <option value="Railroad Retirement">Railroad Retirement</option>
                     <option value="Social Security Survivor Benefits">Social Security Survivor Benefits</option>
                     <option value="Workers Compensation">Workers Compensation</option>
                     <option value="Unemployment">Unemployment</option>
                     <option value="Child Support">Child Support</option>
                     <option value="Alimony">Alimony</option>
+                    <option value="Inheritance">Inheritance</option>
+                    <option value="Death Benefits">Death Benefits</option>
+                    <option value="Life Insurance">Life Insurance</option>
+                    <option value="Disability Insurance">Disability Insurance</option>
                     <option value="Inkind Income">Inkind Income</option>
+                    <option value="Federal CSRS">Federal CSRS</option>
+                    <option value="Property Sale">Property Sale</option>
+                    <option value="Property Sale Loss">Property Sale Loss</option>
+                    <option value="Gambling Winnings">Gambling Winnings</option>
+                    <option value="Lottery Winnings">Lottery Winnings</option>
                     <option value="Other">Other Income</option>
                 </select>
 
@@ -208,7 +124,6 @@
         </div>
     </div>
 
-    <!-- Scripts -->
     <script src="estimations.js"></script>
     <script src="notes.js"></script>
     <script src="incomeview.js"></script>

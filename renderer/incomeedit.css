@@ -129,10 +129,11 @@ input:focus {
 
 /* Household Member Container */
 #household-member-container {
-    text-align: center;
-    min-width: 925px;
-    max-width: 925px;
-    margin: 0 auto;
+    min-width: 1250px;
+    width: 100%;
+    max-width: 1400px;
+    padding: 10px;
+    box-sizing: border-box;
 }
 
 /* Individual Household Member Box */
@@ -141,45 +142,32 @@ input:focus {
     flex-direction: column;
     padding: 20px;
     border: 1px solid #ccc;
-    border-radius: 5px;
+    border-radius: 8px;
     background-color: #f9f9f9;
-    width: 90%;
+    min-width: 1250px;
+    width: 100%;
+    max-width: 1350px;
     margin: 0 auto 20px;
     align-items: center;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-sizing: border-box;
 }
 
-.household-member1-box p {
-    margin: 5px 0;
-    width: 85%;
-    font-size: 14px;
-    color: #555;
-    text-align: center;
-}
+/* ...existing code... */
 
 /* Income List */
 .household-member1-box .income-list {
-    width: 85%;
+    width: 100%;
+    max-width: 100%;
     margin: 0 auto;
     padding: 10px 15px;
     background-color: #f1f1f1;
     border-radius: 5px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-sizing: border-box;
 }
 
-.household-member1-box .income-list h4 {
-    font-size: 18px;
-    margin-bottom: 10px;
-    color: #333;
-    text-align: center;
-}
-
-.household-member1-box .income-list ul {
-    list-style-type: none;
-    padding: 0;
-    margin: 10px 0;
-    text-align: left;
-}
+/* ...existing code... */
 
 .household-member1-box .income-list ul li {
     display: grid;
@@ -192,6 +180,10 @@ input:focus {
     border-radius: 8px;
     background-color: #f9f9f9;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 1200px;
+    justify-self: center;
+    box-sizing: border-box;
 }
 
 .household-member1-box .income-list ul li p {
