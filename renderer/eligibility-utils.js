@@ -1,94 +1,135 @@
 window.EligibilityUtils = (function() {
     
-    // ===== CONSTANTS =====
-    const BENEFIT_KEYS = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
-    const INDIVIDUAL_BENEFITS = ['PACE', 'LIS', 'MSP', 'PTRR'];
-    
-    const UTILITY_ALLOWANCES = {
-        "Heating and/or Cooling": 758,
-        "Basic Limited Allowance": 402,
-        "Electric": 72,
-        "Gas": 72,
-        "Oil": 72,
-        "Propane": 72,
-        "Wood": 72,
-        "Coal": 72,
-        "Kerosene": 72,
-        "Water": 72,
-        "Sewage": 72,
-        "Trash": 72,
-        "Phone": 34,
-        "Homeless": 190
-    };
+// ===== CONSTANTS =====
+const BENEFIT_KEYS = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
+const INDIVIDUAL_BENEFITS = ['PACE', 'LIS', 'MSP', 'PTRR'];
 
-    // PACE thresholds (previous year income)
-    const PACE_THRESHOLDS = {
-        single: {
-            pace: 14500,        // < this = Likely Eligible for PACE
-            pacenet: 33500,     // <= this = Likely Eligible for PACENET
-            buffer: 43500       // <= this = Likely Ineligible but Within Buffer
-        },
-        married: {
-            pace: 17700,
-            pacenet: 41500,
-            buffer: 51500
-        },
-        minAgeYears: 64,
-        minAgeMonths: 11
-    };
+// 2025 Federal Poverty Level (annual)
+const FPL = {
+    base: 15650,           // 1 person
+    perAdditional: 5500,   // each additional person
+    get: function(householdSize) {
+        if (householdSize <= 0) return 0;
+        if (householdSize === 1) return this.base;
+        return this.base + (householdSize - 1) * this.perAdditional;
+    },
+    getMonthly: function(householdSize) {
+        return this.get(householdSize) / 12;
+    },
+    getAtPercent: function(householdSize, percent) {
+        return this.get(householdSize) * percent;
+    },
+    getMonthlyAtPercent: function(householdSize, percent) {
+        return this.getMonthly(householdSize) * percent;
+    }
+};
 
-    // LIS thresholds (current year income & assets)
-    const LIS_THRESHOLDS = {
-        single: {
-            income: 23475,      // > this = Not Likely Eligible (Income)
-            assets: 18090       // > this = Not Likely Eligible (Assets)
-        },
-        married: {
-            income: 31725,
-            assets: 36100
-        }
-    };
+// FPL percentage thresholds by program
+const FPL_PERCENTAGES = {
+    LIS: 1.50,              // 150% FPL
+    LIHEAP: 1.50,           // 150% FPL
+    SNAP_GROSS: 2.00,       // 200% FPL (gross income test)
+    SNAP_NET: 1.00,         // 100% FPL (net income test)
+    MSP_QMB: 1.00,          // 100% FPL
+    MSP_SLMB: 1.20,         // 120% FPL
+    MSP_QI: 1.35            // 135% FPL
+};
 
-    // MSP thresholds (monthly income & assets)
-    const MSP_THRESHOLDS = {
-        single: {
-            qmb: 1325,         // <= this = QMB
-            slmb: 1585,        // <= this = SLMB
-            qi: 1781,           // <= this = QI; > this = Not Likely Eligible (Income)
-            assets: 9950        // > this = Not Likely Eligible (Assets)
-        },
-        married: {
-            qmb: 1783,
-            slmb: 2135,
-            qi: 2400,
-            assets: 14910
-        }
-    };
+const UTILITY_ALLOWANCES = {
+    "Heating and/or Cooling": 758,
+    "Basic Limited Allowance": 402,
+    "Electric": 72,
+    "Gas": 72,
+    "Oil": 72,
+    "Propane": 72,
+    "Wood": 72,
+    "Coal": 72,
+    "Kerosene": 72,
+    "Water": 72,
+    "Sewage": 72,
+    "Trash": 72,
+    "Phone": 34,
+    "Homeless": 190
+};
 
-    // MSP income deductions
-    const MSP_DEDUCTIONS = {
-        employmentDeduction: 65,    // subtract from monthly employment income, then halve
-        otherDeduction: 20          // subtract from monthly non-employment income
-    };
+// PACE thresholds (previous year income) - NOT FPL-based
+const PACE_THRESHOLDS = {
+    single: {
+        pace: 14500,
+        pacenet: 33500,
+        buffer: 43500
+    },
+    married: {
+        pace: 17700,
+        pacenet: 41500,
+        buffer: 51500
+    },
+    minAgeYears: 64,
+    minAgeMonths: 11
+};
 
-    // PTRR thresholds (previous year income)
-    const PTRR_THRESHOLDS = {
-        incomeLimit: 46520,
-        halfIncomeTypes: ["ssa retirement", "ssi", "ssp", "ssdi", "railroad retirement tier 1"]
-    };
+// LIS thresholds (current year income & assets)
+const LIS_THRESHOLDS = {
+    incomePercent: FPL_PERCENTAGES.LIS,
+    getIncomeLimit: (householdSize) => FPL.getAtPercent(householdSize, FPL_PERCENTAGES.LIS),
+    assets: {
+        single: 18090,
+        married: 36100
+    }
+};
 
-    const SNAP_MAX_ALLOTMENTS = [0, 298, 546, 785, 994, 1183, 1421, 1571, 1789];
-    const SNAP_STANDARD_DEDUCTIONS = [0, 209, 209, 209, 223, 261, 299, 299, 299, 299, 299, 299, 299, 299, 299, 299];
-    const SNAP_GROSS_INCOME_LIMITS = [0, 2610, 3526, 4442, 5360, 6276, 7192, 8110, 9026, 9944, 10862, 11780, 12698, 13616, 14534, 15452];
-    const SNAP_NET_INCOME_LIMITS = [0, 1305, 1763, 2221, 2680, 3138, 3596, 4055, 4513, 4972, 5431, 5890, 6349, 6808, 7267, 7726, 8185];
-    const LIHEAP_INCOME_LIMITS = [0, 23475, 31725, 39975, 48225, 56475, 64725, 72975, 81225, 89475, 97725, 105975, 114225, 122475, 130725, 138975];
+// MSP thresholds (monthly income & assets)
+const MSP_THRESHOLDS = {
+    incomePercents: {
+        qmb: FPL_PERCENTAGES.MSP_QMB,
+        slmb: FPL_PERCENTAGES.MSP_SLMB,
+        qi: FPL_PERCENTAGES.MSP_QI
+    },
+    getIncomeLimit: (householdSize, level) => {
+        const percent = MSP_THRESHOLDS.incomePercents[level];
+        return FPL.getMonthlyAtPercent(householdSize, percent);
+    },
+    assets: {
+        single: 9950,
+        married: 14910
+    }
+};
 
-    const SNAP_SHELTER_COST_CAP = 744;
-    const SNAP_MEDICAL_EXPENSE_THRESHOLD = 35;
-    const SNAP_ELDERLY_DISABLED_ASSET_LIMIT = 4500;
-    const SNAP_MINIMUM_BENEFIT = 24;
-    const SNAP_EXPEDITED_INCOME_LIMIT = 150;
-    const SNAP_EXPEDITED_ASSET_LIMIT = 100;
+// MSP income deductions
+const MSP_DEDUCTIONS = {
+    employmentDeduction: 65,
+    otherDeduction: 20
+};
+
+// PTRR thresholds (previous year income) - NOT FPL-based
+const PTRR_THRESHOLDS = {
+    incomeLimit: 46520,
+    halfIncomeTypes: ["ssa retirement", "ssi", "ssp", "ssdi", "railroad retirement tier 1"]
+};
+
+// SNAP thresholds - derived from FPL
+const SNAP_MAX_ALLOTMENTS = [0, 298, 546, 785, 994, 1183, 1421, 1571, 1789];
+const SNAP_STANDARD_DEDUCTIONS = [0, 209, 209, 209, 223, 261, 299, 299, 299, 299, 299, 299, 299, 299, 299, 299];
+
+// Generate SNAP income limits from FPL
+const SNAP_GROSS_INCOME_LIMITS = Array.from({ length: 16 }, (_, i) => 
+    i === 0 ? 0 : Math.round(FPL.getMonthlyAtPercent(i, FPL_PERCENTAGES.SNAP_GROSS))
+);
+const SNAP_NET_INCOME_LIMITS = Array.from({ length: 17 }, (_, i) => 
+    i === 0 ? 0 : Math.round(FPL.getMonthlyAtPercent(i, FPL_PERCENTAGES.SNAP_NET))
+);
+
+// LIHEAP income limits (150% FPL annually)
+const LIHEAP_INCOME_LIMITS = Array.from({ length: 16 }, (_, i) => 
+    i === 0 ? 0 : Math.round(FPL.getAtPercent(i, FPL_PERCENTAGES.LIHEAP))
+);
+
+const SNAP_SHELTER_COST_CAP = 744;
+const SNAP_MEDICAL_EXPENSE_THRESHOLD = 35;
+const SNAP_ELDERLY_DISABLED_ASSET_LIMIT = 4500;
+const SNAP_MINIMUM_BENEFIT = 24;
+const SNAP_EXPEDITED_INCOME_LIMIT = 150;
+const SNAP_EXPEDITED_ASSET_LIMIT = 100;
 
     // ===== UTILITY FUNCTIONS =====
     function getQueryParameter(name) {
@@ -290,6 +331,8 @@ window.EligibilityUtils = (function() {
         // Constants
         BENEFIT_KEYS,
         INDIVIDUAL_BENEFITS,
+        FPL,
+        FPL_PERCENTAGES,
         UTILITY_ALLOWANCES,
         PACE_THRESHOLDS,
         LIS_THRESHOLDS,

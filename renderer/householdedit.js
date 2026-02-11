@@ -173,16 +173,31 @@ async function loadHouseholdMembers() {
 // ══════════════════════════════════════════════════════════════
 
 /**
- * Check if a program is still "open" (screeningInProgress is true for any member)
- * @param {object} clientData - The client data object containing householdMembers
+ * Check if a program is still "open" for screening
+ * Priority:
+ * 1. Check client-level programStatus (if set, this is authoritative)
+ * 2. If no client-level status, check if any member has screeningInProgress = true
+ * 3. If no members exist and no client-level status, default to true (open)
+ * @param {object} clientData - The client data object containing householdMembers and programStatus
  * @param {string} programKey - The program key (e.g., 'SNAP', 'LIHEAP', 'PACE', 'LIS', 'MSP', 'PTRR')
- * @returns {boolean} - Whether the program is still open for any member
+ * @returns {boolean} - Whether the program is still open
  */
 function isProgramOpen(clientData, programKey) {
+    // First check client-level program status (authoritative if set)
+    const clientProgramStatus = clientData.programStatus?.[programKey];
+    if (clientProgramStatus !== undefined && clientProgramStatus.screeningInProgress !== undefined) {
+        return clientProgramStatus.screeningInProgress === true;
+    }
+    
+    // Fall back to checking members
     const members = clientData.householdMembers || [];
     
+    // If no members exist and no client-level status, program is "open" by default
+    if (members.length === 0) {
+        return true;
+    }
+    
     // Program is "open" if ANY member has screeningInProgress = true for this program
-    // Benefits are stored directly on the member (e.g., member.SNAP, member.LIHEAP)
     return members.some(member => {
         const benefit = member[programKey];
         return benefit?.screeningInProgress === true;
@@ -405,8 +420,8 @@ async function loadSavedData() {
         // "Add Self" button
         await checkAndAddSelfButton(clientData);
 
-        // LIHEAP visibility - only apply if LIHEAP is still open
-        if (isProgramOpen(clientData, 'LIHEAP')) {
+        // LIHEAP visibility - apply if LIHEAP is open AND user has made a selection
+        if (isProgramOpen(clientData, 'LIHEAP') && clientData.liheapEnrollment) {
             await applyLiheapVisibility(clientData);
         }
 
@@ -425,9 +440,11 @@ async function loadSavedData() {
 
 function renderHouseholdMembers(clientData) {
     const container = document.getElementById('householdMemberContainer');
-    if (!clientData.householdMembers?.length) return;
-
+    if (!container) return;
+    
     container.innerHTML = '';
+    
+    if (!clientData.householdMembers?.length) return;
 
     const sorted = [...clientData.householdMembers].sort((a, b) => b.headOfHousehold - a.headOfHousehold);
 
@@ -438,15 +455,28 @@ function renderHouseholdMembers(clientData) {
         container.appendChild(el);
     });
 
-    // Wire up buttons via event delegation
-    container.addEventListener('click', async (e) => {
+    // Remove old listener by cloning the container
+    const newContainer = container.cloneNode(true);
+    container.parentNode.replaceChild(newContainer, container);
+
+    // Wire up buttons via event delegation on the fresh container
+    newContainer.addEventListener('click', async (e) => {
         const target = e.target;
         const memberId = target.getAttribute('data-member-id');
         if (!memberId) return;
 
+        // Fetch fresh client data for each action
+        const clientId = getQueryParam('id');
+        if (!clientId) return;
+
         if (target.classList.contains('edit-member-button')) {
-            const member = clientData.householdMembers.find(m => m.householdMemberId === memberId);
-            if (member) openEditModal(member);
+            try {
+                const freshClientData = await fetchClient(clientId);
+                const member = freshClientData.householdMembers?.find(m => m.householdMemberId === memberId);
+                if (member) openEditModal(member);
+            } catch (error) {
+                console.error('Error fetching member for edit:', error);
+            }
         } else if (target.classList.contains('delete-member-button')) {
             await deleteHouseholdMember(memberId);
         } else if (target.classList.contains('make-head-button')) {
@@ -811,10 +841,20 @@ async function addHouseholdMember() {
         const clientData = await fetchClient(clientId);
         const isFirstMember = !clientData.householdMembers?.length;
 
+        // Get program status from client level, defaulting to true (open) if not set
+        const programStatus = clientData.programStatus || {};
+        
         const memberData = {
             householdMemberId: crypto.randomUUID(),
             ...gatherModalData(),
             headOfHousehold: isFirstMember,
+            // Initialize based on client-level program status
+            SNAP: { screeningInProgress: programStatus.SNAP?.screeningInProgress ?? true },
+            LIHEAP: { screeningInProgress: programStatus.LIHEAP?.screeningInProgress ?? true },
+            PACE: { screeningInProgress: programStatus.PACE?.screeningInProgress ?? true },
+            LIS: { screeningInProgress: programStatus.LIS?.screeningInProgress ?? true },
+            MSP: { screeningInProgress: programStatus.MSP?.screeningInProgress ?? true },
+            PTRR: { screeningInProgress: programStatus.PTRR?.screeningInProgress ?? true },
         };
 
         const response = await fetch('/save-household-member', {

@@ -1,5 +1,16 @@
+// Ensure EligibilityUtils is available globally
+function getUtils() {
+    const Utils = window.EligibilityUtils;
+    if (!Utils) {
+        console.error('EligibilityUtils not loaded. Make sure eligibilityutils.js is included before estimations.js');
+        return null;
+    }
+    return Utils;
+}
+
 document.addEventListener('DOMContentLoaded', async function () {
-    const clientId = getQueryParameter('id'); // Get the client ID from the query parameter
+    const Utils = window.EligibilityUtils;
+    const clientId = getQueryParameter('id');
     const modal = document.getElementById('shelter-modal'); // Modal element
     const modalTitle = document.getElementById('modal-title'); // Modal title element
     const closeModal = document.getElementById('close-modal'); // Close button
@@ -903,65 +914,77 @@ async function displaySNAPHouseholds(prefetchedMembers, prefetchedClient) {
             return null;
         });
     
-        // Check if any SNAP household member has screening closed
-        const snapMembers = members.filter(m => m.meals?.toLowerCase() === "yes");
-        const screeningClosed = snapMembers.length > 0 && snapMembers[0]?.SNAP?.screeningInProgress === false;
+    // Check CLIENT-LEVEL program status ONLY for SNAP (household benefit)
+    const programStatus = currentClient?.programStatus || {};
+    const snapScreeningClosed = programStatus.SNAP?.screeningInProgress === false;
+    const snapCloseReason = programStatus.SNAP?.screeningCloseReason || 'N/A';
     
-        if (screeningClosed) {
-            // Show only the reopen button
-            const reopenDiv = document.createElement('div');
-            reopenDiv.classList.add('household-member-box');
-            reopenDiv.innerHTML = `
-                <h3>SNAP HOUSEHOLD</h3>
-                <p><strong>Members:</strong> ${snapMembers.map(m => `${capitalizeFirstLetter(m.firstName)} ${capitalizeFirstLetter(m.lastName)}`).join(', ')}</p>
-                        <div style="background-color:rgb(212, 212, 212); border: 1px solid rgb(0, 0, 0); padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center; width: 100%; box-sizing: border-box;">
-                    <p style="margin: 0 0 6px 0;"><strong>SNAP Screening Closed</strong></p>
-                    <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${snapMembers[0]?.SNAP?.screeningCloseReason || 'N/A'}</p>
-                    <button id="reopen-snap-screening-btn" 
-                        style="background-color: #007bff; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 12px; cursor: pointer; transition: background-color 0.3s;"
-                        onmouseover="this.style.backgroundColor='#0056b3'" 
-                        onmouseout="this.style.backgroundColor='#007bff'">
-                        Reopen SNAP Screening
-                    </button>
-                </div>
-            `;
+    const snapMembers = members.filter(m => m.meals?.toLowerCase() === "yes");
 
-            snapHouseholdContainer.appendChild(reopenDiv);
-    
-            document.getElementById('reopen-snap-screening-btn').addEventListener('click', async () => {
-                try {
-                    // Update each SNAP household member's SNAP object
-                    for (const member of snapMembers) {
-                        if (member.SNAP) {
-                            member.SNAP.screeningInProgress = true;
-                            member.SNAP.screeningCloseReason = null;
-                        }
+    if (snapScreeningClosed) {
+        // Show only the reopen button with grey styling matching other closed benefits
+        const reopenDiv = document.createElement('div');
+        reopenDiv.classList.add('household-member-box');
+        reopenDiv.style.backgroundColor = 'rgb(212, 212, 212)';
+        reopenDiv.style.borderColor = 'rgb(0, 0, 0)';
+        reopenDiv.innerHTML = `
+            <h3>SNAP HOUSEHOLD</h3>
+            ${snapMembers.length > 0 ? `<p><strong>Members:</strong> ${snapMembers.map(m => `${capitalizeFirstLetter(m.firstName)} ${capitalizeFirstLetter(m.lastName)}`).join(', ')}</p>` : ''}
+            <div style="padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center; width: 100%; box-sizing: border-box;">
+                <p style="margin: 0 0 6px 0;"><strong>SNAP Screening Closed</strong></p>
+                <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${snapCloseReason}</p>
+                <button id="reopen-snap-screening-btn" 
+                    style="background-color: #007bff; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 12px; cursor: pointer; transition: background-color 0.3s;"
+                    onmouseover="this.style.backgroundColor='#0056b3'" 
+                    onmouseout="this.style.backgroundColor='#007bff'">
+                    Reopen SNAP Screening
+                </button>
+            </div>
+        `;
+
+        snapHouseholdContainer.appendChild(reopenDiv);
+
+        document.getElementById('reopen-snap-screening-btn').addEventListener('click', async () => {
+            try {
+                // Update ALL members' SNAP object (not just snapMembers)
+                for (const member of members) {
+                    if (member.SNAP) {
+                        member.SNAP.screeningInProgress = true;
+                        member.SNAP.screeningCloseReason = null;
                     }
-    
-                    const saveResponse = await fetch(`/save-household-members`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ clientId, householdMembers: members })
-                    });
-    
-                    if (saveResponse.ok) {
-                        await addNoteToClient(clientId, '<strong>SNAP screening reopened.</strong>');
-                        await renderNotesContainer();
-                        await refreshAllDisplays();
-                    } else {
-                        console.error('Failed to reopen SNAP screening.');
-                    }
-                } catch (error) {
-                    console.error('Error reopening SNAP screening:', error);
                 }
-            });
-    
-            return; // Don't render the full SNAP display
-        }
-    
-        // Group members into SNAP households based on "meals=yes"
-        const snapHouseholds = [];
-        const processedMembers = new Set();
+
+                const saveResponse = await fetch(`/save-household-members`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientId, householdMembers: members })
+                });
+
+                if (saveResponse.ok) {
+                    // Also update client-level program status
+                    await updateClientProgramStatus(clientId, 'SNAP', true);
+                    
+                    await addNoteToClient(clientId, '<strong>SNAP screening reopened.</strong>');
+                    await renderNotesContainer();
+                    await refreshAllDisplays();
+                } else {
+                    console.error('Failed to reopen SNAP screening.');
+                }
+            } catch (error) {
+                console.error('Error reopening SNAP screening:', error);
+            }
+        });
+
+        return; // Don't render the full SNAP display
+    }
+
+// Only check enrollment status if screening is NOT closed
+const isAlreadyEnrolled = currentClient?.snap === 'yes';
+const isNotInterested = currentClient?.snap === 'notinterested';
+
+// Group members into SNAP households based on "meals=yes"
+const snapHouseholds = [];
+const processedMembers = new Set();
     
         for (const member of members) {
             if (processedMembers.has(member.householdMemberId)) continue;
@@ -991,10 +1014,6 @@ async function displaySNAPHouseholds(prefetchedMembers, prefetchedClient) {
             // Check if any SNAP household member has screening in progress
             const anySnapScreeningActive = members.some(m => m.SNAP?.screeningInProgress === true);
 
-            // Check if client is already enrolled in SNAP or not interested
-            const isAlreadyEnrolled = currentClient?.snap === 'yes';
-            const isNotInterested = currentClient?.snap === 'notinterested';
-
             // Apply background color based on state
             if (isAlreadyEnrolled || isNotInterested) {
                 noHouseholdsDiv.style.backgroundColor = '#f8d7da'; // Red for already enrolled / not interested
@@ -1003,6 +1022,10 @@ async function displaySNAPHouseholds(prefetchedMembers, prefetchedClient) {
                 noHouseholdsDiv.style.backgroundColor = '#fff3cd'; // Yellow for no households found
                 noHouseholdsDiv.style.borderColor = '#ffc107';
             }
+            
+            // Ensure consistent width
+            noHouseholdsDiv.style.width = '100%';
+            noHouseholdsDiv.style.boxSizing = 'border-box';
 
             noHouseholdsDiv.innerHTML = `
                 <h3>SNAP HOUSEHOLD</h3>
@@ -1132,9 +1155,10 @@ async function displaySNAPHouseholds(prefetchedMembers, prefetchedClient) {
                     <option value="Already Enrolled">Already Enrolled</option>
                     <option value="Ineligible - Income">Ineligible - Income</option>
                     <option value="Ineligible - Income and Assets">Ineligible - Income and Assets</option>
-                    <option value="Client Not Interested"> Not Interested</option>
-                    <option value="Client Unresponsive">Too Confusing</option>
+                    <option value="Client Not Interested">Not Interested</option>
+                    <option value="Too Confusing">Too Confusing</option>
                     <option value="Will Call Back">Will Call Back</option>
+                    <option value="Hard Determination">Use Hard Determination Closeout Reasons</option>
                 </select>
                 <div style="display: flex; gap: 10px; justify-content: center; margin-top: 16px;">
                     <button id="snap-close-cancel-btn" style="padding: 8px 16px; cursor: pointer;">Cancel</button>
@@ -1155,6 +1179,42 @@ async function displaySNAPHouseholds(prefetchedMembers, prefetchedClient) {
             }
         });
     }
+
+    // Map hard determination reason for SNAP
+    function mapSnapHardDeterminationReason(eligibilityArray, clientSnap) {
+        const eligStr = (eligibilityArray || []).join(' ').toUpperCase();
+        
+        // Check client-level statuses first
+        if (clientSnap === 'yes') return 'Already Enrolled';
+        if (clientSnap === 'notinterested') return 'Client Not Interested';
+        
+        // Check eligibility array
+        if (eligStr.includes('ALREADY ENROLLED')) return 'Already Enrolled';
+        if (eligStr.includes('NOT INTERESTED')) return 'Client Not Interested';
+        if (eligStr.includes('INCOME AND ASSETS') || (eligStr.includes('INCOME') && eligStr.includes('ASSETS'))) return 'Ineligible - Income and Assets';
+        if (eligStr.includes('ASSETS') && eligStr.includes('NOT LIKELY')) return 'Ineligible - Income and Assets';
+        if (eligStr.includes('INCOME') && eligStr.includes('NOT LIKELY')) return 'Ineligible - Income';
+        if (eligStr.includes('NOT LIKELY')) return 'Ineligible - Income';
+        
+        return 'Ineligible - Income'; // Fallback
+    }
+
+    // Check if SNAP is in a "not eligible" (red) state
+    function isSnapNotEligible(eligibilityArray, clientSnap) {
+        const eligStr = (eligibilityArray || []).join(' ').toUpperCase();
+        
+        if (clientSnap === 'yes' || clientSnap === 'notinterested') return true;
+        
+        const hardCloseouts = [
+            'ALREADY ENROLLED', 'NOT INTERESTED', 'NOT LIKELY ELIGIBLE'
+        ];
+        
+        for (const status of hardCloseouts) {
+            if (eligStr.includes(status)) return true;
+        }
+        
+        return false;
+    }
     
     function openCloseSnapModal(clientId, allMembers, household) {
         createCloseSnapModal();
@@ -1165,66 +1225,71 @@ async function displaySNAPHouseholds(prefetchedMembers, prefetchedClient) {
         select.value = '';
         modal.style.display = 'flex';
 
-        // Auto-select the most appropriate reason based on SNAP eligibility
-        const snapEligibility = (household[0]?.SNAP?.eligibility || []).join(' ').toUpperCase();
-        const clientId2 = getQueryParameter('id');
+        // Fetch fresh client data when modal opens
+        fetch(`/get-client/${clientId}`)
+            .then(response => response.ok ? response.json() : null)
+            .then(freshClient => {
+                // Get SNAP eligibility from the first household member
+                const snapEligibility = household[0]?.SNAP?.eligibility || [];
 
-        // Check client-level statuses first (from the prefetched client or fresh fetch)
-        const isAlreadyEnrolled = client?.snap === 'yes';
-        const isNotInterested = client?.snap === 'notinterested';
+                // Check if SNAP is in a "not eligible" state for auto-selection using fresh client data
+                const snapIsNotEligible = isSnapNotEligible(snapEligibility, freshClient?.snap);
 
-        if (isAlreadyEnrolled) {
-            select.value = 'Already Enrolled';
-        } else if (isNotInterested) {
-            select.value = 'Not Interested';
-        } else if (snapEligibility.includes('ALREADY ENROLLED')) {
-            select.value = 'Already Enrolled';
-        } else if (snapEligibility.includes('NOT INTERESTED')) {
-            select.value = 'Client Not Interested';
-        } else if (snapEligibility.includes('INCOME AND ASSETS') || snapEligibility.includes('ASSETS')) {
-            select.value = 'Ineligible - Income and Assets';
-        } else if (snapEligibility.includes('INCOME') && snapEligibility.includes('NOT LIKELY')) {
-            select.value = 'Ineligible - Income';
-        }
+                if (snapIsNotEligible) {
+                    // Auto-select "Hard Determination" when the benefit is red
+                    select.value = 'Hard Determination';
+                }
 
-        // Remove old listener by cloning
-        const newConfirmBtn = confirmBtn.cloneNode(true);
-        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-    
-        newConfirmBtn.addEventListener('click', async () => {
-            const reason = select.value;
-            if (!reason) {
-                alert('Please select a reason.');
-                return;
-            }
-    
-            try {
-                // Update each member in the SNAP household
-                for (const member of household) {
-                    if (member.SNAP) {
-                        member.SNAP.screeningInProgress = false;
-                        member.SNAP.screeningCloseReason = reason;
+                // Remove old listener by cloning
+                const newConfirmBtn = confirmBtn.cloneNode(true);
+                confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+                newConfirmBtn.addEventListener('click', async () => {
+                    let reason = select.value;
+                    if (!reason) {
+                        alert('Please select a reason.');
+                        return;
                     }
-                }
-    
-                const saveResponse = await fetch(`/save-household-members`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ clientId, householdMembers: allMembers })
+
+                    // If "Hard Determination" is selected, map to the appropriate reason using fresh client data
+                    if (reason === 'Hard Determination') {
+                        reason = mapSnapHardDeterminationReason(snapEligibility, freshClient?.snap);
+                    }
+
+                    try {
+                        // Update each member in the SNAP household
+                        for (const member of household) {
+                            if (member.SNAP) {
+                                member.SNAP.screeningInProgress = false;
+                                member.SNAP.screeningCloseReason = reason;
+                            }
+                        }
+
+                        const saveResponse = await fetch(`/save-household-members`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ clientId, householdMembers: allMembers })
+                        });
+
+                        if (saveResponse.ok) {
+                            // Also update client-level program status
+                            await updateClientProgramStatus(clientId, 'SNAP', false, reason);
+                            
+                            modal.style.display = 'none';
+                            await addNoteToClient(clientId, `<strong>SNAP screening closed.</strong><br><br> Reason: ${reason}`);
+                            await renderNotesContainer();
+                            await refreshAllDisplays();
+                        } else {
+                            console.error('Failed to close SNAP screening.');
+                        }
+                    } catch (error) {
+                        console.error('Error closing SNAP screening:', error);
+                    }
                 });
-    
-                if (saveResponse.ok) {
-                    modal.style.display = 'none';
-                    await addNoteToClient(clientId, `<strong>SNAP screening closed.</strong><br><br> Reason: ${reason}`);
-                    await renderNotesContainer();
-                    await refreshAllDisplays();
-                } else {
-                    console.error('Failed to close SNAP screening.');
-                }
-            } catch (error) {
-                console.error('Error closing SNAP screening:', error);
-            }
-        });
+            })
+            .catch(error => {
+                console.error('Error fetching fresh client data for SNAP modal:', error);
+            });
     }
     
     async function addNoteToClient(clientId, noteText) {
@@ -1263,6 +1328,40 @@ async function displaySNAPHouseholds(prefetchedMembers, prefetchedClient) {
             await window.renderNotes(clientId);
         } else {
             console.warn('renderNotes function from notes.js not available. Notes may not refresh.');
+        }
+    }
+
+    async function updateClientProgramStatus(clientId, benefit, isOpen, closeReason = null) {
+        try {
+            // Fetch current client data
+            const response = await fetch(`/get-client/${clientId}`);
+            if (!response.ok) throw new Error('Failed to fetch client data');
+            const clientData = await response.json();
+    
+            // Initialize programStatus if it doesn't exist
+            const programStatus = clientData.programStatus || {};
+            
+            // Update the specific benefit's status
+            programStatus[benefit] = {
+                screeningInProgress: isOpen,
+                screeningCloseReason: isOpen ? null : closeReason
+            };
+    
+            // Save updated client data
+            const updateResponse = await fetch(`/update-client`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    clientId, 
+                    clientData: { programStatus } 
+                })
+            });
+    
+            if (!updateResponse.ok) {
+                console.error(`Failed to update client program status for ${benefit}`);
+            }
+        } catch (error) {
+            console.error(`Error updating client program status for ${benefit}:`, error);
         }
     }
 
@@ -1312,8 +1411,11 @@ async function checkAndAutoTerminateScreening(members) {
     // Only check if screening is currently in progress
     if (client.screeningInProgress !== true) return;
 
+    // Don't auto-terminate if there are no household members
+    if (!members || members.length === 0) return;
+
     const allBenefits = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
-    
+
     // Check if every member has all their benefits either closed (screeningInProgress === false) or not checked
     const allClosed = members.every(member => {
         return allBenefits.every(benefit => {
@@ -1381,65 +1483,72 @@ async function displayLIHEAPHouseholds(prefetchedMembers, prefetchedClient) {
         m => (m.deceased ?? '').toLowerCase() !== 'yes'
     );
 
-// Check if client is not interested in LIHEAP or already enrolled
-const clientId = getQueryParameter('id');
-const client = prefetchedClient || await fetch(`/get-client/${clientId}`)
-    .then(response => response.json())
-    .catch(error => {
-        console.error('Error fetching client data:', error);
-        return null;
-    });
+    // Check if client is not interested in LIHEAP or already enrolled
+    const clientId = getQueryParameter('id');
+    const client = prefetchedClient || await fetch(`/get-client/${clientId}`)
+        .then(response => response.json())
+        .catch(error => {
+            console.error('Error fetching client data:', error);
+            return null;
+        });
 
-// Check if LIHEAP screening is closed FIRST (before checking enrollment status)
-const liheapScreeningClosed = activeMembersForLIHEAP.length > 0 && activeMembersForLIHEAP[0]?.LIHEAP?.screeningInProgress === false;
+    // Check CLIENT-LEVEL program status ONLY for LIHEAP (household benefit)
+    const programStatus = client?.programStatus || {};
+    const liheapScreeningClosed = programStatus.LIHEAP?.screeningInProgress === false;
+    const liheapCloseReason = programStatus.LIHEAP?.screeningCloseReason || 'N/A';
 
-if (liheapScreeningClosed) {
-    const reopenDiv = document.createElement('div');
-    reopenDiv.classList.add('household-member-box');
-    reopenDiv.innerHTML = `
-        <h3>LIHEAP HOUSEHOLD</h3>
-                <div style="background-color:rgb(212, 212, 212); border: 1px solid rgb(0, 0, 0); padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center; width: 100%; box-sizing: border-box;">
-            <p style="margin: 0 0 6px 0;"><strong>LIHEAP Screening Closed</strong></p>
-            <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${activeMembersForLIHEAP[0]?.LIHEAP?.screeningCloseReason || 'N/A'}</p>
-            <button id="reopen-liheap-screening-btn" 
-                style="background-color: #007bff; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 12px; cursor: pointer; transition: background-color 0.3s;"
-                onmouseover="this.style.backgroundColor='#0056b3'" 
-                onmouseout="this.style.backgroundColor='#007bff'">
-                Reopen LIHEAP Screening
-            </button>
-        </div>
-    `;
-    liheapHouseholdContainer.appendChild(reopenDiv);
+    if (liheapScreeningClosed) {
+        const reopenDiv = document.createElement('div');
+        reopenDiv.classList.add('household-member-box');
+        reopenDiv.style.backgroundColor = 'rgb(212, 212, 212)';
+        reopenDiv.style.borderColor = 'rgb(0, 0, 0)';
+        reopenDiv.innerHTML = `
+            <h3>LIHEAP HOUSEHOLD</h3>
+            <div style="padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center; width: 100%; box-sizing: border-box;">
+                <p style="margin: 0 0 6px 0;"><strong>LIHEAP Screening Closed</strong></p>
+                <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${liheapCloseReason}</p>
+                <button id="reopen-liheap-screening-btn" 
+                    style="background-color: #007bff; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 12px; cursor: pointer; transition: background-color 0.3s;"
+                    onmouseover="this.style.backgroundColor='#0056b3'" 
+                    onmouseout="this.style.backgroundColor='#007bff'">
+                    Reopen LIHEAP Screening
+                </button>
+            </div>
+        `;
+        liheapHouseholdContainer.appendChild(reopenDiv);
 
-    document.getElementById('reopen-liheap-screening-btn').addEventListener('click', async () => {
-        try {
-            for (const member of activeMembersForLIHEAP) {
-                if (member.LIHEAP) {
-                    member.LIHEAP.screeningInProgress = true;
-                    member.LIHEAP.screeningCloseReason = null;
+        document.getElementById('reopen-liheap-screening-btn').addEventListener('click', async () => {
+            try {
+                for (const member of members) {
+                    if (member.LIHEAP) {
+                        member.LIHEAP.screeningInProgress = true;
+                        member.LIHEAP.screeningCloseReason = null;
+                    }
                 }
+
+                const saveResponse = await fetch(`/save-household-members`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientId, householdMembers: members })
+                });
+
+                if (saveResponse.ok) {
+                    // Also update client-level program status
+                    await updateClientProgramStatus(clientId, 'LIHEAP', true);
+                    
+                    await addNoteToClient(clientId, '<strong>LIHEAP screening reopened.</strong>');
+                    await renderNotesContainer();
+                    await refreshAllDisplays();
+                } else {
+                    console.error('Failed to reopen LIHEAP screening.');
+                }
+            } catch (error) {
+                console.error('Error reopening LIHEAP screening:', error);
             }
+        });
 
-            const saveResponse = await fetch(`/save-household-members`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clientId, householdMembers: members })
-            });
-
-            if (saveResponse.ok) {
-                await addNoteToClient(clientId, '<strong>LIHEAP screening reopened.</strong>');
-                await renderNotesContainer();
-                await refreshAllDisplays();
-            } else {
-                console.error('Failed to reopen LIHEAP screening.');
-            }
-        } catch (error) {
-            console.error('Error reopening LIHEAP screening:', error);
-        }
-    });
-
-    return; // Exit early - screening is closed, don't show anything else
-}
+        return; // Exit early - screening is closed, don't show anything else
+    }
 
 // Only check enrollment status if screening is NOT closed
 const isLiheapAlreadyEnrolled = client?.liheapEnrollment === 'yes' && client?.heatingCrisis === 'no';
@@ -1451,6 +1560,8 @@ if (isLiheapAlreadyEnrolled || isLiheapNotInterested) {
     noHouseholdsDiv.classList.add('household-member-box');
     noHouseholdsDiv.style.backgroundColor = '#f8d7da'; // Red for already enrolled / not interested
     noHouseholdsDiv.style.borderColor = '#f5c6cb';
+    noHouseholdsDiv.style.width = '100%'; // Ensure full width
+    noHouseholdsDiv.style.boxSizing = 'border-box'; // Consistent box sizing
 
     const anyLiheapScreeningActive = members.some(m => m.LIHEAP?.screeningInProgress === true);
 
@@ -1476,10 +1587,40 @@ if (isLiheapAlreadyEnrolled || isLiheapNotInterested) {
     }
     return;
 }
+
+// Check if there are no active LIHEAP members (no household members found)
+if (activeMembersForLIHEAP.length === 0) {
+    const noHouseholdsDiv = document.createElement('div');
+    noHouseholdsDiv.classList.add('household-member-box');
+    noHouseholdsDiv.style.backgroundColor = '#fff3cd'; // Yellow for no households found
+    noHouseholdsDiv.style.borderColor = '#ffc107';
+    noHouseholdsDiv.style.width = '100%';
+    noHouseholdsDiv.style.boxSizing = 'border-box';
+
+    const anyLiheapScreeningActive = members.some(m => m.LIHEAP?.screeningInProgress === true);
+
+    noHouseholdsDiv.innerHTML = `
+        <h3>LIHEAP HOUSEHOLD</h3>
+        <p>NO LIHEAP HOUSEHOLD MEMBERS FOUND.</p>
+        ${anyLiheapScreeningActive ? `
+            <button class="btn-close-liheap-screening" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Close LIHEAP Screening</button>
+        ` : ''}
+    `;
+    liheapHouseholdContainer.appendChild(noHouseholdsDiv);
+
+    if (anyLiheapScreeningActive) {
+        const closeBtn = noHouseholdsDiv.querySelector('.btn-close-liheap-screening');
+        closeBtn.addEventListener('click', () => {
+            const liheapMembers = members.filter(m => m.LIHEAP?.screeningInProgress === true);
+            openCloseLiheapModal(clientId, members, liheapMembers);
+        });
+    }
+    return;
+}
     
         // Use the combined values from the first active member (uniform across household)
         const combinedYearlyIncome = activeMembersForLIHEAP[0]?.LIHEAP?.combinedYearlyIncome || 0;
-        const eligibility = activeMembersForLIHEAP[0]?.LIHEAP?.eligibility?.map(capitalizeFirstLetter) || 'Not Available';
+        const eligibility = activeMembersForLIHEAP[0]?.LIHEAP?.eligibility?.map(capitalizeFirstLetter) || 'No LIHEAP Household Members Found';
     
         // Create a container for the LIHEAP household details
         const householdDiv = document.createElement('div');
@@ -1518,8 +1659,10 @@ if (isLiheapAlreadyEnrolled || isLiheapNotInterested) {
             </details>
                         <button class="btn-close-liheap-screening" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Close LIHEAP Screening</button>
 
-            <p><strong>Members:</strong> ${activeMembersForLIHEAP.map(member => `${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.lastName)}`).join(', ')}</p>
-            <p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
+<p><strong>Members:</strong> ${activeMembersForLIHEAP.length > 0 
+    ? activeMembersForLIHEAP.map(member => `${capitalizeFirstLetter(member.firstName || '')} ${capitalizeFirstLetter(member.lastName || '')}`).join(', ') 
+    : 'N/A'}</p>
+                <p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
         `;
     
         liheapHouseholdContainer.appendChild(householdDiv);
@@ -1530,7 +1673,6 @@ if (isLiheapAlreadyEnrolled || isLiheapNotInterested) {
         });
     }
 
-    // --- LIHEAP Screening Close Modal ---
     function createCloseLiheapModal() {
         if (document.getElementById('close-liheap-modal')) return;
 
@@ -1556,8 +1698,9 @@ if (isLiheapAlreadyEnrolled || isLiheapNotInterested) {
                     <option value="Ineligible - Income">Ineligible - Income</option>
                     <option value="Subsidized Housing and No Heating Responsibility">Subsidized Housing and No Heating Responsibility</option>
                     <option value="Client Not Interested">Not Interested</option>
-                    <option value="Client Unresponsive">Too Confusing</option>
+                    <option value="Too Confusing">Too Confusing</option>
                     <option value="Will Call Back">Will Call Back</option>
+                    <option value="Hard Determination">Use Hard Determination Closeout Reasons</option>
                 </select>
                 <div style="display: flex; gap: 10px; justify-content: center; margin-top: 16px;">
                     <button id="liheap-close-cancel-btn" style="padding: 8px 16px; cursor: pointer;">Cancel</button>
@@ -1579,6 +1722,45 @@ if (isLiheapAlreadyEnrolled || isLiheapNotInterested) {
         });
     }
 
+    // Map hard determination reason for LIHEAP
+    function mapLiheapHardDeterminationReason(eligibilityArray, liheapEnrollment, heatingCrisis, subsidizedHousing, heatingCost) {
+        const eligStr = (eligibilityArray || []).join(' ').toUpperCase();
+        
+        // Check client-level statuses first
+        if (liheapEnrollment === 'yes' && heatingCrisis === 'no') return 'Already Enrolled';
+        if (liheapEnrollment === 'notinterested') return 'Client Not Interested';
+        
+        // Check eligibility array
+        if (eligStr.includes('ALREADY ENROLLED')) return 'Already Enrolled';
+        if (eligStr.includes('NOT INTERESTED')) return 'Client Not Interested';
+        if (eligStr.includes('HEATING COST INCLUDED') || (subsidizedHousing === 'yes' && heatingCost === 'yes')) {
+            return 'Subsidized Housing and No Heating Responsibility';
+        }
+        if (eligStr.includes('INCOME') && eligStr.includes('NOT LIKELY')) return 'Ineligible - Income';
+        if (eligStr.includes('NOT LIKELY')) return 'Ineligible - Income';
+        
+        return 'Ineligible - Income'; // Fallback
+    }
+
+    // Check if LIHEAP is in a "not eligible" (red) state
+    function isLiheapNotEligible(eligibilityArray, liheapEnrollment, heatingCrisis, subsidizedHousing, heatingCost) {
+        const eligStr = (eligibilityArray || []).join(' ').toUpperCase();
+        
+        if (liheapEnrollment === 'yes' && heatingCrisis === 'no') return true;
+        if (liheapEnrollment === 'notinterested') return true;
+        if (subsidizedHousing === 'yes' && heatingCost === 'yes') return true;
+        
+        const hardCloseouts = [
+            'ALREADY ENROLLED', 'NOT INTERESTED', 'NOT LIKELY ELIGIBLE', 'HEATING COST INCLUDED'
+        ];
+        
+        for (const status of hardCloseouts) {
+            if (eligStr.includes(status)) return true;
+        }
+        
+        return false;
+    }
+
     function openCloseLiheapModal(clientId, allMembers, activeLiheapMembers) {
         createCloseLiheapModal();
         const modal = document.getElementById('close-liheap-modal');
@@ -1588,64 +1770,82 @@ if (isLiheapAlreadyEnrolled || isLiheapNotInterested) {
         select.value = '';
         modal.style.display = 'flex';
 
-        // Auto-select the most appropriate reason based on LIHEAP eligibility
-        const liheapEligibility = (activeLiheapMembers[0]?.LIHEAP?.eligibility || []).join(' ').toUpperCase();
+        // Fetch fresh client data when modal opens
+        fetch(`/get-client/${clientId}`)
+            .then(response => response.ok ? response.json() : null)
+            .then(freshClient => {
+                // Get LIHEAP eligibility from the first active member
+                const liheapEligibility = activeLiheapMembers[0]?.LIHEAP?.eligibility || [];
 
-        // Check client-level statuses
-        const isLiheapAlreadyEnrolled = client?.liheapEnrollment === 'yes' && client?.heatingCrisis === 'no';
-        const isLiheapNotInterested = client?.liheapEnrollment === 'notinterested';
+                // Check if LIHEAP is in a "not eligible" state for auto-selection using fresh client data
+                const liheapIsNotEligible = isLiheapNotEligible(
+                    liheapEligibility,
+                    freshClient?.liheapEnrollment,
+                    freshClient?.heatingCrisis,
+                    freshClient?.subsidizedHousing,
+                    freshClient?.heatingCost
+                );
 
-        if (isLiheapAlreadyEnrolled) {
-            select.value = 'Already Enrolled';
-        } else if (isLiheapNotInterested) {
-            select.value = 'Client Not Interested';
-        } else if (liheapEligibility.includes('ALREADY ENROLLED')) {
-            select.value = 'Already Enrolled';
-        } else if (liheapEligibility.includes('NOT INTERESTED')) {
-            select.value = 'Client Not Interested';
-        } else if (liheapEligibility.includes('HEATING COST INCLUDED') && liheapEligibility.includes('SUBSIDIZED')) {
-            select.value = 'Subsidized Housing and No Heating Responsibility';
-        } else if (liheapEligibility.includes('INCOME') && liheapEligibility.includes('NOT LIKELY')) {
-            select.value = 'Ineligible - Income';
-        }
+                if (liheapIsNotEligible) {
+                    // Auto-select "Hard Determination" when the benefit is red
+                    select.value = 'Hard Determination';
+                }
 
-        // Remove old listener by cloning
-        const newConfirmBtn = confirmBtn.cloneNode(true);
-        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+                // Remove old listener by cloning
+                const newConfirmBtn = confirmBtn.cloneNode(true);
+                confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
 
-        newConfirmBtn.addEventListener('click', async () => {
-            const reason = select.value;
-            if (!reason) {
-                alert('Please select a reason.');
-                return;
-            }
-
-            try {
-                for (const member of activeLiheapMembers) {
-                    if (member.LIHEAP) {
-                        member.LIHEAP.screeningInProgress = false;
-                        member.LIHEAP.screeningCloseReason = reason;
+                newConfirmBtn.addEventListener('click', async () => {
+                    let reason = select.value;
+                    if (!reason) {
+                        alert('Please select a reason.');
+                        return;
                     }
-                }
 
-                const saveResponse = await fetch(`/save-household-members`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ clientId, householdMembers: allMembers })
+                    // If "Hard Determination" is selected, map to the appropriate reason using fresh client data
+                    if (reason === 'Hard Determination') {
+                        reason = mapLiheapHardDeterminationReason(
+                            liheapEligibility,
+                            freshClient?.liheapEnrollment,
+                            freshClient?.heatingCrisis,
+                            freshClient?.subsidizedHousing,
+                            freshClient?.heatingCost
+                        );
+                    }
+
+                    try {
+                        for (const member of activeLiheapMembers) {
+                            if (member.LIHEAP) {
+                                member.LIHEAP.screeningInProgress = false;
+                                member.LIHEAP.screeningCloseReason = reason;
+                            }
+                        }
+
+                        const saveResponse = await fetch(`/save-household-members`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ clientId, householdMembers: allMembers })
+                        });
+
+                        if (saveResponse.ok) {
+                            // Also update client-level program status
+                            await updateClientProgramStatus(clientId, 'LIHEAP', false, reason);
+                            
+                            modal.style.display = 'none';
+                            await addNoteToClient(clientId, `<strong>LIHEAP screening closed.</strong><br><br> Reason: ${reason}`);
+                            await renderNotesContainer();
+                            await refreshAllDisplays();
+                        } else {
+                            console.error('Failed to close LIHEAP screening.');
+                        }
+                    } catch (error) {
+                        console.error('Error closing LIHEAP screening:', error);
+                    }
                 });
-
-                if (saveResponse.ok) {
-                    modal.style.display = 'none';
-                    await addNoteToClient(clientId, `<strong>LIHEAP screening closed.</strong><br><br> Reason: ${reason}`);
-                    await renderNotesContainer();
-                    await refreshAllDisplays();
-                } else {
-                    console.error('Failed to close LIHEAP screening.');
-                }
-            } catch (error) {
-                console.error('Error closing LIHEAP screening:', error);
-            }
-        });
+            })
+            .catch(error => {
+                console.error('Error fetching fresh client data for LIHEAP modal:', error);
+            });
     }
 
 // After PACEEligibilityCheck, reload and display updated household members
@@ -1731,9 +1931,13 @@ function calculateYearlyIncome(amount, frequency, startDate, endDate, type = "Pr
     console.log(`Prorated income: Amount: ${amount}, Frequency: ${frequency}, Prorated Yearly Income: ${proratedYearlyIncome}`);
     return proratedYearlyIncome;
 }
-
 async function PACEEligibilityCheck(members) {
-    // Step 1: Precompute adjustedIncome for all members
+    const Utils = getUtils();
+    if (!Utils) {
+        console.error('Cannot run PACEEligibilityCheck: EligibilityUtils not available');
+        return;
+    }
+    // Step 1: Calculate adjusted income for each member
     for (const member of members) {
         try {
             // Skip deceased members - set PACE to Not Checked
@@ -1881,23 +2085,23 @@ if (years < 64 || (years === 64 && months < 11) || (years === 64 && months === 1
     } else {
         // Proceed to income-based eligibility checks only if none of the above conditions are met
         if (spouse) {
-            if (member.combinedIncome < 17700) {
+            if (member.combinedIncome < Utils.PACE_THRESHOLDS.married.pace) {
                 eligibility.push("Likely Eligible for PACE");
-            } else if (member.combinedIncome >= 17701 && member.combinedIncome <= 41500) {
+            } else if (member.combinedIncome >= Utils.PACE_THRESHOLDS.married.pace && member.combinedIncome <= Utils.PACE_THRESHOLDS.married.pacenet) {
                 eligibility.push("Likely Eligible for PACENET");
-            } else if (member.combinedIncome >= 41501 && member.combinedIncome <= 51500) {
+            } else if (member.combinedIncome >= Utils.PACE_THRESHOLDS.married.pacenet && member.combinedIncome <= Utils.PACE_THRESHOLDS.married.buffer) {
                 eligibility.push("Likely Ineligible but Within Buffer");
-            } else if (member.combinedIncome > 51500) {
+            } else if (member.combinedIncome > Utils.PACE_THRESHOLDS.married.buffer) {
                 eligibility.push("Not Likely Eligible for PACE or PACENET (Income)");
             }
         } else {
-            if (member.combinedIncome < 14500) {
+            if (member.combinedIncome < Utils.PACE_THRESHOLDS.single.pace) {
                 eligibility.push("Likely Eligible for PACE");
-            } else if (member.combinedIncome >= 14501 && member.combinedIncome <= 33500) {
+            } else if (member.combinedIncome >= Utils.PACE_THRESHOLDS.single.pace && member.combinedIncome <= Utils.PACE_THRESHOLDS.single.pacenet) {
                 eligibility.push("Likely Eligible for PACENET");
-            } else if (member.combinedIncome >= 33501 && member.combinedIncome <= 43500) {
+            } else if (member.combinedIncome >= Utils.PACE_THRESHOLDS.single.pacenet && member.combinedIncome <= Utils.PACE_THRESHOLDS.single.buffer) {
                 eligibility.push("Likely Ineligible but Within Buffer");
-            } else if (member.combinedIncome > 43500) {
+            } else if (member.combinedIncome > Utils.PACE_THRESHOLDS.single.buffer) {
                 eligibility.push("Not Likely Eligible for PACE or PACENET (Income)");
             }
         }
@@ -1938,7 +2142,11 @@ try {
 }}
 
 async function PTRREligibilityCheck(members) {
-
+    const Utils = getUtils();
+    if (!Utils) {
+        console.error('Cannot run PTRREligibilityCheck: EligibilityUtils not available');
+        return;
+    }
         // Get the client ID from the query parameter at the top of the function
         const clientId = getQueryParameter('id');
 
@@ -1983,13 +2191,8 @@ async function PTRREligibilityCheck(members) {
                         income.endDate
                     );
                 
-                    // If income kind is "Social Security Retirement" or "Railroad Retirement", divide by 2
                     if (
-                        income.kind?.toLowerCase() === "ssa retirement" || // Case-insensitive comparison
-                        income.kind?.toLowerCase() === "ssi" ||
-                        income.kind?.toLowerCase() === "ssp" ||
-                        income.kind?.toLowerCase() === "ssdi" ||
-                        income.kind?.toLowerCase() === "railroad retirement tier 1"
+                        Utils.PTRR_THRESHOLDS.halfIncomeTypes.includes(income.kind?.toLowerCase())
                     ) {
                         yearlyAmount /= 2;
                     }
@@ -2068,6 +2271,8 @@ if (spouse) {
     
                 if (member.residenceStatus?.toLowerCase() === "other") {
                     eligibility.push("No Formal Lease");
+                } else if (!member.residenceStatus || member.residenceStatus.toLowerCase() === "n/a") {
+                    eligibility.push("Needs Previous Year Residence Status");
                 } else if (applicationStatus === "yes") {
                     eligibility.push("Already Applied");
                 } else if (!(age >= 18 && isDisabled) && !(age >= 50 && isWidowed) && !(age >= 65)) {
@@ -2080,9 +2285,9 @@ if (spouse) {
          eligibility.push("Needs Current Enrollment Status");
         } else if (applicationStatus === "notinterested") {
             eligibility.push("Not Interested");
-     } else if (applicationStatus.toLowerCase().trim() === "no" && totalGrossIncome > 46520) {
-                    eligibility.push("Not Likely Eligible for PTRR (Income)");
-                } else {
+        } else if (applicationStatus.toLowerCase().trim() === "no" && totalGrossIncome > Utils.PTRR_THRESHOLDS.incomeLimit) {
+            eligibility.push("Not Likely Eligible for PTRR (Income)");
+        } else {
                     const relevantExpenses = (member.expenses || []).filter(expense => {
                         const residenceStatus = freshClient.residenceStatus?.toLowerCase();
                         const isPropertyTax = expense.kind?.trim() === "Property Taxes";
@@ -2148,7 +2353,11 @@ try {
 }}
 
 async function LISEligibilityCheck(members) {
-    for (const member of members) {
+    const Utils = getUtils();
+    if (!Utils) {
+        console.error('Cannot run LISEligibilityCheck: EligibilityUtils not available');
+        return;
+    }    for (const member of members) {
         try {
             // Skip deceased members - set LIS to Not Checked
             if ((member.deceased ?? '').toLowerCase() === 'yes') {
@@ -2319,17 +2528,17 @@ if (spouse) {
                 // Step 4: Determine LIS eligibility
                 let lisEligibility;
                 if (spouse) {
-                    if (combinedIncome > 31725) {
+                    if (combinedIncome > Utils.LIS_THRESHOLDS.married.income) {
                         lisEligibility = ["Not Likely Eligible for LIS (Income)"];
-                    } else if (combinedAssets > 36100) {
+                    } else if (combinedAssets > Utils.LIS_THRESHOLDS.married.assets) {
                         lisEligibility = ["Not Likely Eligible for LIS (Assets)"];
                     } else {
                         lisEligibility = ["Likely Eligible for LIS"];
                     }
                 } else {
-                    if (combinedIncome > 23475) {
+                    if (combinedIncome > Utils.LIS_THRESHOLDS.single.income) {
                         lisEligibility = ["Not Likely Eligible for LIS (Income)"];
-                    } else if (combinedAssets > 18090) {
+                    } else if (combinedAssets > Utils.LIS_THRESHOLDS.single.assets) {
                         lisEligibility = ["Not Likely Eligible for LIS (Assets)"];
                     } else {
                         lisEligibility = ["Likely Eligible for LIS"];
@@ -2382,7 +2591,12 @@ try {
 }}
 
 async function MSPEligibilityCheck(members) {
-    for (const member of members) {
+    const Utils = getUtils();
+    if (!Utils) {
+        console.error('Cannot run MSPEligibilityCheck: EligibilityUtils not available');
+        return;
+    }
+        for (const member of members) {
         try {
             // Skip deceased members - set MSP to Not Checked
             if ((member.deceased ?? '').toLowerCase() === 'yes') {
@@ -2473,9 +2687,9 @@ async function MSPEligibilityCheck(members) {
     
                     // Apply deductions based on income kind
                     if (income.kind === "Employment" || income.kind === "Self-Employment") {
-                        monthlyIncome = (monthlyIncome - 65) / 2; // Subtract 65 and divide by 2
+                        monthlyIncome = (monthlyIncome - Utils.MSP_DEDUCTIONS.employmentDeduction) / 2;
                     } else {
-                        monthlyIncome -= 20; // Subtract 20 for other income kinds
+                        monthlyIncome -= Utils.MSP_DEDUCTIONS.otherDeduction;
                     }
     
                     return sum + Math.max(0, Number(monthlyIncome)); // Ensure no negative income
@@ -2531,32 +2745,32 @@ async function MSPEligibilityCheck(members) {
                 }
     
                 // Step 4: Determine MSP eligibility
-let mspEligibility;
-if (spouse) {
-    if (combinedIncome > 2400) {
-        mspEligibility = ["Not Likely Eligible for MSP (Income)"];
-    } else if (combinedAssets > 14910) {
-        mspEligibility = ["Not Likely Eligible for MSP (Assets)"];
-    } else if (combinedIncome <= 1783) {
-        mspEligibility = ["Likely Eligible for MSP (QMB)"];
-    } else if (combinedIncome <= 2135) {
-        mspEligibility = ["Likely Eligible for MSP (SLMB)"];
-    } else {
-        mspEligibility = ["Likely Eligible for MSP (QI)"];
-    }
-} else {
-    if (combinedIncome > 1781) {
-        mspEligibility = ["Not Likely Eligible for MSP (Income)"];
-    } else if (combinedAssets > 9950) {
-        mspEligibility = ["Not Likely Eligible for MSP (Assets)"];
-    } else if (combinedIncome <= 1325) {
-        mspEligibility = ["Likely Eligible for MSP (QMB)"];
-    } else if (combinedIncome <= 1585) {
-        mspEligibility = ["Likely Eligible for MSP (SLMB)"];
-    } else {
-        mspEligibility = ["Likely Eligible for MSP (QI)"];
-    }
-}
+                let mspEligibility;
+                if (spouse) {
+                    if (combinedIncome > Utils.MSP_THRESHOLDS.married.qi) {
+                        mspEligibility = ["Not Likely Eligible for MSP (Income)"];
+                    } else if (combinedAssets > Utils.MSP_THRESHOLDS.married.assets) {
+                        mspEligibility = ["Not Likely Eligible for MSP (Assets)"];
+                    } else if (combinedIncome <= Utils.MSP_THRESHOLDS.married.qmb) {
+                        mspEligibility = ["Likely Eligible for MSP (QMB)"];
+                    } else if (combinedIncome <= Utils.MSP_THRESHOLDS.married.slmb) {
+                        mspEligibility = ["Likely Eligible for MSP (SLMB)"];
+                    } else {
+                        mspEligibility = ["Likely Eligible for MSP (QI)"];
+                    }
+                } else {
+                    if (combinedIncome > Utils.MSP_THRESHOLDS.single.qi) {
+                        mspEligibility = ["Not Likely Eligible for MSP (Income)"];
+                    } else if (combinedAssets > Utils.MSP_THRESHOLDS.single.assets) {
+                        mspEligibility = ["Not Likely Eligible for MSP (Assets)"];
+                    } else if (combinedIncome <= Utils.MSP_THRESHOLDS.single.qmb) {
+                        mspEligibility = ["Likely Eligible for MSP (QMB)"];
+                    } else if (combinedIncome <= Utils.MSP_THRESHOLDS.single.slmb) {
+                        mspEligibility = ["Likely Eligible for MSP (SLMB)"];
+                    } else {
+                        mspEligibility = ["Likely Eligible for MSP (QI)"];
+                    }
+                }
     
                 // Step 5: Assign MSP object to member and spouse (if applicable)
                 const mspObject = {
@@ -2603,11 +2817,14 @@ try {
 }}
 
     // Add the calculateSNAPBenefit function
-function calculateSNAPBenefit(finalNetIncome, householdSize, eligibilityStatus) {
-    const maxAllotments = [
-        0, 298, 546, 785, 994, 1183, 1421, 1571, 1789, 1789 + 218, 1789 + 218 * 2, 1789 + 218 * 3, 1789 + 218 * 4, 1789 + 218 * 5, 1789 + 218 * 6, 1789 + 218 * 7
-    ];
-    const maxAllotment = maxAllotments[householdSize] || 0;
+    function calculateSNAPBenefit(finalNetIncome, householdSize, eligibilityStatus) {
+        const Utils = getUtils();
+        if (!Utils) {
+            console.error('Cannot calculate SNAP benefit: EligibilityUtils not available');
+            return 0;
+        }
+            const maxAllotment = Utils.SNAP_MAX_ALLOTMENTS[householdSize] || 
+            (householdSize > 8 ? Utils.SNAP_MAX_ALLOTMENTS[8] + 218 * (householdSize - 8) : 0);
 
     console.log(`Household Size: ${householdSize}`);
     console.log(`Max Allotment: $${maxAllotment}`);
@@ -2622,9 +2839,8 @@ function calculateSNAPBenefit(finalNetIncome, householdSize, eligibilityStatus) 
     console.log(`Calculated Benefit Amount Before Adjustment: $${benefitAmount}`);
 
     // If the benefit amount is less than $24 and the household is "Likely Eligible for SNAP", set it to $24
-    if (benefitAmount < 24 && eligibilityStatus === "Likely Eligible for SNAP") {
-        benefitAmount = 24;
-        console.log("Benefit adjusted to $24 due to eligibility.");
+    if (benefitAmount < Utils.SNAP_MINIMUM_BENEFIT && eligibilityStatus === "Likely Eligible for SNAP") {
+        benefitAmount = Utils.SNAP_MINIMUM_BENEFIT;
     }
 
     // Always return the benefit amount with two decimal places
@@ -2632,17 +2848,18 @@ function calculateSNAPBenefit(finalNetIncome, householdSize, eligibilityStatus) 
 }
 
 function determineExpeditedEligibility(combinedIncome, combinedAssets, finalNetIncome, utilityAllowance, totalShelterExpenses, isFarmworker, hasActiveIncome) {
-    let expeditedEligibility = "No";
+    const Utils = getUtils();
+    if (!Utils) {
+        return "Unknown";
+    }
+        let expeditedEligibility = "No";
 
-    // Check if isFarmworker is true, combined assets <= 100, and there is no active income
-    if (isFarmworker === true && combinedAssets <= 100 && !hasActiveIncome) {
+    if (isFarmworker === true && combinedAssets <= Utils.SNAP_EXPEDITED_ASSET_LIMIT && !hasActiveIncome) {
         expeditedEligibility = "Yes, Migrant or Seasonal Farmworker";
     }
-    // Check if combined income <= 150 and combined assets <= 100
-    else if (combinedIncome <= 150 && combinedAssets <= 100) {
+    else if (combinedIncome <= Utils.SNAP_EXPEDITED_INCOME_LIMIT && combinedAssets <= Utils.SNAP_EXPEDITED_ASSET_LIMIT) {
         expeditedEligibility = "Yes, Low Income and Assets";
     }
-    // Check if final net income + combined assets < utility allowance + total shelter expenses
     else if (combinedIncome + combinedAssets <= utilityAllowance + totalShelterExpenses) {
         expeditedEligibility = "Yes, Shelter Costs Exceed Income and Assets";
     }
@@ -2651,6 +2868,11 @@ function determineExpeditedEligibility(combinedIncome, combinedAssets, finalNetI
 }
 
 async function SNAPEligibilityCheck(members, isFarmworker) {
+    const Utils = getUtils();
+    if (!Utils) {
+        console.error('Cannot run SNAPEligibilityCheck: EligibilityUtils not available');
+        return;
+    }
         // Step 1: Group members into SNAP households based on "meals=yes"
         const snapHouseholds = [];
         const processedMembers = new Set();
@@ -2690,23 +2912,7 @@ for (const household of snapHouseholds) {
         let mealsYesCount = household.length;
 
         // Utility allowance mapping
-        const utilityAllowances = {
-            "Heating and/or Cooling": 758,
-            "Basic Limited Allowance": 402,
-            "Electric": 72,
-            "Gas": 72,
-            "Oil": 72,
-            "Propane": 72,
-            "Wood": 72,
-            "Coal": 72,
-            "Kerosene": 72,
-            "Water": 72,
-            "Sewage": 72,
-            "Trash": 72,
-            "Phone": 34,
-            "Homeless": 190
-
-        };
+        const utilityAllowances = Utils.UTILITY_ALLOWANCES;
 
         // Combine incomes, assets, and calculate deductions for all members in the household
         for (const member of household) {
@@ -2824,10 +3030,7 @@ if (totalOtherExpenses === 0) {
 const combinedMonthlyIncome = combinedYearlyIncome / 12;
 
 // Apply standard deduction
-const standardDeductions = [
-    0, 209, 209, 209, 223, 261, 299, 299, 299, 299, 299, 299, 299, 299, 299, 299
-];
-const standardDeduction = standardDeductions[mealsYesCount] || 0;
+const standardDeduction = Utils.SNAP_STANDARD_DEDUCTIONS[mealsYesCount] || 0;
 
 // Calculate the total income with a 20% deduction applied only to "Employment" or "Self-Employment" income kinds
 const employmentIncomeMonthly = household.reduce((sum, member) => {
@@ -2891,33 +3094,23 @@ console.log(`Is Elderly: ${isElderly}`);
         });
 
         if (!hasElderlyOrDisabled) {
-            excessShelterCost = Math.min(excessShelterCost, 744); // Cap shelter deduction at $744
+            excessShelterCost = Math.min(excessShelterCost, Utils.SNAP_SHELTER_COST_CAP);
         }
 
         // Subtract excess shelter cost
         totalNetIncome = Math.max(0, totalNetIncome - excessShelterCost);
 
         // Determine gross income limit
-        const grossIncomeLimits = [
-            0, 2610, 3526, 4442, 5360, 6276, 7192, 8110, 9026, 9944, 10862,
-            11780, 12698, 13616, 14534, 15452
-        ];
-        const grossIncomeLimit = grossIncomeLimits[mealsYesCount] || 0;
-
+        const grossIncomeLimit = Utils.SNAP_GROSS_INCOME_LIMITS[mealsYesCount] || 0;
         // Determine eligibility
         let snapEligibility;
         if (combinedMonthlyIncome <= grossIncomeLimit) {
             snapEligibility = ["Likely Eligible for SNAP"];
         } else if (hasElderlyOrDisabled) {
-            const netIncomeLimits = [
-                0, 1305, 1763, 2221, 2680, 3138, 3596, 4055, 4513, 4972, 5431, 5890,
-                6349, 6808, 7267, 7726, 8185
-            ];
-            const netIncomeLimit = netIncomeLimits[mealsYesCount] || 0;
-            
+            const netIncomeLimit = Utils.SNAP_NET_INCOME_LIMITS[mealsYesCount] || 0;            
             if (combinedMonthlyIncome <= grossIncomeLimit) {
                 snapEligibility = ["Likely Eligible for SNAP"];
-            } else if (combinedAssets > 4500) {
+            } else if (combinedAssets > Utils.SNAP_ELDERLY_DISABLED_ASSET_LIMIT) {
                 snapEligibility = ["Not Likely Eligible for SNAP (Income and Assets)"];
             } else if (combinedMonthlyIncome >= grossIncomeLimit && totalNetIncome > netIncomeLimit) {
                 snapEligibility = ["Determination Pending Expenses (Over Gross Income Limit)"];
@@ -3024,7 +3217,12 @@ if (!client) {
 console.log("isFarmworker:", client.isFarmworker);
 
 async function LIHEAPEligibilityCheck() {
-    try {
+    const Utils = getUtils();
+    if (!Utils) {
+        console.error('Cannot run LIHEAPEligibilityCheck: EligibilityUtils not available');
+        return;
+    }
+        try {
         // Retrieve the client ID from the query parameter
         const clientId = getQueryParameter('id');
         if (!clientId || typeof clientId !== 'string') {
@@ -3136,10 +3334,7 @@ async function LIHEAPEligibilityCheck() {
 
         // Determine LIHEAP eligibility using only non-deceased members
         const householdSize = activeMembersForLIHEAP.length;
-        const incomeLimits = [
-            0, 23475, 31725, 39975, 48225, 56475, 64725, 72975, 81225, 89475, 97725, 105975, 114225, 122475, 130725, 138975
-        ];
-        const incomeLimit = incomeLimits[householdSize] || 0;
+        const incomeLimit = Utils.LIHEAP_INCOME_LIMITS[householdSize] || 0;
 
         const eligibility = [];
         if (client.liheapEnrollment === 'notinterested') {

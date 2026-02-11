@@ -658,6 +658,8 @@ document.addEventListener('DOMContentLoaded', async function () {
 
                 if (member.residenceStatus?.toLowerCase() === "other") {
                     eligibility.push("No Formal Lease");
+                } else if (!member.residenceStatus || member.residenceStatus.toLowerCase() === "n/a") {
+                    eligibility.push("Needs Previous Year Residence Status");
                     delete member.selections?.["Has this person already applied for PTRR this year?"];
                 } else if (applicationStatus === "yes") {
                     eligibility.push("Already Applied");
@@ -1446,6 +1448,49 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         snapContainer.innerHTML = '';
 
+        // Check if SNAP screening is closed - check ALL members first
+        const snapMembers = members.filter(m => m.meals?.toLowerCase() === "yes");
+        const anyMemberWithSnapClosed = members.find(m => m.SNAP?.screeningInProgress === false);
+        const screeningClosed = anyMemberWithSnapClosed !== undefined;
+
+        if (screeningClosed) {
+            // Show only the reopen button with grey styling matching other closed benefits
+            const reopenDiv = document.createElement('div');
+            reopenDiv.classList.add('household-member-box');
+            reopenDiv.style.backgroundColor = 'rgb(212, 212, 212)';
+            reopenDiv.style.borderColor = 'rgb(0, 0, 0)';
+            reopenDiv.innerHTML = `
+                <h3>SNAP HOUSEHOLD</h3>
+                ${snapMembers.length > 0 ? `<p><strong>Members:</strong> ${snapMembers.map(m => `${capitalizeFirstLetter(m.firstName)} ${capitalizeFirstLetter(m.lastName)}`).join(', ')}</p>` : ''}
+                <div style="padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center; width: 100%; box-sizing: border-box;">
+                    <p style="margin: 0 0 6px 0;"><strong>SNAP Screening Closed</strong></p>
+                    <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${anyMemberWithSnapClosed?.SNAP?.screeningCloseReason || 'N/A'}</p>
+                    <button class="reopen-snap-screening-btn" 
+                        style="background-color: #007bff; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 12px; cursor: pointer; transition: background-color 0.3s;"
+                        onmouseover="this.style.backgroundColor='#0056b3'" 
+                        onmouseout="this.style.backgroundColor='#007bff'">
+                        Reopen SNAP Screening
+                    </button>
+                </div>
+            `;
+
+            snapContainer.appendChild(reopenDiv);
+
+            reopenDiv.querySelector('.reopen-snap-screening-btn').addEventListener('click', async () => {
+                const snapMemberIds = members
+                    .filter(m => m.SNAP?.screeningInProgress === false)
+                    .map(m => String(m.householdMemberId));
+                await reopenBenefitScreening('SNAP', snapMemberIds, 'SNAP Household');
+            });
+
+            return; // Don't render anything else
+        }
+
+        // Only check enrollment status if screening is NOT closed
+        const clientResponse = await fetch(`/get-client/${clientId}`).then(r => r.json()).catch(() => null);
+        const isAlreadyEnrolled = clientResponse?.snap === 'yes';
+        const isNotInterested = clientResponse?.snap === 'notinterested';
+
         // Build SNAP households
         const snapHouseholds = [];
         const processedMembers = new Set();
@@ -1468,10 +1513,6 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
 
         if (snapHouseholds.length === 0) {
-            const clientResponse = await fetch(`/get-client/${clientId}`).then(r => r.json()).catch(() => null);
-            const isAlreadyEnrolled = clientResponse?.snap === 'yes';
-            const isNotInterested = clientResponse?.snap === 'notinterested';
-
             const noHouseholdsDiv = document.createElement('div');
             noHouseholdsDiv.classList.add('household-member-box');
             noHouseholdsDiv.style.backgroundColor = (isAlreadyEnrolled || isNotInterested) ? '#f8d7da' : '#fff3cd';
@@ -1479,8 +1520,25 @@ document.addEventListener('DOMContentLoaded', async function () {
             noHouseholdsDiv.innerHTML = `
                 <h3>SNAP HOUSEHOLD</h3>
                 ${isAlreadyEnrolled ? '<p>ALREADY ENROLLED</p>' : isNotInterested ? '<p>NOT INTERESTED</p>' : '<p>NO SNAP HOUSEHOLDS FOUND.</p>'}
+                ${isScreeningInProgress ? `
+                    <button class="close-snap-no-household-btn" 
+                        style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 11px; cursor: pointer; margin: 8px 0;">
+                        Close SNAP Screening
+                    </button>
+                ` : ''}
             `;
             snapContainer.appendChild(noHouseholdsDiv);
+
+            // Attach close button listener if screening is in progress
+            const closeBtn = noHouseholdsDiv.querySelector('.close-snap-no-household-btn');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => {
+                    // Use all member IDs since there's no specific SNAP household
+                    const allMemberIds = members.map(m => String(m.householdMemberId));
+                    openCloseSnapModal(allMemberIds);
+                });
+            }
+
             return;
         }
 
