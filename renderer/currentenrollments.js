@@ -480,9 +480,6 @@ async function displayHouseholdMembers() {
 
     try {
         container.innerHTML = '';
-        container.style.minWidth = '600px';
-        container.style.maxWidth = '600px';
-        container.style.margin = '0 auto';
 
         const clientId = getQueryParameter('id');
         const client = await fetchClientData(clientId);

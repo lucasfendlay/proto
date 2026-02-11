@@ -588,10 +588,199 @@
                 const el = document.getElementById(id);
                 if (el) el.style.display = show ? '' : 'none';
             });
+
+            // Hide SNAP question if SNAP is closed out
+            updateSnapQuestionVisibility(client);
         } catch (error) {
             console.error('Error toggling sidebar visibility:', error);
         }
     }
+
+    // ── SNAP question visibility based on closeout status ──
+    function updateSnapQuestionVisibility(client) {
+        // Target the SNAP enrollment question selection box by its label
+        const snapLabel = document.getElementById('snap-label');
+        const snapSelectionBox = snapLabel?.closest('.selection-box');
+        if (!snapSelectionBox) return;
+
+        // Check if SNAP is closed out using programStatus structure
+        const isSnapClosedOut = client?.programStatus?.SNAP?.screeningInProgress === false ||
+                                client?.snapCloseOut === true || 
+                                client?.snapCloseout === true ||
+                                client?.snapClosedOut === true;
+
+        // Show if open, hide if closed
+        snapSelectionBox.style.display = isSnapClosedOut ? 'none' : '';
+    }
+
+    // ── LIHEAP questions visibility based on closeout status ──
+    function updateLiheapQuestionVisibility(client) {
+        // Target LIHEAP-related question containers
+        const liheapLabel = document.getElementById('liheap-label');
+        const liheapSelectionBox = liheapLabel?.closest('.selection-box');
+        const heatingCrisisContainer = document.getElementById('heatingCrisis-container');
+        const residenceStatusCurrentContainer = document.getElementById('residenceStatusCurrent-container');
+        const subsidizedHousingContainer = document.getElementById('subsidizedHousing-container');
+        const heatingCostContainer = document.getElementById('heatingCost-container');
+
+        // Check if LIHEAP is closed out using programStatus structure
+        const isLiheapClosedOut = client?.programStatus?.LIHEAP?.screeningInProgress === false ||
+                                  client?.liheapCloseOut === true || 
+                                  client?.liheapCloseout === true ||
+                                  client?.liheapClosedOut === true;
+
+        // Show if open, hide if closed
+        const displayValue = isLiheapClosedOut ? 'none' : '';
+        
+        if (liheapSelectionBox) liheapSelectionBox.style.display = displayValue;
+        if (heatingCrisisContainer) heatingCrisisContainer.style.display = displayValue;
+        if (residenceStatusCurrentContainer) residenceStatusCurrentContainer.style.display = displayValue;
+        if (subsidizedHousingContainer) subsidizedHousingContainer.style.display = displayValue;
+        if (heatingCostContainer) heatingCostContainer.style.display = displayValue;
+    }
+
+    // ── Listen for SNAP closeout/reopen events ──
+    function setupSnapCloseoutListener() {
+        // Listen for custom event that may be dispatched when SNAP is closed out
+        window.addEventListener('snapCloseout', async () => {
+            const clientId = getQueryParam('id');
+            if (!clientId) return;
+
+            try {
+                const response = await fetch(`/get-client/${clientId}`);
+                if (!response.ok) throw new Error(response.statusText);
+                const client = await response.json();
+                updateSnapQuestionVisibility(client);
+            } catch (error) {
+                console.error('Error updating SNAP visibility after closeout:', error);
+            }
+        });
+
+        // Listen for reopen event
+        window.addEventListener('snapReopen', async () => {
+            const clientId = getQueryParam('id');
+            if (!clientId) return;
+
+            try {
+                const response = await fetch(`/get-client/${clientId}`);
+                if (!response.ok) throw new Error(response.statusText);
+                const client = await response.json();
+                updateSnapQuestionVisibility(client);
+            } catch (error) {
+                console.error('Error updating SNAP visibility after reopen:', error);
+            }
+        });
+
+        // Intercept fetch to detect SNAP closeout/reopen updates
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+            const response = await originalFetch.apply(this, args);
+            
+            const url = args[0];
+            const options = args[1];
+            
+            if (typeof url === 'string' && 
+                (url.includes('/update-client') || url.includes('/close-out') || url.includes('/reopen')) &&
+                (options?.method === 'PUT' || options?.method === 'POST')) {
+                
+                try {
+                    const body = options?.body ? JSON.parse(options.body) : {};
+                    
+                    // === SNAP visibility ===
+                    const snapLabel = document.getElementById('snap-label');
+                    const snapSelectionBox = snapLabel?.closest('.selection-box');
+                    
+                    if (snapSelectionBox) {
+                        const snapClosedViaProgram = body?.clientData?.programStatus?.SNAP?.screeningInProgress === false;
+                        const snapClosedViaFlag = body?.clientData?.snapCloseOut === true || 
+                                                  body?.clientData?.snapCloseout === true ||
+                                                  body?.clientData?.snapClosedOut === true ||
+                                                  body?.snapCloseOut === true;
+                        
+                        const snapReopenedViaProgram = body?.clientData?.programStatus?.SNAP?.screeningInProgress === true;
+                        const snapReopenedViaFlag = body?.clientData?.snapCloseOut === false || 
+                                                    body?.clientData?.snapCloseout === false ||
+                                                    body?.clientData?.snapClosedOut === false ||
+                                                    body?.snapCloseOut === false;
+                        
+                        if (snapClosedViaProgram || snapClosedViaFlag) {
+                            snapSelectionBox.style.display = 'none';
+                        } else if (snapReopenedViaProgram || snapReopenedViaFlag) {
+                            snapSelectionBox.style.display = '';
+                        }
+                    }
+
+                    // === LIHEAP visibility ===
+                    const liheapLabel = document.getElementById('liheap-label');
+                    const liheapSelectionBox = liheapLabel?.closest('.selection-box');
+                    const heatingCrisisContainer = document.getElementById('heatingCrisis-container');
+                    const residenceStatusCurrentContainer = document.getElementById('residenceStatusCurrent-container');
+                    const subsidizedHousingContainer = document.getElementById('subsidizedHousing-container');
+                    const heatingCostContainer = document.getElementById('heatingCost-container');
+
+                    const liheapClosedViaProgram = body?.clientData?.programStatus?.LIHEAP?.screeningInProgress === false;
+                    const liheapClosedViaFlag = body?.clientData?.liheapCloseOut === true || 
+                                                body?.clientData?.liheapCloseout === true ||
+                                                body?.clientData?.liheapClosedOut === true ||
+                                                body?.liheapCloseOut === true;
+                    
+                    const liheapReopenedViaProgram = body?.clientData?.programStatus?.LIHEAP?.screeningInProgress === true;
+                    const liheapReopenedViaFlag = body?.clientData?.liheapCloseOut === false || 
+                                                  body?.clientData?.liheapCloseout === false ||
+                                                  body?.clientData?.liheapClosedOut === false ||
+                                                  body?.liheapCloseOut === false;
+                    
+                    if (liheapClosedViaProgram || liheapClosedViaFlag) {
+                        if (liheapSelectionBox) liheapSelectionBox.style.display = 'none';
+                        if (heatingCrisisContainer) heatingCrisisContainer.style.display = 'none';
+                        if (residenceStatusCurrentContainer) residenceStatusCurrentContainer.style.display = 'none';
+                        if (subsidizedHousingContainer) subsidizedHousingContainer.style.display = 'none';
+                        if (heatingCostContainer) heatingCostContainer.style.display = 'none';
+                    } else if (liheapReopenedViaProgram || liheapReopenedViaFlag) {
+                        if (liheapSelectionBox) liheapSelectionBox.style.display = '';
+                        if (heatingCrisisContainer) heatingCrisisContainer.style.display = '';
+                        if (residenceStatusCurrentContainer) residenceStatusCurrentContainer.style.display = '';
+                        // Note: subsidizedHousing and heatingCost visibility depends on other answers,
+                        // so we don't automatically show them - loadSavedData will handle their visibility
+                    }
+                } catch (e) {
+                    // Ignore JSON parse errors
+                }
+            }
+            
+            return response;
+        };
+    }
+
+    // ── Sidebar visibility ──
+    async function toggleSidebarVisibility() {
+        const clientId = getQueryParam('id');
+        try {
+            const response = await fetch(`/get-client/${clientId}`);
+            if (!response.ok) throw new Error(response.statusText);
+            const client = await response.json();
+
+            document.getElementById('leftSidebarContainer').style.display = 'block';
+
+            const containers = ['snap-household-container', 'liheap-household-container', 'household-members-container'];
+            const show = client?.screeningInProgress === true;
+            containers.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = show ? '' : 'none';
+            });
+
+            // Hide SNAP question if SNAP is closed out
+            updateSnapQuestionVisibility(client);
+            
+            // Hide LIHEAP questions if LIHEAP is closed out
+            updateLiheapQuestionVisibility(client);
+        } catch (error) {
+            console.error('Error toggling sidebar visibility:', error);
+        }
+    }
+
+    // Initialize the listener on page load
+    setupSnapCloseoutListener();
 
     window.addEventListener('load', toggleSidebarVisibility);
     </script>

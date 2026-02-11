@@ -7,8 +7,6 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="notes.css">
     <style>
-        /* General styles */
-
         .btn-close-snap-screening {
     background-color: #dc3545;
     color: white;
@@ -92,102 +90,27 @@
 }
 
         details > summary {
-    cursor: pointer; /* Change cursor to hand */
+    cursor: pointer;
 }
 
         .separator-bar {
     border: none;
-    border-top: 1px solid #ccc; /* Light gray line */
-    margin: 10px 0; /* Add spacing above and below the line */
+    border-top: 1px solid #ccc;
+    margin: 10px 0;
 }
 
         .custom-details summary {
-    list-style: none; /* Removes the default arrow */
-    cursor: pointer;  /* Makes the text look clickable */
-    font-weight: bold; /* Optional: Make the text bold */
+    list-style: none;
+    cursor: pointer;
+    font-weight: bold;
 }
 
 .custom-details summary::-webkit-details-marker {
-    display: none; /* Hides the arrow in WebKit browsers (e.g., Chrome, Safari) */
+    display: none;
 }
 
 .custom-details summary::marker {
-    display: none; /* Hides the arrow in other browsers (e.g., Firefox) */
-}
-body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: #f9f9f9;
-    color: #333;
-    margin-top: 60px; /* Adjust this value to match the height of the navigation container */
-
-}
-
-#app {
-    max-width: 800px;
-    margin: 20px auto;
-    padding: 20px;
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* Header styles */
-h1 {
-    text-align: center;
-    color: #444;
-}
-
-/* Household member container */
-.household-member-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    justify-content: center;
-}
-
-/* Individual household member card */
-.household-member-box {
-    background: #f0f0f0;
-    border: 1px solid #000000;
-    border-radius: 8px;
-    padding: 15px;
-    width: 100%;
-    box-sizing: border-box;
-    max-width: 1000px; /* Increased from 300px to 400px */
-    min-width: 300px; /* Add this line to prevent shrinking */
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.household-member-box:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-/* Member details */
-.household-member-box {
-    background: #f0f0f0;
-    border: 1px solid #000000;
-    border-radius: 8px;
-    padding: 15px;
-    width: 100%;
-    max-width: 1000px; /* Increased from 300px to 400px */
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.household-member-box:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-/* Spouse details */
-.household-member-box p span {
-    font-weight: bold;
-    color: #444;
-    max-width: 1000px;
+    display: none;
 }
 
 .snap-household-box {
@@ -197,47 +120,23 @@ h1 {
     margin-bottom: 10px;
     border-radius: 5px;
     background-color: #f9f9f9;
+    width: 300px;
+    box-sizing: border-box;
 }
 .snap-household-box h3 {
     margin-top: 0;
     color: #333;
 }
 
-/* Modal styling */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0, 0, 0, 0.5);
-}
-
-.modal-content {
-    background-color: #fff;
-    margin: 15% auto;
-    padding: 20px;
-    border: 1px solid #888;
-    width: 50%;
-    border-radius: 8px;
-}
-
-.close {
-    color: #aaa;
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
-}
-
-.close:hover,
-.close:focus {
-    color: black;
-    text-decoration: none;
-    cursor: pointer;
+#snap-household-container,
+#liheap-household-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    max-width: 975px;
+    margin-left: auto;
+    margin-right: auto;
 }
     </style>
 </head>
@@ -246,8 +145,10 @@ h1 {
 
     <div id="snap-household-container"></div>
 
+    <div id="liheap-household-container"></div>
+
     <div id="household-members-container" class="household-member-container"></div>
-    <!-- Member Modal -->
+    
 <div id="member-modal" class="modal" style="display: none;">
     <div class="modal-content">
         <span id="close-member-modal" class="close">&times;</span>

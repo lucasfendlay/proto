@@ -991,69 +991,129 @@
         }
     }
 
-    async function confirmAndRedirect() {
-        if (!confirm("Are you sure you want to start a new screening?")) return;
+    async function updateClientProgramStatus(clientId, benefit, isOpen, closeReason = null) {
+    try {
+        // Fetch current client to get existing programStatus
+        const getResp = await fetch(`/get-client/${clientId}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        if (!getResp.ok) {
+            console.error(`Failed to fetch client ${clientId} for program status update`);
+            return;
+        }
+        const clientData = await getResp.json();
+        const programStatus = clientData.programStatus || {};
 
-        const activeUser = sessionStorage.getItem('loggedInUser');
-        if (!activeUser) {
-            console.error("No active user found in sessionStorage.");
+        // Ensure benefit key exists and preserve other keys
+        const current = programStatus[benefit] || {};
+        const updated = { ...current, screeningInProgress: !!isOpen };
+
+        if (!isOpen) {
+            updated.screeningCloseReason = closeReason || updated.screeningCloseReason || null;
+        } else {
+            // remove close reason when reopening
+            if ('screeningCloseReason' in updated) delete updated.screeningCloseReason;
+        }
+
+        programStatus[benefit] = updated;
+
+        // Persist via the general client update endpoint
+        const putResp = await fetch('/update-client', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, clientData: { programStatus } }),
+        });
+
+        if (!putResp.ok) {
+            const errText = await putResp.text().catch(() => '');
+            console.error(`Failed to update program status for ${benefit}:`, errText);
+        }
+    } catch (error) {
+        console.error(`Error updating ${benefit} program status:`, error);
+    }
+}
+
+async function confirmAndRedirect() {
+    const confirmAction = confirm("Are you sure you want to start a new screening?");
+    if (!confirmAction) return;
+
+    const activeUser = sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User';
+
+    try {
+        // 1. Fetch current household members
+        const membersResponse = await fetch(`/get-client/${CLIENT_ID}`);
+        if (!membersResponse.ok) throw new Error('Failed to fetch client data');
+        const clientData = await membersResponse.json();
+        const currentMembers = clientData.householdMembers || [];
+
+        // 2. Reopen screening for all benefits on all members
+        const allBenefits = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
+        for (const member of currentMembers) {
+            for (const benefit of allBenefits) {
+                if (member[benefit]) {
+                    member[benefit].screeningInProgress = true;
+                    member[benefit].screeningCloseReason = null;
+                }
+            }
+        }
+
+        // 3. Save updated household members
+        const saveResponse = await fetch(`/save-household-members`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId: CLIENT_ID, householdMembers: currentMembers })
+        });
+
+        if (!saveResponse.ok) {
+            console.error('Failed to save household members.');
             return;
         }
 
-        try {
-            await flushChangesImmediate();
-            await saveClientFull();
+        // 4. Update client-level screeningInProgress to true
+        const updateResponse = await fetch(`/update-client`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId: CLIENT_ID, clientData: { screeningInProgress: true } })
+        });
 
-            // Add note + update screening status in parallel
-            await Promise.all([
-                fetch('/add-note-to-client', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        clientId: CLIENT_ID,
-                        note: {
-                            text: "<strong>New screening initiated.</strong>",
-                            timestamp: new Date().toLocaleString(),
-                            username: activeUser,
-                        },
-                    }),
-                }),
-                fetch('/update-client', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ clientId: CLIENT_ID, clientData: { screeningInProgress: true } }),
-                }),
-            ]);
-
-            // Reopen all benefit screenings on household members
-            const clientData = await fetchClient();
-            const currentMembers = clientData.householdMembers || [];
-            const allBenefits = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
-
-            let membersChanged = false;
-            for (const member of currentMembers) {
-                for (const benefit of allBenefits) {
-                    if (member[benefit]) {
-                        member[benefit].screeningInProgress = true;
-                        member[benefit].screeningCloseReason = null;
-                        membersChanged = true;
-                    }
-                }
-            }
-
-            if (membersChanged) {
-                await fetch('/save-household-members', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ clientId: CLIENT_ID, householdMembers: currentMembers }),
-                });
-            }
-
-            window.location.href = `householdedit.html?id=${CLIENT_ID}`;
-        } catch (error) {
-            console.error("Error during confirmAndRedirect:", error);
+        if (!updateResponse.ok) {
+            console.error('Failed to update client screening status.');
+            return;
         }
+
+        // 5. Restart SNAP and LIHEAP program statuses at the client level
+        await updateClientProgramStatus(CLIENT_ID, 'SNAP', true);
+        await updateClientProgramStatus(CLIENT_ID, 'LIHEAP', true);
+
+        // 6. Add a note
+        const note = {
+            text: '<strong>New screening initiated.</strong>',
+            timestamp: new Date().toLocaleString(),
+            username: activeUser
+        };
+        await fetch('/add-note-to-client', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId: CLIENT_ID, note })
+        });
+
+        console.log('All screening reopened successfully.');
+
+        // Re-render notes if function is available
+        if (typeof window.renderNotes === 'function') {
+            await window.renderNotes(CLIENT_ID);
+        }
+
+        // Update local client object
+        client.screeningInProgress = true;
+
+        // Redirect to householdedit.html
+        window.location.href = `householdedit.html?id=${CLIENT_ID}`;
+    } catch (error) {
+        console.error('Error starting new screening:', error);
     }
+}
 
     async function confirmAndTerminate() {
         const activeUser = sessionStorage.getItem('loggedInUser');

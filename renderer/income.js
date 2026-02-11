@@ -59,6 +59,9 @@ function invalidateCache() {
 async function runAllEligibilityChecks(members) {
     if (!window.eligibilityChecks) return;
 
+        const validMembers = members.filter(member => member && typeof member === 'object' && member.householdMemberId);
+
+
     const checks = [
         'PACEEligibilityCheck',
         'LISEligibilityCheck', 
@@ -70,7 +73,7 @@ async function runAllEligibilityChecks(members) {
 
     for (const check of checks) {
         if (window.eligibilityChecks[check]) {
-            await window.eligibilityChecks[check](members);
+            await window.eligibilityChecks[check](validMembers);
         }
     }
 
@@ -111,7 +114,7 @@ async function setCheckedOutStatus(clientId, status) {
 
 async function loadHouseholdMembers() {
     const client = await fetchClientData();
-    return client?.householdMembers || [];
+    return (client?.householdMembers || []).filter(member => member && typeof member === 'object' && member.householdMemberId);
 }
 
 // ══════════════════════════════════════════════════════════════

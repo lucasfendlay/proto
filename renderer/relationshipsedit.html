@@ -12,23 +12,19 @@
         details > summary {
             cursor: pointer;
         }
-        .narrow-body {
-            margin-left: 385px;
-            margin-right: 10px;
-            max-width: calc(100% - 395px);
-            margin: 0 auto;
-            margin-top: 60px;
-        }
+
         .household-member-container {
             display: flex;
-            flex-direction: column;
+            flex-wrap: wrap;
             gap: 20px;
             width: 100%;
-            align-items: center;
-            max-width: 600px;
+            min-width: 600px;
+            max-width: 1250px;
             margin: 0 auto;
-            text-align: center;
+            justify-content: center;
+            align-items: stretch;
         }
+
         .household-member {
             display: flex;
             flex-direction: column;
@@ -36,15 +32,34 @@
             border: 1px solid #ccc;
             border-radius: 5px;
             background-color: #f9f9f9;
-            width: 80%;
+            width: calc(33.333% - 20px);
+            min-width: 280px;
+            max-width: 400px;
+            box-sizing: border-box;
             align-items: center;
             text-align: center;
-            margin: 0 auto;
         }
+
+        /* Single member - wide and centered */
+        .household-member-container .household-member:only-child {
+            width: 600px !important;
+            min-width: 600px !important;
+            max-width: 600px !important;
+        }
+
+        /* Two members */
+        .household-member-container:has(.household-member:nth-child(2):last-child) .household-member {
+            width: calc(50% - 20px);
+            max-width: 450px;
+            min-width: 450px;
+        }
+
         .selection-box {
             margin-top: 10px;
             text-align: center;
+            width: 100%;
         }
+
         .selection-option {
             display: inline-block;
             padding: 5px 10px;
@@ -53,18 +68,36 @@
             border-radius: 5px;
             cursor: pointer;
         }
+
         .selection-option.selected {
             background-color: #007bff;
             color: white;
             border-color: #007bff;
         }
+
         .action-buttons {
             text-align: center;
             margin-top: 20px;
         }
+
         .relationship-entry,
         .spouse-dropdown-container {
             text-align: center;
+            width: 100%;
+        }
+
+        #save-exit, #save-continue {
+            border: 1px solid #000000;
+            border-radius: 5px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        #save-exit:hover, #save-continue:hover {
+            background-color: #0056b3;
+            color: white;
         }
     </style>
     <script src="editnavigation.js"></script>
