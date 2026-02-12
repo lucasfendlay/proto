@@ -248,43 +248,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         ]
     };
 
-    function getCloseReasonsForBenefits(selectedBenefits) {
-        if (selectedBenefits.length === 0) return [];
-
-        if (selectedBenefits.length === 1) {
-            return BENEFIT_CLOSE_REASONS[selectedBenefits[0]] || [
-                { value: "Hard Determination", label: "Use Hard Determination Closeout Reasons" },
-                { value: "Already Enrolled", label: "Already Enrolled" },
-                { value: "Ineligible - Income", label: "Ineligible - Income" },
-                { value: "Ineligible - Assets", label: "Ineligible - Assets" },
-                ...COMMON_CLOSE_REASONS
-            ];
-        }
-
-        // Multiple benefits - find intersection
-        const reasonSets = selectedBenefits.map(benefit => 
-            new Set((BENEFIT_CLOSE_REASONS[benefit] || []).map(r => r.value))
-        );
-        const sharedValues = [...reasonSets[0]].filter(value => 
-            reasonSets.every(set => set.has(value))
-        );
-        const firstBenefitReasons = BENEFIT_CLOSE_REASONS[selectedBenefits[0]] || [];
-        return sharedValues.map(value => firstBenefitReasons.find(r => r.value === value) || { value, label: value });
-    }
-
-    function getCloseReasonsForBenefit(benefit) {
-        return BENEFIT_CLOSE_REASONS[benefit] || [
-            { value: "Already Enrolled", label: "Already Enrolled" },
-            { value: "Ineligible - Income", label: "Ineligible - Income" },
-            { value: "Ineligible - Assets", label: "Ineligible - Assets" },
-            ...COMMON_CLOSE_REASONS
-        ];
-    }
-
     function mapHardDeterminationReason(benefit, ineligibilityReason) {
         const upper = (ineligibilityReason || '').toUpperCase();
 
-        // Common patterns
         if (upper.includes('ALREADY ENROLLED')) return 'Already Enrolled';
         if (upper.includes('ALREADY APPLIED')) return 'Already Applied';
         if (upper.includes('NOT INTERESTED')) return 'Not Interested';
@@ -1655,7 +1621,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (!benefitObj || benefitObj.screeningInProgress !== false) return '';
         
         return `
-            <div style="background-color:rgb(212, 212, 212); border: 1px solid rgb(0, 0, 0); padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center; width: 100%; box-sizing: border-box;">
+            <div style="background-color:rgb(212, 212, 212); border: 1px solid rgb(0, 0, 0); padding: 8px; border-radius: 4px; margin: 8px auto; text-align: center; width: 100%; box-sizing: border-box;">
                 <p style="margin: 0 0 6px 0;"><strong>${benefit} Screening Closed</strong></p>
                 <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${benefitObj.screeningCloseReason || 'N/A'}</p>
                 <button class="reopen-benefit-btn" 
@@ -1690,7 +1656,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             <div class="benefit-flip-card" data-benefit="${benefit}" data-member-id="${member.householdMemberId}" style="
                 perspective: 1000px;
                 width: 100%;
-                margin: 8px 0;
+                margin: 8px auto;
             ">
                 <div class="benefit-flip-card-inner" style="
                     position: relative;
@@ -1810,13 +1776,58 @@ document.addEventListener('DOMContentLoaded', async function () {
         householdMemberContainer.innerHTML = '';
 
         if (members.length === 0) {
-            householdMemberContainer.innerHTML = '<p>No household members found.</p>';
-            return;
+            const noMembersMessage = document.createElement('p');
+            noMembersMessage.textContent = 'No household members found.';
+            householdMemberContainer.appendChild(noMembersMessage);
+        } else {
+            members.sort((a, b) => {
+                // Check if member has any open (non-closed, non-Not Checked) benefits
+                const benefitKeys = ['PACE', 'LIS', 'MSP', 'PTRR'];
+                const isDeceased_a = (a.deceased ?? '').toLowerCase() === 'yes';
+                const isDeceased_b = (b.deceased ?? '').toLowerCase() === 'yes';
+
+                const hasOpenBenefits = (member, isDeceased) => {
+                    return benefitKeys.some(key => {
+                        if (isDeceased && key !== 'PTRR') return false;
+                        if (key === 'PTRR' && !member.headOfHousehold) return false;
+                        if (isDeceased && key === 'PTRR') return false;
+                        const benefitObj = member[key];
+                        if (!benefitObj) return false;
+                        if (benefitObj.screeningInProgress === false) return false;
+                        if (benefitObj.eligibility?.includes('Not Checked')) return false;
+                        return benefitObj.eligibility && benefitObj.eligibility.length > 0;
+                    });
+                };
+
+                const aHasOpen = hasOpenBenefits(a, isDeceased_a);
+                const bHasOpen = hasOpenBenefits(b, isDeceased_b);
+
+                // Primary sort: open benefits first, closed benefits last
+                if (aHasOpen !== bHasOpen) {
+                    return bHasOpen - aHasOpen;
+                }
+
+                // Secondary sort: head of household first within each group
+                if (b.headOfHousehold !== a.headOfHousehold) {
+                    return b.headOfHousehold - a.headOfHousehold;
+                }
+
+                // Tertiary sort: oldest to youngest by age
+                const parseAgeYears = (ageStr) => {
+                    if (!ageStr) return 0;
+                    const match = ageStr.match(/(\d+)\s*Years?/i);
+                    return match ? parseInt(match[1], 10) : 0;
+                };
+                const ageA = parseAgeYears(a.age);
+                const ageB = parseAgeYears(b.age);
+                if (ageA !== ageB) {
+                    return ageB - ageA; // Oldest first
+                }
+
+                return 0;
+            });
         }
-
-        members.sort((a, b) => b.headOfHousehold - a.headOfHousehold);
-
-        members.forEach(member => {
+            members.forEach(member => {
             const memberDiv = document.createElement('div');
             memberDiv.classList.add('household-member-box');
 
@@ -1866,7 +1877,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 : null;
 
             memberDiv.innerHTML = `
-                <div class="member-badge-area" style="min-height: 40px; display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap;">
+                <div class="member-badge-area" style="min-height: 40px; display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;">
                     ${member.headOfHousehold ? `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block; margin: 0;"><strong>Head of Household</strong></p>` : ''}
                     ${isDeceased ? `<p class="household-member-info" style="color: black; border: 2px solid black; padding: 5px; display: inline-block; margin: 0;"><strong>Deceased</strong></p>` : ''}
                 </div>
@@ -1879,6 +1890,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     display: ${isScreeningInProgress ? 'inline-block' : 'none'};
                     background-color: #dc3545;
                     color: white;
+                    flex: none;
                     border: none;
                     border-radius: 4px;
                     padding: 8px 16px;
@@ -2018,7 +2030,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             reopenDiv.innerHTML = `
                 <h3>SNAP HOUSEHOLD</h3>
                 ${snapMembers.length > 0 ? `<p><strong>Members:</strong> ${snapMembers.map(m => `${capitalizeFirstLetter(m.firstName)} ${capitalizeFirstLetter(m.lastName)}`).join(', ')}</p>` : ''}
-                <div style="padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center; width: 100%; box-sizing: border-box;">
+                <div style="padding: 8px; border-radius: 4px; margin: 8px auto; text-align: center; width: 100%; box-sizing: border-box;">
                     <p style="margin: 0 0 6px 0;"><strong>SNAP Screening Closed</strong></p>
                     <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${snapProgramStatus?.screeningCloseReason || 'N/A'}</p>
                     <button class="reopen-snap-screening-btn" 
@@ -2074,10 +2086,9 @@ document.addEventListener('DOMContentLoaded', async function () {
                 <h3>SNAP HOUSEHOLD</h3>
                 ${isAlreadyEnrolled ? '<p>ALREADY ENROLLED</p>' : isNotInterested ? '<p>NOT INTERESTED</p>' : '<p>NO SNAP HOUSEHOLDS FOUND.</p>'}
                 ${isScreeningInProgress ? `
-                    <button class="close-snap-no-household-btn" 
-                        style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 11px; cursor: pointer; margin: 8px 0;">
-                        Close Screening(s)
-                    </button>
+                    <button class="btn-close-snap-screening"                         style="display: ${isScreeningInProgress ? 'inline-block' : 'none'}; background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s; margin: 8px auto;"
+                        onmouseover="this.style.backgroundColor='#a71d2a'" 
+                        onmouseout="this.style.backgroundColor='#dc3545'">Close Screening(s)</button>
                 ` : ''}
             `;
             snapContainer.appendChild(noHouseholdsDiv);
@@ -2116,7 +2127,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             householdDiv.innerHTML = `
                 <h3>SNAP HOUSEHOLD</h3>
                 <p><strong>Members:</strong> ${snapMemberNames}</p>
-                <div style="background-color:rgb(212, 212, 212); border: 1px solid rgb(0, 0, 0); padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center; width: 100%; box-sizing: border-box;">
+                <div style="background-color:rgb(212, 212, 212); border: 1px solid rgb(0, 0, 0); padding: 8px; border-radius: 4px; margin: 8px auto; text-align: center; width: 100%; box-sizing: border-box;">
                     <p style="margin: 0 0 6px 0;"><strong>SNAP Screening Closed</strong></p>
                     <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${snapData.screeningCloseReason || 'N/A'}</p>
                     <button class="reopen-benefit-btn" 
@@ -2175,7 +2186,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                         cursor: pointer;
                         display: ${snapIsLikelyEligible ? 'block' : 'none'};
                     ">↻</div>
-                    <details class="custom-details" style="background-color: ${cardBgColor}; border-radius: 4px; padding: 8px; margin: 8px 0; width: 100%; box-sizing: border-box;">
+                    <details class="custom-details" style="background-color: ${cardBgColor}; border-radius: 4px; padding: 8px; margin: 8px auto; width: 100%; box-sizing: border-box;">
                         <summary><br><strong>SNAP HOUSEHOLD</strong><br>
                         <p><strong>Members:</strong> ${snapMemberNames}</p>
                         <p><strong>Eligibility:</strong> ${eligibility.join(', ')}</p>
@@ -2203,7 +2214,9 @@ document.addEventListener('DOMContentLoaded', async function () {
                         data-member-ids="${snapMemberIds.join(',')}"
                         data-is-not-eligible="${snapIsNotEligible ? 'true' : 'false'}"
                         data-ineligibility-reason="${ineligibilityReason}"
-                        style="display: ${isScreeningInProgress ? 'block' : 'none'}; background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 11px; cursor: pointer; margin: 8px 0;">
+                        style="display: ${isScreeningInProgress ? 'inline-block' : 'none'}; background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s; margin: 8px auto;"
+                        onmouseover="this.style.backgroundColor='#a71d2a'" 
+                        onmouseout="this.style.backgroundColor='#dc3545'">
                         Close Screening(s)
                     </button>
                 </div>
@@ -2248,9 +2261,12 @@ document.addEventListener('DOMContentLoaded', async function () {
                         data-member-ids="${snapMemberIds.join(',')}"
                         data-is-not-eligible="${snapIsNotEligible ? 'true' : 'false'}"
                         data-ineligibility-reason="${ineligibilityReason}"
-                        style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 11px; cursor: pointer; margin: 8px 0;">
+                        style="display: inline-block; background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s; margin: 8px auto;"
+                        onmouseover="this.style.backgroundColor='#a71d2a'" 
+                        onmouseout="this.style.backgroundColor='#dc3545'">
                         Close Screening(s)
                     </button>
+                </div>
                 </div>
             </div>
         `;
@@ -2329,7 +2345,7 @@ async function displayLIHEAPHouseholds() {
         householdDiv.style.borderColor = 'rgb(0, 0, 0)';
         householdDiv.innerHTML = `
             <h3>LIHEAP HOUSEHOLD</h3>
-            <div style="padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center; width: 100%; box-sizing: border-box;">
+            <div style="padding: 8px; border-radius: 4px; margin: 8px auto; text-align: center; width: 100%; box-sizing: border-box;">
                 <p style="margin: 0 0 6px 0;"><strong>LIHEAP Screening Closed</strong></p>
                 <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${liheapProgramStatus?.screeningCloseReason || 'N/A'}</p>
                 <button class="reopen-liheap-btn" style="background-color: #007bff; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 12px; cursor: pointer;">
@@ -2367,7 +2383,9 @@ async function displayLIHEAPHouseholds() {
                 <p>NOT INTERESTED</p>
             `}
             ${anyLiheapScreeningActive || isLiheapAlreadyEnrolled || isLiheapNotInterested ? `
-                <button class="btn-close-liheap-screening" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Close Screening(s)</button>
+            <button class="btn-close-liheap-screening"                         style="display: ${isScreeningInProgress ? 'inline-block' : 'none'}; background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s; margin: 8px auto;"
+                        onmouseover="this.style.backgroundColor='#a71d2a'" 
+                        onmouseout="this.style.backgroundColor='#dc3545'">Close Screening(s)</button>
             ` : ''}
         `;
         liheapContainer.appendChild(noHouseholdsDiv);
@@ -2449,7 +2467,7 @@ async function displayLIHEAPHouseholds() {
                         cursor: pointer;
                         display: ${liheapIsLikely ? 'block' : 'none'};
                     ">↻</div>
-                    <details class="custom-details" style="background-color: ${cardBgColor}; border-radius: 4px; padding: 8px; margin: 8px 0; width: 100%; box-sizing: border-box;">
+                    <details class="custom-details" style="background-color: ${cardBgColor}; border-radius: 4px; padding: 8px; margin: 8px auto; width: 100%; box-sizing: border-box;">
                         <summary><br><strong>LIHEAP HOUSEHOLD</strong><br>
                         <p><strong>Members:</strong> ${liheapMemberNames}</p>
                         <p><strong>Eligibility:</strong> ${eligibility.join(', ')}</p>
@@ -2464,7 +2482,9 @@ async function displayLIHEAPHouseholds() {
                         data-member-ids="${liheapMemberIds.join(',')}"
                         data-is-not-eligible="${liheapIsNotEligible ? 'true' : 'false'}"
                         data-ineligibility-reason="${ineligibilityReason}"
-                        style="display: ${isScreeningInProgress ? 'block' : 'none'}; background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 11px; cursor: pointer; margin: 8px 0;">
+                        style="display: ${isScreeningInProgress ? 'inline-block' : 'none'}; background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s; margin: 8px auto;"
+                        onmouseover="this.style.backgroundColor='#a71d2a'" 
+                        onmouseout="this.style.backgroundColor='#dc3545'">
                         Close Screening(s)
                     </button>
                 </div>
@@ -2501,7 +2521,9 @@ async function displayLIHEAPHouseholds() {
                         data-member-ids="${liheapMemberIds.join(',')}"
                         data-is-not-eligible="${liheapIsNotEligible ? 'true' : 'false'}"
                         data-ineligibility-reason="${ineligibilityReason}"
-                        style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 11px; cursor: pointer; margin: 8px 0;">
+                        style="display: ${isScreeningInProgress ? 'inline-block' : 'none'}; background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s; margin: 8px auto;"
+                        onmouseover="this.style.backgroundColor='#a71d2a'" 
+                        onmouseout="this.style.backgroundColor='#dc3545'">
                         Close Screening(s)
                     </button>
                 </div>
@@ -2633,56 +2655,56 @@ async function refreshAllDisplays() {
 
 function getCloseReasonsForBenefits(selectedBenefits) {
     const commonReasons = [
+        { value: "Hard Determination", label: "Use Hard Determination Closeout Reason(s)" },
         { value: "Not Interested", label: "Not Interested" },
         { value: "Too Confusing", label: "Too Confusing" },
-        { value: "Will Call Back", label: "Will Call Back" },
-        { value: "Hard Determination", label: "Use Hard Determination Closeout Reasons" }
-    ];
+        { value: "Will Call Back", label: "Will Call Back" }
+        ];
 
     const benefitReasons = {
         'PACE': [
+            ...commonReasons,
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Age Criteria Not Met", label: "Age Criteria Not Met" },
             { value: "Enrolled in Medicaid", label: "Enrolled in Medicaid" },
             { value: "Residency Not Met", label: "PA Residency Not Met" },
-            ...commonReasons
         ],
         'LIS': [
+            ...commonReasons,
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Ineligible - Assets", label: "Ineligible - Assets" },
             { value: "Not Enrolled in Medicare", label: "Not Enrolled in Medicare" },
             { value: "Enrolled in Medicaid", label: "Enrolled in Medicaid" },
-            ...commonReasons
         ],
         'MSP': [
+            ...commonReasons,
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Ineligible - Assets", label: "Ineligible - Assets" },
             { value: "Not Enrolled in Medicare", label: "Not Enrolled in Medicare" },
             { value: "Enrolled in Medicaid", label: "Enrolled in Medicaid" },
-            ...commonReasons
         ],
         'PTRR': [
+            ...commonReasons,
             { value: "Already Applied", label: "Already Applied This Year" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Age/Disability/Widow Criteria Not Met", label: "Age/Disability/Widow Criteria Not Met" },
             { value: "No Formal Lease", label: "No Formal Lease" },
             { value: "No Relevant Expenses", label: "No Relevant Expenses" },
-            ...commonReasons
         ],
         'SNAP': [
+            ...commonReasons,
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Ineligible - Income and Assets", label: "Ineligible - Income and Assets" },
-            ...commonReasons
         ],
         'LIHEAP': [
+            ...commonReasons,
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Subsidized Housing and No Heating Responsibility", label: "Subsidized Housing and No Heating Responsibility" },
-            ...commonReasons
         ]
     };
 
@@ -2722,8 +2744,20 @@ function updateReasonDropdown(selectedBenefits) {
     if (!select) return;
 
     const reasons = getCloseReasonsForBenefits(selectedBenefits);
+
+    // Check if any tiles are selected and ALL selected tiles are red (not eligible)
+    const checkboxContainer = document.getElementById('close-member-benefits-checkboxes');
+    const selectedTiles = checkboxContainer
+        ? Array.from(checkboxContainer.querySelectorAll('.close-member-benefit-tile[data-selected="true"]'))
+        : [];
+    const hasSelectedTiles = selectedTiles.length > 0;
+    const allSelectedAreRed = hasSelectedTiles && selectedTiles.every(t => t.dataset.isNotEligible === 'true');
+
     select.innerHTML = '<option value="">-- Select a reason --</option>';
     reasons.forEach(reason => {
+        // Only include "Hard Determination" if ALL selected tiles are red
+        if (reason.value === 'Hard Determination' && !allSelectedAreRed) return;
+
         const option = document.createElement('option');
         option.value = reason.value;
         option.textContent = reason.label;
@@ -3406,7 +3440,7 @@ async function openCloseMemberModal(clientId, allMembers, memberId = null, openB
                     }
                     // Update client-level program status
                     await updateClientProgramStatus(clientId, 'SNAP', false, closeReason);
-                    noteLines.push(`<br><strong>SNAP</strong><br> ${closeReason}`);
+                    noteLines.push(`<br><strong><u>SNAP</u></strong><br><em>${closeReason}</em>`);
                 } else if (benefit === 'LIHEAP') {
                     // Close LIHEAP for all LIHEAP household members
                     for (const member of allMembers) {
@@ -3417,7 +3451,7 @@ async function openCloseMemberModal(clientId, allMembers, memberId = null, openB
                     }
                     // Update client-level program status
                     await updateClientProgramStatus(clientId, 'LIHEAP', false, closeReason);
-                    noteLines.push(`<br><strong>LIHEAP</strong><br> ${closeReason}`);
+                    noteLines.push(`<br><strong><u>LIHEAP</u></strong><br><em>${closeReason}</em>`);
                 }
             }
 
@@ -3446,10 +3480,10 @@ async function openCloseMemberModal(clientId, allMembers, memberId = null, openB
                             }
                             targetMember[entry.benefit].screeningInProgress = false;
                             targetMember[entry.benefit].screeningCloseReason = closeReason;
-                            benefitNoteLines.push(`${entry.benefit} — ${closeReason}`);
+                            benefitNoteLines.push(`<strong>${entry.benefit}</strong><br><em>${closeReason}</em><br>`);
                         }
                     }
-                    noteLines.push(`<br><strong>${memberName}:</strong><br> ${benefitNoteLines.join('<br>')}`);
+                    noteLines.push(`<br><strong><u>${memberName}</u></strong><br> ${benefitNoteLines.join('<br>')}`);
                 }
             }
 

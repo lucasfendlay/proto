@@ -425,9 +425,9 @@ async function addHouseholdMemberToUI(member, client, members) {
     memberDiv.setAttribute('data-id', member.householdMemberId);
 
     memberDiv.innerHTML = `
-        <p>Name: <strong>${member.firstName} ${member.middleInitial || ''} ${member.lastName}</strong></p>
-        <p>Date of Birth: ${member.dob}</p>
-        <p>Marital Status: ${member.maritalStatus}</p>
+        <p style="text-align: center;">Name: <strong>${member.firstName} ${member.middleInitial || ''} ${member.lastName}</strong></p>
+        <p style="text-align: center;">Date of Birth: ${member.dob}</p>
+        <p style="text-align: center;">Marital Status: ${member.maritalStatus}</p>
     `;
 
     let hasQuestions = false;
@@ -458,11 +458,16 @@ async function addHouseholdMemberToUI(member, client, members) {
         await saveDefaultSelection(clientId, member.householdMemberId, "Has this person already applied for PTRR this year?", "Not Interested");
     }
 
-    if (!hasQuestions) return false;
+    if (!hasQuestions) {
+        memberDiv.classList.add('no-questions');
+        memberDiv.innerHTML += `<p style="text-align: center; color: #999; margin-top: 10px;"><em>No enrollment questions for this member.</em></p>`;
+    }
 
     // Apply saved selections and setup handlers
-    await applySavedSelections(memberDiv, clientId, member.householdMemberId);
-    setupSelectionHandlers(memberDiv, member, clientId);
+    if (hasQuestions) {
+        await applySavedSelections(memberDiv, clientId, member.householdMemberId);
+        setupSelectionHandlers(memberDiv, member, clientId);
+    }
 
     return memberDiv;
 }
@@ -493,12 +498,39 @@ async function displayHouseholdMembers() {
         // Sort: head of household first
         members.sort((a, b) => (b.headOfHousehold ? 1 : 0) - (a.headOfHousehold ? 1 : 0));
 
+        // Build all member divs first so we can sort by questions
+        const memberEntries = [];
         for (const member of members) {
             const memberDiv = await addHouseholdMemberToUI(member, client, members);
             if (memberDiv) {
-                container.appendChild(memberDiv);
+                const hasQuestions = !memberDiv.classList.contains('no-questions');
+                memberEntries.push({ div: memberDiv, hasQuestions });
             }
         }
+
+        // Sort: members with questions first, no-questions last
+        memberEntries.sort((a, b) => (b.hasQuestions ? 1 : 0) - (a.hasQuestions ? 1 : 0));
+
+        for (const entry of memberEntries) {
+            container.appendChild(entry.div);
+        }
+
+        // Equalize all member card heights to the tallest one
+        requestAnimationFrame(() => {
+            const memberDivs = container.querySelectorAll('.household-member');
+            let maxHeight = 0;
+            memberDivs.forEach(div => {
+                div.style.height = 'auto'; // Reset first
+            });
+            memberDivs.forEach(div => {
+                if (div.offsetHeight > maxHeight) {
+                    maxHeight = div.offsetHeight;
+                }
+            });
+            memberDivs.forEach(div => {
+                div.style.height = `${maxHeight}px`;
+            });
+        });
     } finally {
         isDisplaying = false;
     }

@@ -211,7 +211,7 @@
         }
     </style>
 </head>
-<body>
+<body><br><br>
     <h1>Estimated Eligibilities</h1>
 
     <div class="screening-controls" id="screening-controls"></div>
@@ -306,11 +306,7 @@
             controlsDiv.innerHTML = '';
 
             if (client?.screeningInProgress) {
-                const stopBtn = document.createElement('button');
-                stopBtn.id = 'stop-screening-btn';
-                stopBtn.textContent = 'Terminate Screening';
-                stopBtn.addEventListener('click', openStopScreeningModal);
-                controlsDiv.appendChild(stopBtn);
+                
             } else {
                 const closedBox = document.createElement('div');
                 closedBox.style.cssText = 'background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 12px; border-radius: 5px; display: inline-block;';

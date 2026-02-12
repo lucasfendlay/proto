@@ -66,15 +66,60 @@ document.addEventListener('DOMContentLoaded', async function () {
     
         const clientId = getQueryParameter('id');
 
-    if (members.length === 0) {
-        const noMembersMessage = document.createElement('p');
-        noMembersMessage.textContent = 'No household members found.';
-        householdMemberContainer.appendChild(noMembersMessage);
-    } else {
-        // Sort members: headOfHousehold: true listed first
-        members.sort((a, b) => b.headOfHousehold - a.headOfHousehold);
+        if (members.length === 0) {
+            const noMembersMessage = document.createElement('p');
+            noMembersMessage.textContent = 'No household members found.';
+            householdMemberContainer.appendChild(noMembersMessage);
+        } else {
+            members.sort((a, b) => {
+                // Check if member has any open (non-closed, non-Not Checked) benefits
+                const benefitKeys = ['PACE', 'LIS', 'MSP', 'PTRR'];
+                const isDeceased_a = (a.deceased ?? '').toLowerCase() === 'yes';
+                const isDeceased_b = (b.deceased ?? '').toLowerCase() === 'yes';
 
-        members.forEach(member => {
+                const hasOpenBenefits = (member, isDeceased) => {
+                    return benefitKeys.some(key => {
+                        if (isDeceased && key !== 'PTRR') return false;
+                        if (key === 'PTRR' && !member.headOfHousehold) return false;
+                        if (isDeceased && key === 'PTRR') return false;
+                        const benefitObj = member[key];
+                        if (!benefitObj) return false;
+                        if (benefitObj.screeningInProgress === false) return false;
+                        if (benefitObj.eligibility?.includes('Not Checked')) return false;
+                        return benefitObj.eligibility && benefitObj.eligibility.length > 0;
+                    });
+                };
+
+                const aHasOpen = hasOpenBenefits(a, isDeceased_a);
+                const bHasOpen = hasOpenBenefits(b, isDeceased_b);
+
+                // Primary sort: open benefits first, closed benefits last
+                if (aHasOpen !== bHasOpen) {
+                    return bHasOpen - aHasOpen;
+                }
+
+                // Secondary sort: head of household first within each group
+                if (b.headOfHousehold !== a.headOfHousehold) {
+                    return b.headOfHousehold - a.headOfHousehold;
+                }
+
+                // Tertiary sort: oldest to youngest by age
+                const parseAgeYears = (ageStr) => {
+                    if (!ageStr) return 0;
+                    const match = ageStr.match(/(\d+)\s*Years?/i);
+                    return match ? parseInt(match[1], 10) : 0;
+                };
+                const ageA = parseAgeYears(a.age);
+                const ageB = parseAgeYears(b.age);
+                if (ageA !== ageB) {
+                    return ageB - ageA; // Oldest first
+                }
+
+                return 0;
+            });
+    
+            members.forEach(member => {
+    
             const memberDiv = document.createElement('div');
             memberDiv.classList.add('household-member-box'); // Add a class for styling
 
@@ -348,11 +393,26 @@ function createCloseMemberModal() {
         justify-content: center;
         align-items: center;
     `;
-
     modalOverlay.innerHTML = `
         <div style="background: white; padding: 24px; border-radius: 8px; min-width: 380px; max-width: 520px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
             <h3 id="close-member-modal-title" style="margin-top: 0; flex-shrink: 0;">Close Screening</h3>
-            <div id="close-member-benefits-checkboxes" style="margin: 12px 0; overflow-y: auto; flex: 1; max-height: 50vh; padding-right: 8px;"></div>
+            <style>
+                #close-member-benefits-checkboxes::-webkit-scrollbar {
+                    width: 8px;
+                }
+                #close-member-benefits-checkboxes::-webkit-scrollbar-track {
+                    background: #f1f1f1;
+                    border-radius: 4px;
+                }
+                #close-member-benefits-checkboxes::-webkit-scrollbar-thumb {
+                    background: #888;
+                    border-radius: 4px;
+                }
+                #close-member-benefits-checkboxes::-webkit-scrollbar-thumb:hover {
+                    background: #555;
+                }
+            </style>
+            <div id="close-member-benefits-checkboxes" style="margin: 12px 0; overflow-y: scroll; flex: 1; max-height: 50vh; padding-right: 8px;"></div>
             <div style="flex-shrink: 0;">
                 <label for="close-member-reason-select"><strong>Select a reason:</strong></label>
                 <select id="close-member-reason-select" style="width: 100%; padding: 8px; margin: 12px 0; font-size: 14px;">
@@ -381,56 +441,56 @@ function createCloseMemberModal() {
 
 function getCloseReasonsForBenefits(selectedBenefits) {
     const commonReasons = [
+        { value: "Hard Determination", label: "Use Hard Determination Closeout Reason(s)" },
         { value: "Not Interested", label: "Not Interested" },
         { value: "Too Confusing", label: "Too Confusing" },
-        { value: "Will Call Back", label: "Will Call Back" },
-        { value: "Hard Determination", label: "Use Hard Determination Closeout Reasons" }
-    ];
+        { value: "Will Call Back", label: "Will Call Back" }
+        ];
 
     const benefitReasons = {
         'PACE': [
+            ...commonReasons,
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Age Criteria Not Met", label: "Age Criteria Not Met" },
             { value: "Enrolled in Medicaid", label: "Enrolled in Medicaid" },
             { value: "Residency Not Met", label: "PA Residency Not Met" },
-            ...commonReasons
         ],
         'LIS': [
+            ...commonReasons,
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Ineligible - Assets", label: "Ineligible - Assets" },
             { value: "Not Enrolled in Medicare", label: "Not Enrolled in Medicare" },
             { value: "Enrolled in Medicaid", label: "Enrolled in Medicaid" },
-            ...commonReasons
         ],
         'MSP': [
+            ...commonReasons,
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Ineligible - Assets", label: "Ineligible - Assets" },
             { value: "Not Enrolled in Medicare", label: "Not Enrolled in Medicare" },
             { value: "Enrolled in Medicaid", label: "Enrolled in Medicaid" },
-            ...commonReasons
         ],
         'PTRR': [
+            ...commonReasons,
             { value: "Already Applied", label: "Already Applied This Year" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Age/Disability/Widow Criteria Not Met", label: "Age/Disability/Widow Criteria Not Met" },
             { value: "No Formal Lease", label: "No Formal Lease" },
             { value: "No Relevant Expenses", label: "No Relevant Expenses" },
-            ...commonReasons
         ],
         'SNAP': [
+            ...commonReasons,
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Ineligible - Income and Assets", label: "Ineligible - Income and Assets" },
-            ...commonReasons
         ],
         'LIHEAP': [
+            ...commonReasons,
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Subsidized Housing and No Heating Responsibility", label: "Subsidized Housing and No Heating Responsibility" },
-            ...commonReasons
         ]
     };
 
@@ -470,8 +530,20 @@ function updateReasonDropdown(selectedBenefits) {
     if (!select) return;
 
     const reasons = getCloseReasonsForBenefits(selectedBenefits);
+
+    // Check if any tiles are selected and ALL selected tiles are red (not eligible)
+    const checkboxContainer = document.getElementById('close-member-benefits-checkboxes');
+    const selectedTiles = checkboxContainer
+        ? Array.from(checkboxContainer.querySelectorAll('.close-member-benefit-tile[data-selected="true"]'))
+        : [];
+    const hasSelectedTiles = selectedTiles.length > 0;
+    const allSelectedAreRed = hasSelectedTiles && selectedTiles.every(t => t.dataset.isNotEligible === 'true');
+
     select.innerHTML = '<option value="">-- Select a reason --</option>';
     reasons.forEach(reason => {
+        // Only include "Hard Determination" if ALL selected tiles are red
+        if (reason.value === 'Hard Determination' && !allSelectedAreRed) return;
+
         const option = document.createElement('option');
         option.value = reason.value;
         option.textContent = reason.label;
@@ -1155,7 +1227,7 @@ async function openCloseMemberModal(clientId, allMembers, memberId = null, openB
                     }
                     // Update client-level program status
                     await updateClientProgramStatus(clientId, 'SNAP', false, closeReason);
-                    noteLines.push(`<br><strong>SNAP</strong><br> ${closeReason}`);
+                    noteLines.push(`<br><strong><u>SNAP</u></strong><br><em>${closeReason}</em>`);
                 } else if (benefit === 'LIHEAP') {
                     // Close LIHEAP for all LIHEAP household members
                     for (const member of allMembers) {
@@ -1166,7 +1238,7 @@ async function openCloseMemberModal(clientId, allMembers, memberId = null, openB
                     }
                     // Update client-level program status
                     await updateClientProgramStatus(clientId, 'LIHEAP', false, closeReason);
-                    noteLines.push(`<br><strong>LIHEAP </strong><br> ${closeReason}`);
+                    noteLines.push(`<br><strong><u>LIHEAP</u></strong><br><em>${closeReason}</em>`);
                 }
             }
 
@@ -1195,10 +1267,10 @@ async function openCloseMemberModal(clientId, allMembers, memberId = null, openB
                             }
                             targetMember[entry.benefit].screeningInProgress = false;
                             targetMember[entry.benefit].screeningCloseReason = closeReason;
-                            benefitNoteLines.push(`${entry.benefit} — ${closeReason}`);
+                            benefitNoteLines.push(`<strong>${entry.benefit}</strong><br><em> ${closeReason}</em>`);
                         }
                     }
-                    noteLines.push(`<br><strong>${memberName}:</strong><br> ${benefitNoteLines.join('<br>')}`);
+                    noteLines.push(`<br><strong><u>${memberName}</u></strong><br> ${benefitNoteLines.join('<br>')}`);
                 }
             }
 
@@ -1834,51 +1906,6 @@ if (activeMembersForLIHEAP.length === 0) {
         const closeBtn = householdDiv.querySelector('.btn-close-liheap-screening');
         closeBtn.addEventListener('click', () => {
             openCloseMemberModal(clientId, members, null, null, 'LIHEAP');
-        });
-    }
-
-    function createCloseLiheapModal() {
-        if (document.getElementById('close-liheap-modal')) return;
-
-        const modalOverlay = document.createElement('div');
-        modalOverlay.id = 'close-liheap-modal';
-        modalOverlay.style.cssText = `
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 9999;
-            justify-content: center;
-            align-items: center;
-        `;
-
-        modalOverlay.innerHTML = `
-            <div style="background: white; padding: 24px; border-radius: 8px; min-width: 380px; max-width: 520px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-                <h3 style="margin-top: 0; flex-shrink: 0;">Close Screening(s)</h3>
-                <div id="liheap-benefits-checkboxes" style="margin: 12px 0; overflow-y: auto; flex: 1; max-height: 50vh; padding-right: 8px;"></div>
-                <div style="flex-shrink: 0;">
-                    <label for="liheap-close-reason-select"><strong>Select a reason:</strong></label>
-                    <select id="liheap-close-reason-select" style="width: 100%; padding: 8px; margin: 12px 0; font-size: 14px;">
-                        <option value="">-- Select a reason --</option>
-                    </select>
-                    <div style="display: flex; gap: 10px; justify-content: center; margin-top: 16px;">
-                        <button id="liheap-close-cancel-btn" style="padding: 8px 16px; cursor: pointer;">Cancel</button>
-                        <button id="liheap-close-confirm-btn" style="padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Confirm Close</button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        document.body.appendChild(modalOverlay);
-
-        document.getElementById('liheap-close-cancel-btn').addEventListener('click', () => {
-            modalOverlay.style.display = 'none';
-        });
-
-        modalOverlay.addEventListener('click', (e) => {
-            if (e.target === modalOverlay) {
-                modalOverlay.style.display = 'none';
-            }
         });
     }
 
@@ -2728,14 +2755,14 @@ if (spouse) {
                     age--;
                 }
     
-                if (member.residenceStatus?.toLowerCase() === "other") {
-                    eligibility.push("No Formal Lease");
+                if (!(age >= 18 && isDisabled) && !(age >= 50 && isWidowed) && !(age >= 65)) {
+                    eligibility.push("Age, Disability, or Widow Status Criteria Not Met");
                 } else if (!member.residenceStatus || member.residenceStatus.toLowerCase() === "n/a") {
                     eligibility.push("Needs Previous Year Residence Status");
                 } else if (applicationStatus === "yes") {
                     eligibility.push("Already Applied");
-                } else if (!(age >= 18 && isDisabled) && !(age >= 50 && isWidowed) && !(age >= 65)) {
-    eligibility.push("Age, Disability, or Widow Status Criteria Not Met");
+                } else if (member.residenceStatus?.toLowerCase() === "other") {
+                    eligibility.push("No Formal Lease");
     member.selections = member.selections || {};
     member.selections["Has this person already applied for PTRR this year?"] = "agecriterianotmet";
 } else if (!applicationStatus || applicationStatus.toLowerCase().trim() === "n/a" || 
@@ -3534,35 +3561,6 @@ document.getElementById('reopen-all-screening-btn').addEventListener('click', as
 
         return;
     }
-
-    // Only show the Terminate Screening button if screeningInProgress is explicitly true
-    if (client.screeningInProgress !== true) return;
-
-    // Insert the stop screening button
-    const stopBtnContainer = document.createElement('div');
-    stopBtnContainer.id = 'stop-screening-container';
-    stopBtnContainer.style.cssText = 'margin-bottom: 16px; text-align: left;';
-    stopBtnContainer.innerHTML = `
-        <button id="stop-screening-btn" style="
-            background-color: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 10px 20px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            display: block;
-            margin: 0 auto;
-        " onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Terminate Screening</button>
-    `;
-
-    snapHouseholdContainer.parentNode.insertBefore(stopBtnContainer, snapHouseholdContainer);
-
-    document.getElementById('stop-screening-btn').addEventListener('click', () => {
-        openStopScreeningModal();
-    });
 }
 
 // --- Stop Screening Modal ---

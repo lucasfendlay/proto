@@ -37,8 +37,8 @@ if (clientId) {
                 const checkedOutInfo = clientData.checkedOut.find(entry => entry.status === true);
                 if (checkedOutInfo) {
                     const checkedOutMessage = checkedOutInfo.user === activeUser.trim()
-                    ? 'Profile checked out by you.'
-                    : `Profile checked out by ${checkedOutInfo.user} on ${new Date(checkedOutInfo.timestamp).toLocaleDateString()} at ${new Date(checkedOutInfo.timestamp).toLocaleTimeString()}.`;
+                    ? `Profile ${clientId} checked out by you.`
+                    : `Profile ${clientId} checked out by ${checkedOutInfo.user} on ${new Date(checkedOutInfo.timestamp).toLocaleDateString()} at ${new Date(checkedOutInfo.timestamp).toLocaleTimeString()}.`;
                 
                 // Create a new div for the checkedOut message
                 const checkedOutDiv = document.createElement('div');
