@@ -327,7 +327,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 const previousYearEnd = new Date(`${previousYear}-12-31`);
     
                 let totalIncome = previousYearIncomes.reduce((sum, income) => {
-                    const yearlyAmount = calculateYearlyIncome(
+                    const yearlyAmount = Utils.calculateYearlyIncome(
                         income.amount,
                         income.frequency,
                         income.startDate,
@@ -516,6 +516,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             return;
         }
     
+    // ...existing code...
         // Step 1: Calculate adjusted income and assets for each member
         for (const member of members) {
             try {
@@ -535,7 +536,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 const incomes = member.income || [];
                 const currentYearIncomes = Utils.filterCurrentIncomes(incomes);
     
-                // Calculate total yearly income from current incomes
+                // Calculate total monthly income from current incomes
                 let totalIncome = currentYearIncomes.reduce((sum, income) => {
                     const yearlyAmount = Utils.calculateYearlyIncome(
                         income.amount,
@@ -543,7 +544,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                         income.startDate,
                         income.endDate
                     );
-                    return sum + yearlyAmount;
+                    return sum + (yearlyAmount / 12);
                 }, 0);
     
                 // Calculate total assets
@@ -553,7 +554,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 member.lisAdjustedIncome = totalIncome;
                 member.lisAdjustedAssets = totalAssets;
     
-                console.log(`LIS adjusted income for ${member.firstName} ${member.lastName}: $${member.lisAdjustedIncome}`);
+                console.log(`LIS adjusted monthly income for ${member.firstName} ${member.lastName}: $${member.lisAdjustedIncome}`);
                 console.log(`LIS adjusted assets for ${member.firstName} ${member.lastName}: $${member.lisAdjustedAssets}`);
             } catch (error) {
                 console.error(`Error calculating LIS adjusted income/assets for ${member.firstName} ${member.lastName}:`, error);
@@ -684,8 +685,6 @@ document.addEventListener('DOMContentLoaded', async function () {
             console.error('Error saving household members:', error);
         }
     }
-    
-    // Place this after the LISEligibilityCheck function, before PTRREligibilityCheck
     
     async function MSPEligibilityCheck(members) {
         const Utils = getUtils();
@@ -974,7 +973,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     const previousYearEnd = new Date(`${previousYear}-12-31`);
         
                     let totalGrossIncome = previousYearIncomes.reduce((sum, income) => {
-                        let yearlyAmount = calculateYearlyIncome(
+                        let yearlyAmount = Utils.calculateYearlyIncome(
                             income.amount,
                             income.frequency,
                             income.startDate,
@@ -1013,7 +1012,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         const spousePreviousYearIncomes = spouseIncomes.filter(income => income.type && income.type.toLowerCase() === "previous");
     
         let spouseTotalGrossIncome = spousePreviousYearIncomes.reduce((sum, income) => {
-            const yearlyAmount = calculateYearlyIncome(
+            const yearlyAmount = Utils.calculateYearlyIncome(
                 income.amount,
                 income.frequency,
                 income.startDate,
@@ -1059,14 +1058,14 @@ document.addEventListener('DOMContentLoaded', async function () {
                         age--;
                     }
         
-                    if (member.residenceStatus?.toLowerCase() === "other") {
-                        eligibility.push("No Formal Lease");
+                    if (!(age >= 18 && isDisabled) && !(age >= 50 && isWidowed) && !(age >= 65)) {
+                        eligibility.push("Age, Disability, or Widow Status Criteria Not Met");
                     } else if (!member.residenceStatus || member.residenceStatus.toLowerCase() === "n/a") {
                         eligibility.push("Needs Previous Year Residence Status");
                     } else if (applicationStatus === "yes") {
                         eligibility.push("Already Applied");
-                    } else if (!(age >= 18 && isDisabled) && !(age >= 50 && isWidowed) && !(age >= 65)) {
-        eligibility.push("Age, Disability, or Widow Status Criteria Not Met");
+                    } else if (member.residenceStatus?.toLowerCase() === "other") {
+                        eligibility.push("No Formal Lease");
         member.selections = member.selections || {};
         member.selections["Has this person already applied for PTRR this year?"] = "agecriterianotmet";
     } else if (!applicationStatus || applicationStatus.toLowerCase().trim() === "n/a" || 
@@ -1306,12 +1305,14 @@ document.addEventListener('DOMContentLoaded', async function () {
             const members = clientData.householdMembers;
             const activeMembersForLIHEAP = members.filter(m => (m.deceased ?? '').toLowerCase() !== 'yes');
 
-            let combinedYearlyIncome = 0;
-
+            let combinedMonthlyIncome = 0;
+            let totalMedicarePremiumDeduction = 0;
+    
             for (const member of activeMembersForLIHEAP) {
                 const currentIncomes = filterCurrentIncomes(member.income);
                 const yearlyIncome = currentIncomes.reduce((sum, income) => 
                     sum + calculateYearlyIncome(income.amount, income.frequency, income.startDate, income.endDate), 0);
+                const monthlyIncome = yearlyIncome / 12;
 
                 // Medicare premium deduction
                 let medicarePremiumDeduction = 0;
@@ -1321,28 +1322,17 @@ document.addEventListener('DOMContentLoaded', async function () {
                     const isDeductedFromSSOrPension = expense.deductedFromSSOrPension?.toLowerCase() === 'yes';
 
                     if (isMedicarePremium && isDeductedFromSSOrPension) {
-                        const startDate = new Date(expense.startDate);
-                        const endDate = new Date(expense.endDate);
-                        const today = new Date();
-                        const currentYear = today.getFullYear();
-                        const yearStart = new Date(`${currentYear}-01-01`);
-                        const yearEnd = new Date(`${currentYear}-12-31`);
-
-                        const effectiveStart = startDate > yearStart ? startDate : yearStart;
-                        const effectiveEnd = endDate < yearEnd ? endDate : yearEnd;
-
-                        if (effectiveStart <= effectiveEnd && effectiveStart <= today) {
-                            const cappedEnd = effectiveEnd > today ? today : effectiveEnd;
-                            const daysActive = Math.max(0, Math.floor((cappedEnd - effectiveStart) / (1000 * 60 * 60 * 24)) + 1);
-                            const yearlyAmount = expense.amount * getYearlyMultiplier(expense.frequency);
-                            if (yearlyAmount > 0) {
-                                medicarePremiumDeduction += yearlyAmount * (daysActive / 365);
-                            }
+                        const monthlyAmount = (expense.amount * getYearlyMultiplier(expense.frequency)) / 12;
+                        if (monthlyAmount > 0) {
+                            medicarePremiumDeduction += monthlyAmount;
                         }
                     }
                 }
 
-                combinedYearlyIncome += Math.max(0, yearlyIncome - medicarePremiumDeduction);
+                // Cap deduction at actual income — can't deduct more than you earn
+                const effectiveDeduction = Math.min(medicarePremiumDeduction, monthlyIncome);
+                totalMedicarePremiumDeduction += effectiveDeduction;
+                combinedMonthlyIncome += Math.max(0, monthlyIncome - effectiveDeduction);
             }
 
             // Determine eligibility
@@ -1369,82 +1359,25 @@ document.addEventListener('DOMContentLoaded', async function () {
                 eligibility.push("Needs Heating Cost Responsibility Status");
             } else if (clientData.subsidizedHousing === 'yes' && clientData.heatingCost === 'yes') {
                 eligibility.push("Not Likely Eligible for LIHEAP (Heating cost included in rent, household rent is subsidized)");
-            } else if (clientData.heatingCrisis === 'yes' && combinedYearlyIncome <= incomeLimit) {
+            } else if (clientData.heatingCrisis === 'yes' && combinedMonthlyIncome <= incomeLimit) {
                 eligibility.push("Likely Eligible for LIHEAP (Crisis)");
-            } else if (clientData.heatingCrisis === 'yes' && combinedYearlyIncome > incomeLimit) {
+            } else if (clientData.heatingCrisis === 'yes' && combinedMonthlyIncome > incomeLimit) {
                 eligibility.push("Not Likely Eligible for LIHEAP but Submission Recommended");
-            } else if (combinedYearlyIncome <= incomeLimit) {
+            } else if (combinedMonthlyIncome <= incomeLimit) {
                 eligibility.push("Likely Eligible for LIHEAP");
             } else {
                 eligibility.push("Not Likely Eligible for LIHEAP (Income)");
             }
 
-            // Update only non-deceased members
-            activeMembersForLIHEAP.forEach(member => {
-                member.LIHEAP = { combinedYearlyIncome, eligibility };
-            });
+        // Update only non-deceased members
+        activeMembersForLIHEAP.forEach(member => {
+            member.LIHEAP = { combinedMonthlyIncome, totalMedicarePremiumDeduction, eligibility };
+        });
 
             await saveHouseholdMembers(members);
         } catch (error) {
             console.error('Error processing LIHEAP eligibility:', error);
         }
-    }
-
-    // ===== BENEFIT APPLICATION UPDATES =====
-    async function updateMemberBenefits(members, benefit, newApplyingState, memberId = null) {
-        if (!BENEFIT_KEYS.includes(benefit)) {
-            console.warn(`updateMemberBenefits does not handle ${benefit}.`);
-            return;
-        }
-
-        if (benefit === 'SNAP') {
-            members.filter(m => m.meals?.toLowerCase() === "yes").forEach(member => {
-                member.SNAP = member.SNAP || {};
-                member.SNAP.application = member.SNAP.application || [];
-                if (member.SNAP.application.length === 0) {
-                    member.SNAP.application.push({ applying: newApplyingState });
-                } else {
-                    member.SNAP.application.forEach(app => { app.applying = newApplyingState; });
-                }
-            });
-        } else if (benefit === 'LIHEAP') {
-            members.forEach(member => {
-                member.LIHEAP = member.LIHEAP || {};
-                member.LIHEAP.application = member.LIHEAP.application || [];
-                if (member.LIHEAP.application.length === 0) {
-                    member.LIHEAP.application.push({ applying: newApplyingState });
-                } else {
-                    member.LIHEAP.application.forEach(app => { app.applying = newApplyingState; });
-                }
-            });
-        } else if (memberId) {
-            const member = members.find(m => String(m.householdMemberId) === String(memberId));
-            if (!member) {
-                console.error(`Member with ID ${memberId} not found.`);
-                return;
-            }
-
-            member[benefit] = member[benefit] || {};
-            member[benefit].application = member[benefit].application || [];
-
-            // Check if apply button is displayed
-            const benefitButton = document.querySelector(`.benefit-apply-button[data-benefit="${benefit}"][data-member-id="${memberId}"]`);
-            const isButtonDisplayed = benefitButton && benefitButton.style.display !== 'none';
-
-            if (!isButtonDisplayed) {
-                newApplyingState = false;
-            }
-
-            if (newApplyingState) {
-                if (!member[benefit].application.some(app => app.applying)) {
-                    member[benefit].application.push({ applying: true });
-                }
-            } else {
-                member[benefit].application = member[benefit].application.filter(app => !app.applying);
-            }
-        }
-
-        await saveHouseholdMembers(members);
     }
 
     async function updateSaveContinueButtonVisibility() {
@@ -2196,7 +2129,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                         ` : ''}
                         </summary>
                         <hr class="separator-bar">
-                        <p><strong>Household Size:</strong> ${snapData.householdSize || household.length}</p>
+                        <p><strong>SNAP Household Size:</strong> ${snapData.householdSize || household.length}</p>
                         <p><strong>Total Gross Income:</strong> $${(snapData.combinedMonthlyIncome || 0).toFixed(2)}</p>
                         <p><strong>Standard Deduction:</strong> $${(snapData.standardDeduction || 0).toFixed(2)}</p>
                         <p><strong>Shelter Deduction:</strong> $${(snapData.excessShelterCost || 0).toFixed(2)}</p>
@@ -2302,7 +2235,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     // ===== LIHEAP DISPLAY =====
-// ...existing code...
 async function displayLIHEAPHouseholds() {
     // Always resolve the container at runtime to avoid scope/name issues
     const liheapContainer = document.getElementById('liheap-household-container');
@@ -2415,9 +2347,11 @@ async function displayLIHEAPHouseholds() {
     liheapContainer.appendChild(householdDiv);
 }
 
-    function createLIHEAPHouseholdCard(activeMembersForLIHEAP, liheapMemberIds, liheapMemberNames, liheapData, isScreeningInProgress) {
-        const eligibility = liheapData.eligibility?.map(capitalizeFirstLetter) || ['Not Available'];
-        const combinedYearlyIncome = liheapData.combinedYearlyIncome || 0;
+function createLIHEAPHouseholdCard(activeMembersForLIHEAP, liheapMemberIds, liheapMemberNames, liheapData, isScreeningInProgress) {
+    const eligibility = liheapData.eligibility?.map(capitalizeFirstLetter) || ['Not Available'];
+    const combinedMonthlyIncome = liheapData.combinedMonthlyIncome || 0;
+    const totalMedicarePremiumDeduction = liheapData.totalMedicarePremiumDeduction || 0;
+    const grossMonthlyIncome = combinedMonthlyIncome + totalMedicarePremiumDeduction;
 
         const liheapIsNotEligible = eligibility.some(item => 
             (item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED")) && 
@@ -2473,10 +2407,11 @@ async function displayLIHEAPHouseholds() {
                         <p><strong>Eligibility:</strong> ${eligibility.join(', ')}</p>
                         </summary>
                         <hr class="separator-bar">
-                        <p><strong>Combined Yearly Income:</strong> $${combinedYearlyIncome.toFixed(2)}</p>
+                        <p><strong>Household Size:</strong> ${activeMembersForLIHEAP.length}</p>
+                        <p><strong>Total Gross Income:</strong> $${grossMonthlyIncome.toFixed(2)}</p>
+                        <p><strong>Medicare Premium Deductions:</strong> $${totalMedicarePremiumDeduction.toFixed(2)}</p>
+                        <p><strong>Adjusted Gross Income:</strong> $${combinedMonthlyIncome.toFixed(2)}</p>
                     </details>
-                    <button class="benefit-apply-button" data-benefit="LIHEAP" style="display: ${isScreeningInProgress && liheapIsLikely ? 'block' : 'none'}; margin: 0 auto;">
-                        ${activeMembersForLIHEAP.every(m => m.LIHEAP?.application?.some(app => app.applying)) ? 'Stop Applying' : 'Apply for LIHEAP'}
                     </button>
                     <button class="close-liheap-btn" 
                         data-member-ids="${liheapMemberIds.join(',')}"

@@ -71,7 +71,7 @@ const PACE_THRESHOLDS = {
 // LIS thresholds (current year income & assets)
 const LIS_THRESHOLDS = {
     incomePercent: FPL_PERCENTAGES.LIS,
-    getIncomeLimit: (householdSize) => FPL.getAtPercent(householdSize, FPL_PERCENTAGES.LIS),
+    getIncomeLimit: (householdSize) => FPL.getMonthlyAtPercent(householdSize, FPL_PERCENTAGES.LIS),
     assets: {
         single: 18090,
         married: 36100
@@ -121,7 +121,7 @@ const SNAP_NET_INCOME_LIMITS = Array.from({ length: 17 }, (_, i) =>
 
 // LIHEAP income limits (150% FPL annually)
 const LIHEAP_INCOME_LIMITS = Array.from({ length: 16 }, (_, i) => 
-    i === 0 ? 0 : Math.round(FPL.getAtPercent(i, FPL_PERCENTAGES.LIHEAP))
+    i === 0 ? 0 : Math.round(FPL.getMonthlyAtPercent(i, FPL_PERCENTAGES.LIHEAP))
 );
 
 const SNAP_SHELTER_COST_CAP = 744;
@@ -172,7 +172,7 @@ const SNAP_EXPEDITED_ASSET_LIMIT = 100;
         return multipliers[frequency?.toLowerCase()] || 0;
     }
 
-    function calculateYearlyIncome(amount, frequency, startDate, endDate, type = "Previous") {
+    function calculateYearlyIncome(amount, frequency, startDate, endDate, type = "Current") {
         if (!amount || !frequency) {
             console.error('Invalid income data:', { amount, frequency });
             return 0;
@@ -184,19 +184,41 @@ const SNAP_EXPEDITED_ASSET_LIMIT = 100;
             return 0;
         }
 
-        const start = new Date(startDate);
-        const end = new Date(endDate);
+        // For "Previous" year income, prorate based on active days within the year
+        if (type === "Previous") {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
 
-        if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-            console.error('Invalid startDate or endDate:', { startDate, endDate });
-            return 0;
+            if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+                console.error('Invalid startDate or endDate:', { startDate, endDate });
+                return 0;
+            }
+
+            const totalDaysInYear = 365;
+            const activeDays = Math.min(Math.max((end - start) / (1000 * 60 * 60 * 24) + 1, 0), 365);
+            const proratedMultiplier = Math.min(activeDays / totalDaysInYear, 1);
+            return amount * yearlyMultiplier * proratedMultiplier;
         }
 
-        const totalDaysInYear = 365;
-        const activeDays = Math.min(Math.max((end - start) / (1000 * 60 * 60 * 24) + 1, 0), 365);
-        const proratedMultiplier = Math.min(activeDays / totalDaysInYear, 1);
-        
-        return amount * yearlyMultiplier * proratedMultiplier;
+        // For current income: if it's active right now, return full annualized amount.
+        // If it's not active (end date has passed), return 0.
+        // The caller can also use filterCurrentIncomes() to pre-filter.
+        if (endDate) {
+            const end = new Date(endDate);
+            const today = new Date();
+            if (end < today) {
+                return 0; // Income has ended, don't count it
+            }
+        }
+        if (startDate) {
+            const start = new Date(startDate);
+            const today = new Date();
+            if (start > today) {
+                return 0; // Income hasn't started yet, don't count it
+            }
+        }
+
+        return amount * yearlyMultiplier;
     }
 
     function isIncomeActive(income) {

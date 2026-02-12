@@ -1493,12 +1493,15 @@ const processedMembers = new Set();
                 householdDiv.innerHTML = `
     <details class="custom-details">
     <summary><h3>SNAP HOUSEHOLD</h3></summary>
-    <p><strong>Total Gross Income:</strong> $${combinedMonthlyIncome.toFixed(2)}</p>
-    <p><strong>Shelter Deduction:</strong> $${excessShelterCost.toFixed(2)}</p>
-    <p><strong>Medical Expense Deductions:</strong> $${totalMedicalExpenses.toFixed(2)}</p>
-    <p><strong>Other Expense Deductions:</strong> $${totalOtherExpenses.toFixed(2)}</p>
-    <p><strong>Adjusted Net Income:</strong> $${totalNetIncome.toFixed(2)}</p>
-    <p><strong>Combined Assets:</strong> $${combinedAssets.toFixed(2)}</p>
+                        <p><strong>SNAP Household Size:</strong> ${household[0]?.SNAP?.householdSize || household.length}</p>
+                        <p><strong>Total Gross Income:</strong> $${(combinedMonthlyIncome || 0).toFixed(2)}</p>
+                        <p><strong>Standard Deduction:</strong> $${(household[0]?.SNAP?.standardDeduction || 0).toFixed(2)}</p>
+                        <p><strong>Shelter Deduction:</strong> $${(excessShelterCost || 0).toFixed(2)}</p>
+                        <p><strong>Utility Allowance:</strong> $${(totalUtilityAllowance || 0).toFixed(2)}</p>
+                        <p><strong>Medical Expense Deductions:</strong> $${(totalMedicalExpenses || 0).toFixed(2)}</p>
+                        <p><strong>Other Expense Deductions:</strong> $${(totalOtherExpenses || 0).toFixed(2)}</p>
+                        <p><strong>Adjusted Net Income:</strong> $${(totalNetIncome || 0).toFixed(2)}</p>
+                        <p><strong>Combined Assets:</strong> $${(combinedAssets || 0).toFixed(2)}</p>
     <hr class="separator-bar">
     </details>
         <button class="btn-close-snap-screening" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Close Screening(s)</button>
@@ -1788,126 +1791,130 @@ async function displayLIHEAPHouseholds(prefetchedMembers, prefetchedClient) {
         return; // Exit early - screening is closed, don't show anything else
     }
 
-// Only check enrollment status if screening is NOT closed
-const isLiheapAlreadyEnrolled = client?.liheapEnrollment === 'yes' && client?.heatingCrisis === 'no';
-const isLiheapNotInterested = client?.liheapEnrollment === 'notinterested';
+    // Only check enrollment status if screening is NOT closed
+    const isLiheapAlreadyEnrolled = client?.liheapEnrollment === 'yes' && client?.heatingCrisis === 'no';
+    const isLiheapNotInterested = client?.liheapEnrollment === 'notinterested';
 
-    
-if (isLiheapAlreadyEnrolled || isLiheapNotInterested) {
-    const noHouseholdsDiv = document.createElement('div');
-    noHouseholdsDiv.classList.add('household-member-box');
-    noHouseholdsDiv.style.backgroundColor = '#f8d7da'; // Red for already enrolled / not interested
-    noHouseholdsDiv.style.borderColor = '#f5c6cb';
-    noHouseholdsDiv.style.width = '100%'; // Ensure full width
-    noHouseholdsDiv.style.boxSizing = 'border-box'; // Consistent box sizing
+    if (isLiheapAlreadyEnrolled || isLiheapNotInterested) {
+        const noHouseholdsDiv = document.createElement('div');
+        noHouseholdsDiv.classList.add('household-member-box');
+        noHouseholdsDiv.style.backgroundColor = '#f8d7da';
+        noHouseholdsDiv.style.borderColor = '#f5c6cb';
+        noHouseholdsDiv.style.width = '100%';
+        noHouseholdsDiv.style.boxSizing = 'border-box';
 
-    const anyLiheapScreeningActive = members.some(m => m.LIHEAP?.screeningInProgress === true);
+        const anyLiheapScreeningActive = members.some(m => m.LIHEAP?.screeningInProgress === true);
 
-    noHouseholdsDiv.innerHTML = `
-        <h3>LIHEAP HOUSEHOLD</h3>
-        ${isLiheapAlreadyEnrolled ? `
-            <p>ALREADY ENROLLED</p>
-        ` : `
-            <p>NOT INTERESTED</p>
-        `}
-        ${anyLiheapScreeningActive || isLiheapAlreadyEnrolled || isLiheapNotInterested ? `
-            <button class="btn-close-liheap-screening" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Close Screening(s)</button>
-        ` : ''}
-    `;
-    liheapHouseholdContainer.appendChild(noHouseholdsDiv);
-
-    if (anyLiheapScreeningActive || isLiheapAlreadyEnrolled || isLiheapNotInterested) {
-        const closeBtn = noHouseholdsDiv.querySelector('.btn-close-liheap-screening');
-        closeBtn.addEventListener('click', () => {
-            openCloseMemberModal(clientId, members, null, null, 'LIHEAP');
-        });
-    }
-    return;
-}
-
-// Check if there are no active LIHEAP members (no household members found)
-if (activeMembersForLIHEAP.length === 0) {
-    const noHouseholdsDiv = document.createElement('div');
-    noHouseholdsDiv.classList.add('household-member-box');
-    noHouseholdsDiv.style.backgroundColor = '#fff3cd'; // Yellow for no households found
-    noHouseholdsDiv.style.borderColor = '#ffc107';
-    noHouseholdsDiv.style.width = '100%';
-    noHouseholdsDiv.style.boxSizing = 'border-box';
-
-    const anyLiheapScreeningActive = members.some(m => m.LIHEAP?.screeningInProgress === true);
-
-    noHouseholdsDiv.innerHTML = `
-        <h3>LIHEAP HOUSEHOLD</h3>
-        <p>NO LIHEAP HOUSEHOLD MEMBERS FOUND.</p>
-        ${anyLiheapScreeningActive ? `
-            <button class="btn-close-liheap-screening" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Close Screening(s)</button>
-        ` : ''}
-    `;
-    liheapHouseholdContainer.appendChild(noHouseholdsDiv);
-
-    if (anyLiheapScreeningActive) {
-        const closeBtn = noHouseholdsDiv.querySelector('.btn-close-liheap-screening');
-        closeBtn.addEventListener('click', () => {
-            openCloseMemberModal(clientId, members, null, null, 'LIHEAP');
-        });
-    }
-    return;
-}
-    
-        // Use the combined values from the first active member (uniform across household)
-        const combinedYearlyIncome = activeMembersForLIHEAP[0]?.LIHEAP?.combinedYearlyIncome || 0;
-        const eligibility = activeMembersForLIHEAP[0]?.LIHEAP?.eligibility?.map(capitalizeFirstLetter) || 'No LIHEAP Household Members Found';
-    
-        // Create a container for the LIHEAP household details
-        const householdDiv = document.createElement('div');
-        householdDiv.classList.add('household-member-box');
-
-        const isLikelyEligible = Array.isArray(eligibility)
-            ? !eligibility.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED")) || eligibility.some(item => item.includes("RECOMMENDED"))
-            : !String(eligibility).includes("NOT") && !String(eligibility).includes("ALREADY ENROLLED") && !String(eligibility).includes("NOT INTERESTED") || String(eligibility).includes("RECOMMENDED");
-
-        const isNotEligible = Array.isArray(eligibility)
-            ? eligibility.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED")) && !eligibility.some(item => item.includes("RECOMMENDED"))
-            : (String(eligibility).includes("NOT") || String(eligibility).includes("ALREADY ENROLLED") || String(eligibility).includes("NOT INTERESTED")) && !String(eligibility).includes("RECOMMENDED");
-
-        const needsMoreInfo = Array.isArray(eligibility)
-            ? eligibility.some(item => item.includes("NEEDS"))
-            : String(eligibility).includes("NEEDS");
-
-        // Apply color coding based on eligibility
-        if (isNotEligible) {
-            householdDiv.style.backgroundColor = '#f8d7da'; // Red background
-            householdDiv.style.borderColor = '#f5c6cb';
-        } else if (needsMoreInfo) {
-            householdDiv.style.backgroundColor = '#fff3cd'; // Yellow background
-            householdDiv.style.borderColor = '#ffc107';
-        } else if (isLikelyEligible) {
-            householdDiv.style.backgroundColor = '#d4edda'; // Green background
-            householdDiv.style.borderColor = '#c3e6cb';
-        }
-    
-        // Populate household details
-        householdDiv.innerHTML = `
-            <details class="custom-details">
-                <summary><h3>LIHEAP HOUSEHOLD</h3></summary>
-                <p><strong>Combined Yearly Income:</strong> $${combinedYearlyIncome.toFixed(2)}</p>
-                <hr class="separator-bar">
-            </details>
-                        <button class="btn-close-liheap-screening" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Close Screening(s)</button>
-
-<p><strong>Members:</strong> ${activeMembersForLIHEAP.length > 0 
-    ? activeMembersForLIHEAP.map(member => `${capitalizeFirstLetter(member.firstName || '')} ${capitalizeFirstLetter(member.lastName || '')}`).join(', ') 
-    : 'N/A'}</p>
-                <p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
+        noHouseholdsDiv.innerHTML = `
+            <h3>LIHEAP HOUSEHOLD</h3>
+            ${isLiheapAlreadyEnrolled ? `
+                <p>ALREADY ENROLLED</p>
+            ` : `
+                <p>NOT INTERESTED</p>
+            `}
+            ${anyLiheapScreeningActive || isLiheapAlreadyEnrolled || isLiheapNotInterested ? `
+                <button class="btn-close-liheap-screening" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Close Screening(s)</button>
+            ` : ''}
         `;
-    
-        liheapHouseholdContainer.appendChild(householdDiv);
+        liheapHouseholdContainer.appendChild(noHouseholdsDiv);
 
-        const closeBtn = householdDiv.querySelector('.btn-close-liheap-screening');
-        closeBtn.addEventListener('click', () => {
-            openCloseMemberModal(clientId, members, null, null, 'LIHEAP');
-        });
+        if (anyLiheapScreeningActive || isLiheapAlreadyEnrolled || isLiheapNotInterested) {
+            const closeBtn = noHouseholdsDiv.querySelector('.btn-close-liheap-screening');
+            closeBtn.addEventListener('click', () => {
+                openCloseMemberModal(clientId, members, null, null, 'LIHEAP');
+            });
+        }
+        return;
     }
+
+    // Check if there are no active LIHEAP members (no household members found)
+    if (activeMembersForLIHEAP.length === 0) {
+        const noHouseholdsDiv = document.createElement('div');
+        noHouseholdsDiv.classList.add('household-member-box');
+        noHouseholdsDiv.style.backgroundColor = '#fff3cd';
+        noHouseholdsDiv.style.borderColor = '#ffc107';
+        noHouseholdsDiv.style.width = '100%';
+        noHouseholdsDiv.style.boxSizing = 'border-box';
+
+        const anyLiheapScreeningActive = members.some(m => m.LIHEAP?.screeningInProgress === true);
+
+        noHouseholdsDiv.innerHTML = `
+            <h3>LIHEAP HOUSEHOLD</h3>
+            <p>NO LIHEAP HOUSEHOLD MEMBERS FOUND.</p>
+            ${anyLiheapScreeningActive ? `
+                <button class="btn-close-liheap-screening" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Close Screening(s)</button>
+            ` : ''}
+        `;
+        liheapHouseholdContainer.appendChild(noHouseholdsDiv);
+
+        if (anyLiheapScreeningActive) {
+            const closeBtn = noHouseholdsDiv.querySelector('.btn-close-liheap-screening');
+            closeBtn.addEventListener('click', () => {
+                openCloseMemberModal(clientId, members, null, null, 'LIHEAP');
+            });
+        }
+        return;
+    }
+
+    // Read the values directly from the LIHEAP object (set by LIHEAPEligibilityCheck)
+    const combinedMonthlyIncome = activeMembersForLIHEAP[0]?.LIHEAP?.combinedMonthlyIncome || 0;
+    const totalMedicarePremiumDeduction = activeMembersForLIHEAP[0]?.LIHEAP?.totalMedicarePremiumDeduction || 0;
+    const grossMonthlyIncome = combinedMonthlyIncome + totalMedicarePremiumDeduction;
+    const eligibility = activeMembersForLIHEAP[0]?.LIHEAP?.eligibility?.map(capitalizeFirstLetter) || 'No LIHEAP Household Members Found';
+
+    // Create a container for the LIHEAP household details
+    const householdDiv = document.createElement('div');
+    householdDiv.classList.add('household-member-box');
+
+    const isLikelyEligible = Array.isArray(eligibility)
+        ? !eligibility.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED")) || eligibility.some(item => item.includes("RECOMMENDED"))
+        : !String(eligibility).includes("NOT") && !String(eligibility).includes("ALREADY ENROLLED") && !String(eligibility).includes("NOT INTERESTED") || String(eligibility).includes("RECOMMENDED");
+
+    const isNotEligible = Array.isArray(eligibility)
+        ? eligibility.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED")) && !eligibility.some(item => item.includes("RECOMMENDED"))
+        : (String(eligibility).includes("NOT") || String(eligibility).includes("ALREADY ENROLLED") || String(eligibility).includes("NOT INTERESTED")) && !String(eligibility).includes("RECOMMENDED");
+
+    const needsMoreInfo = Array.isArray(eligibility)
+        ? eligibility.some(item => item.includes("NEEDS"))
+        : String(eligibility).includes("NEEDS");
+
+    // Apply color coding based on eligibility
+    if (isNotEligible) {
+        householdDiv.style.backgroundColor = '#f8d7da';
+        householdDiv.style.borderColor = '#f5c6cb';
+    } else if (needsMoreInfo) {
+        householdDiv.style.backgroundColor = '#fff3cd';
+        householdDiv.style.borderColor = '#ffc107';
+    } else if (isLikelyEligible) {
+        householdDiv.style.backgroundColor = '#d4edda';
+        householdDiv.style.borderColor = '#c3e6cb';
+    }
+
+    // Populate household details
+    householdDiv.innerHTML = `
+        <details class="custom-details">
+            <summary><h3>LIHEAP HOUSEHOLD</h3></summary>
+                    <p><strong>Household Size:</strong> ${activeMembersForLIHEAP.length}</p>
+                    <p><strong>Total Gross Income:</strong> $${grossMonthlyIncome.toFixed(2)}</p>
+                    <p><strong>Medicare Premium Deductions:</strong> $${totalMedicarePremiumDeduction.toFixed(2)}</p>
+                    <p><strong>Adjusted Gross Income:</strong> $${combinedMonthlyIncome.toFixed(2)}</p>
+            <hr class="separator-bar">
+        </details>
+                    <button class="btn-close-liheap-screening" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Close Screening(s)</button>
+
+        <p><strong>Members:</strong> ${activeMembersForLIHEAP.length > 0 
+            ? activeMembersForLIHEAP.map(member => `${capitalizeFirstLetter(member.firstName || '')} ${capitalizeFirstLetter(member.lastName || '')}`).join(', ') 
+            : 'N/A'}</p>
+                <p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
+    `;
+
+    liheapHouseholdContainer.appendChild(householdDiv);
+
+    const closeBtn = householdDiv.querySelector('.btn-close-liheap-screening');
+    closeBtn.addEventListener('click', () => {
+        openCloseMemberModal(clientId, members, null, null, 'LIHEAP');
+    });
+}
 
 // After PACEEligibilityCheck, reload and display updated household members
 async function updateAndDisplayHouseholdMembers() {
@@ -1936,62 +1943,6 @@ async function updateAndDisplayHouseholdMembers() {
     }
 }
 
-function calculateYearlyIncome(amount, frequency, startDate, endDate, type = "Previous") {
-    if (!amount || !frequency) {
-        console.error('Invalid income data:', { amount, frequency });
-        return 0;
-    }
-
-    // Default yearly multiplier based on frequency
-    let yearlyMultiplier;
-    switch (frequency.toLowerCase()) {
-        case 'one-time':
-            yearlyMultiplier = 1; // One-time income
-            break;
-        case 'weekly':
-            yearlyMultiplier = 52; // 52 weeks in a year
-            break;
-        case 'bi-weekly':
-            yearlyMultiplier = 26; // 26 bi-weekly periods in a year
-            break;
-        case 'semi-monthly':
-            yearlyMultiplier = 24; // 24 semi-monthly periods in a year
-            break;
-        case 'monthly':
-            yearlyMultiplier = 12; // 12 months in a year
-            break;
-        case 'quarterly':
-            yearlyMultiplier = 4; // 4 quarters in a year
-            break;
-        case 'annually':
-            yearlyMultiplier = 1; // Already yearly
-            break;
-        default:
-            console.error('Unknown frequency:', frequency);
-            return 0;
-    }
-
-    // Validate and parse the provided startDate and endDate
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-        console.error('Invalid startDate or endDate:', { startDate, endDate });
-        return 0; // Return 0 if dates are invalid
-    }
-
-    // Calculate the number of days the income is active within the given dates
-    const totalDaysInYear = 365; // Assuming a non-leap year
-    const activeDays = Math.min(Math.max((end - start) / (1000 * 60 * 60 * 24) + 1, 0), 365); // Cap active days at 365
-    // Prorate the yearly income based on active days
-    const proratedMultiplier = Math.min(activeDays / totalDaysInYear, 1); // Ensure the multiplier does not exceed 1
-    const proratedYearlyIncome = amount * yearlyMultiplier * proratedMultiplier;
-
-    console.log(`Start Date: ${start}, End Date: ${end}`);
-    console.log(`Active Days: ${activeDays}, Prorated Multiplier: ${proratedMultiplier}`);
-    console.log(`Prorated income: Amount: ${amount}, Frequency: ${frequency}, Prorated Yearly Income: ${proratedYearlyIncome}`);
-    return proratedYearlyIncome;
-}
 async function PACEEligibilityCheck(members) {
     const Utils = getUtils();
     if (!Utils) {
@@ -2023,7 +1974,7 @@ async function PACEEligibilityCheck(members) {
             const previousYearEnd = new Date(`${previousYear}-12-31`);
 
             let totalIncome = previousYearIncomes.reduce((sum, income) => {
-                const yearlyAmount = calculateYearlyIncome(
+                const yearlyAmount = Utils.calculateYearlyIncome(
                     income.amount,
                     income.frequency,
                     income.startDate,
@@ -2212,6 +2163,7 @@ async function LISEligibilityCheck(members) {
         return;
     }
 
+// ...existing code...
     // Step 1: Calculate adjusted income and assets for each member
     for (const member of members) {
         try {
@@ -2231,7 +2183,7 @@ async function LISEligibilityCheck(members) {
             const incomes = member.income || [];
             const currentYearIncomes = Utils.filterCurrentIncomes(incomes);
 
-            // Calculate total yearly income from current incomes
+            // Calculate total monthly income from current incomes
             let totalIncome = currentYearIncomes.reduce((sum, income) => {
                 const yearlyAmount = Utils.calculateYearlyIncome(
                     income.amount,
@@ -2239,7 +2191,7 @@ async function LISEligibilityCheck(members) {
                     income.startDate,
                     income.endDate
                 );
-                return sum + yearlyAmount;
+                return sum + (yearlyAmount / 12);
             }, 0);
 
             // Calculate total assets
@@ -2249,7 +2201,7 @@ async function LISEligibilityCheck(members) {
             member.lisAdjustedIncome = totalIncome;
             member.lisAdjustedAssets = totalAssets;
 
-            console.log(`LIS adjusted income for ${member.firstName} ${member.lastName}: $${member.lisAdjustedIncome}`);
+            console.log(`LIS adjusted monthly income for ${member.firstName} ${member.lastName}: $${member.lisAdjustedIncome}`);
             console.log(`LIS adjusted assets for ${member.firstName} ${member.lastName}: $${member.lisAdjustedAssets}`);
         } catch (error) {
             console.error(`Error calculating LIS adjusted income/assets for ${member.firstName} ${member.lastName}:`, error);
@@ -2380,8 +2332,6 @@ async function LISEligibilityCheck(members) {
         console.error('Error saving household members:', error);
     }
 }
-
-// Place this after the LISEligibilityCheck function, before PTRREligibilityCheck
 
 async function MSPEligibilityCheck(members) {
     const Utils = getUtils();
@@ -2670,7 +2620,7 @@ async function PTRREligibilityCheck(members) {
                 const previousYearEnd = new Date(`${previousYear}-12-31`);
     
                 let totalGrossIncome = previousYearIncomes.reduce((sum, income) => {
-                    let yearlyAmount = calculateYearlyIncome(
+                    let yearlyAmount = Utils.calculateYearlyIncome(
                         income.amount,
                         income.frequency,
                         income.startDate,
@@ -2709,7 +2659,7 @@ if (spouse) {
     const spousePreviousYearIncomes = spouseIncomes.filter(income => income.type && income.type.toLowerCase() === "previous");
 
     let spouseTotalGrossIncome = spousePreviousYearIncomes.reduce((sum, income) => {
-        const yearlyAmount = calculateYearlyIncome(
+        const yearlyAmount = Utils.calculateYearlyIncome(
             income.amount,
             income.frequency,
             income.startDate,
@@ -2946,13 +2896,14 @@ for (const household of snapHouseholds) {
             
                 // Include income only if it is currently active
                 return startDate <= today && (!endDate || endDate >= today);
-            });            const yearlyIncome = currentYearIncomes.reduce((sum, income) => {
-                const yearlyAmount = calculateYearlyIncome(income.amount, income.frequency, income.startDate, income.endDate);
+            });            
+            const yearlyIncome = currentYearIncomes.reduce((sum, income) => {
+                const yearlyAmount = Utils.calculateYearlyIncome(income.amount, income.frequency, income.startDate, income.endDate);
                 return sum + yearlyAmount;
             }, 0);
 
             const netIncome = currentYearIncomes.reduce((sum, income) => {
-                const yearlyAmount = calculateYearlyIncome(income.amount, income.frequency, income.startDate, income.endDate);
+                const yearlyAmount = Utils.calculateYearlyIncome(income.amount, income.frequency, income.startDate, income.endDate);
                 const monthlyAmount = yearlyAmount / 12;
             
                 return sum + monthlyAmount; // No 20% deduction applied
@@ -3001,7 +2952,7 @@ console.log(`Utility Allowance for household: $${totalUtilityAllowance}`);
 if (totalShelterExpenses === 0) {
     const shelterExpenses = member.expenses?.filter(expense => expense.type.toLowerCase() === "shelter") || [];
     totalShelterExpenses = shelterExpenses.reduce((sum, expense) => {
-        const yearlyAmount = calculateYearlyIncome(
+        const yearlyAmount = Utils.calculateYearlyIncome(
             expense.amount,
             expense.frequency,
             expense.startDate,
@@ -3015,7 +2966,7 @@ if (totalShelterExpenses === 0) {
 if (totalMedicalExpenses === 0) {
     const medicalExpenses = member.expenses?.filter(expense => expense.type.toLowerCase() === "medical") || [];
     totalMedicalExpenses = medicalExpenses.reduce((sum, expense) => {
-        const yearlyAmount = calculateYearlyIncome(
+        const yearlyAmount = Utils.calculateYearlyIncome(
             expense.amount,
             expense.frequency,
             expense.startDate,
@@ -3036,7 +2987,7 @@ if (totalMedicalExpenses === 0) {
 if (totalOtherExpenses === 0) {
     const otherExpenses = member.expenses?.filter(expense => expense.type.toLowerCase() === "other") || [];
     totalOtherExpenses = otherExpenses.reduce((sum, expense) => {
-        const yearlyAmount = calculateYearlyIncome(
+        const yearlyAmount = Utils.calculateYearlyIncome(
             expense.amount,
             expense.frequency,
             expense.startDate,
@@ -3063,7 +3014,7 @@ const employmentIncomeMonthly = household.reduce((sum, member) => {
             new Date(income.startDate) <= new Date() && 
             (!income.endDate || new Date(income.endDate) >= new Date())
         )
-        .reduce((subSum, income) => subSum + (calculateYearlyIncome(income.amount, income.frequency, income.startDate, income.endDate) / 12), 0);
+        .reduce((subSum, income) => subSum + (Utils.calculateYearlyIncome(income.amount, income.frequency, income.startDate, income.endDate) / 12), 0);
 }, 0);
 
 const otherIncomeMonthly = household.reduce((sum, member) => {
@@ -3075,7 +3026,7 @@ const otherIncomeMonthly = household.reduce((sum, member) => {
             new Date(income.startDate) <= new Date() && 
             (!income.endDate || new Date(income.endDate) >= new Date())
         )
-        .reduce((subSum, income) => subSum + (calculateYearlyIncome(income.amount, income.frequency, income.startDate, income.endDate) / 12), 0);
+        .reduce((subSum, income) => subSum + (Utils.calculateYearlyIncome(income.amount, income.frequency, income.startDate, income.endDate) / 12), 0);
 }, 0);
 
 // Apply the 20% deduction only to employment/self-employment income
@@ -3244,168 +3195,109 @@ async function LIHEAPEligibilityCheck() {
         console.error('Cannot run LIHEAPEligibilityCheck: EligibilityUtils not available');
         return;
     }
-        try {
-        // Retrieve the client ID from the query parameter
+    try {
         const clientId = getQueryParameter('id');
         if (!clientId || typeof clientId !== 'string') {
             throw new Error('Invalid or missing clientId in query parameters.');
         }
 
-        // Fetch the full client object using the client ID
         const response = await fetch(`/get-client/${encodeURIComponent(clientId)}`);
         if (!response.ok) {
             throw new Error(`Failed to fetch client data: ${response.statusText}`);
         }
 
-        const client = await response.json();
+        const clientData = await response.json();
+        if (!clientData?.householdMembers) return;
 
-        // Ensure the client object contains householdMembers and it's an array
-        if (!client || !Array.isArray(client.householdMembers)) {
-            console.error('LIHEAPEligibilityCheck: client.householdMembers is not an array:', client.householdMembers);
-            return;
-        }
+        const members = clientData.householdMembers;
+        const activeMembersForLIHEAP = members.filter(m => (m.deceased ?? '').toLowerCase() !== 'yes');
 
-        const members = client.householdMembers;
+        let combinedMonthlyIncome = 0;
+        let totalMedicarePremiumDeduction = 0;
 
-        // Filter out deceased members for LIHEAP inclusion logic only
-        const activeMembersForLIHEAP = members.filter(
-            m => (m.deceased ?? '').toLowerCase() !== 'yes'
-        );
+        for (const member of activeMembersForLIHEAP) {
+            const currentIncomes = (member.income || []).filter(income => income.type?.toLowerCase() === 'current');
+            const yearlyIncome = currentIncomes.reduce((sum, income) => 
+                sum + Utils.calculateYearlyIncome(income.amount, income.frequency, income.startDate, income.endDate), 0);
+            const monthlyIncome = yearlyIncome / 12;
 
-        // Combine all active members' yearly income
-        let combinedYearlyIncome = 0;
-
-        activeMembersForLIHEAP.forEach(member => {
-            const incomes = (member.income || []).filter(income => income.type?.toLowerCase() === 'current'); // Only include 'current' income
-
-            // Calculate yearly income for each income source
-            const yearlyIncome = incomes.reduce((sum, income) => {
-                const yearlyAmount = calculateYearlyIncome(
-                    income.amount,
-                    income.frequency,
-                    income.startDate,
-                    income.endDate
-                );
-                return sum + yearlyAmount;
-            }, 0);
-
-            // Calculate Medicare premium deductions (deducted from SS or pension)
+            // Medicare premium deduction
             let medicarePremiumDeduction = 0;
-            const expenses = member.expenses || [];
-            
-            expenses.forEach(expense => {
-                // Check if it's a Medicare premium deducted from Social Security or pension
+            for (const expense of member.expenses || []) {
                 const isMedicarePremium = expense.kind?.toLowerCase().includes('medicare') && 
                                           expense.kind?.toLowerCase().includes('premium');
                 const isDeductedFromSSOrPension = expense.deductedFromSSOrPension?.toLowerCase() === 'yes';
 
                 if (isMedicarePremium && isDeductedFromSSOrPension) {
-                    const startDate = new Date(expense.startDate);
-                    const endDate = new Date(expense.endDate);
-                    const today = new Date();
-                    
-                    // Define the current year boundaries
-                    const currentYear = today.getFullYear();
-                    const yearStart = new Date(`${currentYear}-01-01`);
-                    const yearEnd = new Date(`${currentYear}-12-31`);
-                    
-                    // Calculate the effective start and end within the current year
-                    const effectiveStart = startDate > yearStart ? startDate : yearStart;
-                    const effectiveEnd = endDate < yearEnd ? endDate : yearEnd;
-                    
-                    // Only count if the expense is active within this year
-                    if (effectiveStart <= effectiveEnd && effectiveStart <= today) {
-                        // Cap the effective end at today if it's in the future
-                        const cappedEnd = effectiveEnd > today ? today : effectiveEnd;
-                        
-                        // Calculate days active within the year
-                        const daysActive = Math.max(0, 
-                            Math.floor((cappedEnd - effectiveStart) / (1000 * 60 * 60 * 24)) + 1
-                        );
-                        const totalDaysInYear = 365;
-                        
-                        // Determine yearly amount based on frequency
-                        let yearlyAmount;
-                        switch (expense.frequency?.toLowerCase()) {
-                            case 'one-time': yearlyAmount = expense.amount; break;
-                            case 'weekly': yearlyAmount = expense.amount * 52; break;
-                            case 'bi-weekly': yearlyAmount = expense.amount * 26; break;
-                            case 'semi-monthly': yearlyAmount = expense.amount * 24; break;
-                            case 'monthly': yearlyAmount = expense.amount * 12; break;
-                            case 'quarterly': yearlyAmount = expense.amount * 4; break;
-                            case 'annually': yearlyAmount = expense.amount; break;
-                            default: yearlyAmount = 0; break;
-                        }
-
-                        if (yearlyAmount > 0) {
-                            // Prorate based on days active within the year
-                            const proratedDeduction = yearlyAmount * (daysActive / totalDaysInYear);
-                            medicarePremiumDeduction += proratedDeduction;
-                            console.log(`Medicare premium deduction for ${member.firstName} ${member.lastName}: $${proratedDeduction.toFixed(2)} (${daysActive} days active)`);
-                        }
+                    const monthlyAmount = (expense.amount * Utils.getYearlyMultiplier(expense.frequency)) / 12;
+                    if (monthlyAmount > 0) {
+                        medicarePremiumDeduction += monthlyAmount;
                     }
                 }
-            });
+            }
 
-            // Subtract Medicare premium deductions from yearly income
-            const adjustedYearlyIncome = Math.max(0, yearlyIncome - medicarePremiumDeduction);
-            combinedYearlyIncome += adjustedYearlyIncome;
+            // Cap deduction at actual income — can't deduct more than you earn
+            const effectiveDeduction = Math.min(medicarePremiumDeduction, monthlyIncome);
+            totalMedicarePremiumDeduction += effectiveDeduction;
+            combinedMonthlyIncome += Math.max(0, monthlyIncome - effectiveDeduction);
 
-            console.log(`LIHEAP Income for ${member.firstName} ${member.lastName}: Gross: $${yearlyIncome.toFixed(2)}, Medicare Deduction: $${medicarePremiumDeduction.toFixed(2)}, Adjusted: $${adjustedYearlyIncome.toFixed(2)}`);
-        });
+            console.log(`LIHEAP Income for ${member.firstName} ${member.lastName}: Monthly: $${monthlyIncome.toFixed(2)}, Medicare Deduction: $${effectiveDeduction.toFixed(2)}, Adjusted: $${(monthlyIncome - effectiveDeduction).toFixed(2)}`);
+        }
 
-        // Determine LIHEAP eligibility using only non-deceased members
+        // Determine eligibility
         const householdSize = activeMembersForLIHEAP.length;
         const incomeLimit = Utils.LIHEAP_INCOME_LIMITS[householdSize] || 0;
-
         const eligibility = [];
-        if (client.liheapEnrollment === 'notinterested') {
+
+        if (clientData.liheapEnrollment === 'notinterested') {
             eligibility.push("Not Interested");
-        } else if (client.liheapEnrollment === null || client.liheapEnrollment === undefined || client.liheapEnrollment === 'n/a') {
+        } else if (!clientData.liheapEnrollment || clientData.liheapEnrollment === 'n/a') {
             eligibility.push("Needs Current Enrollment Status");
-        } else if ((client.liheapEnrollment === 'no' || client.liheapEnrollment === 'yes') && (client.heatingCrisis === null || client.heatingCrisis === undefined || client.heatingCrisis === 'n/a')) {
+        } else if (['no', 'yes'].includes(clientData.liheapEnrollment) && 
+                   (!clientData.heatingCrisis || clientData.heatingCrisis === 'n/a')) {
             eligibility.push("Needs Heating Crisis Status");
-        } else if (client.liheapEnrollment === 'yes' && client.heatingCrisis === 'no') {
+        } else if (clientData.liheapEnrollment === 'yes' && clientData.heatingCrisis === 'no') {
             eligibility.push("Already Enrolled");
-        } else if (client.residenceStatusCurrent === null || client.residenceStatusCurrent === undefined || client.residenceStatusCurrent === 'n/a') {
+        } else if (!clientData.residenceStatusCurrent || clientData.residenceStatusCurrent === 'n/a') {
             eligibility.push("Needs Current Residence Status");
-        } else if ((client.residenceStatusCurrent === null || client.residenceStatusCurrent === undefined || client.residenceStatusCurrent === 'n/a' || client.residenceStatusCurrent !== 'owned') && (client.subsidizedHousing === null || client.subsidizedHousing === undefined || client.subsidizedHousing === 'n/a')) {
+        } else if (clientData.residenceStatusCurrent !== 'owned' && 
+                   (!clientData.subsidizedHousing || clientData.subsidizedHousing === 'n/a')) {
             eligibility.push("Needs Subsidized Housing Status");
-        } else if (client.subsidizedHousing === 'yes' && (client.heatingCost === null || client.heatingCost === undefined || client.heatingCost === 'n/a')) {
+        } else if (clientData.subsidizedHousing === 'yes' && 
+                   (!clientData.heatingCost || clientData.heatingCost === 'n/a')) {
             eligibility.push("Needs Heating Cost Responsibility Status");
-        } else if (client.subsidizedHousing === 'yes' && client.heatingCost === 'yes') {
+        } else if (clientData.subsidizedHousing === 'yes' && clientData.heatingCost === 'yes') {
             eligibility.push("Not Likely Eligible for LIHEAP (Heating cost included in rent, household rent is subsidized)");
-        } else if (client.heatingCrisis === 'yes' && combinedYearlyIncome <= incomeLimit) {
+        } else if (clientData.heatingCrisis === 'yes' && combinedMonthlyIncome <= incomeLimit) {
             eligibility.push("Likely Eligible for LIHEAP (Crisis)");
-        } else if (client.heatingCrisis === 'yes' && combinedYearlyIncome > incomeLimit) {
+        } else if (clientData.heatingCrisis === 'yes' && combinedMonthlyIncome > incomeLimit) {
             eligibility.push("Not Likely Eligible for LIHEAP but Submission Recommended");
-        } else if (combinedYearlyIncome <= incomeLimit) {
+        } else if (combinedMonthlyIncome <= incomeLimit) {
             eligibility.push("Likely Eligible for LIHEAP");
         } else {
             eligibility.push("Not Likely Eligible for LIHEAP (Income)");
         }
 
-        // Update LIHEAP only for non-deceased members
+        // Update only non-deceased members
         activeMembersForLIHEAP.forEach(member => {
             member.LIHEAP = {
-                combinedYearlyIncome: combinedYearlyIncome,
-                eligibility: eligibility
+                combinedMonthlyIncome,
+                totalMedicarePremiumDeduction,
+                eligibility,
+                screeningInProgress: member.LIHEAP?.screeningInProgress ?? true,
+                screeningCloseReason: member.LIHEAP?.screeningCloseReason ?? null
             };
-            console.log(`Updated LIHEAP object for ${member.firstName} ${member.lastName}:`, member.LIHEAP);
         });
 
-        // Do not modify deceased members' LIHEAP object
-        // Save the updated household members back to the server
+        // Save
         const saveResponse = await fetch(`/save-household-members`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ clientId, householdMembers: members }),
         });
 
         if (saveResponse.ok) {
-            console.log('Household members saved successfully.');
+            console.log('Household members saved successfully after LIHEAP check.');
         } else {
             console.error('Failed to save household members:', saveResponse.statusText);
         }
