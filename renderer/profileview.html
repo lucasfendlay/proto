@@ -396,7 +396,7 @@
                 <div><strong>Phone:</strong> ${formatPhoneNumber(log.callerPhoneNumber) || ''}</div>
                 <div><strong>Direction:</strong> ${(log.callDirection || '').toUpperCase()}</div>
                 <div><strong>Service Center:</strong> ${(log.servicingCenter || '').toUpperCase()}</div>
-                <div><strong>Reason:</strong> ${(log.reasonForCall || '').toUpperCase()}</div>
+                <div><strong>Reason:</strong> ${(log.reasonForCall || 'N/A').toUpperCase()}</div>
                 <div><strong>Referral:</strong> ${(log.referralSource || 'N/A').toUpperCase()}</div>
                 ${log.specificReferral ? `<div><strong>Specifically:</strong> ${log.specificReferral.toUpperCase()}</div>` : ''}
             `;

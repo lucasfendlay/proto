@@ -520,7 +520,8 @@ async function displayHouseholdMembers() {
             const memberDivs = container.querySelectorAll('.household-member');
             let maxHeight = 0;
             memberDivs.forEach(div => {
-                div.style.height = 'auto'; // Reset first
+                div.style.minHeight = 'auto'; // Reset first
+                div.style.height = 'auto';    // Reset first
             });
             memberDivs.forEach(div => {
                 if (div.offsetHeight > maxHeight) {
@@ -528,7 +529,8 @@ async function displayHouseholdMembers() {
                 }
             });
             memberDivs.forEach(div => {
-                div.style.height = `${maxHeight}px`;
+                div.style.minHeight = `${maxHeight}px`;
+                div.style.height = 'auto';
             });
         });
     } finally {

@@ -848,6 +848,8 @@ async function addHouseholdMember() {
             householdMemberId: crypto.randomUUID(),
             ...gatherModalData(),
             headOfHousehold: isFirstMember,
+            // Inherit residence status from client level
+            residenceStatus: clientData.residenceStatus || '',
             // Initialize based on client-level program status
             SNAP: { screeningInProgress: programStatus.SNAP?.screeningInProgress ?? true },
             LIHEAP: { screeningInProgress: programStatus.LIHEAP?.screeningInProgress ?? true },

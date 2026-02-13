@@ -1510,10 +1510,10 @@ const processedMembers = new Set();
     
     <p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
     ${
-    isLikelyEligible && benefitAmount > 0
+    isLikelyEligible && benefitAmount >= 0
         ? `
         <p><strong>Estimated Benefit Amount:</strong> ${
-            benefitAmount < 24 ? "Up to $24.00" : `Up to $24.00 - $${benefitAmount.toFixed(2)}`
+            benefitAmount <= 24 ? "Up to $24.00" : `Up to $24.00 - $${benefitAmount.toFixed(2)}`
         }</p>
         <p><strong>Expedited Eligibility:</strong> ${
             capitalizeFirstLetter(household[0]?.SNAP?.expeditedEligibility || 'N/A')
@@ -1916,7 +1916,6 @@ async function displayLIHEAPHouseholds(prefetchedMembers, prefetchedClient) {
     });
 }
 
-// After PACEEligibilityCheck, reload and display updated household members
 async function updateAndDisplayHouseholdMembers() {
     const clientId = getQueryParameter('id');
     if (!clientId) {
@@ -1955,6 +1954,7 @@ async function PACEEligibilityCheck(members) {
             // Skip deceased members - set PACE to Not Checked
             if ((member.deceased ?? '').toLowerCase() === 'yes') {
                 member.PACE = {
+                    adjustedIncome: 0,
                     combinedIncome: 0,
                     eligibility: ["Not Checked"],
                     screeningInProgress: member.PACE?.screeningInProgress ?? false,
@@ -1970,26 +1970,44 @@ async function PACEEligibilityCheck(members) {
             // Calculate total income for the previous full year
             const currentYear = new Date().getFullYear();
             const previousYear = currentYear - 1;
-            const previousYearStart = new Date(`${previousYear}-01-01`);
-            const previousYearEnd = new Date(`${previousYear}-12-31`);
+            // Use local date constructors to avoid UTC timezone parsing issues
+            const previousYearStart = new Date(previousYear, 0, 1); // Jan 1
+            const previousYearEnd = new Date(previousYear, 11, 31); // Dec 31
 
-            let totalIncome = previousYearIncomes.reduce((sum, income) => {
-                const yearlyAmount = Utils.calculateYearlyIncome(
-                    income.amount,
-                    income.frequency,
-                    income.startDate,
-                    income.endDate
-                );
+// ...existing code...
+let totalIncome = previousYearIncomes.reduce((sum, income) => {
+    // Calculate the raw yearly amount from amount × frequency multiplier
+    // Don't use Utils.calculateYearlyIncome which may filter out ended income
+    let yearlyMultiplier;
+    switch ((income.frequency || '').toLowerCase()) {
+        case 'one-time': yearlyMultiplier = 1; break;
+        case 'weekly': yearlyMultiplier = 52; break;
+        case 'bi-weekly': yearlyMultiplier = 26; break;
+        case 'semi-monthly': yearlyMultiplier = 24; break;
+        case 'monthly': yearlyMultiplier = 12; break;
+        case 'quarterly': yearlyMultiplier = 4; break;
+        case 'annually': yearlyMultiplier = 1; break;
+        default: yearlyMultiplier = 0; break;
+    }
+    const yearlyAmount = Number(income.amount || 0) * yearlyMultiplier;
 
-                // Only include income active during the previous year
-                const incomeStart = new Date(income.startDate);
-                const incomeEnd = income.endDate ? new Date(income.endDate) : new Date();
+    // Only include income active during the previous year
+    // Parse dates using local time to match previousYearStart/End
+    const incomeParts = income.startDate.split('-');
+    const incomeStart = new Date(parseInt(incomeParts[0]), parseInt(incomeParts[1]) - 1, parseInt(incomeParts[2]));                let incomeEnd;
+                if (income.endDate) {
+                    const endParts = income.endDate.split('-');
+                    incomeEnd = new Date(parseInt(endParts[0]), parseInt(endParts[1]) - 1, parseInt(endParts[2]));
+                } else {
+                    incomeEnd = new Date();
+                }
 
                 if (incomeStart <= previousYearEnd && incomeEnd >= previousYearStart) {
                     const activeStart = incomeStart < previousYearStart ? previousYearStart : incomeStart;
                     const activeEnd = incomeEnd > previousYearEnd ? previousYearEnd : incomeEnd;
 
-                    const activeDays = Math.min((activeEnd - activeStart) / (1000 * 60 * 60 * 24) + 1, 365);                    const proratedMultiplier = activeDays / 365; // Prorate for the active days in the year
+                    const activeDays = Math.min((activeEnd - activeStart) / (1000 * 60 * 60 * 24) + 1, 365);
+                    const proratedMultiplier = activeDays / 365;
                     return sum + yearlyAmount * proratedMultiplier;
                 }
 
@@ -2028,133 +2046,152 @@ async function PACEEligibilityCheck(members) {
                 }
             }
 
-            member.adjustedIncome = totalIncome;
-            console.log(`Adjusted income for ${member.firstName} ${member.lastName}: $${member.adjustedIncome}`);
+            // Store adjusted income inside the PACE object, not on the member directly
+            member.PACE = {
+                ...(member.PACE || {}),
+                adjustedIncome: totalIncome,
+                screeningInProgress: member.PACE?.screeningInProgress ?? true,
+                screeningCloseReason: member.PACE?.screeningCloseReason ?? null
+            };
+
+            console.log(`PACE adjusted income for ${member.firstName} ${member.lastName}: $${totalIncome}`);
         } catch (error) {
             console.error(`Error calculating adjusted income for ${member.firstName} ${member.lastName}:`, error);
         }
     }
 
-// Step 2: Calculate combined income and eligibility
-for (const member of members) {
-    try {
-        // Find spouse via relationships array
+    // Step 2: Calculate combined income/assets first, then determine eligibility independently per member
+    // First pass: compute combined income for all members
+    const combinedValues = new Map(); // memberId -> { combinedIncome, hasLivingSpouse }
+    for (const member of members) {
+        if ((member.deceased ?? '').toLowerCase() === 'yes') continue;
+
         const spouseRelation = member.relationships?.find(r => r.relationship === 'spouse');
         const spouse = spouseRelation
             ? members.find(m => m.householdMemberId === spouseRelation.relatedMemberId)
             : null;
+        const hasLivingSpouse = spouse && (spouse.deceased ?? '').toLowerCase() !== 'yes';
 
-        if (spouse) {
-            console.log(`Spouse found: ${spouse.firstName} ${spouse.lastName}`);
+        let combinedIncome;
 
-            const memberIncome = Number(member.adjustedIncome) || 0;
-            const spouseIncome = Number(spouse.adjustedIncome) || 0;
-
-            member.combinedIncome = memberIncome + spouseIncome;
-            spouse.combinedIncome = member.combinedIncome;
-
-            console.log(`Combined income for ${member.firstName} ${member.lastName} and ${spouse.firstName} ${spouse.lastName}: $${member.combinedIncome}`);
+        if (hasLivingSpouse) {
+            combinedIncome = (Number(member.PACE?.adjustedIncome) || 0) + (Number(spouse.PACE?.adjustedIncome) || 0);
+            console.log(`PACE Combined income for ${member.firstName} and ${spouse.firstName}: $${combinedIncome}`);
         } else {
-            console.log(`No spouse found for ${member.firstName} ${member.lastName}`);
-            member.combinedIncome = member.adjustedIncome;
+            combinedIncome = member.PACE?.adjustedIncome || 0;
         }
-    
-               // Eligibility checks
-const eligibility = [];
 
-// Parse the age from the member object
-const age = member.age; // Example: "64 Years 11 Months 0 Days"
-const [years, months, days] = age
-    .replace(/Years,|Months,|Days/g, '') // Remove the words "Years", "Months", and "Days"
-    .trim()
-    .split(/\s+/) // Split by spaces
-    .map(value => parseInt(value.trim()) || 0);
+        combinedValues.set(member.householdMemberId, { combinedIncome, hasLivingSpouse });
+    }
 
-// Qualification check for age
-if (years < 64 || (years === 64 && months < 11) || (years === 64 && months === 11 && days < 0)) {
-    eligibility.push("Age Criteria Not Met");
-    member.selections = member.selections || {};
-    member.selections["Is this person currently enrolled in PACE?"] = null;
-    member.selections["Has this person lived in Pennsylvania for at least the last 90 consecutive days?"] = null; // Clear residency selection
-} else {
-    // Check PACE and Medicaid enrollment
-    const paceEnrollment = member.selections?.["Is this person currently enrolled in PACE?"]?.toLowerCase();
-    const medicaidEnrollment = member.medicaid?.toLowerCase();
-    const paResidency = member.selections?.["Has this person lived in Pennsylvania for at least the last 90 consecutive days?"]?.toLowerCase();
+    // Second pass: determine eligibility independently for each member using shared combined values
+    for (const member of members) {
+        try {
+            if ((member.deceased ?? '').toLowerCase() === 'yes') continue;
 
-    if (medicaidEnrollment === "yes") {
-        eligibility.push("Enrolled in Medicaid");
-        member.selections = member.selections || {};
-        member.selections["Is this person currently enrolled in PACE?"] = null; // Set paceEnrollment to "onmedicaid"
-        member.selections["Has this person lived in Pennsylvania for at least the last 90 consecutive days?"] = null; // Clear residency selection
-    } else if (paResidency === "no") {
-        eligibility.push("Residency Not Met");
-        member.selections = member.selections || {};
-        member.selections["Is this person currently enrolled in PACE?"] = null;
-    } else if (paceEnrollment === "yes") {
-        eligibility.push("Already Enrolled");
-    } else if (paceEnrollment === "notinterested") {
-        eligibility.push("Not Interested");
-    } else if (!paceEnrollment || paResidency === null) {
-        eligibility.push("Needs Current Enrollment Status");
-    } else {
-        // Proceed to income-based eligibility checks only if none of the above conditions are met
-        if (spouse) {
-            if (member.combinedIncome < Utils.PACE_THRESHOLDS.married.pace) {
-                eligibility.push("Likely Eligible for PACE");
-            } else if (member.combinedIncome >= Utils.PACE_THRESHOLDS.married.pace && member.combinedIncome <= Utils.PACE_THRESHOLDS.married.pacenet) {
-                eligibility.push("Likely Eligible for PACENET");
-            } else if (member.combinedIncome >= Utils.PACE_THRESHOLDS.married.pacenet && member.combinedIncome <= Utils.PACE_THRESHOLDS.married.buffer) {
-                eligibility.push("Likely Ineligible but Within Buffer");
-            } else if (member.combinedIncome > Utils.PACE_THRESHOLDS.married.buffer) {
-                eligibility.push("Not Likely Eligible for PACE or PACENET (Income)");
+            const values = combinedValues.get(member.householdMemberId);
+            if (!values) continue;
+
+            const { combinedIncome, hasLivingSpouse } = values;
+
+            // Eligibility checks — independent per member
+            const eligibility = [];
+
+            // Parse the age from the member object
+            const age = member.age;
+            const [years, months, days] = age
+                .replace(/Years,|Months,|Days/g, '')
+                .trim()
+                .split(/\s+/)
+                .map(value => parseInt(value.trim()) || 0);
+
+            // Qualification check for age
+            if (years < 64 || (years === 64 && months < 11) || (years === 64 && months === 11 && days < 0)) {
+                eligibility.push("Age Criteria Not Met");
+                member.selections = member.selections || {};
+                member.selections["Is this person currently enrolled in PACE?"] = null;
+                member.selections["Has this person lived in Pennsylvania for at least the last 90 consecutive days?"] = null;
+            } else {
+                // Check PACE and Medicaid enrollment
+                const paceEnrollment = member.selections?.["Is this person currently enrolled in PACE?"]?.toLowerCase();
+                const medicaidEnrollment = member.medicaid?.toLowerCase();
+                const paResidency = member.selections?.["Has this person lived in Pennsylvania for at least the last 90 consecutive days?"]?.toLowerCase();
+
+                if (medicaidEnrollment === "yes") {
+                    eligibility.push("Enrolled in Medicaid");
+                    member.selections = member.selections || {};
+                    member.selections["Is this person currently enrolled in PACE?"] = null;
+                    member.selections["Has this person lived in Pennsylvania for at least the last 90 consecutive days?"] = null;
+                } else if (paResidency === "no") {
+                    eligibility.push("Residency Not Met");
+                    member.selections = member.selections || {};
+                    member.selections["Is this person currently enrolled in PACE?"] = null;
+                } else if (paceEnrollment === "yes") {
+                    eligibility.push("Already Enrolled");
+                } else if (paceEnrollment === "notinterested") {
+                    eligibility.push("Not Interested");
+                } else if (!paceEnrollment || paResidency === null) {
+                    eligibility.push("Needs Current Enrollment Status");
+                } else {
+                    // Income-based eligibility using hasLivingSpouse instead of spouse reference
+                    if (hasLivingSpouse) {
+                        if (combinedIncome < Utils.PACE_THRESHOLDS.married.pace) {
+                            eligibility.push("Likely Eligible for PACE");
+                        } else if (combinedIncome >= Utils.PACE_THRESHOLDS.married.pace && combinedIncome <= Utils.PACE_THRESHOLDS.married.pacenet) {
+                            eligibility.push("Likely Eligible for PACENET");
+                        } else if (combinedIncome >= Utils.PACE_THRESHOLDS.married.pacenet && combinedIncome <= Utils.PACE_THRESHOLDS.married.buffer) {
+                            eligibility.push("Likely Ineligible but Within Buffer");
+                        } else if (combinedIncome > Utils.PACE_THRESHOLDS.married.buffer) {
+                            eligibility.push("Not Likely Eligible for PACE or PACENET (Income)");
+                        }
+                    } else {
+                        if (combinedIncome < Utils.PACE_THRESHOLDS.single.pace) {
+                            eligibility.push("Likely Eligible for PACE");
+                        } else if (combinedIncome >= Utils.PACE_THRESHOLDS.single.pace && combinedIncome <= Utils.PACE_THRESHOLDS.single.pacenet) {
+                            eligibility.push("Likely Eligible for PACENET");
+                        } else if (combinedIncome >= Utils.PACE_THRESHOLDS.single.pacenet && combinedIncome <= Utils.PACE_THRESHOLDS.single.buffer) {
+                            eligibility.push("Likely Ineligible but Within Buffer");
+                        } else if (combinedIncome > Utils.PACE_THRESHOLDS.single.buffer) {
+                            eligibility.push("Not Likely Eligible for PACE or PACENET (Income)");
+                        }
+                    }
+                }
             }
+
+            member.PACE = {
+                adjustedIncome: member.PACE?.adjustedIncome || 0,
+                combinedIncome: Math.max(0, combinedIncome || 0),
+                eligibility: eligibility,
+                screeningInProgress: member.PACE?.screeningInProgress ?? true,
+                screeningCloseReason: member.PACE?.screeningCloseReason ?? null
+            };
+
+            console.log(`PACE object for ${member.firstName} ${member.lastName}:`, member.PACE);
+        } catch (error) {
+            console.error(`Error processing member ${member.firstName} ${member.lastName}:`, error);
+        }
+    }
+
+    // Save the updated members array using a REST API call
+    const clientId = getQueryParameter('id');
+    try {
+        const response = await fetch(`/save-household-members`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ clientId, householdMembers: members }),
+        });
+
+        if (response.ok) {
+            console.log('Household members saved successfully.');
         } else {
-            if (member.combinedIncome < Utils.PACE_THRESHOLDS.single.pace) {
-                eligibility.push("Likely Eligible for PACE");
-            } else if (member.combinedIncome >= Utils.PACE_THRESHOLDS.single.pace && member.combinedIncome <= Utils.PACE_THRESHOLDS.single.pacenet) {
-                eligibility.push("Likely Eligible for PACENET");
-            } else if (member.combinedIncome >= Utils.PACE_THRESHOLDS.single.pacenet && member.combinedIncome <= Utils.PACE_THRESHOLDS.single.buffer) {
-                eligibility.push("Likely Ineligible but Within Buffer");
-            } else if (member.combinedIncome > Utils.PACE_THRESHOLDS.single.buffer) {
-                eligibility.push("Not Likely Eligible for PACE or PACENET (Income)");
-            }
+            console.error('Failed to save household members:', response.statusText);
         }
+    } catch (error) {
+        console.error('Error saving household members:', error);
     }
 }
-
-member.PACE = {
-    combinedIncome: Math.max(0, member.combinedIncome),
-    eligibility: eligibility,
-    screeningInProgress: member.PACE?.screeningInProgress ?? true,
-    screeningCloseReason: member.PACE?.screeningCloseReason ?? null
-};
-
-console.log(`PACE object for ${member.firstName} ${member.lastName}:`, member.PACE);
-            } catch (error) {
-                console.error(`Error processing member ${member.firstName} ${member.lastName}:`, error);
-            }
-        }
-    
-        // Save the updated members array using a REST API call
-const clientId = getQueryParameter('id'); // Get the client ID from the query parameter
-try {
-    const response = await fetch(`/save-household-members`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ clientId, householdMembers: members }),
-    });
-
-    if (response.ok) {
-        console.log('Household members saved successfully.');
-    } else {
-        console.error('Failed to save household members:', response.statusText);
-    }
-} catch (error) {
-    console.error('Error saving household members:', error);
-}}
 
 async function LISEligibilityCheck(members) {
     const Utils = getUtils();
@@ -2163,7 +2200,6 @@ async function LISEligibilityCheck(members) {
         return;
     }
 
-// ...existing code...
     // Step 1: Calculate adjusted income and assets for each member
     for (const member of members) {
         try {
@@ -2172,6 +2208,8 @@ async function LISEligibilityCheck(members) {
                 member.LIS = {
                     combinedIncome: 0,
                     combinedAssets: 0,
+                    adjustedIncome: 0,
+                    adjustedAssets: 0,
                     eligibility: ["Not Checked"],
                     screeningInProgress: member.LIS?.screeningInProgress ?? false,
                     screeningCloseReason: member.LIS?.screeningCloseReason ?? "Not Applicable"
@@ -2198,42 +2236,60 @@ async function LISEligibilityCheck(members) {
             const assets = member.assets || [];
             const totalAssets = assets.reduce((sum, asset) => sum + Number(asset.value || 0), 0);
 
-            member.lisAdjustedIncome = totalIncome;
-            member.lisAdjustedAssets = totalAssets;
+            // Store adjusted values inside the LIS object (initialized here, finalized in Step 2)
+            member.LIS = {
+                ...(member.LIS || {}),
+                adjustedIncome: totalIncome,
+                adjustedAssets: totalAssets,
+                screeningInProgress: member.LIS?.screeningInProgress ?? true,
+                screeningCloseReason: member.LIS?.screeningCloseReason ?? null
+            };
 
-            console.log(`LIS adjusted monthly income for ${member.firstName} ${member.lastName}: $${member.lisAdjustedIncome}`);
-            console.log(`LIS adjusted assets for ${member.firstName} ${member.lastName}: $${member.lisAdjustedAssets}`);
+            console.log(`LIS adjusted monthly income for ${member.firstName} ${member.lastName}: $${totalIncome}`);
+            console.log(`LIS adjusted assets for ${member.firstName} ${member.lastName}: $${totalAssets}`);
         } catch (error) {
             console.error(`Error calculating LIS adjusted income/assets for ${member.firstName} ${member.lastName}:`, error);
         }
     }
 
-    // Step 2: Calculate combined income/assets and determine eligibility
+    // Step 2: Calculate combined income/assets first, then determine eligibility independently per member
+    // First pass: compute combined income/assets for all members
+    const combinedValues = new Map(); // memberId -> { combinedIncome, combinedAssets, hasLivingSpouse }
+    for (const member of members) {
+        if ((member.deceased ?? '').toLowerCase() === 'yes') continue;
+
+        const spouseRelation = member.relationships?.find(r => r.relationship === 'spouse');
+        const spouse = spouseRelation
+            ? members.find(m => m.householdMemberId === spouseRelation.relatedMemberId)
+            : null;
+        const hasLivingSpouse = spouse && (spouse.deceased ?? '').toLowerCase() !== 'yes';
+
+        let combinedIncome, combinedAssets;
+
+        if (hasLivingSpouse) {
+            combinedIncome = (Number(member.LIS?.adjustedIncome) || 0) + (Number(spouse.LIS?.adjustedIncome) || 0);
+            combinedAssets = (Number(member.LIS?.adjustedAssets) || 0) + (Number(spouse.LIS?.adjustedAssets) || 0);
+            console.log(`LIS Combined income for ${member.firstName} and ${spouse.firstName}: $${combinedIncome}`);
+            console.log(`LIS Combined assets for ${member.firstName} and ${spouse.firstName}: $${combinedAssets}`);
+        } else {
+            combinedIncome = member.LIS?.adjustedIncome || 0;
+            combinedAssets = member.LIS?.adjustedAssets || 0;
+        }
+
+        combinedValues.set(member.householdMemberId, { combinedIncome, combinedAssets, hasLivingSpouse });
+    }
+
+    // Second pass: determine eligibility independently for each member using shared combined values
     for (const member of members) {
         try {
             if ((member.deceased ?? '').toLowerCase() === 'yes') continue;
 
-            // Find spouse via relationships array
-            const spouseRelation = member.relationships?.find(r => r.relationship === 'spouse');
-            const spouse = spouseRelation
-                ? members.find(m => m.householdMemberId === spouseRelation.relatedMemberId)
-                : null;
-            const hasLivingSpouse = spouse && (spouse.deceased ?? '').toLowerCase() !== 'yes';
+            const values = combinedValues.get(member.householdMemberId);
+            if (!values) continue;
 
-            if (hasLivingSpouse) {
-                console.log(`LIS Spouse found: ${spouse.firstName} ${spouse.lastName}`);
+            const { combinedIncome, combinedAssets, hasLivingSpouse } = values;
 
-                member.lisCombinedIncome = (Number(member.lisAdjustedIncome) || 0) + (Number(spouse.lisAdjustedIncome) || 0);
-                member.lisCombinedAssets = (Number(member.lisAdjustedAssets) || 0) + (Number(spouse.lisAdjustedAssets) || 0);
-
-                console.log(`LIS Combined income for ${member.firstName} and ${spouse.firstName}: $${member.lisCombinedIncome}`);
-                console.log(`LIS Combined assets for ${member.firstName} and ${spouse.firstName}: $${member.lisCombinedAssets}`);
-            } else {
-                member.lisCombinedIncome = member.lisAdjustedIncome || 0;
-                member.lisCombinedAssets = member.lisAdjustedAssets || 0;
-            }
-
-            // Eligibility determination
+            // Eligibility determination — independent per member
             const eligibility = [];
 
             const medicareEnrollment = member.medicare?.toLowerCase();
@@ -2266,9 +2322,6 @@ async function LISEligibilityCheck(members) {
                     ? Utils.LIS_THRESHOLDS.assets.married
                     : Utils.LIS_THRESHOLDS.assets.single;
 
-                const combinedIncome = member.lisCombinedIncome;
-                const combinedAssets = member.lisCombinedAssets;
-
                 const incomeEligible = combinedIncome <= incomeLimit;
                 const assetEligible = combinedAssets <= assetLimit;
 
@@ -2287,26 +2340,14 @@ async function LISEligibilityCheck(members) {
             }
 
             member.LIS = {
-                combinedIncome: Math.max(0, member.lisCombinedIncome || 0),
-                combinedAssets: Math.max(0, member.lisCombinedAssets || 0),
+                adjustedIncome: member.LIS?.adjustedIncome || 0,
+                adjustedAssets: member.LIS?.adjustedAssets || 0,
+                combinedIncome: Math.max(0, combinedIncome || 0),
+                combinedAssets: Math.max(0, combinedAssets || 0),
                 eligibility: eligibility,
                 screeningInProgress: member.LIS?.screeningInProgress ?? true,
                 screeningCloseReason: member.LIS?.screeningCloseReason ?? null
             };
-
-            // If spouse exists, sync the same combined income/assets/eligibility to spouse
-            if (hasLivingSpouse && spouse) {
-                spouse.lisCombinedIncome = member.lisCombinedIncome;
-                spouse.lisCombinedAssets = member.lisCombinedAssets;
-                spouse.LIS = {
-                    combinedIncome: member.LIS.combinedIncome,
-                    combinedAssets: member.LIS.combinedAssets,
-                    eligibility: [...eligibility],
-                    screeningInProgress: spouse.LIS?.screeningInProgress ?? true,
-                    screeningCloseReason: spouse.LIS?.screeningCloseReason ?? null
-                };
-                console.log(`LIS synced to spouse ${spouse.firstName} ${spouse.lastName}:`, spouse.LIS);
-            }
 
             console.log(`LIS object for ${member.firstName} ${member.lastName}:`, member.LIS);
         } catch (error) {
@@ -2348,6 +2389,9 @@ async function MSPEligibilityCheck(members) {
                 member.MSP = {
                     combinedIncome: 0,
                     combinedAssets: 0,
+                    adjustedIncome: 0,
+                    adjustedAssets: 0,
+                    grossMonthlyIncome: 0,
                     eligibility: ["Not Checked"],
                     screeningInProgress: member.MSP?.screeningInProgress ?? false,
                     screeningCloseReason: member.MSP?.screeningCloseReason ?? "Not Applicable"
@@ -2429,9 +2473,15 @@ async function MSPEligibilityCheck(members) {
             const assets = member.assets || [];
             const totalAssets = assets.reduce((sum, asset) => sum + Number(asset.value || 0), 0);
 
-            member.mspAdjustedIncome = adjustedMonthlyIncome;
-            member.mspGrossMonthlyIncome = totalMonthlyIncome;
-            member.mspAdjustedAssets = totalAssets;
+            // Store adjusted values inside the MSP object (initialized here, finalized in Step 2)
+            member.MSP = {
+                ...(member.MSP || {}),
+                adjustedIncome: adjustedMonthlyIncome,
+                grossMonthlyIncome: totalMonthlyIncome,
+                adjustedAssets: totalAssets,
+                screeningInProgress: member.MSP?.screeningInProgress ?? true,
+                screeningCloseReason: member.MSP?.screeningCloseReason ?? null
+            };
 
             console.log(`MSP gross monthly income for ${member.firstName} ${member.lastName}: $${totalMonthlyIncome.toFixed(2)}`);
             console.log(`MSP adjusted monthly income for ${member.firstName} ${member.lastName}: $${adjustedMonthlyIncome.toFixed(2)}`);
@@ -2441,32 +2491,44 @@ async function MSPEligibilityCheck(members) {
         }
     }
 
-    // Step 2: Calculate combined income/assets and determine eligibility
+    // Step 2: Calculate combined income/assets first, then determine eligibility independently per member
+    // First pass: compute combined income/assets for all members
+    const combinedValues = new Map(); // memberId -> { combinedIncome, combinedAssets, hasLivingSpouse }
+    for (const member of members) {
+        if ((member.deceased ?? '').toLowerCase() === 'yes') continue;
+
+        const spouseRelation = member.relationships?.find(r => r.relationship === 'spouse');
+        const spouse = spouseRelation
+            ? members.find(m => m.householdMemberId === spouseRelation.relatedMemberId)
+            : null;
+        const hasLivingSpouse = spouse && (spouse.deceased ?? '').toLowerCase() !== 'yes';
+
+        let combinedIncome, combinedAssets;
+
+        if (hasLivingSpouse) {
+            combinedIncome = (Number(member.MSP?.adjustedIncome) || 0) + (Number(spouse.MSP?.adjustedIncome) || 0);
+            combinedAssets = (Number(member.MSP?.adjustedAssets) || 0) + (Number(spouse.MSP?.adjustedAssets) || 0);
+            console.log(`MSP Combined income for ${member.firstName} and ${spouse.firstName}: $${combinedIncome.toFixed(2)}`);
+            console.log(`MSP Combined assets for ${member.firstName} and ${spouse.firstName}: $${combinedAssets.toFixed(2)}`);
+        } else {
+            combinedIncome = member.MSP?.adjustedIncome || 0;
+            combinedAssets = member.MSP?.adjustedAssets || 0;
+        }
+
+        combinedValues.set(member.householdMemberId, { combinedIncome, combinedAssets, hasLivingSpouse });
+    }
+
+    // Second pass: determine eligibility independently for each member using shared combined values
     for (const member of members) {
         try {
             if ((member.deceased ?? '').toLowerCase() === 'yes') continue;
 
-            // Find spouse via relationships array
-            const spouseRelation = member.relationships?.find(r => r.relationship === 'spouse');
-            const spouse = spouseRelation
-                ? members.find(m => m.householdMemberId === spouseRelation.relatedMemberId)
-                : null;
-            const hasLivingSpouse = spouse && (spouse.deceased ?? '').toLowerCase() !== 'yes';
+            const values = combinedValues.get(member.householdMemberId);
+            if (!values) continue;
 
-            if (hasLivingSpouse) {
-                console.log(`MSP Spouse found: ${spouse.firstName} ${spouse.lastName}`);
+            const { combinedIncome, combinedAssets, hasLivingSpouse } = values;
 
-                member.mspCombinedIncome = (Number(member.mspAdjustedIncome) || 0) + (Number(spouse.mspAdjustedIncome) || 0);
-                member.mspCombinedAssets = (Number(member.mspAdjustedAssets) || 0) + (Number(spouse.mspAdjustedAssets) || 0);
-
-                console.log(`MSP Combined income for ${member.firstName} and ${spouse.firstName}: $${member.mspCombinedIncome.toFixed(2)}`);
-                console.log(`MSP Combined assets for ${member.firstName} and ${spouse.firstName}: $${member.mspCombinedAssets.toFixed(2)}`);
-            } else {
-                member.mspCombinedIncome = member.mspAdjustedIncome || 0;
-                member.mspCombinedAssets = member.mspAdjustedAssets || 0;
-            }
-
-            // Eligibility determination
+            // Eligibility determination — independent per member
             const eligibility = [];
 
             const medicareEnrollment = member.medicare?.toLowerCase();
@@ -2495,9 +2557,6 @@ async function MSPEligibilityCheck(members) {
                 const assetLimit = hasLivingSpouse
                     ? Utils.MSP_THRESHOLDS.assets.married
                     : Utils.MSP_THRESHOLDS.assets.single;
-
-                const combinedIncome = member.mspCombinedIncome;
-                const combinedAssets = member.mspCombinedAssets;
 
                 // Get income limits for each MSP level
                 const qmbIncomeLimit = Utils.MSP_THRESHOLDS.getIncomeLimit(householdSize, 'qmb');
@@ -2531,26 +2590,15 @@ async function MSPEligibilityCheck(members) {
             }
 
             member.MSP = {
-                combinedIncome: Math.max(0, member.mspCombinedIncome || 0),
-                combinedAssets: Math.max(0, member.mspCombinedAssets || 0),
+                adjustedIncome: member.MSP?.adjustedIncome || 0,
+                adjustedAssets: member.MSP?.adjustedAssets || 0,
+                grossMonthlyIncome: member.MSP?.grossMonthlyIncome || 0,
+                combinedIncome: Math.max(0, combinedIncome || 0),
+                combinedAssets: Math.max(0, combinedAssets || 0),
                 eligibility: eligibility,
                 screeningInProgress: member.MSP?.screeningInProgress ?? true,
                 screeningCloseReason: member.MSP?.screeningCloseReason ?? null
             };
-
-            // If spouse exists, sync the same combined income/assets/eligibility to spouse
-            if (hasLivingSpouse && spouse) {
-                spouse.mspCombinedIncome = member.mspCombinedIncome;
-                spouse.mspCombinedAssets = member.mspCombinedAssets;
-                spouse.MSP = {
-                    combinedIncome: member.MSP.combinedIncome,
-                    combinedAssets: member.MSP.combinedAssets,
-                    eligibility: [...eligibility],
-                    screeningInProgress: spouse.MSP?.screeningInProgress ?? true,
-                    screeningCloseReason: spouse.MSP?.screeningCloseReason ?? null
-                };
-                console.log(`MSP synced to spouse ${spouse.firstName} ${spouse.lastName}:`, spouse.MSP);
-            }
 
             console.log(`MSP object for ${member.firstName} ${member.lastName}:`, member.MSP);
         } catch (error) {
@@ -2616,16 +2664,24 @@ async function PTRREligibilityCheck(members) {
                 // Calculate total gross income for the previous year
                 const currentYear = new Date().getFullYear();
                 const previousYear = currentYear - 1;
-                const previousYearStart = new Date(`${previousYear}-01-01`);
-                const previousYearEnd = new Date(`${previousYear}-12-31`);
+                // Use local date constructors to avoid UTC timezone parsing issues
+                const previousYearStart = new Date(previousYear, 0, 1); // Jan 1
+                const previousYearEnd = new Date(previousYear, 11, 31); // Dec 31
     
                 let totalGrossIncome = previousYearIncomes.reduce((sum, income) => {
-                    let yearlyAmount = Utils.calculateYearlyIncome(
-                        income.amount,
-                        income.frequency,
-                        income.startDate,
-                        income.endDate
-                    );
+                    // Calculate the raw yearly amount from amount × frequency multiplier
+                    let yearlyMultiplier;
+                    switch ((income.frequency || '').toLowerCase()) {
+                        case 'one-time': yearlyMultiplier = 1; break;
+                        case 'weekly': yearlyMultiplier = 52; break;
+                        case 'bi-weekly': yearlyMultiplier = 26; break;
+                        case 'semi-monthly': yearlyMultiplier = 24; break;
+                        case 'monthly': yearlyMultiplier = 12; break;
+                        case 'quarterly': yearlyMultiplier = 4; break;
+                        case 'annually': yearlyMultiplier = 1; break;
+                        default: yearlyMultiplier = 0; break;
+                    }
+                    let yearlyAmount = Number(income.amount || 0) * yearlyMultiplier;
                 
                     if (
                         Utils.PTRR_THRESHOLDS.halfIncomeTypes.includes(income.kind?.toLowerCase())
@@ -2634,15 +2690,23 @@ async function PTRREligibilityCheck(members) {
                     }
                 
                     // Only include income active during the previous year
-                    const incomeStart = new Date(income.startDate);
-                    const incomeEnd = income.endDate ? new Date(income.endDate) : new Date();
+                    // Parse dates using local time to match previousYearStart/End
+                    const incomeParts = income.startDate.split('-');
+                    const incomeStart = new Date(parseInt(incomeParts[0]), parseInt(incomeParts[1]) - 1, parseInt(incomeParts[2]));
+                    let incomeEnd;
+                    if (income.endDate) {
+                        const endParts = income.endDate.split('-');
+                        incomeEnd = new Date(parseInt(endParts[0]), parseInt(endParts[1]) - 1, parseInt(endParts[2]));
+                    } else {
+                        incomeEnd = new Date();
+                    }
                 
                     if (incomeStart <= previousYearEnd && incomeEnd >= previousYearStart) {
                         const activeStart = incomeStart < previousYearStart ? previousYearStart : incomeStart;
                         const activeEnd = incomeEnd > previousYearEnd ? previousYearEnd : incomeEnd;
                 
                         const activeDays = Math.min((activeEnd - activeStart) / (1000 * 60 * 60 * 24) + 1, 365);
-                        const proratedMultiplier = activeDays / 365; // Prorate for the active days in the year
+                        const proratedMultiplier = activeDays / 365;
                         return sum + yearlyAmount * proratedMultiplier;
                     }
                 
@@ -2659,15 +2723,35 @@ if (spouse) {
     const spousePreviousYearIncomes = spouseIncomes.filter(income => income.type && income.type.toLowerCase() === "previous");
 
     let spouseTotalGrossIncome = spousePreviousYearIncomes.reduce((sum, income) => {
-        const yearlyAmount = Utils.calculateYearlyIncome(
-            income.amount,
-            income.frequency,
-            income.startDate,
-            income.endDate
-        );
+        // Calculate the raw yearly amount from amount × frequency multiplier
+        let yearlyMultiplier;
+        switch ((income.frequency || '').toLowerCase()) {
+            case 'one-time': yearlyMultiplier = 1; break;
+            case 'weekly': yearlyMultiplier = 52; break;
+            case 'bi-weekly': yearlyMultiplier = 26; break;
+            case 'semi-monthly': yearlyMultiplier = 24; break;
+            case 'monthly': yearlyMultiplier = 12; break;
+            case 'quarterly': yearlyMultiplier = 4; break;
+            case 'annually': yearlyMultiplier = 1; break;
+            default: yearlyMultiplier = 0; break;
+        }
+        let yearlyAmount = Number(income.amount || 0) * yearlyMultiplier;
 
-        const incomeStart = new Date(income.startDate);
-        const incomeEnd = income.endDate ? new Date(income.endDate) : new Date();
+        if (
+            Utils.PTRR_THRESHOLDS.halfIncomeTypes.includes(income.kind?.toLowerCase())
+        ) {
+            yearlyAmount /= 2;
+        }
+
+        // Parse dates using local time to match previousYearStart/End
+        const incomeParts = income.startDate.split('-');        const incomeStart = new Date(parseInt(incomeParts[0]), parseInt(incomeParts[1]) - 1, parseInt(incomeParts[2]));
+        let incomeEnd;
+        if (income.endDate) {
+            const endParts = income.endDate.split('-');
+            incomeEnd = new Date(parseInt(endParts[0]), parseInt(endParts[1]) - 1, parseInt(endParts[2]));
+        } else {
+            incomeEnd = new Date();
+        }
 
         if (incomeStart <= previousYearEnd && incomeEnd >= previousYearStart) {
             const activeStart = incomeStart < previousYearStart ? previousYearStart : incomeStart;
