@@ -69,7 +69,7 @@ function buildRelationshipHTML(member, relatedMember) {
 
     const relationshipLabel = savedRelationship 
         ? RELATIONSHIP_LABELS[savedRelationship] || savedRelationship 
-        : 'Not Set';
+        : 'No relationship specified';
 
     const fullName = [
         relatedMember.firstName,

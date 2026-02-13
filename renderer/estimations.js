@@ -1512,11 +1512,11 @@ const processedMembers = new Set();
     ${
     isLikelyEligible && benefitAmount >= 0
         ? `
-        <p><strong>Estimated Benefit Amount:</strong> ${
+        <p><strong>Estimated Benefit Amount:</strong><br> ${
             benefitAmount <= 24 ? "Up to $24.00" : `Up to $24.00 - $${benefitAmount.toFixed(2)}`
-        }</p>
+    }</p>
         <p><strong>Expedited Eligibility:</strong> ${
-            capitalizeFirstLetter(household[0]?.SNAP?.expeditedEligibility || 'N/A')
+            (household[0]?.SNAP?.expeditedEligibility || 'N/A')
         }</p>
         `
         : ''

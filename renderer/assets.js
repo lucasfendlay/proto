@@ -308,12 +308,15 @@ async function displayHouseholdMembers() {
 
         const assetListHTML = generateAssetListHTML(member.assets, member.householdMemberId);
 
+        const hasAssets = member.assets && Array.isArray(member.assets) && member.assets.length > 0;
+
         memberDiv.innerHTML = `
             <h3>${member.firstName} ${member.middleInitial || ''} ${member.lastName}</h3>
             <p><strong>Date of Birth:</strong> ${member.dob || 'N/A'}</p>
             <div class="asset-list">
-                <h4>Assets:</h4>
-                <ul id="asset-list-${member.householdMemberId}">${assetListHTML}</ul>
+                ${hasAssets 
+                    ? `<h4>Assets:</h4><ul id="asset-list-${member.householdMemberId}">${assetListHTML}</ul>` 
+                    : '<p class="no-asset-message">No asset records available.</p>'}
             </div>
         `;
 

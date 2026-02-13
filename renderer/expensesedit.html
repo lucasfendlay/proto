@@ -113,16 +113,6 @@
             padding: 5px;
         }
 
-        #utility-modal .modal-content {
-            background: #f9f9f9;
-            border-radius: 12px;
-            width: 60%;
-            max-width: 500px;
-            padding: 30px;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-            animation: fadeIn 0.3s ease-in-out;
-        }
-
         .modal {
             position: fixed;
             top: 0;
@@ -155,7 +145,7 @@
             background: white;
             border-radius: 8px;
             width: 400px;
-            padding: 0px;
+            padding: 30px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
@@ -201,10 +191,24 @@
         }
 
         #utility-modal {
-            width: 80%;
-            padding: 20px;
-            box-sizing: border-box;
-        }
+            position: fixed;
+    z-index: 1000;
+    margin:auto;
+    left: 0;
+    right: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    scrollbar-width: none; /* For Firefox */
+    -ms-overflow-style: none; /* For Internet Explorer and Edge */
+        transform: scale(0.9); /* Scale down to 75% */
+    transform-origin: center; /* Ensure scaling happens from the center */
+    background-color: rgba(0, 0, 0, 0.5);
+    transform: none;
+    transform-origin: unset;        }
+
+    
 
         .expense-list {
             list-style-type: none;
@@ -315,9 +319,12 @@
     <!-- Expense Modal -->
     <div id="shelter-modal" class="modal hidden">
         <div class="modal-content">
+            <div class="modal-header">
             <button id="close-modal" class="close">&times;</button>
             <form id="shelter-form">
                 <h2 id="modal-title"></h2>
+            </div>
+                
 
                 <label for="expense-kind">Kind of Expense:</label>
                 <select id="expense-kind" required>
@@ -375,11 +382,9 @@
     <!-- Utility Modal -->
     <div id="utility-modal" class="modal hidden">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="utility-modal-title">Add Utility Expense</h2>
-            </div>
+                <h2 id="utility-modal-title" style="text-align: center;">Add Utility Expense</h2>
             <div class="modal-body">
-                <p>Which utility expenses is this individual responsible for?</p>
+                <p>Which utility expenses is this person responsible for?</p>
                 <div id="utility-expense-list" class="selection-box-container">
                     <div class="selection-box" data-utility-type="Heating and/or Cooling">Heating and/or Cooling</div>
                     <div class="selection-box" data-utility-type="Gas">Gas</div>

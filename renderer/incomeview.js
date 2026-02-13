@@ -330,21 +330,20 @@ async function displayHouseholdMembers() {
     members.sort((a, b) => (b.headOfHousehold ? 1 : 0) - (a.headOfHousehold ? 1 : 0));
 
     members.forEach(member => {
-        const memberDiv = document.createElement('div');
-        memberDiv.classList.add('household-member1-box');
-        memberDiv.dataset.memberId = member.householdMemberId;
-
         const incomes = member.income || [];
         const hasIncome = Array.isArray(incomes) && incomes.length > 0;
 
-        let incomeHTML = '';
-        if (hasIncome) {
-            incomeHTML = generateIncomeListHTML(incomes, member.householdMemberId, "Current") +
+        // Only show members who have income
+        if (!hasIncome) return;
+
+        let incomeHTML = generateIncomeListHTML(incomes, member.householdMemberId, "Current") +
                          generateIncomeListHTML(incomes, member.householdMemberId, "Previous");
-        }
-        if (!incomeHTML) {
-            incomeHTML = '<p class="no-income-message">No income records available.</p>';
-        }
+
+        if (!incomeHTML) return;
+
+        const memberDiv = document.createElement('div');
+        memberDiv.classList.add('household-member1-box');
+        memberDiv.dataset.memberId = member.householdMemberId;
 
         memberDiv.innerHTML = `
             <h3>${member.firstName} ${member.middleInitial || ''} ${member.lastName}</h3>
@@ -355,6 +354,11 @@ async function displayHouseholdMembers() {
 
         container.appendChild(memberDiv);
     });
+
+    // Show message if no income exists for anyone
+    if (container.children.length === 0) {
+        container.innerHTML = '<p>No income recorded for any household members.</p>';
+    }
 }
 
 // ══════════════════════════════════════════════════════════════

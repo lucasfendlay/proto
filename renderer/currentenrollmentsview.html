@@ -6,63 +6,122 @@
     <title>View Client Current Enrollments</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="householdedit.css">
+    <link rel="stylesheet" href="incomeedit.css">
     <link rel="stylesheet" href="notes.css">
     <script src="userInfo.js"></script>
     <style>
-        .narrow-body {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            margin-top: 60px;
-        }
+    details > summary {
+        cursor: pointer;
+    }
 
-        .household-member-container {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            width: 100%;
-            align-items: center;
-        }
+    .household-member.no-questions {
+        opacity: 0.5;
+    }
 
-        .household-member {
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            background-color: #f9f9f9;
-            width: 80%;
-            align-items: center;
-        }
+    .household-member-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        width: 100%;
+        max-width: 1250px;
+        margin: 0 auto;
+        justify-content: center;
+        align-items: stretch;
+    }
 
-        .household-member.no-questions {
-            opacity: 0.5;
-        }
+    .household-member {
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+        width: calc(33.333% - 20px);
+        min-width: 280px;
+        max-width: 400px;
+        box-sizing: border-box;
+        align-items: center;
+        align-self: stretch;
+    }
 
-        .selection-box {
-            margin-top: 10px;
-            text-align: center;
+    /* Single member - wide and centered */
+    .household-member-container .household-member:only-child {
+        width: 100% !important;
+        min-width: 950px !important;
+        max-width: 950px !important;
+        align-self: auto;
+    }
+
+    /* Two members */
+    .household-member-container:has(.household-member:nth-child(2):last-child) .household-member {
+        width: calc(50% - 20px);
+        max-width: 450px;
+        min-width: 450px;
+        align-self: stretch;
+    }
+
+    .selection-box {
+        margin-top: 10px;
+        text-align: center;
+        width: 100%;
+    }
+
+    .selection-option {
+        display: inline-block;
+        padding: 5px 10px;
+        margin-right: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .selection-option.selected {
+        background-color: #007bff;
+        color: white;
+        border-color: #007bff;
+    }
+
+    .grayed-out {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+
+    #save-exit, #save-continue {
+        border: 1px solid #000000;
+        border-radius: 5px;
+        padding: 10px 20px;
+        background-color: #007bff;
+        color: white;
+        transition: background-color 0.3s, color 0.3s;
+    }
+
+    #save-exit:hover, #save-continue:hover {
+        background-color: #0056b3;
+        color: white;
+    }
+
+    .read-only {
             pointer-events: none;
-            opacity: 0.8;
+            opacity: 0.6;
         }
 
-        .selection-option {
-            display: inline-block;
-            padding: 5px 10px;
-            margin-right: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            cursor: default;
-        }
+        .selection-box div.selected, .selection-box select:focus {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
 
-        .selection-option.selected {
-            background-color: #007bff;
-            color: white;
-            border-color: #007bff;
-        }
+.selection-option.selected {
+    background-color: #007bff !important;
+    color: white !important;
+    border-color: #007bff !important;
+}
     </style>
+        <script src="viewnavigation.js"></script>
+
 </head>
-<body class="narrow-body">
+<body class="narrow-body" style="display: flex; flex-direction: column; align-items: center;">
+
     <h1>Current Enrollments</h1>
 
     <div id="notes-container">
@@ -71,10 +130,9 @@
         <div id="notes-list"></div>
     </div>
     
-    <div id="householdMemberContainer" class="household-member-container"></div>
-
+    <div id="householdMemberContainer" class="household-member-container read-only"></div>
+    <!-- Scripts -->
     <script src="currentenrollmentsview.js"></script>
     <script src="notes.js"></script>
-    <script src="viewnavigation.js"></script>
 </body>
 </html>

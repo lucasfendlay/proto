@@ -10,103 +10,116 @@
     <link rel="stylesheet" href="notes.css">
     <script src="userInfo.js"></script>
     <style>
-details > summary {
-        cursor: pointer;
-    }
-
-    .narrow-body {
-        margin-left: 385px;
-        margin-right: 10px;
-        max-width: calc(100% - 395px);
-        margin: 0 auto;
-        margin-top: 60px;
-    }
-
-    #save-exit, #save-continue {
-        border: 1px solid #000000;
-        border-radius: 5px;
-        padding: 10px 20px;
-        background-color: #007bff;
-        color: white;
-        transition: background-color 0.3s, color 0.3s;
-    }
-
-    #save-exit:hover, #save-continue:hover {
-        background-color: #0056b3;
-        color: white;
-    }
-
-    #household-member-container {
-        width: 100%;
-        max-width: 925px;
-        margin: 0 auto;
-    }
-
-    .household-member1-box {
-        width: 100%;
-        max-width: 925px;
-        min-width: 925px;
-        box-sizing: border-box;
-    }
-
-    .list-header {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        justify-content: space-between;
-        align-items: center;
-        font-weight: bold;
-        padding: 10px;
-        border-bottom: 1px solid #ccc;
-        margin-bottom: 10px;
-        text-align: center;
-    }
-
-    .asset-list {
-        margin: 20px auto;
-        width: 100%;
-        max-width: 100%;
-        box-sizing: border-box;
-    }
-
-    .asset-list ul {
-        width: 100%;
-        padding: 0 10px;
-        box-sizing: border-box;
-    }
-
-    .list-item {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        align-items: center;
-        text-align: center;
-        gap: 10px;
-        padding: 10px;
-        margin-bottom: 10px;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-        background-color: #f9f9f9;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        width: 100%;
-        box-sizing: border-box;
-    }
-
-    .button-container {
-        grid-column: span 3;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 10px;
-        margin-top: 10px;
-    }
-
-    .edit-asset-button:hover {
-        background-color: #0056b3 !important;
-    }
-
-    .delete-asset-button:hover {
-        background-color: #a71d2a !important;
-    }
-    </style>
+        details > summary {
+                cursor: pointer;
+            }
+        
+            .narrow-body {
+                margin-left: 385px;
+                margin-right: 10px;
+                max-width: calc(100% - 395px);
+                margin: 0 auto;
+                margin-top: 60px;
+            }
+        
+            #save-exit, #save-continue {
+                border: 1px solid #000000;
+                border-radius: 5px;
+                padding: 10px 20px;
+                background-color: #007bff;
+                color: white;
+                transition: background-color 0.3s, color 0.3s;
+            }
+        
+            #save-exit:hover, #save-continue:hover {
+                background-color: #0056b3;
+                color: white;
+            }
+        
+            #household-member-container {
+                width: 100%;
+                max-width: 925px;
+                margin: 0 auto;
+            }
+        
+            .household-member1-box {
+                width: 100%;
+                max-width: 925px;
+                min-width: 925px;
+                box-sizing: border-box;
+            }
+        
+            .list-header {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                justify-content: space-between;
+                align-items: center;
+                font-weight: bold;
+                padding: 10px;
+                border-bottom: 1px solid #ccc;
+                margin-bottom: 10px;
+                text-align: center;
+            }
+        
+            .asset-list {
+                margin: 20px auto;
+                width: 100%;
+                max-width: 100%;
+                padding: 10px 15px;
+                background-color: #f1f1f1;
+                border-radius: 5px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                box-sizing: border-box;
+            }
+        
+            .asset-list ul {
+                width: 100%;
+                padding: 0 10px;
+                box-sizing: border-box;
+            }
+        
+            .list-item {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                align-items: center;
+                text-align: center;
+                gap: 10px;
+                padding: 10px;
+                margin-bottom: 10px;
+                border: 1px solid #ccc;
+                border-radius: 8px;
+                background-color: #f9f9f9;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                width: 100%;
+                box-sizing: border-box;
+            }
+        
+            .button-container {
+                grid-column: span 3;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: 10px;
+                margin-top: 10px;
+            }
+        
+            .edit-asset-button:hover {
+                background-color: #0056b3 !important;
+            }
+        
+            .delete-asset-button:hover {
+                background-color: #a71d2a !important;
+            }
+        
+            /* No Asset Message */
+            .no-asset-message {
+                text-align: center;
+                color: #666;
+                font-style: italic;
+                padding: 20px;
+                margin: 0;
+            }
+            </style>
 </head>
 <body class="narrow-body">
 
@@ -129,9 +142,11 @@ details > summary {
     <!-- Modal for Adding/Editing Assets -->
     <div id="asset-modal" class="modal hidden">
         <div class="modal-content">
+            <div class="modal-header">
             <button id="close-modal" class="close">&times;</button>
             <form id="asset-form">
                 <h2 id="modal-title"></h2>
+            </div>
 
                 <label for="asset-type">Type of Asset:</label>
                 <select id="asset-type" required>

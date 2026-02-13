@@ -263,6 +263,7 @@ async function displayHouseholdMembers() {
     members.sort((a, b) => (b.headOfHousehold ? 1 : 0) - (a.headOfHousehold ? 1 : 0));
 
     members.forEach(member => {
+        if (!member.assets || !Array.isArray(member.assets) || member.assets.length === 0) return;        
         const memberDiv = document.createElement('div');
         memberDiv.classList.add('household-member1-box');
         memberDiv.dataset.memberId = member.householdMemberId;
@@ -280,6 +281,11 @@ async function displayHouseholdMembers() {
 
         container.appendChild(memberDiv);
     });
+
+    // Show message if no assets exist for anyone
+    if (container.children.length === 0) {
+        container.innerHTML = '<p>No assets recorded for any household members.</p>';
+    }
 }
 
 // ══════════════════════════════════════════════════════════════

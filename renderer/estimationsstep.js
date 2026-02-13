@@ -2210,7 +2210,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                         <p><strong>Eligibility:</strong> ${eligibility.join(', ')}</p>
                         ${snapIsLikelyEligible && benefitAmount >= 0 ? `
                             <p><strong>Estimated Benefit Amount:</strong> ${benefitAmount <= 24 ? "Up to $24.00" : `Up to $24.00 - $${benefitAmount.toFixed(2)}`}</p>
-                            <p><strong>Expedited Eligibility:</strong> ${capitalizeFirstLetter(expeditedEligibility)}</p>
+                            <p><strong>Expedited Eligibility:</strong> ${(expeditedEligibility)}</p>
                         ` : ''}
                         </summary>
                         <hr class="separator-bar">
