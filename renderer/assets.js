@@ -162,7 +162,7 @@ async function goToAssetView() {
     } catch (error) {
         console.error("Error during goToAssetView:", error);
     } finally {
-        window.location.href = `assetsview.html?id=${clientId}`;
+        window.location.href = `profileview.html?id=${clientId}`;
     }
 }
 
@@ -237,7 +237,6 @@ function shouldShowAddAssetButton(member, members) {
         member.LIS?.screeningInProgress === true ||
         member.MSP?.screeningInProgress === true ||
         member.SNAP?.screeningInProgress === true ||
-        member.LIHEAP?.screeningInProgress === true ||
         (member.currentSpouseId && members.some(spouse =>
             spouse.householdMemberId === member.currentSpouseId &&
             (spouse.LIS?.screeningInProgress === true || spouse.MSP?.screeningInProgress === true)
@@ -250,7 +249,6 @@ function shouldShowAddAssetButton(member, members) {
 
     // Check various conditions for showing the button
     if (member.LIS?.screeningInProgress || member.MSP?.screeningInProgress) return true;
-    if (member.LIHEAP?.screeningInProgress) return true;
 
     // SNAP with meals condition
     if (member.SNAP?.screeningInProgress && member.meals?.toLowerCase() === 'yes' &&
@@ -587,6 +585,7 @@ function setupNavigationHandlers() {
 // ══════════════════════════════════════════════════════════════
 
 window.refreshAssetDisplay = displayHouseholdMembers;
+window.invalidateAssetCache = invalidateCache;
 
 // ══════════════════════════════════════════════════════════════
 // SINGLE DOMContentLoaded INITIALIZATION

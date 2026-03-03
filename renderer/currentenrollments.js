@@ -192,7 +192,7 @@ async function redirectToCurrentEnrollments() {
     } catch (error) {
         console.error("Error during redirectToCurrentEnrollments:", error);
     } finally {
-        window.location.href = `currentenrollmentsview.html?id=${clientId}`;
+        window.location.href = `profileview.html?id=${clientId}`;
     }
 }
 

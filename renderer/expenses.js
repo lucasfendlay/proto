@@ -47,6 +47,33 @@ const dropdownOptions = {
     ]
 };
 
+function getPreviousYearOptions(member, allMembers) {
+    const options = [];
+
+    // Medicare Part B Premium: show when member or spouse has PACE screening in progress
+    const spousePACE = member.previousSpouseId
+        ? allMembers.find(m => m.householdMemberId === member.previousSpouseId)?.PACE?.screeningInProgress === true
+        : false;
+
+    if (member.PACE?.screeningInProgress === true || spousePACE) {
+        options.push({ value: 'Medicare Part B Premium', label: 'Medicare Part B Premium' });
+    }
+
+    // Property Taxes: show when member has PTRR screening AND residenceStatus is 'owned' or 'rentedowned'
+    const residence = (member.residenceStatus || '').toLowerCase();
+    if (member.PTRR?.screeningInProgress === true) {
+        if (residence === 'owned' || residence === 'rentedowned') {
+            options.push({ value: 'Property Taxes', label: 'Property Taxes' });
+        }
+        // Rent: show when member has PTRR screening AND residenceStatus is 'rented' or 'rentedowned'
+        if (residence === 'rented' || residence === 'rentedowned') {
+            options.push({ value: 'Rent', label: 'Rent' });
+        }
+    }
+
+    return options;
+}
+
 // ══════════════════════════════════════════════════════════════
 // UTILITIES
 // ══════════════════════════════════════════════════════════════
@@ -74,6 +101,9 @@ async function getHouseholdMembersCached() {
 function invalidateHouseholdCache() {
     cachedHouseholdMembers = null;
 }
+
+// Expose for use from estimations.js
+window.invalidateHouseholdCache = invalidateHouseholdCache;
 
 async function loadHouseholdMembers() {
     const clientId = getQueryParameter('id');
@@ -207,12 +237,18 @@ function shouldShowPreviousYearButton(member, allMembers) {
         return true;
     }
     
-    // Spouse eligibility
+    // Spouse eligibility (this member references a spouse)
     if (member.previousSpouseId) {
         const spouse = allMembers.find(m => m.householdMemberId === member.previousSpouseId);
         if (spouse?.PTRR?.screeningInProgress === true || spouse?.PACE?.screeningInProgress === true) {
             return true;
         }
+    }
+
+    // Reverse spouse eligibility (another member references this member as their spouse)
+    const reverseSpouse = allMembers.find(m => m.previousSpouseId === member.householdMemberId);
+    if (reverseSpouse?.PTRR?.screeningInProgress === true || reverseSpouse?.PACE?.screeningInProgress === true) {
+        return true;
     }
     
     return false;
@@ -926,7 +962,19 @@ function openAddExpenseModal(memberId, expenseType, isLiheapOnly = false) {
     placeholder.selected = true;
     elements.expenseKind.appendChild(placeholder);
 
-    if (dropdownOptions[expenseType]) {
+    if (expenseType === 'Previous Year') {
+        // Dynamically determine Previous Year options based on member/spouse screening
+        getHouseholdMembersCached().then(allMembers => {
+            const member = allMembers.find(m => String(m.householdMemberId) === String(memberId));
+            const options = member ? getPreviousYearOptions(member, allMembers) : [];
+            options.forEach(option => {
+                const optionElement = document.createElement('option');
+                optionElement.value = option.value;
+                optionElement.textContent = option.label;
+                elements.expenseKind.appendChild(optionElement);
+            });
+        });
+    } else if (dropdownOptions[expenseType]) {
         const options = isLiheapOnly
             ? dropdownOptions[expenseType].filter(opt => opt.value === 'Medicare Part B Premium' || opt.value === 'Medicare Part D Premium')
             : dropdownOptions[expenseType];
@@ -977,13 +1025,29 @@ async function openEditExpenseModal(memberId, expenseId) {
 
         // Populate dropdown
         elements.expenseKind.innerHTML = '';
-        dropdownOptions[expenseType].forEach(option => {
+
+        let kindOptions;
+        if (expenseType === 'Previous Year') {
+            const allMembers = await getHouseholdMembersCached();
+            const member = allMembers.find(m => String(m.householdMemberId) === String(memberId));
+            kindOptions = member ? getPreviousYearOptions(member, allMembers) : [];
+            // Ensure current expense kind is included even if conditions changed
+            if (!kindOptions.some(opt => opt.value === expense.kind)) {
+                kindOptions.push({ value: expense.kind, label: expense.kind });
+            }
+        } else {
+            kindOptions = dropdownOptions[expenseType] || [];
+        }
+
+        kindOptions.forEach(option => {
             const optionElement = document.createElement('option');
             optionElement.value = option.value;
             optionElement.textContent = option.label;
             if (option.value === expense.kind) optionElement.selected = true;
             elements.expenseKind.appendChild(optionElement);
         });
+
+        elements.expenseStartDate.value = expense.startDate || '';
 
         elements.expenseStartDate.value = expense.startDate || '';
         elements.expenseEndDate.value = expense.endDate || '';
@@ -1212,7 +1276,7 @@ async function goToExpensesView() {
     } catch (error) {
         console.error("Error during goToExpensesView:", error);
     } finally {
-        window.location.href = `expensesview.html?id=${clientId}`;
+        window.location.href = `profileview.html?id=${clientId}`;
     }
 }
 

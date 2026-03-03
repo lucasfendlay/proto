@@ -223,6 +223,7 @@
     <script src="userInfo.js"></script>
 </head>
 <body>
+
     <div id="notes-container">
         <textarea id="note-input" placeholder="Add Note..."></textarea>
         <button id="save-note">Save Note</button>
@@ -265,6 +266,10 @@
 
     <h2 id="profileId">Profile: Loading...</h2>
     <p id="terminationStatus" style="color: red; display: none;"><strong>PROFILE TERMINATED</strong></p>
+
+    <div id="screening-banner" style="display: none; background-color: #007bff; color: white; width: 10000px; text-align: center; padding: 12px; font-size: 1.1rem; font-weight: bold; z-index: 1; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+        Open Screening in Progress
+    </div>
 
     <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
         <div id="snap-household-container" class="left-sidebar"></div>
@@ -528,9 +533,42 @@
         }
     }
 
+        // ===== POPULATE UI FROM CLIENT DATA (no fetch) =====
+        function checkForOpenScreening(data) {
+        const allBenefits = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
+
+        // Check household members for any benefit screeningInProgress
+        const members = data.householdMembers || [];
+        for (const member of members) {
+            for (const benefit of allBenefits) {
+                if (member[benefit]?.screeningInProgress === true) {
+                    return true;
+                }
+            }
+        }
+
+        // Check client-level programStatus for SNAP/LIHEAP screeningInProgress
+        const programStatus = data.programStatus || {};
+        if (programStatus.SNAP?.screeningInProgress === true) return true;
+        if (programStatus.LIHEAP?.screeningInProgress === true) return true;
+
+        return false;
+    }
+
     // ===== POPULATE UI FROM CLIENT DATA (no fetch) =====
     function populateForm(data) {
         client = data;
+
+                // Check for open screening and show banner
+                const banner = document.getElementById('screening-banner');
+        const hasOpenScreening = checkForOpenScreening(data);
+        if (hasOpenScreening) {
+            banner.style.display = 'block';
+            document.body.style.marginTop = '100px';
+        } else {
+            banner.style.display = 'none';
+            document.body.style.marginTop = '60px';
+        }
 
         // Profile header
         document.getElementById('profileId').textContent = `Profile: ${data.id || 'N/A'}`;
@@ -954,14 +992,12 @@
             await flushChangesImmediate();
             await saveClientFull();
 
-            // Batch: set checkedOut false + screeningInProgress false in one call
             await fetch('/update-client', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     clientId: CLIENT_ID,
                     clientData: {
-                        screeningInProgress: false,
                         checkedOut: [{
                             status: false,
                             timestamp: null,

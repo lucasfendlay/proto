@@ -1775,8 +1775,44 @@ document.addEventListener('DOMContentLoaded', async function () {
         });
     }
 
+    // ===== UPDATE MEMBER BENEFITS =====
+    async function updateMemberBenefits(members, benefit, newApplyingState, memberId = null) {
+        for (const member of members) {
+            // For individual benefits, only update the matching member
+            if (memberId && String(member.householdMemberId) !== String(memberId)) continue;
+
+            // For household benefits (SNAP/LIHEAP), update all relevant members
+            if (benefit === 'SNAP' && member.meals?.toLowerCase() !== 'yes') continue;
+            if (benefit === 'LIHEAP' && (member.deceased ?? '').toLowerCase() === 'yes') continue;
+
+            const benefitObj = member[benefit];
+            if (!benefitObj) continue;
+
+            // Initialize application array if it doesn't exist
+            if (!benefitObj.application) {
+                benefitObj.application = [];
+            }
+
+            if (newApplyingState) {
+                // Add an applying entry if one doesn't already exist
+                const alreadyApplying = benefitObj.application.some(app => app.applying === true);
+                if (!alreadyApplying) {
+                    benefitObj.application.push({
+                        applying: true,
+                        date: new Date().toISOString()
+                    });
+                }
+            } else {
+                // Remove all applying entries (stop applying)
+                benefitObj.application = benefitObj.application.filter(app => !app.applying);
+            }
+        }
+
+        await saveHouseholdMembers(members);
+    }
+
     // ===== DISPLAY FUNCTIONS =====
-    async function displayHouseholdMembers() {
+        async function displayHouseholdMembers() {
         const householdMemberContainer = document.getElementById('household-members-container');
         const members = await loadHouseholdMembers();
 
@@ -2112,7 +2148,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             snapContainer.appendChild(noHouseholdsDiv);
 
             // Attach close button listener if screening is in progress
-            const closeBtn = noHouseholdsDiv.querySelector('.close-snap-no-household-btn');
+            const closeBtn = noHouseholdsDiv.querySelector('.btn-close-snap-screening');
             if (closeBtn) {
                 closeBtn.addEventListener('click', async () => {
                     const freshMembers = await loadHouseholdMembers();
@@ -2492,12 +2528,14 @@ function createLIHEAPHouseholdCard(activeMembersForLIHEAP, liheapMemberIds, lihe
                         <p><strong>Eligibility:</strong> ${eligibility.join(', ')}</p>
                         </summary>
                         <hr class="separator-bar">
-                        <p><strong>Household Size:</strong> ${activeMembersForLIHEAP.length}</p>
+                        <p><strong>LIHEAP Household Size:</strong> ${activeMembersForLIHEAP.length}</p>
                         <p><strong>Total Gross Income:</strong> $${grossMonthlyIncome.toFixed(2)}</p>
                         <p><strong>Medicare Premium Deductions:</strong> $${totalMedicarePremiumDeduction.toFixed(2)}</p>
                         <p><strong>Adjusted Gross Income:</strong> $${combinedMonthlyIncome.toFixed(2)}</p>
                     </details>
                     </button>
+                                        <button class="benefit-apply-button" data-benefit="LIHEAP" style="display: ${liheapIsLikely ? 'block' : 'none'}; margin: 0 auto;">
+                        ${activeMembersForLIHEAP.every(m => m.LIHEAP?.application?.some(app => app.applying)) ? 'Stop Applying' : 'Apply for LIHEAP'}
                     <button class="close-liheap-btn" 
                         data-member-ids="${liheapMemberIds.join(',')}"
                         data-is-not-eligible="${liheapIsNotEligible ? 'true' : 'false'}"

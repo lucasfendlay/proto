@@ -509,7 +509,7 @@ async function saveAndReleaseProfile() {
     try {
         await setCheckedOutStatus(clientId, false);
         await addNoteToClient(clientId, "Profile released.");
-        window.location.href = `relationshipsview.html?id=${clientId}`;
+        window.location.href = `profileview.html?id=${clientId}`;
     } catch (error) {
         console.error("Error releasing profile:", error);
     }

@@ -599,10 +599,22 @@ async function makeHeadOfHousehold(memberId) {
         const clientData = await fetchClient(clientId);
         if (!clientData?.householdMembers) return;
 
-        const updatedMembers = clientData.householdMembers.map(m => ({
-            ...m,
-            headOfHousehold: m.householdMemberId === memberId,
-        }));
+        const programStatus = clientData.programStatus || {};
+        const ptrrDefault = programStatus.PTRR?.screeningInProgress ?? true;
+
+        const updatedMembers = clientData.householdMembers.map(m => {
+            const isNewHead = m.householdMemberId === memberId;
+            const isDeceased = m.deceased === 'yes';
+            return {
+                ...m,
+                headOfHousehold: isNewHead,
+                // Only the new head of household gets PTRR open
+                PTRR: { 
+                    ...(m.PTRR || {}),
+                    screeningInProgress: isNewHead ? ptrrDefault : false 
+                },
+            };
+        });
 
         const response = await fetch('/update-household-members', {
             method: 'PUT',
@@ -844,9 +856,16 @@ async function addHouseholdMember() {
         // Get program status from client level, defaulting to true (open) if not set
         const programStatus = clientData.programStatus || {};
         
+        const modalData = gatherModalData();
+        
+        // PTRR should only be open for head of household
+        const ptrrOpen = isFirstMember
+            ? (programStatus.PTRR?.screeningInProgress ?? true)
+            : false;
+
         const memberData = {
             householdMemberId: crypto.randomUUID(),
-            ...gatherModalData(),
+            ...modalData,
             headOfHousehold: isFirstMember,
             // Inherit residence status from client level
             residenceStatus: clientData.residenceStatus || '',
@@ -856,7 +875,7 @@ async function addHouseholdMember() {
             PACE: { screeningInProgress: programStatus.PACE?.screeningInProgress ?? true },
             LIS: { screeningInProgress: programStatus.LIS?.screeningInProgress ?? true },
             MSP: { screeningInProgress: programStatus.MSP?.screeningInProgress ?? true },
-            PTRR: { screeningInProgress: programStatus.PTRR?.screeningInProgress ?? true },
+            PTRR: { screeningInProgress: ptrrOpen },
         };
 
         const response = await fetch('/save-household-member', {
@@ -894,11 +913,18 @@ async function updateHouseholdMember(memberId) {
             updatedData.previousSpouseId = null;
         }
 
+        // Fetch current client data to check head of household status
+        const clientData = await fetchClient(clientId);
+        const currentMember = clientData.householdMembers?.find(m => m.householdMemberId === memberId);
+
+        // PTRR should only be open for head of household
+        const isHeadOfHousehold = currentMember?.headOfHousehold === true;
+        if (!isHeadOfHousehold) {
+            updatedData.PTRR = { screeningInProgress: false };
+        }
+
         // Clear spouse relationships if no longer married
         if (maritalStatus !== 'Married (Living Together)') {
-            const clientData = await fetchClient(clientId);
-            const currentMember = clientData.householdMembers?.find(m => m.householdMemberId === memberId);
-
             if (currentMember) {
                 updatedData.relationships = null;
                 const spouseId = currentMember.relationships?.spouse;

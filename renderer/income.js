@@ -162,7 +162,7 @@ async function goToIncomeView() {
     } catch (error) {
         console.error("Error during goToIncomeView:", error);
     } finally {
-        window.location.href = `incomeview.html?id=${clientId}`;
+        window.location.href = `profileview.html?id=${clientId}`;
     }
 }
 
@@ -174,8 +174,15 @@ async function refreshFarmworkerVisibility() {
     const farmworkerQuestion = document.getElementById('farmworker-question');
     if (!farmworkerQuestion) return;
 
-    const client = await fetchClientData();
+    const client = await fetchClientData(true); // force refresh to get latest state
     if (!client) return;
+
+    // Check client-level SNAP program status first
+    const snapProgramStatus = client.programStatus?.SNAP;
+    if (snapProgramStatus?.screeningInProgress === false) {
+        farmworkerQuestion.style.display = 'none';
+        return;
+    }
 
     const householdMembers = client.householdMembers || [];
     const hasMealsAndSnapScreening = householdMembers.some(

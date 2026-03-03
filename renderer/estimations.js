@@ -364,6 +364,12 @@ document.addEventListener('DOMContentLoaded', async function () {
                                 const memberName = `${capitalizeFirstLetter(targetMember.firstName)} ${capitalizeFirstLetter(targetMember.lastName)}`;
                                 await addNoteToClient(clientId, `<strong>${benefit} screening reopened for ${memberName}.</strong>`);
                                 await renderNotesContainer();
+
+                                // Invalidate expense household cache so Previous Year dropdown reflects updated screening status
+                                if ((benefit === 'PACE' || benefit === 'PTRR') && window.invalidateHouseholdCache) {
+                                    window.invalidateHouseholdCache();
+                                }
+
                                 await refreshAllDisplays();
                             } else {
                                 console.error(`Failed to reopen ${benefit} screening.`);
@@ -1223,11 +1229,14 @@ async function openCloseMemberModal(clientId, allMembers, memberId = null, openB
                         if (member.SNAP) {
                             member.SNAP.screeningInProgress = false;
                             member.SNAP.screeningCloseReason = closeReason;
-                        }
-                    }
+                        }                    }
                     // Update client-level program status
                     await updateClientProgramStatus(clientId, 'SNAP', false, closeReason);
                     noteLines.push(`<br><strong><u>SNAP</u></strong><br><em>${closeReason}</em>`);
+
+                    if (window.refreshFarmworkerVisibility) {
+                        await window.refreshFarmworkerVisibility();
+                    }
                 } else if (benefit === 'LIHEAP') {
                     // Close LIHEAP for all LIHEAP household members
                     for (const member of allMembers) {
@@ -1285,6 +1294,13 @@ async function openCloseMemberModal(clientId, allMembers, memberId = null, openB
                 const noteText = `<strong>Screening(s) closed.</strong><br>${noteLines.join('<br>')}`;
                 await addNoteToClient(clientId, noteText);
                 await renderNotesContainer();
+
+                // Invalidate expense household cache so Previous Year dropdown reflects updated screening status
+                const closedBenefits = selectedTiles.map(t => t.dataset.benefit);
+                if ((closedBenefits.includes('PACE') || closedBenefits.includes('PTRR')) && window.invalidateHouseholdCache) {
+                    window.invalidateHouseholdCache();
+                }
+
                 await refreshAllDisplays();
             } else {
                 console.error('Failed to close screening.');
@@ -1295,31 +1311,37 @@ async function openCloseMemberModal(clientId, allMembers, memberId = null, openB
     });
 }
 
-async function displaySNAPHouseholds(prefetchedMembers, prefetchedClient) {
-    const snapHouseholdContainer = document.getElementById('snap-household-container');
-    if (!snapHouseholdContainer) {
-        console.error('snap-household-container element not found in the DOM.');
+// ===== SNAP DISPLAY =====
+async function displaySNAPHouseholds() {
+    const snapContainer = document.getElementById('snap-household-container');
+    if (!snapContainer) {
+        console.error('snap-household-container element not found.');
         return;
     }
 
-    const members = prefetchedMembers || await loadHouseholdMembers();
-    snapHouseholdContainer.innerHTML = ''; // Clear existing content
+    const members = await loadHouseholdMembers();
+    snapContainer.innerHTML = '';
 
     const clientId = getQueryParameter('id');
 
-    // Fetch fresh client data if not provided
-    const currentClient = prefetchedClient || await fetch(`/get-client/${clientId}`)
-        .then(response => response.ok ? response.json() : null)
-        .catch(error => {
-            console.error('Error fetching client data:', error);
-            return null;
-        });
-    
+    // Fetch fresh client data
+    let clientData = null;
+    try {
+        const clientRes = await fetch(`/get-client/${clientId}`);
+        if (clientRes.ok) {
+            clientData = await clientRes.json();
+        }
+    } catch (e) {
+        console.error('Error fetching client data:', e);
+    }
+
+    const isScreeningInProgress = clientData?.screeningInProgress === true;
+
     // Check CLIENT-LEVEL program status ONLY for SNAP (household benefit)
-    const programStatus = currentClient?.programStatus || {};
+    const programStatus = clientData?.programStatus || {};
     const snapScreeningClosed = programStatus.SNAP?.screeningInProgress === false;
     const snapCloseReason = programStatus.SNAP?.screeningCloseReason || 'N/A';
-    
+
     const snapMembers = members.filter(m => m.meals?.toLowerCase() === "yes");
 
     if (snapScreeningClosed) {
@@ -1331,10 +1353,10 @@ async function displaySNAPHouseholds(prefetchedMembers, prefetchedClient) {
         reopenDiv.innerHTML = `
             <h3>SNAP HOUSEHOLD</h3>
             ${snapMembers.length > 0 ? `<p><strong>Members:</strong> ${snapMembers.map(m => `${capitalizeFirstLetter(m.firstName)} ${capitalizeFirstLetter(m.lastName)}`).join(', ')}</p>` : ''}
-            <div style="padding: 8px; border-radius: 4px; margin: 8px 0; text-align: center; width: 100%; box-sizing: border-box;">
+            <div style="padding: 8px; border-radius: 4px; margin: 8px auto; text-align: center; width: 100%; box-sizing: border-box;">
                 <p style="margin: 0 0 6px 0;"><strong>SNAP Screening Closed</strong></p>
                 <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${snapCloseReason}</p>
-                <button id="reopen-snap-screening-btn" 
+                <button class="reopen-snap-screening-btn" 
                     style="background-color: #007bff; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 12px; cursor: pointer; transition: background-color 0.3s;"
                     onmouseover="this.style.backgroundColor='#0056b3'" 
                     onmouseout="this.style.backgroundColor='#007bff'">
@@ -1343,9 +1365,9 @@ async function displaySNAPHouseholds(prefetchedMembers, prefetchedClient) {
             </div>
         `;
 
-        snapHouseholdContainer.appendChild(reopenDiv);
+        snapContainer.appendChild(reopenDiv);
 
-        document.getElementById('reopen-snap-screening-btn').addEventListener('click', async () => {
+        reopenDiv.querySelector('.reopen-snap-screening-btn').addEventListener('click', async () => {
             try {
                 // Update ALL members' SNAP object (not just snapMembers)
                 for (const member of members) {
@@ -1364,9 +1386,11 @@ async function displaySNAPHouseholds(prefetchedMembers, prefetchedClient) {
                 if (saveResponse.ok) {
                     // Also update client-level program status
                     await updateClientProgramStatus(clientId, 'SNAP', true);
-                    
                     await addNoteToClient(clientId, '<strong>SNAP screening reopened.</strong>');
                     await renderNotesContainer();
+                    if (window.refreshFarmworkerVisibility) {
+                        await window.refreshFarmworkerVisibility();
+                    }
                     await refreshAllDisplays();
                 } else {
                     console.error('Failed to reopen SNAP screening.');
@@ -1376,162 +1400,156 @@ async function displaySNAPHouseholds(prefetchedMembers, prefetchedClient) {
             }
         });
 
-        return; // Don't render the full SNAP display
+        return; // Don't render anything else
     }
 
-// Only check enrollment status if screening is NOT closed
-const isAlreadyEnrolled = currentClient?.snap === 'yes';
-const isNotInterested = currentClient?.snap === 'notinterested';
+    // Only check enrollment status if screening is NOT closed
+    const isAlreadyEnrolled = clientData?.snap === 'yes';
+    const isNotInterested = clientData?.snap === 'notinterested';
 
-// Group members into SNAP households based on "meals=yes"
-const snapHouseholds = [];
-const processedMembers = new Set();
-    
-        for (const member of members) {
-            if (processedMembers.has(member.householdMemberId)) continue;
-    
-            if (member.meals?.toLowerCase() === "yes") {
-                const snapHousehold = [member];
-                processedMembers.add(member.householdMemberId);
-    
-                for (const otherMember of members) {
-                    if (
-                        otherMember.householdMemberId !== member.householdMemberId &&
-                        otherMember.meals?.toLowerCase() === "yes"
-                    ) {
-                        snapHousehold.push(otherMember);
-                        processedMembers.add(otherMember.householdMemberId);
-                    }
-                }
-    
-                snapHouseholds.push(snapHousehold);
+    // Build SNAP households
+    const snapHouseholds = [];
+    const processedMembers = new Set();
+
+    for (const member of members) {
+        if (processedMembers.has(member.householdMemberId)) continue;
+        if (member.meals?.toLowerCase() !== "yes") continue;
+
+        const snapHousehold = [member];
+        processedMembers.add(member.householdMemberId);
+
+        for (const other of members) {
+            if (other.householdMemberId !== member.householdMemberId && 
+                other.meals?.toLowerCase() === "yes") {
+                snapHousehold.push(other);
+                processedMembers.add(other.householdMemberId);
             }
         }
-    
-        if (snapHouseholds.length === 0) {
-            const noHouseholdsDiv = document.createElement('div');
-            noHouseholdsDiv.classList.add('household-member-box');
-
-            // Check if any SNAP household member has screening in progress
-            const anySnapScreeningActive = members.some(m => m.SNAP?.screeningInProgress === true);
-
-            // Apply background color based on state
-            if (isAlreadyEnrolled || isNotInterested) {
-                noHouseholdsDiv.style.backgroundColor = '#f8d7da'; // Red for already enrolled / not interested
-                noHouseholdsDiv.style.borderColor = '#f5c6cb';
-            } else {
-                noHouseholdsDiv.style.backgroundColor = '#fff3cd'; // Yellow for no households found
-                noHouseholdsDiv.style.borderColor = '#ffc107';
-            }
-            
-            // Ensure consistent width
-            noHouseholdsDiv.style.width = '100%';
-            noHouseholdsDiv.style.boxSizing = 'border-box';
-
-            noHouseholdsDiv.innerHTML = `
-                <h3>SNAP HOUSEHOLD</h3>
-                ${isAlreadyEnrolled ? `
-                    <p>ALREADY ENROLLED</p>
-                ` : isNotInterested ? `
-                    <p>NOT INTERESTED</p>
-                ` : `
-                    <p>NO SNAP HOUSEHOLD MEMBERS FOUND.</p>
-                `}
-                ${anySnapScreeningActive || isAlreadyEnrolled || isNotInterested ? `
-                    <button class="btn-close-snap-screening" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Close Screening(s)</button>
-                ` : ''}
-            `;
-
-            snapHouseholdContainer.appendChild(noHouseholdsDiv);
-
-            if (anySnapScreeningActive || isAlreadyEnrolled || isNotInterested) {
-                const closeBtn = noHouseholdsDiv.querySelector('.btn-close-snap-screening');
-                closeBtn.addEventListener('click', () => {
-                    openCloseMemberModal(clientId, members, null, null, 'SNAP');
-                });
-            }
-        } else {
-
-            snapHouseholds.forEach(household => {
-                const householdDiv = document.createElement('div');
-                householdDiv.classList.add('household-member-box');
-    
-                const combinedMonthlyIncome = household[0]?.SNAP?.combinedMonthlyIncome || 0;
-                const totalNetIncome = household[0]?.SNAP?.totalNetIncome || 0;
-                const excessShelterCost = household[0]?.SNAP?.excessShelterCost || 0;
-                const totalUtilityAllowance = household[0]?.SNAP?.totalUtilityAllowance || 0;
-                const totalMedicalExpenses = household[0]?.SNAP?.totalMedicalExpenses || 0;
-                const totalOtherExpenses = household[0]?.SNAP?.totalOtherExpenses || 0;
-                const eligibility = household[0]?.SNAP?.eligibility?.map(capitalizeFirstLetter) || 'Not Available';
-                const benefitAmount = household[0]?.SNAP?.benefitAmount || 0;
-                const combinedAssets = household[0]?.SNAP?.combinedAssets || 0;
-    
-                const isLikelyEligible = Array.isArray(eligibility)
-                    ? !eligibility.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED") || item.includes("NEEDS") || item.includes("DETERMINATION PENDING"))
-                    : !String(eligibility).includes("NOT") && !String(eligibility).includes("ALREADY ENROLLED") && !String(eligibility).includes("NOT INTERESTED") && !String(eligibility).includes("NEEDS") && !String(eligibility).includes("DETERMINATION PENDING");
-
-                const isNotEligible = Array.isArray(eligibility)
-                    ? eligibility.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED"))
-                    : String(eligibility).includes("NOT") || String(eligibility).includes("ALREADY ENROLLED") || String(eligibility).includes("NOT INTERESTED");
-
-                const needsMoreInfo = Array.isArray(eligibility)
-                    ? eligibility.some(item => item.includes("NEEDS") || item.includes("DETERMINATION PENDING"))
-                    : String(eligibility).includes("NEEDS") || String(eligibility).includes("DETERMINATION PENDING");
-
-                // Apply color coding based on eligibility
-                if (isNotEligible) {
-                    householdDiv.style.backgroundColor = '#f8d7da'; // Red background
-                    householdDiv.style.borderColor = '#f5c6cb';
-                } else if (needsMoreInfo) {
-                    householdDiv.style.backgroundColor = '#fff3cd'; // Yellow background
-                    householdDiv.style.borderColor = '#ffc107';
-                } else if (isLikelyEligible) {
-                    householdDiv.style.backgroundColor = '#d4edda'; // Green background
-                    householdDiv.style.borderColor = '#c3e6cb';
-                }
-    
-                householdDiv.innerHTML = `
-    <details class="custom-details">
-    <summary><h3>SNAP HOUSEHOLD</h3></summary>
-                        <p><strong>SNAP Household Size:</strong> ${household[0]?.SNAP?.householdSize || household.length}</p>
-                        <p><strong>Total Gross Income:</strong> $${(combinedMonthlyIncome || 0).toFixed(2)}</p>
-                        <p><strong>Standard Deduction:</strong> $${(household[0]?.SNAP?.standardDeduction || 0).toFixed(2)}</p>
-                        <p><strong>Shelter Deduction:</strong> $${(excessShelterCost || 0).toFixed(2)}</p>
-                        <p><strong>Utility Allowance:</strong> $${(totalUtilityAllowance || 0).toFixed(2)}</p>
-                        <p><strong>Medical Expense Deductions:</strong> $${(totalMedicalExpenses || 0).toFixed(2)}</p>
-                        <p><strong>Other Expense Deductions:</strong> $${(totalOtherExpenses || 0).toFixed(2)}</p>
-                        <p><strong>Adjusted Net Income:</strong> $${(totalNetIncome || 0).toFixed(2)}</p>
-                        <p><strong>Combined Assets:</strong> $${(combinedAssets || 0).toFixed(2)}</p>
-    <hr class="separator-bar">
-    </details>
-        <button class="btn-close-snap-screening" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'">Close Screening(s)</button>
-
-    <p><strong>Members:</strong> ${household.map(member => `${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.lastName)}`).join(', ')}</p>
-    
-    <p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
-    ${
-    isLikelyEligible && benefitAmount >= 0
-        ? `
-        <p><strong>Estimated Benefit Amount:</strong><br> ${
-            benefitAmount <= 24 ? "Up to $24.00" : `Up to $24.00 - $${benefitAmount.toFixed(2)}`
-    }</p>
-        <p><strong>Expedited Eligibility:</strong> ${
-            (household[0]?.SNAP?.expeditedEligibility || 'N/A')
-        }</p>
-        `
-        : ''
+        snapHouseholds.push(snapHousehold);
     }
-    `;
-    
-                snapHouseholdContainer.appendChild(householdDiv);
-    
-                const closeBtn = householdDiv.querySelector('.btn-close-snap-screening');
-                closeBtn.addEventListener('click', () => {
-                    openCloseMemberModal(clientId, members, null, null, 'SNAP');
-                });
+
+    if (snapHouseholds.length === 0) {
+        const noHouseholdsDiv = document.createElement('div');
+        noHouseholdsDiv.classList.add('household-member-box');
+
+        // Check if any SNAP household member has screening in progress
+        const anySnapScreeningActive = members.some(m => m.SNAP?.screeningInProgress === true);
+
+        // Apply background color based on state
+        if (isAlreadyEnrolled || isNotInterested) {
+            noHouseholdsDiv.style.backgroundColor = '#f8d7da';
+            noHouseholdsDiv.style.borderColor = '#f5c6cb';
+        } else {
+            noHouseholdsDiv.style.backgroundColor = '#fff3cd';
+            noHouseholdsDiv.style.borderColor = '#ffc107';
+        }
+
+        noHouseholdsDiv.style.width = '100%';
+        noHouseholdsDiv.style.boxSizing = 'border-box';
+
+        noHouseholdsDiv.innerHTML = `
+            <h3>SNAP HOUSEHOLD</h3>
+            ${isAlreadyEnrolled ? '<p>ALREADY ENROLLED</p>' : isNotInterested ? '<p>NOT INTERESTED</p>' : '<p>NO SNAP HOUSEHOLD MEMBERS FOUND.</p>'}
+            ${anySnapScreeningActive || isAlreadyEnrolled || isNotInterested ? `
+                <button class="btn-close-snap-screening" 
+                    style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s; margin: 8px auto;"
+                    onmouseover="this.style.backgroundColor='#a71d2a'" 
+                    onmouseout="this.style.backgroundColor='#dc3545'">Close Screening(s)</button>
+            ` : ''}
+        `;
+        snapContainer.appendChild(noHouseholdsDiv);
+
+        if (anySnapScreeningActive || isAlreadyEnrolled || isNotInterested) {
+            const closeBtn = noHouseholdsDiv.querySelector('.btn-close-snap-screening');
+            closeBtn.addEventListener('click', async () => {
+                const freshMembers = await loadHouseholdMembers();
+                openCloseMemberModal(clientId, freshMembers, null, null, 'SNAP');
             });
         }
+
+        return;
     }
+
+    snapHouseholds.forEach(household => {
+        const householdDiv = createSNAPHouseholdCard(household, members);
+        snapContainer.appendChild(householdDiv);
+    });
+}
+
+function createSNAPHouseholdCard(household, allMembers) {
+    const householdDiv = document.createElement('div');
+    householdDiv.classList.add('household-member-box');
+
+    const combinedMonthlyIncome = household[0]?.SNAP?.combinedMonthlyIncome || 0;
+    const totalNetIncome = household[0]?.SNAP?.totalNetIncome || 0;
+    const excessShelterCost = household[0]?.SNAP?.excessShelterCost || 0;
+    const totalUtilityAllowance = household[0]?.SNAP?.totalUtilityAllowance || 0;
+    const totalMedicalExpenses = household[0]?.SNAP?.totalMedicalExpenses || 0;
+    const totalOtherExpenses = household[0]?.SNAP?.totalOtherExpenses || 0;
+    const eligibility = household[0]?.SNAP?.eligibility?.map(capitalizeFirstLetter) || ['Not Available'];
+    const benefitAmount = household[0]?.SNAP?.benefitAmount || 0;
+    const combinedAssets = household[0]?.SNAP?.combinedAssets || 0;
+
+    const isLikelyEligible = Array.isArray(eligibility)
+        ? !eligibility.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED") || item.includes("NEEDS") || item.includes("DETERMINATION PENDING"))
+        : !String(eligibility).includes("NOT") && !String(eligibility).includes("ALREADY ENROLLED") && !String(eligibility).includes("NOT INTERESTED") && !String(eligibility).includes("NEEDS") && !String(eligibility).includes("DETERMINATION PENDING");
+
+    const isNotEligible = Array.isArray(eligibility)
+        ? eligibility.some(item => item.includes("NOT") || item.includes("ALREADY ENROLLED") || item.includes("NOT INTERESTED"))
+        : String(eligibility).includes("NOT") || String(eligibility).includes("ALREADY ENROLLED") || String(eligibility).includes("NOT INTERESTED");
+
+    const needsMoreInfo = Array.isArray(eligibility)
+        ? eligibility.some(item => item.includes("NEEDS") || item.includes("DETERMINATION PENDING"))
+        : String(eligibility).includes("NEEDS") || String(eligibility).includes("DETERMINATION PENDING");
+
+    // Apply color coding based on eligibility
+    if (isNotEligible) {
+        householdDiv.style.backgroundColor = '#f8d7da';
+        householdDiv.style.borderColor = '#f5c6cb';
+    } else if (needsMoreInfo) {
+        householdDiv.style.backgroundColor = '#fff3cd';
+        householdDiv.style.borderColor = '#ffc107';
+    } else if (isLikelyEligible) {
+        householdDiv.style.backgroundColor = '#d4edda';
+        householdDiv.style.borderColor = '#c3e6cb';
+    }
+
+    householdDiv.innerHTML = `
+        <details class="custom-details">
+            <summary><h3>SNAP HOUSEHOLD</h3></summary>
+            <p><strong>SNAP Household Size:</strong> ${household[0]?.SNAP?.householdSize || household.length}</p>
+            <p><strong>Total Gross Income:</strong> $${(combinedMonthlyIncome || 0).toFixed(2)}</p>
+            <p><strong>Standard Deduction:</strong> $${(household[0]?.SNAP?.standardDeduction || 0).toFixed(2)}</p>
+            <p><strong>Shelter Deduction:</strong> $${(excessShelterCost || 0).toFixed(2)}</p>
+            <p><strong>Utility Allowance:</strong> $${(totalUtilityAllowance || 0).toFixed(2)}</p>
+            <p><strong>Medical Expense Deductions:</strong> $${(totalMedicalExpenses || 0).toFixed(2)}</p>
+            <p><strong>Other Expense Deductions:</strong> $${(totalOtherExpenses || 0).toFixed(2)}</p>
+            <p><strong>Adjusted Net Income:</strong> $${(totalNetIncome || 0).toFixed(2)}</p>
+            <p><strong>Combined Assets:</strong> $${(combinedAssets || 0).toFixed(2)}</p>
+            <hr class="separator-bar">
+        </details>
+        <button class="btn-close-snap-screening" 
+            style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s;"
+            onmouseover="this.style.backgroundColor='#a71d2a'" 
+            onmouseout="this.style.backgroundColor='#dc3545'">Close Screening(s)</button>
+        <p><strong>Members:</strong> ${household.map(member => `${capitalizeFirstLetter(member.firstName)} ${capitalizeFirstLetter(member.lastName)}`).join(', ')}</p>
+        <p><strong>Eligibility:</strong> ${Array.isArray(eligibility) ? eligibility.join(', ') : eligibility}</p>
+        ${isLikelyEligible && benefitAmount >= 0 ? `
+            <p><strong>Estimated Benefit Amount:</strong><br> ${
+                benefitAmount <= 24 ? "Up to $24.00" : `Up to $24.00 - $${benefitAmount.toFixed(2)}`
+            }</p>
+            <p><strong>Expedited Eligibility:</strong> ${household[0]?.SNAP?.expeditedEligibility || 'N/A'}</p>
+        ` : ''}
+    `;
+
+    const closeBtn = householdDiv.querySelector('.btn-close-snap-screening');
+    closeBtn.addEventListener('click', async () => {
+        const freshMembers = await loadHouseholdMembers();
+        openCloseMemberModal(clientId, freshMembers, null, null, 'SNAP');
+    });
+
+    return householdDiv;
+}
     
     async function addNoteToClient(clientId, noteText) {
         const activeUser = sessionStorage.getItem('loggedInUser');
@@ -1634,6 +1652,9 @@ async function refreshAllDisplays() {
     }
 
         // Refresh asset display to re-evaluate show/hide Add Asset buttons
+        if (window.invalidateAssetCache) {
+            window.invalidateAssetCache();
+        }
         if (window.refreshAssetDisplay) {
             await window.refreshAssetDisplay();
         }
@@ -1894,7 +1915,7 @@ async function displayLIHEAPHouseholds(prefetchedMembers, prefetchedClient) {
     householdDiv.innerHTML = `
         <details class="custom-details">
             <summary><h3>LIHEAP HOUSEHOLD</h3></summary>
-                    <p><strong>Household Size:</strong> ${activeMembersForLIHEAP.length}</p>
+                    <p><strong>LIHEAP Household Size:</strong> ${activeMembersForLIHEAP.length}</p>
                     <p><strong>Total Gross Income:</strong> $${grossMonthlyIncome.toFixed(2)}</p>
                     <p><strong>Medicare Premium Deductions:</strong> $${totalMedicarePremiumDeduction.toFixed(2)}</p>
                     <p><strong>Adjusted Gross Income:</strong> $${combinedMonthlyIncome.toFixed(2)}</p>
@@ -3135,8 +3156,8 @@ console.log(`Excess Shelter Cost Calculation: Total Shelter Expenses: ${totalShe
         // Check for elderly or disabled members
         let hasElderlyOrDisabled = false;
         household.forEach(member => {
-            const ageParts = member.age.match(/(\d+)\s*Years,?\s*(\d+)?\s*Months?,?\s*(\d+)?\s*Days?/i);
-const years = parseInt(ageParts[1], 10) || 0;
+            const ageParts = member.age?.match(/(\d+)\s*Years,?\s*(\d+)?\s*Months?,?\s*(\d+)?\s*Days?/i);
+            const years = ageParts ? (parseInt(ageParts[1], 10) || 0) : 0;
 
 // Define isElderly based on the years value
 const isElderly = years >= 60;

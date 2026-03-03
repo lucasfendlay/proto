@@ -244,20 +244,9 @@
                     <option value="VII">VII</option>
                 </select><br><br>
 
-                <div id="deceasedQuestion" class="selection-box">
-                    <label>Is this person deceased?</label>
-                    <div id="modal-deceased-yes" data-value="yes">Yes</div>
-                    <div id="modal-deceased-no" data-value="no">No</div>
-                </div>
-
                 <div class="selection-box">
                     <label for="dob">Date of Birth:</label>
                     <input type="date" id="dob" name="dob" class="selection-box-input"><br><br>
-                </div>
-
-                <div id="dateOfDeathContainer" style="display: none;">
-                    <label for="dateOfDeath">Date of Death:</label>
-                    <input type="date" id="dateOfDeath" name="dateOfDeath" class="selection-box-input"><br><br>
                 </div>
 
                 <div class="selection-box">
@@ -538,7 +527,7 @@
                 }),
             });
 
-            window.location.href = `householdview.html?id=${clientId}`;
+            window.location.href = `profileview.html?id=${clientId}`;
         } catch (error) {
             console.error("Error during redirectToHouseholdView:", error);
         }

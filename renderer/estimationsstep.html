@@ -289,13 +289,6 @@
         });
     }
 
-    async function setCheckedOutStatus(clientId, status) {
-        // Implement based on your existing setCheckedOutStatus function
-        if (typeof window.setCheckedOutStatus === 'function') {
-            return window.setCheckedOutStatus(clientId, status);
-        }
-    }
-
     // ===== SCREENING BUTTONS =====
     async function loadScreeningButtons() {
         const clientId = getClientId();
@@ -475,27 +468,48 @@
 
     // ===== NAVIGATION =====
     async function redirectToEstimationsView() {
-        const clientId = getClientId();
-        if (!clientId) {
-            console.error('Client ID not found.');
-            return;
-        }
-
+        const CLIENT_ID = new URLSearchParams(window.location.search).get('id');
         if (!confirm("Are you sure you want to save and release this profile?")) return;
 
-        const activeUser = getActiveUser();
-        if (activeUser === 'Unknown User') {
+        const activeUser = sessionStorage.getItem('loggedInUser');
+        if (!activeUser) {
             console.error("No active user found in sessionStorage.");
             return;
         }
 
         try {
-            await setCheckedOutStatus(clientId, false);
-            await addNoteToClient(clientId, "Profile released.");
+            await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId: CLIENT_ID,
+                    clientData: {
+                        checkedOut: [{
+                            status: false,
+                            timestamp: null,
+                            user: null,
+                        }],
+                    },
+                }),
+            });
+
+            // Add note
+            await fetch('/add-note-to-client', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId: CLIENT_ID,
+                    note: {
+                        text: "Profile released.",
+                        timestamp: new Date().toLocaleString(),
+                        username: activeUser,
+                    },
+                }),
+            });
+
+            window.location.href = `profileview.html?id=${CLIENT_ID}`;
         } catch (error) {
-            console.error("Error during redirectToEstimationsView:", error);
-        } finally {
-            window.location.href = `estimationsview.html?id=${clientId}`;
+            console.error("Error during save and release:", error);
         }
     }
 
