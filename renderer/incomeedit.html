@@ -9,12 +9,168 @@
     <link rel="stylesheet" href="incomeedit.css">
     <link rel="stylesheet" href="notes.css">
     <script src="userInfo.js"></script>
+    <style>
+    .hidden { visibility: hidden; }
+
+    /* Sidebar toggle buttons */
+    .sidebar-toggle {
+        display: flex;
+        gap: 0;
+        margin-bottom: 10px;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid #007bff;
+        width: 100%;
+    }
+
+    .toggle-btn {
+        flex: 1;
+        padding: 8px 16px;
+        border: none;
+        background-color: #fff;
+        color: #007bff;
+        cursor: pointer;
+        font-size: 0.95rem;
+        font-weight: 600;
+        transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .toggle-btn.active {
+        background-color: #007bff;
+        color: #fff;
+    }
+
+    .toggle-btn:hover:not(.active) {
+        background-color: #e6f0ff;
+    }
+
+    #contacts-list {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        width: 300px;
+        margin: 0 auto;
+        max-height: 1000px;
+        overflow-y: auto;
+        background-color: #f4f4f4;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .contact-card {
+        background-color: #fff;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        padding: 10px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .contact-card p {
+        margin: 4px 0;
+        text-align: center;
+    }
+
+    .contact-card strong {
+        font-weight: bold;
+    }
+
+        /* Contact modal styling */
+        .contactmodal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .contactmodal.show {
+            display: flex;
+        }
+
+        .contactmodal .modal-content {
+            background: transparent;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            text-align: left;
+            position: relative;
+            z-index: 10000;
+            box-shadow: none;
+            padding: 0;
+        }
+
+    .contactmodal .modal-content label {
+        display: block;
+        margin-top: 10px;
+        font-weight: 600;
+    }
+
+    .contactmodal .modal-content input,
+    .contactmodal .modal-content select {
+        width: 100%;
+        padding: 8px;
+        margin-top: 4px;
+        box-sizing: border-box;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
+
+    .contactmodal .button-container {
+        margin-top: 15px;
+    }
+    </style>
 </head>
-<body class="narrow-body"><br><br>
+<body class="narrow-body hidden"><br><br>
     <h1>Income</h1>
 
     <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
+        <div class="sidebar-header">
+            <div class="sidebar-toggle">
+                <button id="toggle-screening-btn" class="toggle-btn active" onclick="showSidebarView('screening')">Screening</button>
+                <button id="toggle-contacts-btn" class="toggle-btn" onclick="showSidebarView('contacts')">Contacts</button>
+            </div>
+            <div id="screening-header-actions" class="button-container"></div>
+            <div id="contacts-header-actions" class="button-container" style="display: none;"></div>
+        </div>
         <div id="household-members-container" class="left-sidebar"></div>
+        <div id="contacts-list" style="display: none;"></div>
+        <button id="add-contact-button" onclick="openContactModal()" style="display: none;">Add New Contact</button>
+    </div>
+
+    <!-- Modal for Adding/Editing Contacts -->
+    <div id="contactModal" class="contactmodal">
+        <div class="modal-content">
+            <form id="contactForm">
+                <h2 id="contact-modal-title">Add Contact</h2>
+                <label for="contactFirstName">First Name:</label>
+                <input type="text" id="contactFirstName" required>
+
+                <label for="contactLastName">Last Name:</label>
+                <input type="text" id="contactLastName" required>
+
+                <label for="contactPhoneNumber">Phone Number:</label>
+                <input type="text" id="contactPhoneNumber" required>
+
+                <label for="authorizedRepresentative">Authorized Representative:</label>
+                <select id="authorizedRepresentative">
+                    <option value="N/A" selected>N/A</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                </select>
+
+                <div class="button-container">
+                    <button type="button" onclick="saveContact()">Save</button>
+                    <button type="button" onclick="closeContactModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <div id="notes-container">
@@ -116,5 +272,283 @@
     <script src="notes.js"></script>
     <script src="income.js"></script>
     <script src="editnavigation.js"></script>
+
+    <script>
+    // ── Initialization ──
+    document.addEventListener('DOMContentLoaded', () => {
+        document.body.classList.remove('hidden');
+    });
+
+    // ── Utility ──
+    function getQueryParam(name) {
+        return new URLSearchParams(window.location.search).get(name);
+    }
+
+    // ── Sidebar toggle between Screening and Contacts ──
+    function showSidebarView(view) {
+        const screeningList = document.getElementById('household-members-container');
+        const contactsList = document.getElementById('contacts-list');
+        const screeningBtn = document.getElementById('toggle-screening-btn');
+        const contactsBtn = document.getElementById('toggle-contacts-btn');
+        const screeningHeaderActions = document.getElementById('screening-header-actions');
+        const contactsHeaderActions = document.getElementById('contacts-header-actions');
+        const addContactBtn = document.getElementById('add-contact-button');
+        const snapContainer = document.getElementById('snap-household-container');
+        const liheapContainer = document.getElementById('liheap-household-container');
+        const stopScreeningContainer = document.getElementById('stop-screening-container');
+
+        // Hide everything first
+        screeningList.style.display = 'none';
+        contactsList.style.display = 'none';
+        screeningHeaderActions.style.display = 'none';
+        contactsHeaderActions.style.display = 'none';
+        addContactBtn.style.display = 'none';
+        if (snapContainer) snapContainer.style.display = 'none';
+        if (liheapContainer) liheapContainer.style.display = 'none';
+        if (stopScreeningContainer) stopScreeningContainer.style.display = 'none';
+
+        if (view === 'screening') {
+            screeningBtn.classList.add('active');
+            contactsBtn.classList.remove('active');
+
+            requestAnimationFrame(() => {
+                screeningList.style.display = '';
+                screeningHeaderActions.style.display = 'flex';
+                if (snapContainer) snapContainer.style.display = '';
+                if (liheapContainer) liheapContainer.style.display = '';
+                if (stopScreeningContainer) stopScreeningContainer.style.display = '';
+            });
+        } else if (view === 'contacts') {
+            screeningBtn.classList.remove('active');
+            contactsBtn.classList.add('active');
+
+            renderContacts().then(() => {
+                requestAnimationFrame(() => {
+                    contactsList.style.display = 'flex';
+                    addContactBtn.style.display = '';
+                });
+            }).catch(() => {
+                requestAnimationFrame(() => {
+                    contactsList.style.display = 'flex';
+                    addContactBtn.style.display = '';
+                });
+            });
+        }
+    }
+
+    // ── Contacts CRUD ──
+    let editingContactIndex = null;
+    let cachedClient = null;
+
+    function formatPhoneNumber(phone) {
+        if (!phone) return '';
+        const cleaned = String(phone).trim().replace(/\D/g, '');
+        const digits = cleaned.length === 11 && cleaned.startsWith('1') ? cleaned.substring(1) : cleaned;
+        if (digits.length === 10) {
+            return `(${digits.substring(0, 3)})-${digits.substring(3, 6)}-${digits.substring(6)}`;
+        }
+        return String(phone).trim();
+    }
+
+    async function fetchClientData() {
+        const clientId = getQueryParam('id');
+        const response = await fetch(`/get-client/${clientId}`);
+        if (!response.ok) throw new Error(response.statusText);
+        cachedClient = await response.json();
+        return cachedClient;
+    }
+
+    function openContactModal(index = null) {
+        editingContactIndex = index;
+        const modal = document.getElementById('contactModal');
+        const title = document.getElementById('contact-modal-title');
+        const buttonContainer = modal.querySelector('.button-container');
+
+        buttonContainer.innerHTML = `
+            <button type="button" onclick="saveContact()">Save</button>
+            <button type="button" onclick="closeContactModal()">Cancel</button>
+        `;
+
+        if (index !== null && cachedClient) {
+            title.textContent = 'Edit Contact';
+            const contact = (cachedClient.Contacts || [])[index];
+            if (contact) {
+                document.getElementById('contactFirstName').value = contact.firstName || '';
+                document.getElementById('contactLastName').value = contact.lastName || '';
+                document.getElementById('contactPhoneNumber').value = formatPhoneNumber(contact.phoneNumber) || '';
+                document.getElementById('authorizedRepresentative').value = contact.authorizedRepresentative || 'N/A';
+            }
+
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Delete';
+            deleteButton.type = 'button';
+            deleteButton.style.cssText = 'background-color:red;color:white;';
+            deleteButton.onmouseover = () => deleteButton.style.backgroundColor = 'darkred';
+            deleteButton.onmouseout = () => deleteButton.style.backgroundColor = 'red';
+            deleteButton.onclick = () => deleteContact(index);
+            buttonContainer.appendChild(deleteButton);
+        } else {
+            title.textContent = 'Add Contact';
+            document.getElementById('contactForm').reset();
+        }
+
+        modal.classList.add('show');
+    }
+
+    function closeContactModal() {
+        const modal = document.getElementById('contactModal');
+        modal.classList.remove('show');
+        editingContactIndex = null;
+        document.getElementById('contactForm').reset();
+    }
+
+    async function saveContact() {
+        const clientId = getQueryParam('id');
+        const firstName = document.getElementById('contactFirstName').value.trim();
+        const lastName = document.getElementById('contactLastName').value.trim();
+        const phoneNumber = document.getElementById('contactPhoneNumber').value.trim();
+        const authorizedRepresentative = document.getElementById('authorizedRepresentative').value;
+        const phoneNumberInput = document.getElementById('contactPhoneNumber');
+        phoneNumberInput.classList.remove('error');
+
+        if (!firstName || !lastName || !phoneNumber) {
+            alert('Please fill in all required fields.');
+            return;
+        }
+
+        const cleanedPhone = phoneNumber.replace(/[\(\)\-\s]/g, '');
+        if (!/^\d{10}$/.test(cleanedPhone)) {
+            alert('Please enter a valid phone number (10 digits or (xxx)-xxx-xxxx format).');
+            phoneNumberInput.classList.add('error');
+            return;
+        }
+
+        try {
+            const client = await fetchClientData();
+            if (!client.Contacts) client.Contacts = [];
+
+            const newContact = {
+                firstName,
+                lastName,
+                phoneNumber: cleanedPhone,
+                authorizedRepresentative,
+                contactId: editingContactIndex !== null
+                    ? client.Contacts[editingContactIndex]?.contactId
+                    : `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            };
+
+            const isDuplicate = client.Contacts.some((c, i) =>
+                i !== editingContactIndex &&
+                (c.firstName || '').toUpperCase() === newContact.firstName.toUpperCase() &&
+                (c.lastName || '').toUpperCase() === newContact.lastName.toUpperCase() &&
+                (c.phoneNumber || '').replace(/\D/g, '') === newContact.phoneNumber
+            );
+            if (isDuplicate) {
+                alert('This contact already exists.');
+                return;
+            }
+
+            const requestBody = { clientId, contact: newContact };
+
+            if (editingContactIndex !== null) {
+                requestBody.index = editingContactIndex;
+                client.Contacts[editingContactIndex] = newContact;
+            } else {
+                client.Contacts.push(newContact);
+            }
+
+            const response = await fetch('/add-to-contacts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody),
+            });
+
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                console.error('Failed to save contact:', result.message);
+                alert(`Error: ${result.message}`);
+                return;
+            }
+
+            cachedClient = client;
+            closeContactModal();
+            renderContacts();
+        } catch (error) {
+            console.error('Error saving contact:', error);
+            alert('An error occurred while saving the contact.');
+        }
+    }
+
+    async function deleteContact(index) {
+        if (!confirm('Are you sure you want to delete this contact?')) return;
+        const clientId = getQueryParam('id');
+
+        try {
+            const client = await fetchClientData();
+            const deletedContact = (client.Contacts || []).splice(index, 1)[0];
+
+            const response = await fetch('/add-to-contacts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId,
+                    contact: deletedContact,
+                    index,
+                    delete: true,
+                }),
+            });
+
+            const result = await response.json();
+            if (!result.success) {
+                console.error('Failed to delete contact:', result.message);
+            }
+
+            cachedClient = client;
+            renderContacts();
+            closeContactModal();
+        } catch (error) {
+            console.error('Error deleting contact:', error);
+        }
+    }
+
+    async function renderContacts() {
+        const container = document.getElementById('contacts-list');
+        container.innerHTML = '';
+
+        try {
+            const client = await fetchClientData();
+            const contacts = client.Contacts || [];
+
+            if (contacts.length === 0) {
+                container.innerHTML = '<p>No contacts available.</p>';
+                return;
+            }
+
+            const fragment = document.createDocumentFragment();
+            contacts.forEach((contact, index) => {
+                const div = document.createElement('div');
+                div.classList.add('contact-card');
+                div.innerHTML = `
+                    <p><strong>Name:</strong><br> ${(contact.firstName || 'N/A').toUpperCase()} ${(contact.lastName || 'N/A').toUpperCase()}</p>
+                    <p><strong>Phone:</strong><br> ${formatPhoneNumber(contact.phoneNumber) || 'N/A'}</p>
+                    <p><strong>Authorized Representative:</strong><br> ${(contact.authorizedRepresentative || 'N/A').toUpperCase()}</p>
+                    <button onclick="openContactModal(${index})">Edit Contact</button>
+                `;
+                fragment.appendChild(div);
+            });
+            container.appendChild(fragment);
+        } catch (error) {
+            console.error('Error rendering contacts:', error);
+            container.innerHTML = '<p style="color:red;">Error loading contacts.</p>';
+        }
+    }
+
+    // Close contact modal when clicking outside
+    document.getElementById('contactModal').addEventListener('click', function(event) {
+        if (event.target === this) {
+            closeContactModal();
+        }
+    });
+    </script>
 </body>
 </html>

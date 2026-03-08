@@ -274,6 +274,90 @@ body {
     visibility: hidden;
 }
 
+/* Sidebar toggle buttons */
+.sidebar-toggle {
+    display: flex;
+    gap: 0;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #007bff;
+    width: 100%;
+}
+
+.toggle-btn {
+    flex: 1;
+    padding: 8px 16px;
+    border: none;
+    background-color: #fff;
+    color: #007bff;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.toggle-btn.active {
+    background-color: #007bff;
+    color: #fff;
+}
+
+.toggle-btn:hover:not(.active) {
+    background-color: #e6f0ff;
+}
+
+/* Applications list container */
+#applications-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 300px;
+    margin: 0 auto;
+    max-height: 1000px;
+    overflow-y: auto;
+    background-color: #f4f4f4;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.application-card {
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.application-card p {
+    margin: 4px 0;
+    text-align: left;
+}
+
+.application-status {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.application-status.applying {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.application-status.not-applying {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.application-status.unknown {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
             </style>
 </head>
 <body class="narrow-body hidden">
@@ -283,12 +367,18 @@ body {
      <!-- Add this container where you want the contacts to appear -->
      <div class="left-sidebar-container" id="contactsSidebarContainer">
         <div class="sidebar-header">
-            <h2>Contacts</h2>
-            <div class="button-container">
+            <div class="sidebar-toggle">
+                <button id="toggle-contacts-btn" class="toggle-btn active" onclick="showSidebarView('contacts')">Contacts</button>
+                <button id="toggle-applications-btn" class="toggle-btn" onclick="showSidebarView('applications')">Applications</button>
+            </div>
+            <div id="contacts-header-actions" class="button-container">
                 <button id="add-contact-button" onclick="openContactModal()">Add New Contact</button>
+            </div>
+            <div id="applications-header-actions" class="button-container" style="display: none;">
             </div>
         </div>
         <div id="contacts-list" class="left-sidebar"></div>
+        <div id="applications-list" class="left-sidebar" style="display: none;"></div>
     </div>
 
 <!-- Modal for Adding/Editing Contacts -->
@@ -2388,6 +2478,123 @@ document.addEventListener('DOMContentLoaded', () => {
     addFieldListeners();
     renderContacts();
 });
+
+// Sidebar toggle between Contacts and Applications
+function showSidebarView(view) {
+    const contactsList = document.getElementById('contacts-list');
+    const applicationsList = document.getElementById('applications-list');
+    const contactsBtn = document.getElementById('toggle-contacts-btn');
+    const applicationsBtn = document.getElementById('toggle-applications-btn');
+    const contactsHeaderActions = document.getElementById('contacts-header-actions');
+    const applicationsHeaderActions = document.getElementById('applications-header-actions');
+
+    if (view === 'contacts') {
+        contactsList.style.display = 'flex';
+        applicationsList.style.display = 'none';
+        contactsBtn.classList.add('active');
+        applicationsBtn.classList.remove('active');
+        contactsHeaderActions.style.display = 'flex';
+        applicationsHeaderActions.style.display = 'none';
+    } else if (view === 'applications') {
+        contactsList.style.display = 'none';
+        applicationsList.style.display = 'flex';
+        contactsBtn.classList.remove('active');
+        applicationsBtn.classList.add('active');
+        contactsHeaderActions.style.display = 'none';
+        applicationsHeaderActions.style.display = 'flex';
+        renderApplications();
+    }
+}
+
+// Render applications from household members
+function renderApplications() {
+    const applicationsContainer = document.getElementById('applications-list');
+    applicationsContainer.innerHTML = '';
+
+    if (!client || !client.householdMembers || client.householdMembers.length === 0) {
+        applicationsContainer.innerHTML = '<p>No household members found.</p>';
+        return;
+    }
+
+    // Define the program keys to check for applications
+    const programKeys = [
+        { key: 'SNAP', label: 'SNAP' },
+        { key: 'LIHEAP', label: 'LIHEAP' },
+        { key: 'PTRR', label: 'PTRR' },
+        { key: 'Medicaid', label: 'Medicaid' },
+        { key: 'CHIP', label: 'CHIP' },
+        { key: 'TANF', label: 'TANF' },
+        { key: 'GA', label: 'GA' },
+        { key: 'SBP', label: 'SBP' },
+        { key: 'NSLP', label: 'NSLP' },
+    ];
+
+    // Collect all applications across all members
+    const applicationsSummary = [];
+
+    client.householdMembers.forEach((member) => {
+        const memberName = `${member.firstName || 'Unknown'} ${member.lastName || ''}`.trim();
+
+        programKeys.forEach(({ key, label }) => {
+            const programData = member[key];
+            if (programData && programData.application && Array.isArray(programData.application)) {
+                programData.application.forEach((app) => {
+                    applicationsSummary.push({
+                        memberName,
+                        program: label,
+                        applying: app.applying,
+                        status: app.status || null,
+                    });
+                });
+            }
+        });
+    });
+
+    if (applicationsSummary.length === 0) {
+        applicationsContainer.innerHTML = '<p>No applications found.</p>';
+        return;
+    }
+
+    // Group by program
+    const grouped = {};
+    applicationsSummary.forEach((app) => {
+        if (!grouped[app.program]) {
+            grouped[app.program] = [];
+        }
+        grouped[app.program].push(app);
+    });
+
+    Object.entries(grouped).forEach(([program, apps]) => {
+        const programCard = document.createElement('div');
+        programCard.classList.add('application-card');
+
+        const applyingMembers = apps.filter(a => a.applying === true);
+        const notApplyingMembers = apps.filter(a => a.applying === false);
+
+        let statusClass = 'unknown';
+        let statusText = 'No Data';
+
+        if (applyingMembers.length > 0) {
+            statusClass = 'applying';
+            statusText = 'Applying';
+        } else if (notApplyingMembers.length > 0) {
+            statusClass = 'not-applying';
+            statusText = 'Not Applying';
+        }
+
+        const memberNames = applyingMembers.length > 0
+            ? applyingMembers.map(a => a.memberName).join(', ')
+            : 'None';
+
+        programCard.innerHTML = `
+            <p><strong>${program}</strong></p>
+            <p><span class="application-status ${statusClass}">${statusText}</span></p>
+            ${applyingMembers.length > 0 ? `<p><strong>Members:</strong><br>${memberNames}</p>` : ''}
+        `;
+
+        applicationsContainer.appendChild(programCard);
+    });
+}
     </script>
 
 <script src="editnavigation.js"></script>

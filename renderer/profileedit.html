@@ -146,7 +146,7 @@
             display: flex;
             flex-direction: column;
             gap: 15px;
-            width: 300px;
+            width: 100%;
             margin: 0 auto;
             max-height: 1000px;
             overflow-y: auto;
@@ -154,21 +154,28 @@
             border: 1px solid #ddd;
             border-radius: 8px;
             padding: 15px;
+            box-sizing: border-box;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
+        }   
 
-        .left-sidebar {
+        .contact-card {
             background-color: #fff;
             border: 1px solid #ccc;
             border-radius: 5px;
             padding: 10px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            margin: 0 auto;
-            width: 280px;
-            transform: translateX(-8px);
+            width: 100%;
+            box-sizing: border-box;
         }
 
-        .left-sidebar strong { font-weight: bold; }
+        .contact-card p {
+            margin: 4px 0;
+            text-align: center;
+        }
+
+        .contact-card strong {
+            font-weight: bold;
+        }
 
         .contactmodal {
             display: none;
@@ -190,12 +197,13 @@
             width: 90%;
             max-width: 500px;
             padding: 30px;
-            position: absolute;
+            position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             text-align: left;
             animation: contactFadeIn 0.3s ease-in-out;
+            box-shadow: none;
         }
 
         .contact-modal-content label {
@@ -304,10 +312,12 @@
                 <button class="interactive" style="width: 100%; font-size: 0.85rem; font-weight: normal; padding: 8px !important;" onclick="confirmSaveAndRelease()">Save and Release Profile</button>
             </div>
             <h2>Contacts</h2>
-        <div id="contacts-list" class="left-sidebar"></div>
+        </div>
+        <div id="contacts-list"></div>
         <div class="button-container">
             <button id="add-contact-button" onclick="openContactModal()">Add New Contact</button>
-        </div></div>    </div>
+        </div>
+    </div>
 
     <div id="contactModal" class="contactmodal" style="display: none;">
         <div class="contact-modal-content">
@@ -749,7 +759,7 @@
         const fragment = document.createDocumentFragment();
         client.Contacts.forEach((contact, index) => {
             const div = document.createElement('div');
-            div.classList.add('left-sidebar');
+            div.classList.add('contact-card');
             div.innerHTML = `
                 <p><strong>Name:</strong><br> ${(contact.firstName || 'N/A').toUpperCase()} ${(contact.lastName || 'N/A').toUpperCase()}</p>
                 <p><strong>Phone:</strong><br> ${formatPhoneNumber(contact.phoneNumber) || 'N/A'}</p>

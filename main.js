@@ -33,10 +33,10 @@ app.use((req, res, next) => {
 
     res.send = function (body) {
         if (typeof body === 'string' && body.includes('<head>')) {
-            // Inject the meta tag into the <head> section
+            // Inject the meta tag and zoom style into the <head> section
             body = body.replace(
                 '<head>',
-                `<head><meta name="viewport" content="width=device-width, initial-scale=1.0">`
+                `<head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body { zoom: 0.9; }</style>`
             );
         }
         originalSend.call(this, body);

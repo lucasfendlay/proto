@@ -275,8 +275,20 @@ window.GoToProfileEditChecked = async function () {
 
         console.log('Note and client status updated successfully:', result);
 
-        // Redirect to the profile edit page
-        const redirectUrl = `profileedit.html?id=${clientId}`;
+        // Redirect to the edit page corresponding to the current view page
+        const currentPage = window.location.pathname.split('/').pop();
+        const editPageMapping = {
+            'profileview.html': 'profileedit.html',
+            'householdview.html': 'householdedit.html',
+            'relationshipsview.html': 'relationshipsedit.html',
+            'currentenrollmentsview.html': 'currentenrollmentsedit.html',
+            'incomeview.html': 'incomeedit.html',
+            'assetsview.html': 'assetsedit.html',
+            'expensesview.html': 'expensesedit.html',
+            'estimationsview.html': 'estimationsstep.html'
+        };
+        const editPage = editPageMapping[currentPage] || 'profileedit.html';
+        const redirectUrl = `${editPage}?id=${clientId}`;
         console.log('Redirecting to:', redirectUrl); // Debugging log
         window.location.href = redirectUrl;
     } catch (error) {
