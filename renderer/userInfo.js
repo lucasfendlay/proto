@@ -109,17 +109,71 @@ if (loggedInUser) {
     };
 
     let isRedirecting = false;
+    let pendingRedirectUrl = null;
 
     ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
         if (data.redirectUrl && !isRedirecting) {
             isRedirecting = true;
-            console.log('Redirecting to:', data.redirectUrl);
-            // alert() is synchronous — execution pauses until the user clicks OK
-            alert('You are being redirected because this profile was released by an administrator.');
-            window.location.href = data.redirectUrl;
+            pendingRedirectUrl = data.redirectUrl;
+            console.log('Redirect received:', data.redirectUrl);
+
+            // Block any immediate navigation until user acknowledges
+            window.addEventListener('beforeunload', blockNavigation);
+
+            // Show a custom modal overlay instead of alert()
+            const overlay = document.createElement('div');
+            overlay.style.position = 'fixed';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100vw';
+            overlay.style.height = '100vh';
+            overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+            overlay.style.display = 'flex';
+            overlay.style.alignItems = 'center';
+            overlay.style.justifyContent = 'center';
+            overlay.style.zIndex = '9999999';
+
+            const box = document.createElement('div');
+            box.style.backgroundColor = 'white';
+            box.style.padding = '30px';
+            box.style.borderRadius = '10px';
+            box.style.textAlign = 'center';
+            box.style.maxWidth = '400px';
+            box.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.3)';
+
+            const msg = document.createElement('p');
+            msg.textContent = 'This profile has been released by an administrator. You will be redirected to the profile view.';
+            msg.style.marginBottom = '20px';
+            msg.style.fontSize = '16px';
+
+            const btn = document.createElement('button');
+            btn.textContent = 'OK';
+            btn.style.padding = '10px 30px';
+            btn.style.fontSize = '16px';
+            btn.style.cursor = 'pointer';
+            btn.style.backgroundColor = '#007bff';
+            btn.style.color = 'white';
+            btn.style.border = 'none';
+            btn.style.borderRadius = '5px';
+            btn.onclick = () => {
+                window.removeEventListener('beforeunload', blockNavigation);
+                window.location.href = pendingRedirectUrl;
+            };
+
+            box.appendChild(msg);
+            box.appendChild(btn);
+            overlay.appendChild(box);
+            document.body.appendChild(overlay);
         }
     };
+
+    function blockNavigation(e) {
+        if (isRedirecting && pendingRedirectUrl) {
+            e.preventDefault();
+            e.returnValue = 'This profile was released by an administrator.';
+        }
+    }
 
     ws.onclose = () => {
         console.log('WebSocket connection closed.');
