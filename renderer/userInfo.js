@@ -108,18 +108,19 @@ if (loggedInUser) {
         }, 30000); // 30 seconds
     };
 
+    let isRedirecting = false;
+
     ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        if (data.redirectUrl) {
+        if (data.redirectUrl && !isRedirecting) {
+            isRedirecting = true;
             console.log('Redirecting to:', data.redirectUrl);
-            // Use setTimeout to ensure the alert renders before redirect
-            setTimeout(() => {
-                alert('You are being redirected because this profile was released by an administrator.');
-                window.location.href = data.redirectUrl;
-            }, 100);
+            // alert() is synchronous — execution pauses until the user clicks OK
+            alert('You are being redirected because this profile was released by an administrator.');
+            window.location.href = data.redirectUrl;
         }
     };
-    
+
     ws.onclose = () => {
         console.log('WebSocket connection closed.');
         clearInterval(window.heartbeatInterval); // Stop the heartbeat
