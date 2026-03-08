@@ -26,6 +26,95 @@
             margin: 0 auto;
             margin-top: 60px;
         }
+
+        /* Sidebar styles */
+        .sidebar-header {
+            display: fixed;
+            justify-items: center;
+            text-align: center;
+            margin-bottom: 20px;
+            width: 300px;
+            margin: 0 auto;
+        }
+
+        .sidebar-header .button-container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+
+        #contacts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 300px;
+            margin: 0 auto;
+            max-height: 500px;
+            overflow-y: auto;
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .left-sidebar {
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin: 0 auto;
+            width: 280px;
+            transform: translateX(-8px);
+        }
+
+        .left-sidebar strong { font-weight: bold; }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .button-container button {
+            flex: 1;
+            padding: 10px 15px !important;
+            font-size: 1rem;
+            cursor: pointer;
+            border: none;
+            margin: 0;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .modal-content {
+            background-color: #ffffff;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 500px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: left;
+        }
     </style>
 </head>
 <body class="narrow-body">
@@ -36,6 +125,48 @@
         <textarea id="note-input" placeholder="Add Note..."></textarea>
         <button id="save-note">Save Note</button>
         <div id="notes-list"></div>
+    </div>
+
+    <!-- Contacts Sidebar -->
+    <div class="left-sidebar-container" id="contactsSidebarContainer">
+        <div class="sidebar-header">
+            <div class="centered-container">
+                <div class="button-container" style="flex-direction: row; gap: 6px; margin-bottom: 10px;">
+                    <button id="checkout-button-top" class="interactive" style="width: 50%; border: 1px solid #000000; border-radius: 5px; font-size: 0.75rem; font-weight: normal; padding: 6px 8px !important; display: none;" onclick="if(confirm('Are you sure you want to check out this profile?')) { GoToProfileEditChecked(); }">Check Out Profile</button>
+                    <button id="log-call-button-top" class="interactive" style="width: 50%; font-size: 0.75rem; font-weight: normal; padding: 6px 8px !important; display: none;" onclick="confirmAndLogCall()">Log New Call</button>
+                    <div class="button-container">
+                        <button id="release-profile-button" class="interactive" style="display: none;" onclick="releaseProfile()">Release Profile</button>
+                    </div><br>
+                </div>
+                <h2>Contacts</h2>
+            </div>
+        </div>
+        <div id="contacts-list" class="left-sidebar"></div>
+    </div>
+
+    <!-- Contact Modal -->
+    <div id="contactModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2 id="modal-title">Add New Contact</h2>
+            <form id="contactForm">
+                <label for="contactFirstName">First Name:</label>
+                <input type="text" id="contactFirstName" required>
+                <label for="contactLastName">Last Name:</label>
+                <input type="text" id="contactLastName" required>
+                <label for="contactPhoneNumber">Phone Number:</label>
+                <input type="text" id="contactPhoneNumber" required>
+                <label for="authorizedRepresentative">Authorized Representative:</label>
+                <select id="authorizedRepresentative">
+                    <option value="N/A" selected>N/A</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                </select>
+                <div class="button-container">
+                    <button type="button" onclick="saveContact()">Save</button>
+                    <button type="button" onclick="closeContactModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <div class="selection-box">
@@ -104,5 +235,292 @@
     <script src="householdview.js"></script>
     <script src="viewnavigation.js"></script>
     <script src="notes.js"></script>
+
+    <script>
+    // ===== CONTACTS SIDEBAR FOR HOUSEHOLD VIEW =====
+    let sidebarClient = null;
+    let editingContactIndex = null;
+    const CLIENT_ID = new URLSearchParams(window.location.search).get('id');
+
+    function formatPhoneNumber(phone) {
+        if (!phone) return '';
+        const cleaned = String(phone).trim().replace(/\D/g, '');
+        const digits = cleaned.length === 11 && cleaned.startsWith('1') ? cleaned.substring(1) : cleaned;
+        if (digits.length === 10) {
+            return `(${digits.substring(0, 3)})-${digits.substring(3, 6)}-${digits.substring(6)}`;
+        }
+        return String(phone).trim();
+    }
+
+    // ----- Render contacts -----
+    function renderContacts() {
+        const container = document.getElementById('contacts-list');
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (!sidebarClient || !sidebarClient.Contacts || sidebarClient.Contacts.length === 0) {
+            container.innerHTML = '<p>No contacts available.</p>';
+            return;
+        }
+
+        const fragment = document.createDocumentFragment();
+        sidebarClient.Contacts.forEach((contact, index) => {
+            const div = document.createElement('div');
+            div.classList.add('left-sidebar');
+            div.innerHTML = `
+                <p><strong>Name:</strong><br> ${(contact.firstName || 'N/A').toUpperCase()} ${(contact.lastName || 'N/A').toUpperCase()}</p>
+                <p><strong>Phone:</strong><br> ${formatPhoneNumber(contact.phoneNumber) || 'N/A'}</p>
+                <p><strong>Authorized Representative:</strong><br> ${(contact.authorizedRepresentative || 'N/A').toUpperCase()}</p>
+            `;
+            fragment.appendChild(div);
+        });
+        container.appendChild(fragment);
+    }
+
+    // ----- Button visibility -----
+    function updateSidebarButtons() {
+        if (!sidebarClient) return;
+
+        const isCheckedOut = sidebarClient.checkedOut?.some(entry => entry.status === true);
+
+        const checkoutBtn = document.getElementById('checkout-button-top');
+        const logCallBtn = document.getElementById('log-call-button-top');
+
+        if (isCheckedOut) {
+            if (checkoutBtn) checkoutBtn.style.display = 'none';
+            if (logCallBtn) logCallBtn.style.display = 'none';
+        } else {
+            if (checkoutBtn) checkoutBtn.style.display = '';
+            if (logCallBtn) logCallBtn.style.display = '';
+        }
+
+        document.getElementById('contactsSidebarContainer').style.display = 'block';
+    }
+
+    // ----- Admin release button -----
+    async function checkAdminReleaseButton() {
+        const activeUser = sessionStorage.getItem('loggedInUser');
+        if (!activeUser || !sidebarClient) return;
+
+        try {
+            const roleResponse = await fetch(`/get-user-role?username=${encodeURIComponent(activeUser)}`);
+            if (!roleResponse.ok) return;
+
+            const roleData = await roleResponse.json();
+            if (roleData.success) {
+                sessionStorage.setItem('userRole', roleData.role);
+                const isCheckedOut = sidebarClient.checkedOut?.some(entry => entry.status === true);
+                const releaseBtn = document.getElementById('release-profile-button');
+                if (releaseBtn) {
+                    releaseBtn.style.display = (roleData.role === 'admin' && isCheckedOut) ? 'block' : 'none';
+                }
+            }
+        } catch (error) {
+            console.error('Error checking admin role:', error);
+        }
+    }
+
+    // ----- Contact modal -----
+    function openContactModal(contact = null, index = null) {
+        const modal = document.getElementById('contactModal');
+        if (!modal) return;
+
+        const buttonContainer = modal.querySelector('.button-container');
+        buttonContainer.innerHTML = `
+            <button type="button" onclick="saveContact()">Save</button>
+            <button type="button" onclick="closeContactModal()">Cancel</button>
+        `;
+
+        if (contact) {
+            document.getElementById('modal-title').textContent = 'Edit Contact';
+            document.getElementById('contactFirstName').value = contact.firstName || '';
+            document.getElementById('contactLastName').value = contact.lastName || '';
+            document.getElementById('contactPhoneNumber').value = contact.phoneNumber || '';
+            document.getElementById('authorizedRepresentative').value = contact.authorizedRepresentative || 'N/A';
+            editingContactIndex = index;
+
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Delete';
+            deleteButton.type = 'button';
+            deleteButton.style.cssText = 'background-color:red;color:white;';
+            deleteButton.onclick = () => deleteContact(index);
+            buttonContainer.appendChild(deleteButton);
+        } else {
+            document.getElementById('modal-title').textContent = 'Add Contact';
+            document.getElementById('contactFirstName').value = '';
+            document.getElementById('contactLastName').value = '';
+            document.getElementById('contactPhoneNumber').value = '';
+            document.getElementById('authorizedRepresentative').value = 'N/A';
+            editingContactIndex = null;
+        }
+
+        modal.style.display = 'flex';
+    }
+
+    function openContactModalByIndex(index) {
+        if (sidebarClient && sidebarClient.Contacts) {
+            openContactModal(sidebarClient.Contacts[index], index);
+        }
+    }
+
+    function closeContactModal() {
+        const modal = document.getElementById('contactModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    window.addEventListener('click', (event) => {
+        const modal = document.getElementById('contactModal');
+        if (event.target === modal) closeContactModal();
+    });
+
+    async function saveContact() {
+        const firstName = document.getElementById('contactFirstName').value.trim();
+        const lastName = document.getElementById('contactLastName').value.trim();
+        const phoneNumber = document.getElementById('contactPhoneNumber').value.trim();
+        const authorizedRepresentative = document.getElementById('authorizedRepresentative').value;
+
+        if (!firstName || !lastName || !phoneNumber) {
+            alert('Please fill in all required fields.');
+            return;
+        }
+
+        const newContact = { firstName, lastName, phoneNumber, authorizedRepresentative };
+        if (!sidebarClient.Contacts) sidebarClient.Contacts = [];
+
+        try {
+            const requestBody = { clientId: CLIENT_ID, contact: newContact };
+
+            if (editingContactIndex !== null) {
+                requestBody.index = editingContactIndex;
+                sidebarClient.Contacts[editingContactIndex] = newContact;
+            } else {
+                sidebarClient.Contacts.push(newContact);
+            }
+
+            const response = await fetch('/add-to-contacts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody),
+            });
+
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                console.error('Failed to save contact:', result.message);
+                alert(`Error: ${result.message}`);
+                return;
+            }
+
+            closeContactModal();
+            renderContacts();
+        } catch (error) {
+            console.error('Error saving contact:', error);
+            alert('An error occurred while saving the contact.');
+        }
+    }
+
+    async function deleteContact(index) {
+        if (!confirm('Are you sure you want to delete this contact?')) return;
+
+        const deletedContact = sidebarClient.Contacts.splice(index, 1)[0];
+        try {
+            const response = await fetch('/add-to-contacts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId: CLIENT_ID,
+                    contact: deletedContact,
+                    index,
+                    delete: true,
+                }),
+            });
+            const result = await response.json();
+            if (!result.success) {
+                console.error('Failed to delete contact:', result.message);
+            }
+        } catch (error) {
+            console.error('Error deleting contact:', error);
+        }
+        renderContacts();
+        closeContactModal();
+    }
+
+    // ----- Action handlers -----
+    function confirmAndLogCall() {
+        if (!confirm("Are you sure you want to log a new call?")) return;
+        window.location.href = `call-loggingreturning.html?id=${CLIENT_ID}`;
+    }
+
+    async function releaseProfile() {
+        if (!confirm("Are you sure you want to release this profile?")) return;
+
+        const previousActiveUser = sidebarClient.checkedOut?.find(entry => entry.status === true)?.user;
+        if (!previousActiveUser) {
+            alert("No active user found to release.");
+            return;
+        }
+
+        try {
+            const activeUser = sessionStorage.getItem('loggedInUser');
+            const updatedCheckedOut = sidebarClient.checkedOut.map(entry => ({ ...entry, status: false }));
+
+            await Promise.all([
+                fetch('/update-client', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        clientId: CLIENT_ID,
+                        clientData: { checkedOut: updatedCheckedOut },
+                    }),
+                }),
+                fetch('/add-note-to-client', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        clientId: CLIENT_ID,
+                        note: {
+                            text: "Profile released.",
+                            timestamp: new Date().toLocaleString(),
+                            username: activeUser,
+                        },
+                    }),
+                }),
+                fetch('/notify-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: previousActiveUser,
+                        redirectUrl: `profileview.html?id=${CLIENT_ID}`,
+                    }),
+                }),
+            ]);
+
+            alert('Profile released successfully.');
+            window.location.reload();
+        } catch (error) {
+            console.error('Error releasing profile:', error);
+            alert('An error occurred while releasing the profile.');
+        }
+    }
+
+    // ----- Init sidebar -----
+    async function initSidebar() {
+        try {
+            const response = await fetch(`/get-client/${CLIENT_ID}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            if (!response.ok) throw new Error(`Failed to fetch client: ${response.statusText}`);
+
+            sidebarClient = await response.json();
+            renderContacts();
+            updateSidebarButtons();
+            await checkAdminReleaseButton();
+        } catch (error) {
+            console.error('Error loading sidebar client data:', error);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', initSidebar);
+    </script>
 </body>
 </html>

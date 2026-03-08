@@ -1,5 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,72 +8,17 @@
     <script src="userInfo.js"></script>
 
     <style>
-
-        /* SNAP Flip Card Styles */
-        .snap-flip-card {
-    perspective: 1000px;
-}
-
-.snap-flip-card-inner {
-    position: relative;
-    width: 100%;
-    transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1), height 0.4s ease;
-    transform-style: preserve-3d;
-    overflow: visible;
-}
-
-.snap-flip-card-front,
-.snap-flip-card-back {
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-}
-
-.snap-flip-card-front {
-    position: relative;
-    z-index: 2;
-}
-
-.snap-flip-card-back {
-    transform: rotateY(180deg);
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    z-index: 1;
-}
-
-.snap-flip-hint {
-    user-select: none;
-    opacity: 0.6;
-    transition: opacity 0.3s;
-}
-
-.snap-flip-card:hover .snap-flip-hint {
-    opacity: 1;
-}
-
-        #save-continue {
-            display: none; /* Default to block, will be toggled by JS */
+        /* ===== LOADING STATE ===== */
+        body {
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
         }
 
-#save-exit, #save-continue {
-            border: 1px solid #000000;
-            border-radius: 5px;
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
-            transition: background-color 0.3s, color 0.3s;
-        }
-    
-        #save-exit:hover, #save-continue:hover {
-            background-color: #0056b3;
-            color: white;
+        body.loaded {
+            opacity: 1;
         }
 
-        details > summary {
-            cursor: pointer;
-        }
-
+        /* ===== BASE STYLES ===== */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -83,7 +26,17 @@
             color: #333;
             margin-top: 60px;
         }
-        
+
+        h1 {
+            text-align: center;
+            color: #444;
+        }
+
+        details > summary {
+            cursor: pointer;
+        }
+
+        /* ===== LAYOUT ===== */
         #app {
             max-width: 800px;
             margin: 20px auto;
@@ -92,12 +45,7 @@
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-        
-        h1 {
-            text-align: center;
-            color: #444;
-        }
-        
+
         #household-row {
             display: flex;
             justify-content: center;
@@ -107,7 +55,8 @@
             margin-top: 20px;
         }
 
-        #snap-household-container {
+        /* ===== CONTAINER STYLES ===== */
+        .household-container {
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -119,20 +68,7 @@
             transition: transform 0.2s ease, box-shadow 0.2s ease;
             margin-top: 0;
         }
- 
-        #liheap-household-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-width: 500px;
-            max-width: 500px;
-            padding: 20px;
-            background: #f9f9f9;
-            border-radius: 8px;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            margin-top: 0;
-        }
-        
+
         #household-members-container {
             display: flex;
             flex-wrap: wrap;
@@ -147,9 +83,10 @@
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
+        /* ===== MEMBER BOX STYLES ===== */
         .household-member-box {
             border: none;
-            align-self: stretch; /* Changed from flex-start to stretch */
+            align-self: stretch;
             padding: 15px;
             margin-bottom: 10px;
             border-radius: 5px;
@@ -162,333 +99,397 @@
             display: flex;
             flex-direction: column;
         }
-        
+
         .snap-household-box h3 {
             margin-top: 0;
             color: #333;
         }
 
-        /* Screening control buttons */
-        .screening-controls {
-            text-align: center;
-            margin: 20px 0;
+        /* ===== FLIP CARD STYLES ===== */
+        .snap-flip-card,
+        .liheap-flip-card {
+            perspective: 1000px;
         }
 
-        .screening-controls button {
-            border: 1px solid #000000;
+        .snap-flip-card-inner,
+        .liheap-flip-card-inner {
+            position: relative;
+            width: 100%;
+            transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1), height 0.4s ease;
+            transform-style: preserve-3d;
+            overflow: visible;
+        }
+
+        .snap-flip-card-front,
+        .snap-flip-card-back,
+        .liheap-flip-card-front,
+        .liheap-flip-card-back {
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+        }
+
+        .snap-flip-card-front,
+        .liheap-flip-card-front {
+            position: relative;
+            z-index: 2;
+        }
+
+        .snap-flip-card-back,
+        .liheap-flip-card-back {
+            transform: rotateY(180deg);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1;
+        }
+
+        .snap-flip-hint,
+        .liheap-flip-hint {
+            user-select: none;
+            opacity: 0.6;
+            transition: opacity 0.3s;
+        }
+
+        .snap-flip-card:hover .snap-flip-hint,
+        .liheap-flip-card:hover .liheap-flip-hint {
+            opacity: 1;
+        }
+
+        /* ===== BUTTON STYLES ===== */
+        #save-continue {
+            display: none;
+        }
+
+        #save-exit,
+        #save-continue {
+            border: 1px solid #000;
             border-radius: 5px;
             padding: 10px 20px;
+            background-color: #007bff;
             color: white;
             cursor: pointer;
             font-size: 14px;
             transition: background-color 0.3s, color 0.3s;
         }
 
-        #stop-screening-btn {
-            background-color: #dc3545;
-        }
-
-        #stop-screening-btn:hover {
-            background-color: #a71d2a;
-        }
-
-        #reopen-screening-btn {
-            background-color: #007bff;
-        }
-
-        #reopen-screening-btn:hover {
+        #save-exit:hover,
+        #save-continue:hover {
             background-color: #0056b3;
+        }
+
+        /* ===== CONTACTS SIDEBAR STYLES ===== */
+        .sidebar-header {
+            display: fixed;
+            justify-items: center;
+            text-align: center;
+            margin-bottom: 20px;
+            width: 300px;
+            margin: 0 auto;
+        }
+
+        .sidebar-header .button-container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .sidebar-header .button-container button {
+            flex: 1;
+            padding: 10px 15px !important;
+            font-size: 1rem;
+            cursor: pointer;
+            border: none;
+            margin: 0;
+        }
+
+        #contacts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 300px;
+            margin: 0 auto;
+            max-height: 1000px;
+            overflow-y: auto;
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .left-sidebar {
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin: 0 auto;
+            width: 280px;
+            transform: translateX(-8px);
+        }
+
+        .left-sidebar strong { font-weight: bold; }
+
+        .error {
+            border: 2px solid red;
+            background-color: #ffe6e6;
+        }
+
+        /* ===== READ-ONLY: Hide interactive elements ===== */
+        .benefit-apply-button,
+        .benefit-reopen-button,
+        #stop-screening-btn,
+        #reopen-screening-btn {
+            display: none !important;
         }
     </style>
 </head>
-<body>
+<body><br><br>
     <h1>Estimated Eligibilities</h1>
 
-    <!-- Screening control buttons -->
-    <div class="screening-controls" id="screening-controls">
-    </div>
-    
     <div id="notes-container">
         <textarea id="note-input" placeholder="Add Note..."></textarea>
         <button id="save-note">Save Note</button>
         <div id="notes-list"></div>
     </div>
 
+    <!-- CONTACTS SIDEBAR (read-only) -->
+    <div class="left-sidebar-container" id="contactsSidebarContainer">
+        <div class="sidebar-header">
+            <div class="centered-container"><br>
+                <div class="button-container" style="flex-direction: row; gap: 6px; margin-bottom: 10px;">
+                    <button id="checkout-button-top" class="interactive" style="width: 50%; border: 1px solid #000000; border-radius: 5px; font-size: 0.75rem; font-weight: normal; padding: 6px 8px !important; display: none;" onclick="if(confirm('Are you sure you want to check out this profile?')) { GoToProfileEditChecked(); }">Check Out Profile</button>
+                    <button id="log-call-button-top" class="interactive" style="width: 50%; font-size: 0.75rem; font-weight: normal; padding: 6px 8px !important; display: none;" onclick="confirmAndLogCall()">Log New Call</button>
+                </div>
+                <div class="button-container" style="margin-top: 0; margin-bottom: 10px;">
+                    <button id="release-profile-button" class="interactive" style="display: none;" onclick="releaseProfile()">Release Profile</button>
+                </div><br>
+                <h2>Contacts</h2>
+            </div>
+            <div id="contacts-list" class="left-sidebar"></div>
+        </div>
+    </div>
+
     <div id="household-row">
-        <div id="snap-household-container"></div>
-        <div id="liheap-household-container"></div>
+        <div id="snap-household-container" class="household-container"></div>
+        <div id="liheap-household-container" class="household-container"></div>
     </div>
 
     <div id="household-members-container" class="household-member-container"></div>
 
+    <script>
+        // ===== CONTACTS GLOBALS =====
+        let clientData_contacts = {};
     
-</body>
-
-
-<script>
-
-function getQueryParameter(name) {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get(name);
-}
-
-async function redirectToEstimationsView() {
-    const clientId = getQueryParameter('id');
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
-    const confirmAction = confirm("Are you sure you want to save and release this profile?");
-    if (!confirmAction) return;
-
-    const noteContent = "Profile released.";
-    const timestamp = new Date().toLocaleString();
-    const activeUser = sessionStorage.getItem('loggedInUser');
-
-    if (!activeUser) {
-        console.error("No active user found in sessionStorage.");
-        return;
-    }
-
-    try {
-        await setCheckedOutStatus(clientId, false);
-        console.log("Saving profile and redirecting...");
-
-        const note = {
-            text: noteContent,
-            timestamp: timestamp,
-            username: activeUser
-        };
-
-        const addNoteResponse = await fetch(`/add-note-to-client`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clientId, note })
-        });
-
-        if (!addNoteResponse.ok) {
-            console.warn('Failed to add note to client.');
+        // ===== UTILITY FUNCTIONS =====
+        function getQueryParameter(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
         }
-    } catch (error) {
-        console.error("Error during redirectToEstimationsView:", error);
-    } finally {
-        window.location.href = `estimationsview.html?id=${clientId}`;
-    }
-}
-
-async function continueToApplication() {
-    const clientId = getQueryParameter('id');
-    if (!clientId) {
-        console.error('Client ID not found in query parameters.');
-        return;
-    }
-
-    const activeUser = sessionStorage.getItem('loggedInUser');
-    if (!activeUser) {
-        console.error("No active user found in sessionStorage.");
-        return;
-    }
-
-    const confirmAction = confirm("Are you sure you want to continue to the application step?");
-    if (!confirmAction) return;
-
-    try {
-        const response = await fetch(`/get-client/${clientId}`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client data: ${response.statusText}`);
+    
+        function getActiveUser() {
+            return sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User';
         }
-
-        const clientData = await response.json();
-        const members = clientData.householdMembers || [];
-
-        const householdBenefits = new Set();
-        const individualBenefitsDetails = [];
-
-        members.forEach(member => {
-            const memberBenefits = [];
-
-            ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'].forEach(benefit => {
-                const isHouseholdBenefit = ['SNAP', 'LIHEAP'].includes(benefit);
-
-                let isButtonDisplayed = true;
-                if (!isHouseholdBenefit) {
-                    const benefitButton = document.querySelector(
-                        `.benefit-apply-button[data-benefit="${benefit}"][data-member-id="${member.householdMemberId}"]`
-                    );
-                    isButtonDisplayed = !!benefitButton && benefitButton.style.display !== 'none';
-                }
-
-                if (!isHouseholdBenefit && !isButtonDisplayed) {
-                    if (member[benefit]?.application) {
-                        member[benefit].application.forEach(app => app.applying = false);
-                    }
-                }
-
-                if (member[benefit]?.application?.some(app => app.applying === true)) {
-                    if (isHouseholdBenefit) {
-                        householdBenefits.add(benefit);
-                    } else {
-                        memberBenefits.push(benefit);
-                    }
-                }
-            });
-
-            if (memberBenefits.length > 0) {
-                individualBenefitsDetails.push(
-                    `<strong>${member.firstName.toUpperCase()} ${member.lastName.toUpperCase()}</strong><br><br>${memberBenefits.join('<br>')}`
-                );
+    
+        function getClientId() {
+            return getQueryParameter('id');
+        }
+    
+        function formatPhoneNumber(phone) {
+            if (!phone) return '';
+            const cleaned = String(phone).trim().replace(/\D/g, '');
+            const digits = cleaned.length === 11 && cleaned.startsWith('1') ? cleaned.substring(1) : cleaned;
+            if (digits.length === 10) {
+                return `(${digits.substring(0, 3)})-${digits.substring(3, 6)}-${digits.substring(6)}`;
             }
-        });
-
-        const householdBenefitsText = Array.from(householdBenefits).join('<br>');
-        const individualBenefitsText = individualBenefitsDetails.join('<br><br>');
-
-        let noteContent = '';
-        if (householdBenefits.size > 0) {
-            noteContent = `<strong>Applying</strong><br><br>${householdBenefitsText}<br><br>${individualBenefitsText}`.trim();
-        } else {
-            noteContent = `<strong>Applying</strong><br><br>${individualBenefitsText}`.trim();
+            return String(phone).trim();
         }
-
-        const timestamp = new Date().toLocaleString();
-        const note = {
-            text: noteContent,
-            timestamp: timestamp,
-            username: activeUser
-        };
-
-        const addNoteResponse = await fetch(`/add-note-to-client`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clientId, note })
-        });
-
-        if (!addNoteResponse.ok) {
-            console.warn('Failed to add note to client.');
+    
+        // ===== API HELPERS =====
+        async function fetchClient(clientId) {
+            const response = await fetch(`/get-client/${clientId}`);
+            if (!response.ok) throw new Error(`Failed to fetch client: ${response.statusText}`);
+            return response.json();
         }
-
-        console.log("Note added:", noteContent);
-    } catch (error) {
-        console.error("Error during continueToApplication:", error);
-    } finally {
-        window.location.href = `applicationedit.html?id=${clientId}`;
-    }
-}
-
-// Load screening buttons on page load
-window.addEventListener('DOMContentLoaded', () => {
-});
-
-</script>
-<script>
-    let _eqDebounceTimer = null;
-
-    function equalizeBoxHeights() {
-        // Only equalize individual member boxes inside #household-members-container
-        const container = document.getElementById('household-members-container');
-        if (!container) return;
-        const boxes = container.querySelectorAll(':scope > .household-member-box');
-        if (boxes.length === 0) return;
-
-        // Reset heights first
-        boxes.forEach(box => box.style.minHeight = '');
-
-        // Find the tallest
-        let maxHeight = 0;
-        boxes.forEach(box => {
-            const height = box.getBoundingClientRect().height;
-            if (height > maxHeight) maxHeight = height;
-        });
-
-        // Apply to all
-        boxes.forEach(box => {
-            box.style.minHeight = `${maxHeight}px`;
-        });
-    }
-
-    // Debounced version to avoid rapid-fire calls
-    function debouncedEqualizeBoxHeights() {
-        if (_eqDebounceTimer) cancelAnimationFrame(_eqDebounceTimer);
-        _eqDebounceTimer = requestAnimationFrame(equalizeBoxHeights);
-    }
-
-    // Run after content loads and re-run on any dynamic changes
-    const _eqObserver = new MutationObserver(debouncedEqualizeBoxHeights);
-
-    window.addEventListener('DOMContentLoaded', () => {
-        const container = document.getElementById('household-members-container');
-        if (container) {
-            _eqObserver.observe(container, { childList: true, subtree: true, characterData: true });
-        }
-        // Initial equalization after a short delay to let JS render
-        setTimeout(equalizeBoxHeights, 500);
-    });
-
-    window.addEventListener('resize', equalizeBoxHeights);
-</script>
-<script>
-    // Equalize SNAP and LIHEAP box heights
-    let _snapLiheapDebounceTimer = null;
-
-    function equalizeSnapLiheapHeights() {
-        const snapBox = document.getElementById('snap-household-container');
-        const liheapBox = document.getElementById('liheap-household-container');
-        if (!snapBox || !liheapBox) return;
-
-        // Reset heights first
-        snapBox.style.minHeight = '';
-        liheapBox.style.minHeight = '';
-
-        // Match LIHEAP to SNAP height
-        const snapHeight = snapBox.getBoundingClientRect().height;
-        const liheapHeight = liheapBox.getBoundingClientRect().height;
-        const maxHeight = Math.max(snapHeight, liheapHeight);
-
-        snapBox.style.minHeight = `${maxHeight}px`;
-        liheapBox.style.minHeight = `${maxHeight}px`;
-    }
-
-    function debouncedEqualizeSnapLiheapHeights() {
-        if (_snapLiheapDebounceTimer) cancelAnimationFrame(_snapLiheapDebounceTimer);
-        _snapLiheapDebounceTimer = requestAnimationFrame(equalizeSnapLiheapHeights);
-    }
-
-    const _snapLiheapObserver = new MutationObserver(debouncedEqualizeSnapLiheapHeights);
-
-    window.addEventListener('DOMContentLoaded', () => {
-        const snapBox = document.getElementById('snap-household-container');
-        const liheapBox = document.getElementById('liheap-household-container');
-        if (snapBox) _snapLiheapObserver.observe(snapBox, { childList: true, subtree: true, characterData: true });
-        if (liheapBox) _snapLiheapObserver.observe(liheapBox, { childList: true, subtree: true, characterData: true });
-        setTimeout(equalizeSnapLiheapHeights, 500);
-
-        // Listen for details toggle events inside both containers
-        function attachDetailsToggleListeners() {
-            const snapBox = document.getElementById('snap-household-container');
-            const liheapBox = document.getElementById('liheap-household-container');
-            [snapBox, liheapBox].forEach(container => {
-                if (!container) return;
-                container.querySelectorAll('details').forEach(details => {
-                    details.removeEventListener('toggle', debouncedEqualizeSnapLiheapHeights);
-                    details.addEventListener('toggle', debouncedEqualizeSnapLiheapHeights);
-                });
+    
+        async function addNoteToClient(clientId, noteText) {
+            const note = {
+                text: noteText,
+                timestamp: new Date().toLocaleString(),
+                username: getActiveUser()
+            };
+            await fetch('/add-note-to-client', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, note })
             });
         }
-
-        // Attach initially and re-attach whenever content changes
-        attachDetailsToggleListeners();
-        const _detailsObserver = new MutationObserver(() => {
-            attachDetailsToggleListeners();
-            debouncedEqualizeSnapLiheapHeights();
+    
+        // ===== CONTACTS (READ-ONLY) =====
+        async function loadContacts() {
+            const clientId = getClientId();
+            try {
+                clientData_contacts = await fetchClient(clientId);
+                renderContacts();
+                updateSidebarButtons();
+                await checkAdminReleaseButton();
+            } catch (error) {
+                console.error('Error loading contacts:', error);
+            }
+        }
+    
+        function renderContacts() {
+            const container = document.getElementById('contacts-list');
+            container.innerHTML = '';
+    
+            if (!clientData_contacts.Contacts || clientData_contacts.Contacts.length === 0) {
+                container.innerHTML = '<p>No contacts available.</p>';
+                return;
+            }
+    
+            const fragment = document.createDocumentFragment();
+            clientData_contacts.Contacts.forEach((contact) => {
+                const div = document.createElement('div');
+                div.classList.add('left-sidebar');
+                div.innerHTML = `
+                    <p><strong>Name:</strong><br> ${(contact.firstName || 'N/A').toUpperCase()} ${(contact.lastName || 'N/A').toUpperCase()}</p>
+                    <p><strong>Phone:</strong><br> ${formatPhoneNumber(contact.phoneNumber) || 'N/A'}</p>
+                    <p><strong>Authorized Representative:</strong><br> ${(contact.authorizedRepresentative || 'N/A').toUpperCase()}</p>
+                `;
+                fragment.appendChild(div);
+            });
+            container.appendChild(fragment);
+        }
+    
+        // ===== SIDEBAR BUTTON LOGIC =====
+        function updateSidebarButtons() {
+            if (!clientData_contacts) return;
+    
+            const isCheckedOut = clientData_contacts.checkedOut?.some(entry => entry.status === true);
+    
+            const checkoutBtn = document.getElementById('checkout-button-top');
+            const logCallBtn = document.getElementById('log-call-button-top');
+    
+            if (isCheckedOut) {
+                if (checkoutBtn) checkoutBtn.style.display = 'none';
+                if (logCallBtn) logCallBtn.style.display = 'none';
+            } else {
+                if (checkoutBtn) checkoutBtn.style.display = '';
+                if (logCallBtn) logCallBtn.style.display = '';
+            }
+    
+            document.getElementById('contactsSidebarContainer').style.display = 'block';
+        }
+    
+        async function checkAdminReleaseButton() {
+            const activeUser = sessionStorage.getItem('loggedInUser');
+            if (!activeUser || !clientData_contacts) return;
+    
+            try {
+                const roleResponse = await fetch(`/get-user-role?username=${encodeURIComponent(activeUser)}`);
+                if (!roleResponse.ok) return;
+    
+                const roleData = await roleResponse.json();
+                if (roleData.success) {
+                    sessionStorage.setItem('userRole', roleData.role);
+                    const isCheckedOut = clientData_contacts.checkedOut?.some(entry => entry.status === true);
+                    const releaseBtn = document.getElementById('release-profile-button');
+                    if (releaseBtn) {
+                        releaseBtn.style.display = (roleData.role === 'admin' && isCheckedOut) ? 'block' : 'none';
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking admin role:', error);
+            }
+        }
+    
+        function confirmAndLogCall() {
+            const CLIENT_ID = getClientId();
+            if (!confirm("Are you sure you want to log a new call?")) return;
+            window.location.href = `call-loggingreturning.html?id=${CLIENT_ID}`;
+        }
+    
+        async function releaseProfile() {
+            if (!confirm("Are you sure you want to release this profile?")) return;
+    
+            const CLIENT_ID = getClientId();
+            const previousActiveUser = clientData_contacts.checkedOut?.find(entry => entry.status === true)?.user;
+            if (!previousActiveUser) {
+                alert("No active user found to release.");
+                return;
+            }
+    
+            try {
+                const activeUser = sessionStorage.getItem('loggedInUser');
+                const updatedCheckedOut = clientData_contacts.checkedOut.map(entry => ({ ...entry, status: false }));
+    
+                await Promise.all([
+                    fetch('/update-client', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            clientId: CLIENT_ID,
+                            clientData: { checkedOut: updatedCheckedOut },
+                        }),
+                    }),
+                    fetch('/add-note-to-client', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            clientId: CLIENT_ID,
+                            note: {
+                                text: "Profile released.",
+                                timestamp: new Date().toLocaleString(),
+                                username: activeUser,
+                            },
+                        }),
+                    }),
+                    fetch('/notify-user', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            username: previousActiveUser,
+                            redirectUrl: `profileview.html?id=${CLIENT_ID}`,
+                        }),
+                    }),
+                ]);
+    
+                alert('Profile released successfully.');
+                window.location.reload();
+            } catch (error) {
+                console.error('Error releasing profile:', error);
+                alert('An error occurred while releasing the profile.');
+            }
+        }
+    
+        // ===== NAVIGATION =====
+        function redirectToProfileView() {
+            const CLIENT_ID = new URLSearchParams(window.location.search).get('id');
+            window.location.href = `profileview.html?id=${CLIENT_ID}`;
+        }
+    
+        // ===== STUBS for external scripts that may reference these =====
+        function loadScreeningButtons() {}
+        async function reopenSingleBenefitScreening() {}
+    
+        // ===== HEIGHT EQUALIZATION =====
+        // ...existing code (HeightEqualizer object)...
+    
+        // ===== INITIALIZATION =====
+        window.addEventListener('DOMContentLoaded', () => {
+            loadContacts();
+            HeightEqualizer.init();
         });
-        if (snapBox) _detailsObserver.observe(snapBox, { childList: true, subtree: true });
-        if (liheapBox) _detailsObserver.observe(liheapBox, { childList: true, subtree: true });
-    });
+    
+        // Expose for external access
+        window.loadScreeningButtons = loadScreeningButtons;
+        window.reopenSingleBenefitScreening = reopenSingleBenefitScreening;
+        </script>
 
-    window.addEventListener('resize', equalizeSnapLiheapHeights);
-</script>
-        <script src="estimationsview.js" defer></script>
-        <script src="notes.js"></script>
+    <script src="eligibility-utils.js"></script>
+    <script src="estimationsview.js" defer></script>
+    <script src="notes.js"></script>
     <script src="viewnavigation.js"></script>
+</body>
 </html>
