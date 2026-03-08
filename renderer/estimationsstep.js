@@ -1697,8 +1697,10 @@ document.addEventListener('DOMContentLoaded', async function () {
                     ">
                         ${generateFlipHintHtml(isEligible)}
                         <details class="custom-details" style="background-color: ${bgColor}; border-radius: 4px; padding: 8px; width: 100%; box-sizing: border-box;">
-                            <summary><br><strong>${benefit}</strong><br> 
-                            <p><strong></strong> ${eligArray.join(', ') || 'Not Available'}<br><br></summary></p>
+                            <summary style="display: flex; flex-direction: column; align-items: center; cursor: pointer; text-align: center; padding: 8px;"><br><strong>${benefit}</strong><br> 
+                            <span class="toggle-text" style="font-size: 14px; margin-bottom: 4px;"><i>Show Details</i></span>
+                            <p><strong></strong> ${eligArray.join(', ') || 'Not Available'}<br></p>
+                            </summary>
                             <hr class="separator-bar">
                             <p><strong>${incomeLabel}:</strong> $${bObj.combinedIncome?.toFixed(2) || 'N/A'}</p>
                             ${showAssets ? `<p><strong>Combined Assets:</strong> $${bObj.combinedAssets?.toFixed(2) || 'N/A'}</p>` : ''}
@@ -1989,6 +1991,17 @@ document.addEventListener('DOMContentLoaded', async function () {
                 backHintSelector: '.benefit-flip-back-hint',
                 detailsSelector: 'details'
             });
+
+            // Attach "Show Details" / "Hide Details" toggle
+            const detailsEl = flipCard.querySelector('details.custom-details');
+            if (detailsEl) {
+                detailsEl.addEventListener('toggle', () => {
+                    const toggleText = detailsEl.querySelector('.toggle-text');
+                    if (toggleText) {
+                        toggleText.innerHTML = detailsEl.open ? '<i>Hide Details</i>' : '<i>Show Details</i>';
+                    }
+                });
+            }
         });
     }
 
@@ -2134,28 +2147,44 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (snapHouseholds.length === 0) {
             const noHouseholdsDiv = document.createElement('div');
             noHouseholdsDiv.classList.add('household-member-box');
-            noHouseholdsDiv.style.backgroundColor = (isAlreadyEnrolled || isNotInterested) ? '#f8d7da' : '#fff3cd';
-            noHouseholdsDiv.style.borderColor = (isAlreadyEnrolled || isNotInterested) ? '#f5c6cb' : '#ffc107';
+    
+            // Check if any SNAP household member has screening in progress
+            const anySnapScreeningActive = members.some(m => m.SNAP?.screeningInProgress === true);
+    
+            // Apply background color based on state
+            if (isAlreadyEnrolled || isNotInterested) {
+                noHouseholdsDiv.style.backgroundColor = '#f8d7da';
+                noHouseholdsDiv.style.borderColor = '#f5c6cb';
+            } else {
+                noHouseholdsDiv.style.backgroundColor = '#fff3cd';
+                noHouseholdsDiv.style.borderColor = '#ffc107';
+            }
+    
+            noHouseholdsDiv.style.width = '100%';
+            noHouseholdsDiv.style.boxSizing = 'border-box';
+    
             noHouseholdsDiv.innerHTML = `
-                <h3>SNAP HOUSEHOLD</h3>
-                ${isAlreadyEnrolled ? '<p>ALREADY ENROLLED</p>' : isNotInterested ? '<p>NOT INTERESTED</p>' : '<p>NO SNAP HOUSEHOLDS FOUND.</p>'}
-                ${isScreeningInProgress ? `
-                    <button class="btn-close-snap-screening"                         style="display: ${isScreeningInProgress ? 'inline-block' : 'none'}; background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 8px 16px; font-size: 13px; cursor: pointer; transition: background-color 0.3s; margin: 8px auto;"
-                        onmouseover="this.style.backgroundColor='#a71d2a'" 
-                        onmouseout="this.style.backgroundColor='#dc3545'">Close Screening(s)</button>
-                ` : ''}
+                <details class="custom-details">
+                    <summary style="display: flex; flex-direction: column; align-items: center; cursor: pointer; text-align: center; padding: 8px;">
+                        <h3 style="margin: 4px 0;">SNAP</h3>
+                        <span class="toggle-text" style="font-size: 14px; margin-bottom: 4px;"><i>Show Details</i></span>
+                    </summary>
+                    ${isAlreadyEnrolled ? '<p>ALREADY ENROLLED</p>' : isNotInterested ? '<p>NOT INTERESTED</p>' : '<p>NO SNAP HOUSEHOLD MEMBERS FOUND.</p>'}
+                </details>
             `;
             snapContainer.appendChild(noHouseholdsDiv);
-
-            // Attach close button listener if screening is in progress
-            const closeBtn = noHouseholdsDiv.querySelector('.btn-close-snap-screening');
-            if (closeBtn) {
-                closeBtn.addEventListener('click', async () => {
-                    const freshMembers = await loadHouseholdMembers();
-                    openCloseMemberModal(clientId, freshMembers, null, null, 'SNAP');
+    
+            // Toggle "Show Details" / "Hide Details" text
+            const noHouseholdsDetails = noHouseholdsDiv.querySelector('details.custom-details');
+            if (noHouseholdsDetails) {
+                noHouseholdsDetails.addEventListener('toggle', () => {
+                    const toggleText = noHouseholdsDetails.querySelector('.toggle-text');
+                    if (toggleText) {
+                        toggleText.innerHTML = noHouseholdsDetails.open ? '<i>Hide Details</i>' : '<i>Show Details</i>';
+                    }
                 });
             }
-
+    
             return;
         }
 
@@ -2241,7 +2270,8 @@ document.addEventListener('DOMContentLoaded', async function () {
                         display: ${snapIsLikelyEligible ? 'block' : 'none'};
                     ">↻</div>
                     <details class="custom-details" style="background-color: ${cardBgColor}; border-radius: 4px; padding: 8px; margin: 8px auto; width: 100%; box-sizing: border-box;">
-                        <summary><br><strong>SNAP HOUSEHOLD</strong><br>
+                        <summary style="display: flex; flex-direction: column; align-items: center; cursor: pointer; text-align: center; padding: 8px;"><br><strong>SNAP</strong><br>
+                        <span class="toggle-text" style="font-size: 14px; margin-bottom: 4px;"><i>Show Details</i></span>
                         <p><strong>Members:</strong> ${snapMemberNames}</p>
                         <p><strong>Eligibility:</strong> ${eligibility.join(', ')}</p>
                         ${snapIsLikelyEligible && benefitAmount >= 0 ? `
@@ -2333,6 +2363,17 @@ document.addEventListener('DOMContentLoaded', async function () {
             backHintSelector: '.snap-flip-back-hint',
             detailsSelector: 'details'
         });
+
+        // Attach "Show Details" / "Hide Details" toggle for SNAP
+        const snapDetailsEl = householdDiv.querySelector('details.custom-details');
+        if (snapDetailsEl) {
+            snapDetailsEl.addEventListener('toggle', () => {
+                const toggleText = snapDetailsEl.querySelector('.toggle-text');
+                if (toggleText) {
+                    toggleText.innerHTML = snapDetailsEl.open ? '<i>Hide Details</i>' : '<i>Show Details</i>';
+                }
+            });
+        }
 
         // Attach button listeners
         householdDiv.querySelectorAll('.benefit-apply-button').forEach(btn => {
@@ -2523,7 +2564,8 @@ function createLIHEAPHouseholdCard(activeMembersForLIHEAP, liheapMemberIds, lihe
                         display: ${liheapIsLikely ? 'block' : 'none'};
                     ">↻</div>
                     <details class="custom-details" style="background-color: ${cardBgColor}; border-radius: 4px; padding: 8px; margin: 8px auto; width: 100%; box-sizing: border-box;">
-                        <summary><br><strong>LIHEAP HOUSEHOLD</strong><br>
+                        <summary style="display: flex; flex-direction: column; align-items: center; cursor: pointer; text-align: center; padding: 8px;"><br><strong>LIHEAP</strong><br>
+                        <span class="toggle-text" style="font-size: 14px; margin-bottom: 4px;"><i>Show Details</i></span>
                         <p><strong>Members:</strong> ${liheapMemberNames}</p>
                         <p><strong>Eligibility:</strong> ${eligibility.join(', ')}</p>
                         </summary>
@@ -2596,6 +2638,17 @@ function createLIHEAPHouseholdCard(activeMembersForLIHEAP, liheapMemberIds, lihe
             backHintSelector: '.liheap-flip-back-hint',
             detailsSelector: 'details'
         });
+
+        // Attach "Show Details" / "Hide Details" toggle for LIHEAP
+        const liheapDetailsEl = householdDiv.querySelector('details.custom-details');
+        if (liheapDetailsEl) {
+            liheapDetailsEl.addEventListener('toggle', () => {
+                const toggleText = liheapDetailsEl.querySelector('.toggle-text');
+                if (toggleText) {
+                    toggleText.innerHTML = liheapDetailsEl.open ? '<i>Hide Details</i>' : '<i>Show Details</i>';
+                }
+            });
+        }
 
         // Attach button listeners
         householdDiv.querySelectorAll('.benefit-apply-button').forEach(btn => {

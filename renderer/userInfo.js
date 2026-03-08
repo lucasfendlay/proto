@@ -27,49 +27,62 @@ function populateActiveUser() {
                     userInfoDiv.textContent = `User: ${activeUser.trim()} | Role: ${data.role}`;
                     document.body.appendChild(userInfoDiv);
 
-// Fetch client data to check for checkedOut status
-const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
-if (clientId) {
-    fetch(`/get-client/${clientId}`)
-        .then(clientResponse => clientResponse.json())
-        .then(clientData => {
-            if (clientData.checkedOut) {
-                const checkedOutInfo = clientData.checkedOut.find(entry => entry.status === true);
-                if (checkedOutInfo) {
-                    const checkedOutMessage = checkedOutInfo.user === activeUser.trim()
-                    ? `Profile ${clientId} checked out by you.`
-                    : `Profile ${clientId} checked out by ${checkedOutInfo.user} on ${new Date(checkedOutInfo.timestamp).toLocaleDateString()} at ${new Date(checkedOutInfo.timestamp).toLocaleTimeString()}.`;
-                
-                // Create a new div for the checkedOut message
-                const checkedOutDiv = document.createElement('div');
-                checkedOutDiv.textContent = checkedOutMessage;
-                
-                // Set styles based on whether the user matches
-                if (checkedOutInfo.user === activeUser.trim()) {
-                    checkedOutDiv.style.backgroundColor = '#007bff'; // Blue background
-                } else {
-                    checkedOutDiv.style.backgroundColor = '#ff4d4d'; // Red background
+                    // Fetch client data to check for checkedOut status
+                    const clientId = getQueryParam('id');
+                    if (clientId) {
+                        fetch(`/get-client/${clientId}`)
+                            .then(clientResponse => clientResponse.json())
+                            .then(clientData => {
+                                if (clientData.checkedOut) {
+                                    const checkedOutInfo = clientData.checkedOut.find(entry => entry.status === true);
+                                    if (checkedOutInfo) {
+                                        const checkedOutMessage = checkedOutInfo.user === activeUser.trim()
+                                            ? `Profile ${clientId} checked out by you.`
+                                            : `Profile ${clientId} checked out by ${checkedOutInfo.user} on ${new Date(checkedOutInfo.timestamp).toLocaleDateString()} at ${new Date(checkedOutInfo.timestamp).toLocaleTimeString()}.`;
+
+                                        // Create the checkedOut message element for the sidebar
+                                        const checkedOutDiv = document.createElement('div');
+                                        checkedOutDiv.id = 'checked-out-status';
+                                        checkedOutDiv.textContent = checkedOutMessage;
+
+                                        const isOwnCheckout = checkedOutInfo.user === activeUser.trim();
+                                        checkedOutDiv.style.backgroundColor = isOwnCheckout ? '#007bff' : '#ff4d4d';
+                                        checkedOutDiv.style.color = 'white';
+                                        checkedOutDiv.style.padding = '10px';
+                                        checkedOutDiv.style.borderRadius = '5px';
+                                        checkedOutDiv.style.marginBottom = '10px';
+                                        checkedOutDiv.style.fontSize = '13px';
+                                        checkedOutDiv.style.textAlign = 'center';
+                                        checkedOutDiv.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
+
+                                        // Insert into the left sidebar container
+                                        const sidebar = document.querySelector('#contactsSidebarContainer')
+                                            || document.querySelector('.left-sidebar-container')
+                                            || document.querySelector('#left-sidebar')
+                                            || document.querySelector('.left-sidebar')
+                                            || document.querySelector('.sidebar-container')
+                                            || document.querySelector('[class*="left-sidebar"]');
+
+                                        if (sidebar) {
+                                            sidebar.insertBefore(checkedOutDiv, sidebar.firstChild);
+                                        } else {
+                                            // Fallback: if no sidebar found, append fixed to body
+                                            checkedOutDiv.style.position = 'fixed';
+                                            checkedOutDiv.style.top = '10px';
+                                            checkedOutDiv.style.left = '10px';
+                                            checkedOutDiv.style.zIndex = '1000000';
+                                            document.body.appendChild(checkedOutDiv);
+                                        }
+                                    }
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error fetching client data:', error);
+                            });
+                    } else {
+                        console.error('No clientId found in query parameters');
+                    }
                 }
-                
-                checkedOutDiv.style.color = 'white';
-                checkedOutDiv.style.position = 'fixed'; // Position it fixed on the screen
-                checkedOutDiv.style.top = '10px'; // Align it to the top
-                checkedOutDiv.style.left = '10px'; // Align it to the left
-                checkedOutDiv.style.padding = '10px';
-                checkedOutDiv.style.borderRadius = '5px';
-                checkedOutDiv.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
-                checkedOutDiv.style.zIndex = '1000000';
-                
-                // Append the new div to the body
-                document.body.appendChild(checkedOutDiv);                }
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching client data:', error);
-        });
-} else {
-    console.error('No clientId found in query parameters');
-}                }
             })
             .catch(error => {
                 console.error('Error fetching user role:', error);
@@ -99,11 +112,14 @@ if (loggedInUser) {
         const data = JSON.parse(event.data);
         if (data.redirectUrl) {
             console.log('Redirecting to:', data.redirectUrl);
-            alert('You are being redirected because this profile was released by an administrator.');
-            window.location.href = data.redirectUrl; // Force redirect to the specified URL
+            // Use setTimeout to ensure the alert renders before redirect
+            setTimeout(() => {
+                alert('You are being redirected because this profile was released by an administrator.');
+                window.location.href = data.redirectUrl;
+            }, 100);
         }
     };
-
+    
     ws.onclose = () => {
         console.log('WebSocket connection closed.');
         clearInterval(window.heartbeatInterval); // Stop the heartbeat

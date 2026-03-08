@@ -232,13 +232,14 @@
 
     <div class="left-sidebar-container" id="contactsSidebarContainer">
         <div class="sidebar-header">
-            <h2>Contacts</h2>
-            <div class="button-container">
-                <button id="add-contact-button" onclick="openContactModal()">Add New Contact</button>
+            <div class="button-container" style="flex-direction: column; gap: 8px; margin-bottom: 10px;">
+                <button class="interactive" style="width: 100%; font-size: 0.85rem; font-weight: normal; padding: 8px !important;" onclick="confirmSaveAndRelease()">Save and Release Profile</button>
             </div>
-        </div>
+            <h2>Contacts</h2>
         <div id="contacts-list" class="left-sidebar"></div>
-    </div>
+        <div class="button-container">
+            <button id="add-contact-button" onclick="openContactModal()">Add New Contact</button>
+        </div></div>    </div>
 
     <div id="contactModal" class="contactmodal" style="display: none;">
         <div class="modal-content">

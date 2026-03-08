@@ -148,21 +148,35 @@ ul li a:hover {
 }
 
 .left-sidebar {
-    display: flex; /* Enable Flexbox */
-    flex-direction: column; /* Stack items vertically */
-    border: #000000 1px solid; /* Optional: Border for separation */
-    box-shadow: 5px 0 5px rgba(0, 0, 0.1); /* Optional: Subtle shadow */
-    padding: 10px;
-    align-items: center; /* Center items horizontally */
-    width: 280px; /* Set a fixed width */
-    overflow-y: auto;
-    z-index: 1000; /* Ensure it appears above other content */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    overflow-y: visible;
+    z-index: 1000;
     background-color: #f9f9f9;
-    border-right: 1px solid #000000;
-    padding: 15px;
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-    margin: 0 auto; /* Center horizontally */
-    text-align: center; /* Center all text */
+    padding: 0;
+    margin: 0;
+    text-align: center;
+    border: none;
+    box-shadow: none;
+    border-right: none;
+    gap: 10px;
+}
+
+/* Hide the default arrow on member-level details inside benefit cards */
+.member-details > summary {
+    list-style: none;
+    cursor: pointer;
+}
+
+.member-details > summary::-webkit-details-marker {
+    display: none;
+}
+
+.member-details > summary::marker {
+    display: none;
+    content: '';
 }
         
 .navigation-button.active {

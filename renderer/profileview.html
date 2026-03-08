@@ -198,6 +198,13 @@
     <div class="left-sidebar-container" id="contactsSidebarContainer">
         <div class="sidebar-header">
             <div class="centered-container">
+                <div class="button-container" style="flex-direction: row; gap: 6px; margin-bottom: 10px;">
+                    <button id="checkout-button-top" class="interactive" style="width: 50%; border: 1px solid #000000; border-radius: 5px; font-size: 0.75rem; font-weight: normal; padding: 6px 8px !important; display: none;" onclick="if(confirm('Are you sure you want to check out this profile?')) { GoToProfileEditChecked(); }">Check Out Profile</button>
+                    <button id="log-call-button-top" class="interactive" style="width: 50%; font-size: 0.75rem; font-weight: normal; padding: 6px 8px !important; display: none;" onclick="confirmAndLogCall()">Log New Call</button>
+                    <div class="button-container">
+                        <button id="release-profile-button" class="interactive" style="display: none;" onclick="releaseProfile()">Release Profile</button>
+                    </div><br>
+                </div>
                 <h2>Contacts</h2>
             </div>
         </div>
@@ -229,9 +236,6 @@
     </div>
 
     <h2 id="profileId">Profile: Loading...</h2>
-    <div class="button-container">
-        <button id="release-profile-button" class="interactive" style="display: none;" onclick="releaseProfile()">Release Profile</button>
-    </div><br>
     <p id="terminationStatus" style="color: red; display: none;"><strong>PROFILE TERMINATED</strong></p>
 
     <button id="call-logging-button" class="interactive" onclick="confirmAndLogCall()">Log New Call</button>
@@ -358,11 +362,21 @@
 
         // Button visibility based on checkout status
         const activeUser = sessionStorage.getItem('loggedInUser')?.trim();
+        const isCheckedOut = data.checkedOut?.some(entry => entry.status === true);
         const checkedOutInfo = data.checkedOut?.find(entry => entry.status === true);
 
-        if (checkedOutInfo && checkedOutInfo.user !== activeUser) {
+        if (isCheckedOut) {
+            // Profile IS checked out — hide checkout/log call buttons
+            document.getElementById('checkout-button-top').style.display = 'none';
+            document.getElementById('log-call-button-top').style.display = 'none';
             document.getElementById('call-logging-button').style.display = 'none';
             document.getElementById('profile-edit-button').style.display = 'none';
+        } else {
+            // Profile is NOT checked out — show checkout/log call buttons
+            document.getElementById('checkout-button-top').style.display = '';
+            document.getElementById('log-call-button-top').style.display = '';
+            document.getElementById('call-logging-button').style.display = '';
+            document.getElementById('profile-edit-button').style.display = '';
         }
 
         // Contacts sidebar always visible
@@ -607,35 +621,7 @@
             alert('An error occurred while releasing the profile.');
         }
     }
-
-    // ===== WEBSOCKET =====
-    const ws = new WebSocket(`ws://localhost:8080?username=${sessionStorage.getItem('loggedInUser')}`);
-
-    ws.onopen = () => {
-        console.log('WebSocket connection established.');
-        window.heartbeatInterval = setInterval(() => {
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'ping' }));
-            }
-        }, 30000);
-    };
-
-    ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.redirectUrl) {
-            alert('You have been redirected because the profile was released by another user.');
-            window.location.href = data.redirectUrl;
-        }
-    };
-
-    ws.onclose = () => {
-        clearInterval(window.heartbeatInterval);
-    };
-
-    ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-    };
-
+    
     // ===== INITIALIZATION: Single fetch, then role check =====
     async function initPage() {
         try {
@@ -652,18 +638,18 @@
             const roleData = await roleResponse.json();
             if (roleData.success) {
                 sessionStorage.setItem('userRole', roleData.role);
-                if (roleData.role === 'admin') {
-                    const isCheckedOut = client.checkedOut?.some(entry => entry.status === true);
-                    if (isCheckedOut) {
-                        document.getElementById('release-profile-button').style.display = 'block';
-                    }
+                const isCheckedOut = client.checkedOut?.some(entry => entry.status === true);
+                if (roleData.role === 'admin' && isCheckedOut) {
+                    document.getElementById('release-profile-button').style.display = 'block';
+                } else {
+                    document.getElementById('release-profile-button').style.display = 'none';
                 }
             }
         } catch (error) {
             console.error('Error loading client data:', error);
             alert('Client not found.');
         }
-    }
+    }  
 
     document.addEventListener('DOMContentLoaded', initPage);
     </script>
