@@ -46,15 +46,16 @@ function populateActiveUser() {
                                         checkedOutDiv.textContent = checkedOutMessage;
 
                                         const isOwnCheckout = checkedOutInfo.user === activeUser.trim();
-                                        checkedOutDiv.style.backgroundColor = isOwnCheckout ? '#007bff' : '#ff4d4d';
-                                        checkedOutDiv.style.color = 'white';
+                                        checkedOutDiv.style.backgroundColor = isOwnCheckout ? 'white' : '#ff4d4d';
+                                        checkedOutDiv.style.color = isOwnCheckout ? 'black' : 'white';
                                         checkedOutDiv.style.padding = '10px';
                                         checkedOutDiv.style.borderRadius = '5px';
                                         checkedOutDiv.style.marginBottom = '10px';
                                         checkedOutDiv.style.fontSize = '13px';
                                         checkedOutDiv.style.textAlign = 'center';
                                         checkedOutDiv.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
-
+                                        checkedOutDiv.style.width = '280px';
+                                        checkedOutDiv.style.margin = '0 auto 10px auto';
                                         // Insert into the left sidebar container
                                         const sidebar = document.querySelector('#contactsSidebarContainer')
                                             || document.querySelector('.left-sidebar-container')

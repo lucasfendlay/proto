@@ -167,8 +167,8 @@
             position: fixed;
             top: 0;
             left: 0;
-            width: 100vw;
-            height: 100vh;
+            width: 100%;
+            height: 100%;
             background-color: rgba(0, 0, 0, 0.5);
             z-index: 1000;
             justify-content: center;
@@ -176,17 +176,77 @@
             overflow: hidden;
         }
 
-        .modal-content {
-            background-color: white;
+        .contact-modal-content {
+            background-color: transparent;
             border-radius: 8px;
             width: 90%;
             max-width: 500px;
-            padding: 20px;
+            padding: 30px;
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             text-align: left;
+            animation: contactFadeIn 0.3s ease-in-out;
+        }
+
+        .contact-modal-content label {
+            display: block;
+            margin: 15px 0 5px;
+            font-weight: bold;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .contact-modal-content input,
+        .contact-modal-content select {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease;
+        }
+
+        .contact-modal-content input:focus,
+        .contact-modal-content select:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+
+        .contact-modal-content .button-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
+        .contact-modal-content .button-container button {
+            padding: 10px 20px;
+            border: 1px solid #000;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            font-size: 14px;
+            transition: background-color 0.3s ease;
+        }
+
+        .contact-modal-content .button-container button:hover {
+            background-color: #0056b3;
+        }
+
+        @keyframes contactFadeIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
         }
 
         .error {
@@ -242,7 +302,7 @@
         </div></div>    </div>
 
     <div id="contactModal" class="contactmodal" style="display: none;">
-        <div class="modal-content">
+        <div class="contact-modal-content">
             <form id="contactForm">
                 <h2 id="modal-title">Add Contact</h2>
                 <label for="contactFirstName">First Name:</label>
