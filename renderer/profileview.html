@@ -12,6 +12,14 @@
             max-width: 1200px;
             margin: 60px auto 0;
             padding: 20px;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        body.loaded {
+            visibility: visible;
+            opacity: 1;
         }
 
         .form-field { margin-bottom: 15px; }
@@ -630,10 +638,16 @@
 
             // Admin release button check (uses already-fetched client data)
             const activeUser = sessionStorage.getItem('loggedInUser');
-            if (!activeUser) return;
+            if (!activeUser) {
+                document.body.classList.add('loaded');
+                return;
+            }
 
             const roleResponse = await fetch(`/get-user-role?username=${encodeURIComponent(activeUser)}`);
-            if (!roleResponse.ok) return;
+            if (!roleResponse.ok) {
+                document.body.classList.add('loaded');
+                return;
+            }
 
             const roleData = await roleResponse.json();
             if (roleData.success) {
@@ -645,9 +659,12 @@
                     document.getElementById('release-profile-button').style.display = 'none';
                 }
             }
+
+            document.body.classList.add('loaded');
         } catch (error) {
             console.error('Error loading client data:', error);
             alert('Client not found.');
+            document.body.classList.add('loaded');
         }
     }  
 

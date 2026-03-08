@@ -6,12 +6,23 @@
     <title>Referrals</title>
     <link rel="stylesheet" href="styles.css"> <!-- Assuming a shared stylesheet -->
     <link rel="stylesheet" href="notes.css"> <!-- Assuming a shared stylesheet for notes -->
-    <script src="userInfo.js"></script>
+<!-- ...existing code... -->
+<script src="userInfo.js"></script>
 
-    <style>
+<style>
+    body {
+        visibility: hidden;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    body.loaded {
+        visibility: visible;
+        opacity: 1;
+    }
 
 details > summary {
-    cursor: pointer; /* Change cursor to hand */
+cursor: pointer; /* Change cursor to hand */
 }
         .styled-table {
             width: 100%;
@@ -285,9 +296,11 @@ function populateReferralsTable() {
 document.addEventListener('DOMContentLoaded', () => {
     fetchClientData().then(() => {
         populateReferralsTable();
+        document.body.classList.add('loaded');
     }).catch(() => {
         // If fetching client data fails, still populate the table with all referrals
         populateReferralsTable();
+        document.body.classList.add('loaded');
     });
 });
 
@@ -469,6 +482,7 @@ window.onload = function () {
     toggleSidebarVisibility();
 };
 </script>
+<script src="eligibility-utils.js"></script>
 <script src="estimations.js"></script>
 <script src="editnavigation.js"></script>
 

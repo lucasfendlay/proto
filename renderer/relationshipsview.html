@@ -13,6 +13,17 @@
             cursor: pointer;
         }
 
+        body {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        body.loaded {
+            visibility: visible;
+            opacity: 1;
+        }
+
         .household-member-container {
             display: flex;
             flex-wrap: wrap;
@@ -530,8 +541,10 @@
             renderContacts();
             updateSidebarButtons();
             await checkAdminReleaseButton();
+            document.body.classList.add('loaded');
         } catch (error) {
             console.error('Error loading sidebar client data:', error);
+            document.body.classList.add('loaded');
         }
     }
 

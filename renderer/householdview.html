@@ -18,6 +18,13 @@
             margin: 0 auto;
             padding: 20px;
             margin-top: 60px;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        body.loaded {
+            visibility: visible;
+            opacity: 1;
         }
         .narrow-body {
             margin-left: 385px;
@@ -515,8 +522,10 @@
             renderContacts();
             updateSidebarButtons();
             await checkAdminReleaseButton();
+            document.body.classList.add('loaded');
         } catch (error) {
             console.error('Error loading sidebar client data:', error);
+            document.body.classList.add('loaded');
         }
     }
 

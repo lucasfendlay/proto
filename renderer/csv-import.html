@@ -8,6 +8,16 @@
     <script src="userInfo.js"></script>
 
     <style>
+        body {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        body.loaded {
+            visibility: visible;
+            opacity: 1;
+        }
 
 #loadingIndicator {
     position: fixed;
@@ -59,5 +69,10 @@
 
     <script src="csv-import.js"></script>
     <script src="notes.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            document.body.classList.add('loaded');
+        });
+    </script>
 </body>
 </html>

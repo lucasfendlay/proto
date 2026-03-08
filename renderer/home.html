@@ -5,6 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Home</title>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        body.loaded {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
 </head>
 <body>
     <h1>Prototype Build</h1>
@@ -183,19 +195,22 @@
                 .then(data => {
                     if (data.role === 'admin') {
                         document.getElementById('adminDashboardButton').style.display = 'inline-block';
-                        document.getElementById('clearClientsButton').style.display = 'inline-block'; // Show Clear Clients button for admins
-                        document.querySelector('.create-account').style.display = 'inline-block'; // Show Create Account button for admins
+                        document.getElementById('clearClientsButton').style.display = 'inline-block';
+                        document.querySelector('.create-account').style.display = 'inline-block';
                     } else {
                         console.log('User is not an admin.');
-                        document.getElementById('clearClientsButton').style.display = 'none'; // Hide Clear Clients button for non-admins
-                        document.querySelector('.create-account').style.display = 'none'; // Hide Create Account button for non-admins
+                        document.getElementById('clearClientsButton').style.display = 'none';
+                        document.querySelector('.create-account').style.display = 'none';
                     }
+                    document.body.classList.add('loaded');
                 })
                 .catch(error => {
                     console.error('Error fetching user role:', error);
+                    document.body.classList.add('loaded');
                 });
         } else {
             console.error('No active user found in sessionStorage');
+            document.body.classList.add('loaded');
         }
     }
 

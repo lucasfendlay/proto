@@ -7,6 +7,17 @@
     <link rel="stylesheet" href="styles.css">
     <script src="userInfo.js"></script>
     <style>
+        body {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        body.loaded {
+            visibility: visible;
+            opacity: 1;
+        }
+
         .error {
             border: 2px solid red;
             background-color: #ffe6e6;
@@ -291,6 +302,7 @@
         if (ACTIVE_USER) getEl('Agent').value = ACTIVE_USER;
         getEl('callDirection').addEventListener('change', toggleOutboundFields);
         toggleOutboundFields();
+        document.body.classList.add('loaded');
     });
     </script>
 </body>

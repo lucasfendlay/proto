@@ -1615,12 +1615,12 @@ async function refreshAllDisplays() {
     const container = document.getElementById('household-members-container');
     if (container) container.innerHTML = '';
 
-    // Add a single "Close Screening(s)" button at the top if screening is in progress
-    if (freshClient?.screeningInProgress === true) {
-        const topButtonsDiv = document.createElement('div');
-        topButtonsDiv.id = 'close-screening-top-container';
-        topButtonsDiv.style.cssText = 'text-align: center; margin-bottom: 12px; display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 300px; margin: 0 auto 12px auto;';
+    // Add top buttons always (not just when screening is in progress)
+    const topButtonsDiv = document.createElement('div');
+    topButtonsDiv.id = 'close-screening-top-container';
+    topButtonsDiv.style.cssText = 'text-align: center; margin-bottom: 12px; display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 300px; margin: 0 auto 12px auto;';
 
+    if (freshClient?.screeningInProgress === true) {
         const closeAllBtn = document.createElement('button');
         closeAllBtn.textContent = 'Close Screening(s)';
         closeAllBtn.style.cssText = `
@@ -1643,82 +1643,80 @@ async function refreshAllDisplays() {
             const latestMembers = await loadHouseholdMembers();
             openCloseMemberModal(clientId, latestMembers, null, null, null);
         });
-
-        const saveReleaseBtn = document.createElement('button');
-        saveReleaseBtn.textContent = 'Save and Release Profile';
-        saveReleaseBtn.className = 'interactive';
-        saveReleaseBtn.style.cssText = `
-            width: 100%;
-            font-size: 0.85rem;
-            font-weight: normal;
-            padding: 8px !important;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            padding: 8px !important;
-            font-size: 0.85rem;
-            font-weight: normal;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            width: auto;
-            box-sizing: border-box;
-            flex-shrink: 0;
-        `;
-        saveReleaseBtn.addEventListener('mouseover', () => { saveReleaseBtn.style.backgroundColor = '#0056b3'; });
-        saveReleaseBtn.addEventListener('mouseout', () => { saveReleaseBtn.style.backgroundColor = '#007bff'; });
-        saveReleaseBtn.addEventListener('click', async () => {
-            if (!confirm("Are you sure you want to save and release this profile?")) return;
-
-            const activeUser = sessionStorage.getItem('loggedInUser');
-            if (!activeUser) {
-                console.error("No active user found in sessionStorage.");
-                alert("Error: No active user found.");
-                return;
-            }
-
-            try {
-                // Release checkout
-                await fetch('/update-client', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        clientId: clientId,
-                        clientData: {
-                            checkedOut: [{
-                                status: false,
-                                timestamp: null,
-                                user: null,
-                            }],
-                        },
-                    }),
-                });
-
-                // Add note
-                await fetch('/add-note-to-client', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        clientId: clientId,
-                        note: {
-                            text: "Profile released.",
-                            timestamp: new Date().toLocaleString(),
-                            username: activeUser,
-                        },
-                    }),
-                });
-
-                window.location.href = `profileview.html?id=${clientId}`;
-            } catch (error) {
-                console.error("Error during save and release:", error);
-                alert("An error occurred while saving and releasing the profile.");
-            }
-        });
-
         topButtonsDiv.appendChild(closeAllBtn);
-        topButtonsDiv.appendChild(saveReleaseBtn);
-        container.appendChild(topButtonsDiv);
     }
+
+    const saveReleaseBtn = document.createElement('button');
+    saveReleaseBtn.textContent = 'Save and Release Profile';
+    saveReleaseBtn.className = 'interactive';
+    saveReleaseBtn.style.cssText = `
+        width: 100%;
+        font-size: 0.85rem;
+        font-weight: normal;
+        padding: 8px !important;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        width: auto;
+        box-sizing: border-box;
+        flex-shrink: 0;
+    `;
+    saveReleaseBtn.addEventListener('mouseover', () => { saveReleaseBtn.style.backgroundColor = '#0056b3'; });
+    saveReleaseBtn.addEventListener('mouseout', () => { saveReleaseBtn.style.backgroundColor = '#007bff'; });
+    saveReleaseBtn.addEventListener('click', async () => {
+        if (!confirm("Are you sure you want to save and release this profile?")) return;
+
+        const activeUser = sessionStorage.getItem('loggedInUser');
+        if (!activeUser) {
+            console.error("No active user found in sessionStorage.");
+            alert("Error: No active user found.");
+            return;
+        }
+
+        try {
+            // Release checkout
+            await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId: clientId,
+                    clientData: {
+                        checkedOut: [{
+                            status: false,
+                            timestamp: null,
+                            user: null,
+                        }],
+                    },
+                }),
+            });
+
+            // Add note
+            await fetch('/add-note-to-client', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId: clientId,
+                    note: {
+                        text: "Profile released.",
+                        timestamp: new Date().toLocaleString(),
+                        username: activeUser,
+                    },
+                }),
+            });
+
+            window.location.href = `profileview.html?id=${clientId}`;
+        } catch (error) {
+            console.error("Error during save and release:", error);
+            alert("An error occurred while saving and releasing the profile.");
+        }
+    });
+
+    topButtonsDiv.appendChild(saveReleaseBtn);
+    container.appendChild(topButtonsDiv);
+
     await displaySNAPHouseholds(freshMembers, freshClient);
     await displayLIHEAPHouseholds(freshMembers, freshClient);
     await displayHouseholdMembers(freshMembers);
@@ -3562,6 +3560,21 @@ function createStopScreeningButton() {
         stoppedContainer.id = 'stop-screening-container';
         stoppedContainer.style.cssText = 'margin-bottom: 16px; text-align: left;';
         stoppedContainer.innerHTML = `
+            <div style="text-align: center; margin-bottom: 12px;">
+                <button id="save-release-no-screening-btn" style="
+                    width: auto;
+                    font-size: 0.85rem;
+                    font-weight: normal;
+                    padding: 8px 16px;
+                    background-color: #007bff;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    transition: background-color 0.3s;
+                    box-sizing: border-box;
+                " onmouseover="this.style.backgroundColor='#0056b3'" onmouseout="this.style.backgroundColor='#007bff'">Save and Release Profile</button>
+            </div>
             <div class="household-member-box" style="background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 12px;">
                 <p><strong>No Screening in Progress</strong></p>
                 <button id="reopen-all-screening-btn" style="
@@ -3578,6 +3591,53 @@ function createStopScreeningButton() {
             </div>
         `;
         container.parentNode.insertBefore(stoppedContainer, container);
+
+        // Save and Release handler
+        document.getElementById('save-release-no-screening-btn').addEventListener('click', async () => {
+            if (!confirm("Are you sure you want to save and release this profile?")) return;
+
+            const activeUser = sessionStorage.getItem('loggedInUser');
+            if (!activeUser) {
+                console.error("No active user found in sessionStorage.");
+                alert("Error: No active user found.");
+                return;
+            }
+
+            try {
+                await fetch('/update-client', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        clientId: clientId,
+                        clientData: {
+                            checkedOut: [{
+                                status: false,
+                                timestamp: null,
+                                user: null,
+                            }],
+                        },
+                    }),
+                });
+
+                await fetch('/add-note-to-client', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        clientId: clientId,
+                        note: {
+                            text: "Profile released.",
+                            timestamp: new Date().toLocaleString(),
+                            username: activeUser,
+                        },
+                    }),
+                });
+
+                window.location.href = `profileview.html?id=${clientId}`;
+            } catch (error) {
+                console.error("Error during save and release:", error);
+                alert("An error occurred while saving and releasing the profile.");
+            }
+        });
 
         document.getElementById('reopen-all-screening-btn').addEventListener('click', async () => {
     const confirmAction = confirm("Are you sure you want to start a new screening?");

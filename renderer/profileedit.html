@@ -13,6 +13,14 @@
             max-width: 1200px;
             margin: 60px auto 0;
             padding: 20px;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        body.loaded {
+            visibility: visible;
+            opacity: 1;
         }
 
         details > summary { cursor: pointer; }
@@ -979,8 +987,9 @@
 
     // ===== EVENT LISTENERS (batched saves, no full reload) =====
     function setupFieldListeners() {
-        // Text inputs: queue changes on blur, uppercase display, sync contacts
-        document.querySelectorAll('#clientForm input[type="text"]').forEach(input => {
+    // Text inputs: queue changes on blur, uppercase display, sync contacts
+    document.querySelectorAll('#clientForm input[type="text"]').forEach(input => {
+
             input.addEventListener('blur', async (event) => {
                 const field = event.target.id;
                 let value = event.target.value;
@@ -1029,15 +1038,23 @@
             });
         });
 
-        // Dropdowns: queue changes on change
-        document.querySelectorAll('#clientForm select').forEach(select => {
-            select.addEventListener('change', (event) => {
-                const field = event.target.id;
-                const value = event.target.value || null;
-                queueChange(field, value);
-            });
+    // Dropdowns: queue changes on change
+    document.querySelectorAll('#clientForm select').forEach(select => {
+        select.addEventListener('change', (event) => {
+            const field = event.target.id;
+            const value = event.target.value || null;
+            queueChange(field, value);
         });
-    }
+    });
+
+    // County dropdown: save immediately on selection
+    document.getElementById('county').addEventListener('change', async (event) => {
+        const value = event.target.value || null;
+        pendingChanges['county'] = value;
+        clearTimeout(saveDebounceTimer);
+        await flushChanges();
+    });
+}
 
     // ===== ACTION HANDLERS =====
     async function confirmSaveAndRelease() {
@@ -1316,9 +1333,11 @@ async function confirmAndRedirect() {
         try {
             const data = await fetchClient();
             populateForm(data);
+            document.body.classList.add('loaded');
         } catch (error) {
             console.error('Error loading client data:', error);
             alert('Client not found.');
+            document.body.classList.add('loaded');
         }
     }
 

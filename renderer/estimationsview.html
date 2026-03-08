@@ -334,8 +334,10 @@
                 renderContacts();
                 updateSidebarButtons();
                 await checkAdminReleaseButton();
+                document.body.classList.add('loaded');
             } catch (error) {
                 console.error('Error loading contacts:', error);
+                document.body.classList.add('loaded');
             }
         }
     

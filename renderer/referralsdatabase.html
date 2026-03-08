@@ -9,6 +9,17 @@
     <script src="userInfo.js"></script>
 
     <style>
+        body {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        body.loaded {
+            visibility: visible;
+            opacity: 1;
+        }
+
         .styled-table {
             width: 100%;
             min-width: 960px; /* Minimum width */
@@ -328,9 +339,11 @@ if (activeUser) {
 document.addEventListener('DOMContentLoaded', () => {
     fetchClientData().then(() => {
         populateReferralsTable();
+        document.body.classList.add('loaded');
     }).catch(() => {
         // If fetching client data fails, still populate the table with all referrals
         populateReferralsTable();
+        document.body.classList.add('loaded');
     });
 });
 

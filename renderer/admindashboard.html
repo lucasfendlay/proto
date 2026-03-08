@@ -8,6 +8,17 @@
     <script src="userInfo.js"></script>
 
     <style>
+        body {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        body.loaded {
+            visibility: visible;
+            opacity: 1;
+        }
+
         td[onclick] {
             color: blue;
             cursor: pointer;
@@ -166,8 +177,10 @@ document.getElementById('viewCheckedOutClientsButton').addEventListener('click',
                     option.textContent = user.username;
                     userSelect.appendChild(option);
                 });
+                document.body.classList.add('loaded');
             } catch (error) {
                 console.error('Error fetching users:', error);
+                document.body.classList.add('loaded');
             }
         }
 
@@ -180,25 +193,20 @@ document.getElementById('viewCheckedOutClientsButton').addEventListener('click',
 
         async function generateReport() {
     const user = document.getElementById('userSelect').value;
-    const startDate = new Date(document.getElementById('startDate').value);
-    const endDate = new Date(document.getElementById('endDate').value);
+    const startDateVal = document.getElementById('startDate').value;
+    const endDateVal = document.getElementById('endDate').value;
+    const startDate = startDateVal ? new Date(startDateVal + 'T00:00:00') : null;
+    const endDate = endDateVal ? new Date(endDateVal + 'T23:59:59') : null;
 
     try {
-        // Fetch all clients
         const response = await fetch('/get-all-clients');
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const { clients } = await response.json();
 
-        // Fetch all users
         const usersResponse = await fetch('/get-users');
-        if (!usersResponse.ok) {
-            throw new Error(`HTTP error! status: ${usersResponse.status}`);
-        }
+        if (!usersResponse.ok) throw new Error(`HTTP error! status: ${usersResponse.status}`);
         const users = await usersResponse.json();
 
-        // Filter and process data
         const report = [];
 
         clients.forEach(client => {
@@ -206,14 +214,15 @@ document.getElementById('viewCheckedOutClientsButton').addEventListener('click',
                 client.callLogs.forEach(log => {
                     const logDate = new Date(log.timestamp);
 
-                    // Check if the log matches the selected user and date range
-                    if ((!user || log.agent === user) && new Date(logDate.setDate(logDate.getDate() - 1)) >= startDate && logDate <= endDate) {                        
-                        const agent = users.find(u => u.username === log.agent)?.username || 'Unknown User';
+                    const matchesUser = !user || log.agent === user;
+                    const matchesStart = !startDate || logDate >= startDate;
+                    const matchesEnd = !endDate || logDate <= endDate;
 
-                        // Check if the user already exists in the report
+                    if (matchesUser && matchesStart && matchesEnd) {
+                        const agent = users.find(u => u.username === log.agent)?.username || log.agent || 'Unknown User';
+
                         let existingUser = report.find(row => row.user === agent);
                         if (!existingUser) {
-                            // Add a new user entry
                             existingUser = {
                                 user: agent,
                                 callsLogged: 0,
@@ -228,45 +237,54 @@ document.getElementById('viewCheckedOutClientsButton').addEventListener('click',
                             report.push(existingUser);
                         }
 
-                        // Increment calls logged for each log entry
                         existingUser.callsLogged += 1;
+                    }
+                });
+            }
 
-                        // Increment other metrics cumulatively
-                        existingUser.screeningsStarted += client.notes.filter(note =>
-                            note.text.includes('New screening initiated.')
-                        ).length;
+            // Count notes separately — once per client, filtered by user and date
+            if (client.notes) {
+                client.notes.forEach(note => {
+                    const noteDate = new Date(note.timestamp);
+                    const noteUser = note.username || note.user || note.agent;
 
-                        existingUser.paceApplicationsCompleted += client.notes.filter(note =>
-                            note.text.includes('PACE Application completed.')
-                        ).length;
+                    const matchesUser = !user || noteUser === user;
+                    const matchesStart = !startDate || noteDate >= startDate;
+                    const matchesEnd = !endDate || noteDate <= endDate;
 
-                        existingUser.ptrrApplicationsCompleted += client.notes.filter(note =>
-                            note.text.includes('PTRR Application completed.')
-                        ).length;
+                    if (matchesUser && matchesStart && matchesEnd) {
+                        const agent = users.find(u => u.username === noteUser)?.username || noteUser || 'Unknown User';
 
-                        existingUser.lisApplicationsCompleted += client.notes.filter(note =>
-                            note.text.includes('LIS Application completed.')
-                        ).length;
+                        let existingUser = report.find(row => row.user === agent);
+                        if (!existingUser) {
+                            existingUser = {
+                                user: agent,
+                                callsLogged: 0,
+                                screeningsStarted: 0,
+                                paceApplicationsCompleted: 0,
+                                ptrrApplicationsCompleted: 0,
+                                lisApplicationsCompleted: 0,
+                                mspApplicationsCompleted: 0,
+                                snapApplicationsCompleted: 0,
+                                liheapApplicationsCompleted: 0,
+                            };
+                            report.push(existingUser);
+                        }
 
-                        existingUser.mspApplicationsCompleted += client.notes.filter(note =>
-                            note.text.includes('MSP Application completed.')
-                        ).length;
-
-                        existingUser.snapApplicationsCompleted += client.notes.filter(note =>
-                            note.text.includes('SNAP Application completed.')
-                        ).length;
-
-                        existingUser.liheapApplicationsCompleted += client.notes.filter(note =>
-                            note.text.includes('LIHEAP Application completed.')
-                        ).length;
+                        if (note.text.includes('New screening initiated.')) existingUser.screeningsStarted += 1;
+                        if (note.text.includes('PACE Application completed.')) existingUser.paceApplicationsCompleted += 1;
+                        if (note.text.includes('PTRR Application completed.')) existingUser.ptrrApplicationsCompleted += 1;
+                        if (note.text.includes('LIS Application completed.')) existingUser.lisApplicationsCompleted += 1;
+                        if (note.text.includes('MSP Application completed.')) existingUser.mspApplicationsCompleted += 1;
+                        if (note.text.includes('SNAP Application completed.')) existingUser.snapApplicationsCompleted += 1;
+                        if (note.text.includes('LIHEAP Application completed.')) existingUser.liheapApplicationsCompleted += 1;
                     }
                 });
             }
         });
 
-        // Render the report in the table
         const tableBody = document.querySelector('#reportTable tbody');
-        tableBody.innerHTML = ''; // Clear existing rows
+        tableBody.innerHTML = '';
 
         report.forEach(row => {
     const startDate = document.getElementById('startDate').value; // Get start date
