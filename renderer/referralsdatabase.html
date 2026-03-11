@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Referrals</title>
-    <link rel="stylesheet" href="styles.css"> <!-- Assuming a shared stylesheet -->
-    <link rel="stylesheet" href="notes.css"> <!-- Assuming a shared stylesheet for notes -->
-    <script src="userInfo.js"></script>
-
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="notes.css">
+    <link rel="stylesheet" href="householdedit.css">
+    <link rel="stylesheet" href="incomeedit.css">
     <style>
         body {
             visibility: hidden;
@@ -22,8 +22,8 @@
 
         .styled-table {
             width: 100%;
-            min-width: 960px; /* Minimum width */
-            max-width: 960px; /* Maximum width */
+            min-width: 960px;
+            max-width: 960px;
             border-collapse: collapse;
         }
     
@@ -46,233 +46,120 @@
         .search-bar {
             margin-bottom: 20px;
             width: 100%;
+            max-width: 960px;
             padding: 10px;
             font-size: 16px;
+            box-sizing: border-box;
         }
     </style>
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="notes.css">
-    <link rel="stylesheet" href="householdedit.css">
-    <link rel="stylesheet" href="incomeedit.css">
-    <script src="notes.js"></script>
 </head>
 <body>
     <div class="container">
-
         <button onclick="window.location.href='home.html'">Home</button>
         <button onclick="window.location.href='directory.html'">Directory</button>
-        </div>
+    </div>
 
-        <h1>Referrals</h1>
+    <h1>Referrals</h1>
 
-        <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
-            <div id="household-members-container" class="left-sidebar"></div>
-            <div id="snap-household-container" class="left-sidebar"></div>
-        </div>
+    <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
+        <div id="household-members-container" class="left-sidebar"></div>
+        <div id="snap-household-container" class="left-sidebar"></div>
+    </div>
 
-        <button id="addReferralBtn" onclick="redirectToAddEditPage()">Add Referrals</button>
+    <button id="addReferralBtn" style="display: none;" onclick="redirectToAddEditPage()">Add Referrals</button>
 
-        <script>
-document.addEventListener('DOMContentLoaded', () => {
-    // Retrieve the active user from sessionStorage
-    const activeUser = sessionStorage.getItem('loggedInUser') || ''; // Use the same key as in notes.js
+    <input type="text" id="searchInput" placeholder="Search by name, phone, or needs..." class="search-bar">
+    <table id="referralTable" class="styled-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Needs</th>
+                <th>Benefits</th>
+                <th>Refer</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
 
-    // Debugging: Log the active user to verify
-    console.log('Active User:', activeUser);
-
-    // Target the "Add Referrals" button
-    const addReferralBtn = document.getElementById('addReferralBtn');
-
-    if (activeUser) {
-        // Fetch the user's role from the backend
-        fetch(`/get-user-role?username=${encodeURIComponent(activeUser)}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch user role: ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success && data.role === 'admin') {
-                    addReferralBtn.style.display = 'inline-block'; // Show the button for admin users
-                } else {
-                    addReferralBtn.style.display = 'none'; // Hide the button for non-admin users
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching user role:', error);
-                addReferralBtn.style.display = 'none'; // Hide the button in case of an error
-            });
-    } else {
-        console.error('No active user found in sessionStorage');
-        addReferralBtn.style.display = 'none'; // Hide the button if no user is logged in
-    }
-});
-</script>
-
-        <input type="text" id="searchInput" placeholder="Search by name, phone, or needs..." class="search-bar">
-<table id="referralTable" class="styled-table">
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Phone</th>
-            <th>Needs</th>
-            <th>Benefits</th>
-            <th>Refer</th>
-        </tr>
-    </thead>
-    <tbody>
-        
-        <tr>
-            <td>
-                <a href="#" class="expand-details" onclick="toggleDetails(this)"></a>
-            </td>
-            <td></td>
-            <td><a href="" target="_blank"></a></td>
-            <td></td>
-            <td></td>
-            <td><button class="refer-btn" onclick="refer('PA Department of Human Services')">Refer</button></td>
-        </tr>
-        <tr class="details-row" style="display: none;">
-            <td colspan="6">
-                <p><strong>Details:</strong></p>
-            </td>
-        </tr>
-
-    </tbody>
-</table>
+    <div id="notes-container" style="display: none;">
+        <textarea id="note-input" placeholder="Add Note..."></textarea>
+        <button id="save-note">Save Note</button>
+        <div id="notes-list"></div>
+    </div>
 
 <script>
+let client = {};
 
-    function getQueryParameter(name) {
-        const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get(name);
-        const clientId = getQueryParameter('clientId');
-        
-    }
+function getQueryParam(name) {
+    return new URLSearchParams(window.location.search).get(name);
+}
 
-    document.getElementById('searchInput').addEventListener('input', function () {
-        const filter = this.value.toLowerCase();
-        const rows = document.querySelectorAll('#referralTable tbody tr');
+const CLIENT_ID = getQueryParam('id');
+const HAS_CLIENT = !!CLIENT_ID;
 
-        rows.forEach(row => {
-            const cells = row.querySelectorAll('td');
-            const rowText = Array.from(cells).map(cell => cell.textContent.toLowerCase()).join(' ');
-
-            // Hide rows that don't match the filter
-            row.style.display = rowText.includes(filter) ? '' : 'none';
-
-            // Collapse all details rows
-            if (row.classList.contains('details-row')) {
-                row.style.display = 'none';
-            }
-        });
-    });
-
-    function toggleDetails(link) {
-        const detailsRow = link.closest('tr').nextElementSibling;
-
-        // Check if the clicked details row is already visible
-        const isVisible = detailsRow.style.display === 'table-row';
-
-        // Collapse all other details rows
-        document.querySelectorAll('.details-row').forEach(row => {
-            row.style.display = 'none';
-        });
-
-        // Toggle the visibility of the clicked details row
-        detailsRow.style.display = isVisible ? 'none' : 'table-row';
-    }
-
-</script>
-
-<script>
-
-let client = {}; // Initialize an empty client object
-
-// Function to fetch client data
-// Function to fetch client data
+// Only fetch client data if there's an id in the URL
 function fetchClientData() {
-    // Get the clientId from the URL query parameters
-    const urlParams = new URLSearchParams(window.location.search);
-    const clientId = urlParams.get('id'); // Assuming the clientId is passed as 'id'
-
-    if (!clientId) {
-        console.error('Client ID is missing in the URL.');
-        return Promise.reject('Client ID is missing.');
+    if (!HAS_CLIENT) {
+        console.log('No client ID — showing all referrals.');
+        return Promise.resolve();
     }
 
-    return fetch(`/get-client/${clientId}`)
+    return fetch(`/get-client/${CLIENT_ID}`)
         .then(response => {
-            if (!response.ok) {
-                throw new Error(`Failed to fetch client data: ${response.statusText}`);
-            }
+            if (!response.ok) throw new Error(`Failed to fetch client data: ${response.statusText}`);
             return response.json();
         })
         .then(clientData => {
-            console.log('Fetched client data:', clientData); // Debugging log
             if (clientData && clientData.county) {
-                client = clientData; // Assign the fetched client data
-            } else {
-                throw new Error('Client data is null, undefined, or missing the county property.');
+                client = clientData;
             }
         })
         .catch(error => {
             console.error('Error fetching client data:', error);
-            alert('Failed to load client data. Please contact support.');
         });
 }
 
 function populateReferralsTable() {
     fetch('/get-all-referrals')
         .then(response => {
-            if (!response.ok) {
-                throw new Error(`Failed to fetch referrals: ${response.statusText}`);
-            }
+            if (!response.ok) throw new Error(`Failed to fetch referrals: ${response.statusText}`);
             return response.json();
         })
         .then(referrals => {
             const tableBody = document.querySelector('#referralTable tbody');
-            tableBody.innerHTML = ''; // Clear existing rows
+            tableBody.innerHTML = '';
 
             referrals
                 .filter(referral => {
-                    if (!client || !client.county) {
-                        // If no client or county is available, show all referrals
-                        return true;
-                    }
-                    if (!referral.county) return false; // Skip referrals without a county
+                    if (!client || !client.county) return true;
+                    if (!referral.county) return false;
                     if (Array.isArray(referral.county)) {
-                        // Check if any county in the array matches the client county
                         return referral.county.includes(client.county);
                     }
-                    // For single county strings, check for an exact match
                     return referral.county === client.county;
                 })
                 .forEach(referral => {
-                    // Create a row for the referral
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                        <td>
-                            <a href="#" class="expand-details" onclick="toggleDetails(this)">${referral.name}</a>
-                        </td>
+                        <td><a href="#" class="expand-details" onclick="toggleDetails(this)">${referral.name}</a></td>
                         <td>${referral.phone}</td>
                         <td>${Array.isArray(referral.needs) ? referral.needs.join(', ') : referral.needs}</td>
                         <td>${Array.isArray(referral.benefits) ? referral.benefits.join(', ') : referral.benefits}</td>
                         <td>
+                            ${HAS_CLIENT ? `<button class="refer-btn" onclick="refer('${referral.name.replace(/'/g, "\\'")}')">Refer</button>` : ''}
                             <button class="edit-btn" onclick="redirectToEditPage('${referral.referralId}')" style="display: none;">Edit</button>
                         </td>
                     `;
-                    
-                    // Create a hidden details row
+
                     const detailsRow = document.createElement('tr');
                     detailsRow.classList.add('details-row');
                     detailsRow.style.display = 'none';
                     detailsRow.innerHTML = `
                         <td colspan="5">
                             <p><strong>Details:</strong></p>
-                            ${referral.details 
-                                ? referral.details.split('\n').map(line => `<p>${line}</p>`).join('') 
+                            ${referral.details
+                                ? referral.details.split('\n').map(line => `<p>${line}</p>`).join('')
                                 : '<p>No additional details provided.</p>'}
                             <p><strong>Counties:</strong> ${Array.isArray(referral.county) ? referral.county.join(', ') : referral.county || 'N/A'}</p>
                             <p><strong>Address:</strong> ${referral.address || 'N/A'}</p>
@@ -280,72 +167,34 @@ function populateReferralsTable() {
                         </td>
                     `;
 
-                    // Append the rows to the table
                     tableBody.appendChild(row);
                     tableBody.appendChild(detailsRow);
                 });
 
-// After dynamically adding rows, show or hide the "Edit" buttons
-const activeUser = sessionStorage.getItem('loggedInUser') || ''; // Retrieve the active user from sessionStorage
-
-if (activeUser) {
-    // Fetch the user's role from the backend
-    fetch(`/get-user-role?username=${encodeURIComponent(activeUser)}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Failed to fetch user role: ${response.statusText}`);
+            // Show edit buttons for admins
+            const activeUser = sessionStorage.getItem('loggedInUser') || '';
+            if (activeUser) {
+                fetch(`/get-user-role?username=${encodeURIComponent(activeUser)}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.success && data.role === 'admin') {
+                            document.querySelectorAll('.edit-btn').forEach(btn => btn.style.display = 'inline-block');
+                        }
+                    })
+                    .catch(() => {});
             }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success && data.role === 'admin') {
-                // Show the "Edit" buttons for admin users
-                const editButtons = document.querySelectorAll('.edit-btn');
-                editButtons.forEach(button => {
-                    button.style.display = 'inline-block';
-                });
-            } else {
-                // Hide the "Edit" buttons for non-admin users
-                const editButtons = document.querySelectorAll('.edit-btn');
-                editButtons.forEach(button => {
-                    button.style.display = 'none';
-                });
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching user role:', error);
-            // Hide the "Edit" buttons in case of an error
-            const editButtons = document.querySelectorAll('.edit-btn');
-            editButtons.forEach(button => {
-                button.style.display = 'none';
-            });
-        });
-} else {
-    console.error('No active user found in sessionStorage');
-    // Hide the "Edit" buttons if no user is logged in
-    const editButtons = document.querySelectorAll('.edit-btn');
-    editButtons.forEach(button => {
-        button.style.display = 'none';
-    });
-}
         })
         .catch(error => {
             console.error('Error populating referrals table:', error);
-            alert('Failed to load referrals. Please contact support.');
         });
 }
 
-// Call the function to fetch client data and populate the table when the page loads
-document.addEventListener('DOMContentLoaded', () => {
-    fetchClientData().then(() => {
-        populateReferralsTable();
-        document.body.classList.add('loaded');
-    }).catch(() => {
-        // If fetching client data fails, still populate the table with all referrals
-        populateReferralsTable();
-        document.body.classList.add('loaded');
-    });
-});
+function toggleDetails(link) {
+    const detailsRow = link.closest('tr').nextElementSibling;
+    const isVisible = detailsRow.style.display === 'table-row';
+    document.querySelectorAll('.details-row').forEach(row => row.style.display = 'none');
+    detailsRow.style.display = isVisible ? 'none' : 'table-row';
+}
 
 function redirectToAddEditPage() {
     window.location.href = 'addeditreferrals.html';
@@ -355,203 +204,115 @@ function redirectToEditPage(referralId) {
     window.location.href = `addeditreferrals.html?referralId=${referralId}`;
 }
 
-function toggleDetails(link) {
-    const detailsRow = link.closest('tr').nextElementSibling;
-
-    // Check if the clicked details row is already visible
-    const isVisible = detailsRow.style.display === 'table-row';
-
-    // Collapse all other details rows
-    document.querySelectorAll('.details-row').forEach(row => {
-        row.style.display = 'none';
-    });
-
-    // Toggle the visibility of the clicked details row
-    detailsRow.style.display = isVisible ? 'none' : 'table-row';
-}
-
 function refer(name) {
-    // Ask for confirmation
-    const isConfirmed = confirm(`Are you sure you want to refer to ${name}?`);
-    if (!isConfirmed) {
-        return; // Exit if the user cancels
-    }
+    if (!HAS_CLIENT) return;
+    if (!confirm(`Are you sure you want to refer to ${name}?`)) return;
 
-    // Get the active user from sessionStorage
-    const activeUser = sessionStorage.getItem('loggedInUser') || 'Unknown Agent';
-    const cleanedActiveUser = activeUser.trim();
-
-    // Get the current timestamp
-    const timestamp = new Date().toLocaleString();
-
-    // Prepare the note data
-    const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
+    const activeUser = (sessionStorage.getItem('loggedInUser') || 'Unknown Agent').trim();
     const note = {
-        id: crypto.randomUUID(), // Generate a unique ID for the note
-        text: `Referral provided. \n ${name}.`, // Note content
-        timestamp: timestamp, // Timestamp of the note
-        username: cleanedActiveUser // Associate the note with the logged-in user
+        id: crypto.randomUUID(),
+        text: `Referral provided. \n ${name}.`,
+        timestamp: new Date().toLocaleString(),
+        username: activeUser
     };
 
-    // Save the note using the backend
     fetch('/add-note-to-client', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ clientId, note })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientId: CLIENT_ID, note })
     })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Failed to save referral note: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(result => {
-            console.log('Referral note saved successfully:', result); // Debugging
-            alert(`Referral for ${name} has been successfully logged.`);
-
-            renderNotes(clientId);
-        })
-        .catch(error => {
-            console.error('Error saving referral note:', error);
-            alert('Failed to log the referral. Please try again.');
-        });
-}
-
-function getQueryParam(name) {
-    const urlParams = new URLSearchParams(window.location.search);
-    return urlParams.get(name);
+    .then(response => {
+        if (!response.ok) throw new Error(`Failed to save referral note: ${response.statusText}`);
+        return response.json();
+    })
+    .then(() => {
+        alert(`Referral for ${name} has been successfully logged.`);
+        if (typeof renderNotes === 'function') renderNotes(CLIENT_ID);
+    })
+    .catch(error => {
+        console.error('Error saving referral note:', error);
+        alert('Failed to log the referral. Please try again.');
+    });
 }
 
 async function toggleSidebarVisibility() {
-    const clientId = getQueryParam('id');
-    if (!clientId) {
-        console.error('Client ID is missing in the URL.');
-        return;
-    }
+    if (!HAS_CLIENT) return;
 
     try {
-        // Fetch client data from the backend
-        const response = await fetch(`/get-client/${clientId}`);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch client data: ${response.statusText}`);
-        }
-
-        const client = await response.json();
-        if (client && client.screeningInProgress) {
-            document.getElementById('leftSidebarContainer').style.display = 'block';
-        } else {
-            document.getElementById('leftSidebarContainer').style.display = 'none';
-        }
+        const response = await fetch(`/get-client/${CLIENT_ID}`);
+        if (!response.ok) throw new Error(`Failed to fetch client data: ${response.statusText}`);
+        const clientData = await response.json();
+        document.getElementById('leftSidebarContainer').style.display = clientData?.screeningInProgress ? 'block' : 'none';
     } catch (error) {
         console.error('Error toggling sidebar visibility:', error);
     }
 }
 
-async function renderNotes(clientId) {
-    const notesList = document.getElementById('notes-list');
-    notesList.innerHTML = ''; // Clear the existing notes
-    const notes = await fetchClientNotes(clientId); // Fetch notes from the backend
-    console.log('Rendering notes:', notes); // Debugging line
-
-    // Retrieve and clean the active user from sessionStorage
-    const activeUser = sessionStorage.getItem('loggedInUser') || 'Unknown Agent';
-    const cleanedActiveUser = activeUser.trim();
-
-    notes.slice().reverse().forEach((note, index) => {
-        const noteDiv = document.createElement('div');
-        noteDiv.className = 'note';
-
-        // Use activeUser for comparison
-        const cleanedUsername = note.username || 'Automated Import';
-
-        // Dynamically render the note content and buttons
-        noteDiv.innerHTML = `
-            <p>${note.text}</p>
-            <small>${note.timestamp} by ${cleanedUsername}</small>
-            ${
-                note.text !== 'New screening initiated.' &&
-                note.text !== 'Inbound call logged.' &&
-                note.text !== 'Outbound call logged.' &&
-                note.text !== 'Profile checked out.' &&
-                note.text !== 'Profile released.' &&
-                note.text !== 'Profile terminated.' &&
-                cleanedUsername === cleanedActiveUser
-                    ? `<br>
-                <button class="interactive" onclick="editNote('${clientId}', ${notes.length - 1 - index})">Edit</button>
-                <button class="interactive" onclick="deleteNote('${clientId}', ${notes.length - 1 - index})">Delete</button>
-            `
-                    : ''
-            }
-        `;
-        notesList.appendChild(noteDiv);
+document.getElementById('searchInput').addEventListener('input', function () {
+    const filter = this.value.toLowerCase();
+    const rows = document.querySelectorAll('#referralTable tbody tr');
+    rows.forEach(row => {
+        if (row.classList.contains('details-row')) {
+            row.style.display = 'none';
+            return;
+        }
+        const rowText = Array.from(row.querySelectorAll('td')).map(cell => cell.textContent.toLowerCase()).join(' ');
+        row.style.display = rowText.includes(filter) ? '' : 'none';
     });
+});
+
+// Check admin for add button
+function checkAdminAddButton() {
+    const activeUser = sessionStorage.getItem('loggedInUser') || '';
+    const addReferralBtn = document.getElementById('addReferralBtn');
+    if (!activeUser) { addReferralBtn.style.display = 'none'; return; }
+
+    fetch(`/get-user-role?username=${encodeURIComponent(activeUser)}`)
+        .then(r => r.json())
+        .then(data => {
+            addReferralBtn.style.display = (data.success && data.role === 'admin') ? 'inline-block' : 'none';
+        })
+        .catch(() => { addReferralBtn.style.display = 'none'; });
 }
 
-// Attach editNote and deleteNote functions to the window object
-window.editNote = async function (clientId, index) {
-    console.log('Edit button clicked for note index:', index);
-    // Add your edit logic here
-};
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        checkAdminAddButton();
+        await fetchClientData();
+        populateReferralsTable();
 
-window.deleteNote = async function (clientId, index) {
-    console.log('Delete button clicked for note index:', index);
-    // Add your delete logic here
-};
-
-// Attach renderNotes to the window object
-window.renderNotes = renderNotes;
-
-window.onload = function () {
-    toggleSidebarVisibility();
-};
+        if (HAS_CLIENT) {
+            await toggleSidebarVisibility();
+            document.getElementById('notes-container').style.display = '';
+        }
+    } catch (e) {
+        console.error('Init error:', e);
+    } finally {
+        document.body.classList.add('loaded');
+    }
+});
 </script>
 
 <script>
     function populateActiveUser() {
         const activeUser = sessionStorage.getItem('loggedInUser');
-        if (activeUser) {
-            console.log('Active User:', activeUser); // Debugging
+        if (!activeUser) return;
 
-            // Fetch the user's role from the backend
-            fetch(`/get-user-role?username=${encodeURIComponent(activeUser)}`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success) {
-                        // Display the cleaned username and role in the upper right-hand corner
-                        const userInfoDiv = document.createElement('div');
-                        userInfoDiv.style.position = 'absolute';
-                        userInfoDiv.style.top = '10px';
-                        userInfoDiv.style.right = '10px';
-                        userInfoDiv.style.backgroundColor = '#007bff';
-                        userInfoDiv.style.color = 'white';
-                        userInfoDiv.style.padding = '10px';
-                        userInfoDiv.style.borderRadius = '5px';
-                        userInfoDiv.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
-                        userInfoDiv.textContent = `User: ${activeUser.trim()} | Role: ${data.role}`;
-                        document.body.appendChild(userInfoDiv);
-
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching user role:', error);
-                });
-        } else {
-            console.error('No active user found in sessionStorage');
-        }
+        fetch(`/get-user-role?username=${encodeURIComponent(activeUser)}`)
+            .then(r => r.ok ? r.json() : Promise.reject())
+            .then(data => {
+                if (data.success) {
+                    const userInfoDiv = document.createElement('div');
+                    userInfoDiv.style.cssText = 'position:absolute;top:10px;right:10px;background-color:#007bff;color:white;padding:10px;border-radius:5px;box-shadow:0 2px 5px rgba(0,0,0,0.2);';
+                    userInfoDiv.textContent = `User: ${activeUser.trim()} | Role: ${data.role}`;
+                    document.body.appendChild(userInfoDiv);
+                }
+            })
+            .catch(e => console.error('Error fetching user role:', e));
     }
-
-    // Call the function to populate the active user and conditionally add the button
     populateActiveUser();
 </script>
-
-<script src="estimations.js"></script>
 
 </body>
 </html>

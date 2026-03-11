@@ -126,32 +126,108 @@ margin: 0; /* Remove global margin */
 
         /* Modal styling */
         .contactmodal {
-display: none;
-position: fixed; /* Position relative to the viewport */
-top: 0;
-left: 0;
-width: 100vw; /* Full viewport width */
-height: 100vh; /* Full viewport height */
-background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
-z-index: 1000; /* Ensure it appears above other elements */
-display: flex; /* Use flexbox for centering */
-justify-content: center; /* Center horizontally */
-align-items: center; /* Center vertically */
-overflow: hidden; /* Prevent scrolling */
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .contactmodal.show {
+            display: flex;
+        }
+
+/* Household Member Modal styling */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
 }
 
-.contactmodal-content {
-background-color: transparent;
-border-radius: px;
-width: 90%; /* Adjust width for responsiveness */
-max-width: 500px; /* Limit the modal width */
-padding: 0px;
-position: absolute; /* Position relative to the modal container */
-top: 50%; /* Center vertically */
-left: 46.8%; /* Center horizontally */
-transform: translate(-50%, -50%); /* Adjust for the modal's own dimensions */
-text-align: left;
-}    
+.modal.show {
+    display: flex;
+}
+
+.modal .modal-content {
+    background-color: transparent;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 650px;
+    max-height: 85vh;
+    overflow-y: auto;
+    padding: 20px;
+    position: relative;
+    text-align: left;
+}
+
+.modal .modal-content label {
+    display: block;
+    margin-top: 10px;
+    font-weight: 600;
+}
+
+.modal .modal-content input[type="text"],
+.modal .modal-content input[type="date"],
+.modal .modal-content select {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+.modal .modal-content .submit-button {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    margin-top: 20px;
+    background-color: #28a745; 
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.modal .modal-content .submit-button:hover {
+    background-color: #218838;
+}
+
+.modal .modal-content .selection-box {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.modal .modal-content .selection-box div {
+    display: inline-block;
+    padding: 8px 16px;
+    margin: 4px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.modal .modal-content .selection-box div:hover {
+    background-color: #e6f0ff;
+}
 
 .error {
 border: 2px solid red;
@@ -240,14 +316,15 @@ body {
             }
 
             /* Modal content styling */
-.modal-content {
+            .contactmodal .modal-content {
     background-color: #ffffff;
     border-radius: 10px;
-    width: 100%;
+    width: 90%;
     max-width: 500px;
+    padding: 20px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     position: relative;
-    text-align: center;
+    text-align: left;
 }
 
 .narrow-body {
@@ -310,29 +387,35 @@ body {
 #applications-list {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 10px;
     width: 300px;
     margin: 0 auto;
     max-height: 1000px;
     overflow-y: auto;
-    background-color: #f4f4f4;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 15px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
+    align-items: center;
 }
 
 .application-card {
     background-color: #fff;
     border: 1px solid #ccc;
-    border-radius: 5px;
-    padding: 10px;
+    border-radius: 8px;
+    margin: 0 auto;
+    padding: 15px;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: center;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    align-items: center;
 }
 
 .application-card p {
-    margin: 4px 0;
-    text-align: left;
+    margin: 0 auto;
+    text-align: center;
 }
 
 .application-status {
@@ -358,31 +441,132 @@ body {
     color: #856404;
 }
 
+/* Stop Applying Modal */
+.stop-applying-modal {
+    display: none;
+    position: fixed;
+    color: black;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.stop-applying-modal.show {
+    display: flex;
+}
+
+.stop-applying-modal .modal-content {
+    background-color: #ffffff;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 500px;
+    padding: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    position: relative;
+    text-align: left;
+}
+
+.stop-applying-modal .modal-content h2 {
+    margin-top: 0;
+    color: black;
+}
+
+.stop-applying-modal .modal-content label {
+    display: block;
+    margin-top: 10px;
+    font-weight: 600;
+}
+
+.stop-applying-modal .modal-content select,
+.stop-applying-modal .modal-content textarea {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+.stop-applying-modal .modal-content textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.stop-applying-modal .button-container {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.stop-applying-modal .button-container button {
+    flex: 1;
+    padding: 10px 15px;
+    border: 1px solid #000;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.stop-applying-modal .confirm-stop-btn {
+    background-color: #dc3545;
+    color: white;
+    border-color: #dc3545;
+}
+
+.stop-applying-modal .confirm-stop-btn:hover {
+    background-color: #a71d2a;
+}
+
+.application-card .stop-applying-btn {
+    margin-top: 10px;
+    padding: 6px 12px;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background-color 0.3s ease;
+}
+
+.application-card .stop-applying-btn:hover {
+    background-color: #a71d2a;
+}
+
             </style>
 </head>
 <body class="narrow-body hidden">
 
     <h1>Applicant</h1>
 
-     <!-- Add this container where you want the contacts to appear -->
      <div class="left-sidebar-container" id="contactsSidebarContainer">
         <div class="sidebar-header">
-            <div class="sidebar-toggle">
-                <button id="toggle-contacts-btn" class="toggle-btn active" onclick="showSidebarView('contacts')">Contacts</button>
-                <button id="toggle-applications-btn" class="toggle-btn" onclick="showSidebarView('applications')">Applications</button>
+            <div class="button-container" style="flex-direction: column; gap: 8px; margin-bottom: 10px;">
+                <button class="interactive" style="width: 100%; font-size: 0.85rem; font-weight: normal; padding: 8px !important;" onclick="confirmSaveAndRelease()" onmouseover="this.style.backgroundColor='#0056b3'" onmouseout="this.style.backgroundColor='#007bff'">Save and Release Profile</button>
             </div>
-            <div id="contacts-header-actions" class="button-container">
+            <div class="sidebar-toggle">
+                <button id="toggle-applications-btn" class="toggle-btn active" onclick="showSidebarView('applications')">Applications</button>
+                <button id="toggle-contacts-btn" class="toggle-btn" onclick="showSidebarView('contacts')">Contacts</button>
+            </div>
+            <div id="contacts-header-actions" class="button-container" style="display: none;">
                 <button id="add-contact-button" onclick="openContactModal()">Add New Contact</button>
             </div>
-            <div id="applications-header-actions" class="button-container" style="display: none;">
+            <div id="applications-header-actions" class="button-container">
             </div>
         </div>
-        <div id="contacts-list" class="left-sidebar"></div>
-        <div id="applications-list" class="left-sidebar" style="display: none;"></div>
+        <div id="contacts-list" class="left-sidebar" style="display: none;"></div>
+        <div id="applications-list" style="display: flex;"></div>
     </div>
 
 <!-- Modal for Adding/Editing Contacts -->
-<div id="contactModal" class="contactmodal" style="display: none;">
+<div id="contactModal" class="contactmodal">
     <div class="modal-content">
         <form id="contactForm">
             <h2 id="modal-title">Add Contact</h2>
@@ -407,6 +591,24 @@ body {
                 <button type="button" onclick="closeContactModal()">Cancel</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Modal for Stop Applying / Closeout -->
+<div id="stopApplyingModal" class="stop-applying-modal">
+    <div class="modal-content">
+        <h2>Close Application</h2>
+        <p id="stopApplyingProgramLabel"></p>
+
+        <label for="closeoutReason">Closeout Reason:</label>
+        <select id="closeoutReason">
+            <option value="" disabled selected>Select a closeout reason</option>
+        </select>
+
+        <div class="button-container">
+            <button type="button" onclick="closeStopApplyingModal()">Cancel</button>
+            <button type="button" class="confirm-stop-btn" onclick="confirmStopApplying()">Confirm Close</button>
+        </div>
     </div>
 </div>
     
@@ -1313,6 +1515,52 @@ function getQueryParam(name) {
     }
 }
 
+async function confirmSaveAndRelease() {
+        if (!confirm("Are you sure you want to save and release this profile?")) return;
+
+        const activeUser = sessionStorage.getItem('loggedInUser');
+        if (!activeUser) {
+            console.error("No active user found in sessionStorage.");
+            return;
+        }
+
+        const clientId = getQueryParam('id');
+
+        try {
+            await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId: clientId,
+                    clientData: {
+                        checkedOut: [{
+                            status: false,
+                            timestamp: null,
+                            user: null,
+                        }],
+                    },
+                }),
+            });
+
+            await fetch('/add-note-to-client', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId: clientId,
+                    note: {
+                        text: "Profile released.",
+                        timestamp: new Date().toLocaleString(),
+                        username: activeUser,
+                    },
+                }),
+            });
+
+            window.location.href = `profileview.html?id=${clientId}`;
+        } catch (error) {
+            console.error("Error during save and release:", error);
+        }
+    }
+
 async function loadClientData() {
     const clientId = getQueryParam('id'); // Get the client ID from the URL
 
@@ -2194,7 +2442,7 @@ function renderContacts() {
     });
 }
 
-// Open the modal for adding or editing a contact
+// // Open the modal for adding or editing a contact
 function openContactModal(contact = null, index = null) {
     const modal = document.getElementById('contactModal');
     const modalTitle = document.getElementById('modal-title');
@@ -2216,8 +2464,6 @@ function openContactModal(contact = null, index = null) {
         firstNameInput.value = contact.firstName || '';
         lastNameInput.value = contact.lastName || '';
         const formattedPhone = formatPhoneNumber(contact.phoneNumber);
-        console.log('Raw phone from contact:', contact.phoneNumber, typeof contact.phoneNumber);
-        console.log('Formatted phone:', formattedPhone);
         phoneNumberInput.value = formattedPhone;
         authorizedRepSelect.value = contact.authorizedRepresentative || 'N/A';
         editingContactIndex = index;
@@ -2242,15 +2488,30 @@ function openContactModal(contact = null, index = null) {
         editingContactIndex = null;
     }
 
-    modal.style.display = 'flex';
+    modal.classList.add('show');
 
-    // Re-apply formatted phone after modal is visible to prevent browser clearing the value
+    // Re-apply formatted phone after modal is visible
     if (contact && contact.phoneNumber) {
         setTimeout(() => {
             document.getElementById('contactPhoneNumber').value = formatPhoneNumber(contact.phoneNumber);
         }, 0);
     }
 }
+
+// Close the modal
+function closeContactModal() {
+    const modal = document.getElementById('contactModal');
+    modal.classList.remove('show');
+    editingContactIndex = null;
+}
+
+// Close the modal when clicking outside of it
+window.addEventListener('click', (event) => {
+    const modal = document.getElementById('contactModal');
+    if (event.target === modal) {
+        closeContactModal();
+    }
+});
 
 // Save the contact (add or edit)
 async function saveContact() {
@@ -2398,28 +2659,7 @@ async function deleteContact(index) {
         console.error('Error while deleting contact from the database:', error);
         alert('An error occurred while deleting the contact. Please try again.');
     }
-
-    // Re-render contacts and dropdown
-    renderContacts();
-    populateBestContactDropdown(); // Re-render the dropdown
-    closeContactModal();
 }
-
-// Close the modal
-function closeContactModal() {
-    const modal = document.getElementById('contactModal');
-    modal.style.display = 'none';
-}
-
-// Close the modal when clicking outside of it
-window.addEventListener('click', (event) => {
-    const modal = document.getElementById('contactModal');
-    const modalContent = modal.querySelector('.modal-content');
-    if (event.target === modal && !modalContent.contains(event.target)) {
-        closeContactModal();
-    }
-});
-
 
 // Open the modal for editing a contact by index
 function openContactModalByIndex(index) {
@@ -2467,6 +2707,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         populateFormFields(client);
         renderContacts();
         populateBestContactDropdown();
+        renderApplications();
     } catch (error) {
         console.error('Error loading client data:', error);
     }
@@ -2516,84 +2757,342 @@ function renderApplications() {
         return;
     }
 
-    // Define the program keys to check for applications
+    // Define the program keys in display order
     const programKeys = [
         { key: 'SNAP', label: 'SNAP' },
         { key: 'LIHEAP', label: 'LIHEAP' },
-        { key: 'PTRR', label: 'PTRR' },
-        { key: 'Medicaid', label: 'Medicaid' },
-        { key: 'CHIP', label: 'CHIP' },
-        { key: 'TANF', label: 'TANF' },
-        { key: 'GA', label: 'GA' },
-        { key: 'SBP', label: 'SBP' },
-        { key: 'NSLP', label: 'NSLP' },
+        { key: 'PACE', label: 'PACE' },
+        { key: 'LIS', label: 'LIS' },
+        { key: 'MSP', label: 'MSP' },
+        { key: 'PTRR', label: 'PTRR' }
     ];
 
-    // Collect all applications across all members
-    const applicationsSummary = [];
+    // Define sort order map
+    const sortOrder = { 'SNAP': 0, 'LIHEAP': 1, 'PACE': 2, 'LIS': 3, 'MSP': 4, 'PTRR': 5 };
+
+    // Programs that share a single card with all members grouped together
+    const groupedPrograms = ['SNAP', 'LIHEAP', 'PTRR'];
+
+    let cardsRendered = 0;
+
+    // Collect individual cards (PACE, LIS, MSP)
+    const individualCards = [];
+
+    // Collect grouped program members (SNAP, LIHEAP, PTRR)
+    const groupedMembers = {};
+    groupedPrograms.forEach(key => {
+        groupedMembers[key] = { members: [], hasApplying: false };
+    });
 
     client.householdMembers.forEach((member) => {
         const memberName = `${member.firstName || 'Unknown'} ${member.lastName || ''}`.trim();
 
         programKeys.forEach(({ key, label }) => {
+            if (groupedPrograms.includes(key)) {
+                // Grouped programs: collect members
+                const programData = member[key];
+                const hasActiveApp = programData && programData.application && Array.isArray(programData.application) &&
+                    programData.application.some(app => app.applying === true);
+
+                if (key === 'PTRR') {
+                    const hasPreviousSpouse = !!member.previousSpouseId;
+                    if (hasActiveApp || hasPreviousSpouse) {
+                        if (hasActiveApp) groupedMembers[key].hasApplying = true;
+                        if (!groupedMembers[key].members.some(m => m.name === memberName)) {
+                            groupedMembers[key].members.push({ name: memberName });
+                        }
+                    }
+                } else {
+                    if (hasActiveApp) {
+                        groupedMembers[key].hasApplying = true;
+                        if (!groupedMembers[key].members.some(m => m.name === memberName)) {
+                            groupedMembers[key].members.push({ name: memberName });
+                        }
+                    }
+                }
+                return;
+            }
+
+            // Individual programs: one card per member per program (PACE, LIS, MSP)
             const programData = member[key];
             if (programData && programData.application && Array.isArray(programData.application)) {
                 programData.application.forEach((app) => {
-                    applicationsSummary.push({
-                        memberName,
-                        program: label,
-                        applying: app.applying,
-                        status: app.status || null,
+                    if (app.applying !== true) return;
+
+                    individualCards.push({
+                        programKey: key,
+                        label: label,
+                        memberName: memberName
                     });
                 });
             }
         });
     });
 
-    if (applicationsSummary.length === 0) {
-        applicationsContainer.innerHTML = '<p>No applications found.</p>';
+    // Sort individual cards by program order
+    individualCards.sort((a, b) => sortOrder[a.programKey] - sortOrder[b.programKey]);
+
+    // Build all cards in order: grouped + individual, sorted by program order
+    const allCards = [];
+
+    // Add grouped program cards
+    groupedPrograms.forEach(key => {
+        const group = groupedMembers[key];
+        if (group.hasApplying && group.members.length > 0) {
+            const label = programKeys.find(p => p.key === key).label;
+            const membersList = group.members.map(m => m.name).join('<br>');
+            allCards.push({
+                programKey: key,
+                html: `
+                    <p><strong>${label}</strong></p><br>
+                    <p><span class="application-status applying">Applying</span></p><br>
+                    <p><strong>Member(s):</strong><br>${membersList}</p>
+                    <button class="stop-applying-btn" onclick="openStopApplyingModal('${label}', '${key}')">Stop Applying</button>
+                `
+            });
+        }
+    });
+
+    // Add individual cards
+    individualCards.forEach(({ programKey, label, memberName }) => {
+        allCards.push({
+            programKey: programKey,
+            html: `
+                <p><strong>${label}</strong></p><br>
+                <p><span class="application-status applying">Applying</span></p><br>
+                <p><strong>Member:</strong><br>${memberName}</p>
+                <button class="stop-applying-btn" onclick="openStopApplyingModal('${label}', '${programKey}')">Stop Applying</button>
+            `
+        });
+    });
+
+    // Sort all cards by program order
+    allCards.sort((a, b) => sortOrder[a.programKey] - sortOrder[b.programKey]);
+
+    // Render all cards
+    allCards.forEach(({ html }) => {
+        const card = document.createElement('div');
+        card.classList.add('application-card');
+        card.innerHTML = html;
+        applicationsContainer.appendChild(card);
+        cardsRendered++;
+    });
+
+    if (cardsRendered === 0) {
+        applicationsContainer.innerHTML = '<p>No Applications in Progress</p>';
+    }
+}
+
+// === CLOSEOUT REASONS (matching estimations.js) ===
+
+function getCloseoutReasonsForProgram(programKey) {
+    const commonReasons = [
+        { value: "Not Interested", label: "Not Interested" },
+        { value: "Too Confusing", label: "Too Confusing" },
+        { value: "Will Call Back", label: "Will Call Back" },
+        { value: "Client Disconnected", label: "Client Unresponsive" },
+    ];
+
+    const benefitReasons = {
+        'SNAP': [
+        { value: "Low EBA", label: "Low EBA" },
+            ...commonReasons,
+        ],
+        'LIHEAP': [
+            ...commonReasons,
+        ],
+        'PACE': [
+            ...commonReasons,
+        ],
+        'LIS': [
+            ...commonReasons,
+        ],
+        'MSP': [
+            ...commonReasons,
+        ],
+        'PTRR': [
+            ...commonReasons,
+        ],
+    };
+
+    return benefitReasons[programKey] || commonReasons;
+}
+
+// Track which program is being stopped
+let stopApplyingProgram = null;
+let stopApplyingProgramKey = null;
+
+function openStopApplyingModal(program, programKey) {
+    stopApplyingProgram = program;
+    stopApplyingProgramKey = programKey;
+
+    const modal = document.getElementById('stopApplyingModal');
+    const label = document.getElementById('stopApplyingProgramLabel');
+    label.innerHTML = `<strong>Program:</strong> ${program}`;
+
+    // Populate the closeout reason dropdown with program-specific reasons
+    const reasonSelect = document.getElementById('closeoutReason');
+    const reasons = getCloseoutReasonsForProgram(programKey);
+    reasonSelect.innerHTML = '<option value="" disabled selected>Select a reason</option>';
+    reasons.forEach(reason => {
+        const option = document.createElement('option');
+        option.value = reason.value;
+        option.textContent = reason.label;
+        reasonSelect.appendChild(option);
+    });
+
+    modal.classList.add('show');
+}
+
+function closeStopApplyingModal() {
+    const modal = document.getElementById('stopApplyingModal');
+    modal.classList.remove('show');
+    stopApplyingProgram = null;
+    stopApplyingProgramKey = null;
+}
+
+// Close modal when clicking outside
+window.addEventListener('click', (event) => {
+    const stopModal = document.getElementById('stopApplyingModal');
+    if (event.target === stopModal) {
+        closeStopApplyingModal();
+    }
+});
+
+async function confirmStopApplying() {
+    const closeoutReason = document.getElementById('closeoutReason').value;
+
+    if (!closeoutReason) {
+        alert('Please select a closeout reason.');
         return;
     }
 
-    // Group by program
-    const grouped = {};
-    applicationsSummary.forEach((app) => {
-        if (!grouped[app.program]) {
-            grouped[app.program] = [];
+    if (!client || !client.householdMembers || !stopApplyingProgramKey) {
+        alert('Error: Missing client data or program information.');
+        return;
+    }
+
+    const clientId = getQueryParam('id');
+    if (!clientId) {
+        console.error('Client ID not found.');
+        return;
+    }
+
+    try {
+        const affectedMembers = [];
+
+        // Update each household member that has this program as applying
+        for (const member of client.householdMembers) {
+            const programData = member[stopApplyingProgramKey];
+            if (programData && programData.application && Array.isArray(programData.application)) {
+                let changed = false;
+                programData.application.forEach((app) => {
+                    if (app.applying === true) {
+                        app.applying = false;
+                        app.status = 'Closed';
+                        app.closeoutDate = new Date().toISOString();
+                        changed = true;
+                    }
+                });
+
+                if (changed) {
+                    affectedMembers.push(`${member.firstName || 'Unknown'} ${member.lastName || ''}`);
+                }
+            }
         }
-        grouped[app.program].push(app);
-    });
 
-    Object.entries(grouped).forEach(([program, apps]) => {
-        const programCard = document.createElement('div');
-        programCard.classList.add('application-card');
-
-        const applyingMembers = apps.filter(a => a.applying === true);
-        const notApplyingMembers = apps.filter(a => a.applying === false);
-
-        let statusClass = 'unknown';
-        let statusText = 'No Data';
-
-        if (applyingMembers.length > 0) {
-            statusClass = 'applying';
-            statusText = 'Applying';
-        } else if (notApplyingMembers.length > 0) {
-            statusClass = 'not-applying';
-            statusText = 'Not Applying';
+        // Also close the screening for this benefit on all members
+        for (const member of client.householdMembers) {
+            if (member[stopApplyingProgramKey]) {
+                member[stopApplyingProgramKey].screeningInProgress = false;
+                member[stopApplyingProgramKey].screeningCloseReason = closeoutReason;
+            }
         }
 
-        const memberNames = applyingMembers.length > 0
-            ? applyingMembers.map(a => a.memberName).join(', ')
-            : 'None';
+        // Save all updated household members
+        const saveResponse = await fetch('/save-household-members', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, householdMembers: client.householdMembers }),
+        });
 
-        programCard.innerHTML = `
-            <p><strong>${program}</strong></p>
-            <p><span class="application-status ${statusClass}">${statusText}</span></p>
-            ${applyingMembers.length > 0 ? `<p><strong>Members:</strong><br>${memberNames}</p>` : ''}
-        `;
+        if (!saveResponse.ok) {
+            console.error(`Failed to save household members for program ${stopApplyingProgramKey}`);
+            alert('Failed to save changes. Please try again.');
+            return;
+        }
 
-        applicationsContainer.appendChild(programCard);
-    });
+        // Update client-level program status
+        const programStatus = client.programStatus || {};
+        programStatus[stopApplyingProgramKey] = {
+            screeningInProgress: false,
+            screeningCloseReason: closeoutReason
+        };
+
+        const updateResponse = await fetch('/update-client', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                clientId,
+                clientData: { programStatus }
+            })
+        });
+
+        if (!updateResponse.ok) {
+            console.error(`Failed to update client program status for ${stopApplyingProgramKey}`);
+        }
+
+        // Build and save the closeout note
+        const memberList = affectedMembers.length > 0 ? affectedMembers.join(', ') : 'N/A';
+        let noteText = `<strong>${stopApplyingProgram} application closed.</strong><br><br>`;
+        noteText += `<strong>Members:</strong> ${memberList}<br><br>`;
+        noteText += `<strong>Reason:</strong> ${closeoutReason}`;
+
+        await saveCloseoutNote(clientId, noteText);
+
+        console.log(`Successfully closed ${stopApplyingProgram} application. Reason: ${closeoutReason}`);
+
+        // Re-render the applications sidebar
+        renderApplications();
+        closeStopApplyingModal();
+
+    } catch (error) {
+        console.error('Error stopping application:', error);
+        alert('An error occurred while stopping the application. Please try again.');
+    }
+}
+
+async function saveCloseoutNote(clientId, noteText) {
+    try {
+        const activeUser = sessionStorage.getItem('loggedInUser') || 'Unknown User';
+        const timestamp = new Date().toLocaleString();
+
+        const note = {
+            text: noteText,
+            timestamp: timestamp,
+            username: activeUser
+        };
+
+        const response = await fetch('/add-note-to-client', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, note }),
+        });
+
+        if (response.ok) {
+            console.log('Closeout note saved successfully.');
+            // Refresh the notes list if the function exists
+            if (typeof window.renderNotes === 'function') {
+                await window.renderNotes(clientId);
+            } else if (typeof loadNotes === 'function') {
+                loadNotes();
+            }
+        } else {
+            console.error('Failed to save closeout note.');
+        }
+    } catch (error) {
+        console.error('Error saving closeout note:', error);
+    }
 }
     </script>
 

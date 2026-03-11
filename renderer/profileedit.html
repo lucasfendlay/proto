@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Client Profile</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="householdedit.css">
+    <link rel="stylesheet" href="incomeedit.css">
     <link rel="stylesheet" href="notes.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 
@@ -127,36 +129,49 @@
 
         .selection-box select option { padding: 10px; }
 
-        .sidebar-header {
-            display: fixed;
-            justify-items: center;
-            text-align: center;
-            margin-bottom: 20px;
-            width: 300px;
-            margin: 0 auto;
+        /* Sidebar toggle buttons - matching currentenrollmentsedit.html */
+        .sidebar-toggle {
+            display: flex;
+            gap: 0;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #007bff;
+            width: 100%;
         }
 
-        .sidebar-header .button-container {
-            display: flex;
-            justify-content: center;
-            width: 100%;
+        .toggle-btn {
+            flex: 1;
+            padding: 8px 16px;
+            border: none;
+            background-color: #fff;
+            color: #007bff;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        .toggle-btn.active {
+            background-color: #007bff;
+            color: #fff;
+        }
+
+        .toggle-btn:hover:not(.active) {
+            background-color: #e6f0ff;
         }
 
         #contacts-list {
             display: flex;
             flex-direction: column;
             gap: 15px;
-            width: 100%;
+            width: 300px;
             margin: 0 auto;
             max-height: 1000px;
             overflow-y: auto;
             background-color: #f4f4f4;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 15px;
-            box-sizing: border-box;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }   
+        }
 
         .contact-card {
             background-color: #fff;
@@ -182,87 +197,49 @@
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100vh;
             background-color: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
+            z-index: 9999;
             justify-content: center;
             align-items: center;
             overflow: hidden;
         }
 
-        .contact-modal-content {
-            background-color: transparent;
-            border-radius: 8px;
+        .contactmodal.show {
+            display: flex;
+        }
+
+        .contactmodal .modal-content {
+            background: transparent;
+            border-radius: 10px;
             width: 90%;
             max-width: 500px;
-            padding: 30px;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
             text-align: left;
-            animation: contactFadeIn 0.3s ease-in-out;
+            position: relative;
+            z-index: 10000;
             box-shadow: none;
+            padding: 0;
         }
 
-        .contact-modal-content label {
+        .contactmodal .modal-content label {
             display: block;
-            margin: 15px 0 5px;
-            font-weight: bold;
-            font-size: 14px;
-            color: #333;
+            margin-top: 10px;
+            font-weight: 600;
         }
 
-        .contact-modal-content input,
-        .contact-modal-content select {
+        .contactmodal .modal-content input,
+        .contactmodal .modal-content select {
             width: 100%;
-            padding: 12px;
-            margin-bottom: 20px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 16px;
+            padding: 8px;
+            margin-top: 4px;
             box-sizing: border-box;
-            transition: border-color 0.3s ease;
-        }
-
-        .contact-modal-content input:focus,
-        .contact-modal-content select:focus {
-            border-color: #4CAF50;
-            outline: none;
-        }
-
-        .contact-modal-content .button-container {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-top: 15px;
-        }
-
-        .contact-modal-content .button-container button {
-            padding: 10px 20px;
-            border: 1px solid #000;
+            border: 1px solid #ccc;
             border-radius: 5px;
-            cursor: pointer;
-            background-color: #007bff;
-            color: white;
-            font-size: 14px;
-            transition: background-color 0.3s ease;
         }
 
-        .contact-modal-content .button-container button:hover {
-            background-color: #0056b3;
-        }
-
-        @keyframes contactFadeIn {
-            from {
-                opacity: 0;
-                transform: translate(-50%, -50%) scale(0.9);
-            }
-            to {
-                opacity: 1;
-                transform: translate(-50%, -50%) scale(1);
-            }
+        .contactmodal .button-container {
+            margin-top: 15px;
         }
 
         .error {
@@ -306,35 +283,50 @@
         <div id="notes-list"></div>
     </div>
 
-    <div class="left-sidebar-container" id="contactsSidebarContainer">
+    <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
         <div class="sidebar-header">
             <div class="button-container" style="flex-direction: column; gap: 8px; margin-bottom: 10px;">
-                <button class="interactive" style="width: 100%; font-size: 0.85rem; font-weight: normal; padding: 8px !important;" onclick="confirmSaveAndRelease()">Save and Release Profile</button>
+                <button class="interactive" style="width: 100%; font-size: 0.85rem; font-weight: normal; padding: 8px !important;" onclick="confirmSaveAndRelease()" onmouseover="this.style.backgroundColor='#0056b3'" onmouseout="this.style.backgroundColor='#007bff'">Save and Release Profile</button>
             </div>
-            <h2>Contacts</h2>
+            <div class="sidebar-toggle">
+                <button id="toggle-screening-btn" class="toggle-btn" onclick="showSidebarView('screening')">Screening</button>
+                <button id="toggle-contacts-btn" class="toggle-btn active" onclick="showSidebarView('contacts')">Contacts</button>
+            </div>
+            <div id="screening-header-actions" class="button-container"></div>
+            <div id="contacts-header-actions" class="button-container" style="display: none;"></div>
         </div>
-        <div id="contacts-list"></div>
-        <div class="button-container">
-            <button id="add-contact-button" onclick="openContactModal()">Add New Contact</button>
-        </div>
+
+        <div id="household-members-container" class="left-sidebar"></div>
+        <div id="snap-household-container" class="left-sidebar"></div>
+        <div id="liheap-household-container" class="left-sidebar"></div>
+        <div id="stop-screening-container"></div>
+
+        <!-- Contacts panel -->
+        <div id="contacts-list" style="display: none;"></div>
+        <button id="add-contact-button" onclick="openContactModal()" style="display: none;">Add New Contact</button>
     </div>
 
-    <div id="contactModal" class="contactmodal" style="display: none;">
-        <div class="contact-modal-content">
+    <!-- Contact Modal matching currentenrollmentsedit.html -->
+    <div id="contactModal" class="contactmodal">
+        <div class="modal-content">
             <form id="contactForm">
-                <h2 id="modal-title">Add Contact</h2>
+                <h2 id="contact-modal-title">Add Contact</h2>
                 <label for="contactFirstName">First Name:</label>
                 <input type="text" id="contactFirstName" required>
+
                 <label for="contactLastName">Last Name:</label>
                 <input type="text" id="contactLastName" required>
+
                 <label for="contactPhoneNumber">Phone Number:</label>
                 <input type="text" id="contactPhoneNumber" required>
+
                 <label for="authorizedRepresentative">Authorized Representative:</label>
                 <select id="authorizedRepresentative">
                     <option value="N/A" selected>N/A</option>
                     <option value="yes">Yes</option>
                     <option value="no">No</option>
                 </select>
+
                 <div class="button-container">
                     <button type="button" onclick="saveContact()">Save</button>
                     <button type="button" onclick="closeContactModal()">Cancel</button>
@@ -348,12 +340,6 @@
 
     <div id="screening-banner" style="display: none; background-color: #007bff; color: white; width: 10000px; text-align: center; padding: 12px; font-size: 1.1rem; font-weight: bold; z-index: 1; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
         Open Screening in Progress
-    </div>
-
-    <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
-        <div id="snap-household-container" class="left-sidebar"></div>
-        <div id="liheap-household-container" class="left-sidebar"></div>
-        <div id="household-members-container" class="left-sidebar"></div>
     </div>
 
     <form id="clientForm" class="centered-form">
@@ -501,14 +487,98 @@
     </ul>
     <button id="terminate-button" class="interactive" onclick="confirmAndTerminate()">Terminate Profile</button>
 
+    <!-- Load estimations.js so sidebar benefit containers are populated -->
+    <script src="eligibility-utils.js"></script>
+    <script src="estimations.js"></script>
+
     <script>
     // ===== GLOBALS =====
     let client = {};
     let editingContactIndex = null;
+    let cachedClient = null;
     let pendingChanges = {};
     let saveDebounceTimer = null;
     const SAVE_DEBOUNCE_MS = 1500;
     const CLIENT_ID = new URLSearchParams(window.location.search).get('id');
+
+    // ===== SIDEBAR TOGGLE =====
+    // ── Sidebar toggle between Screening and Contacts ──
+    async function showSidebarView(view) {
+        const screeningList = document.getElementById('household-members-container');
+        const contactsList = document.getElementById('contacts-list');
+        const screeningBtn = document.getElementById('toggle-screening-btn');
+        const contactsBtn = document.getElementById('toggle-contacts-btn');
+        const screeningHeaderActions = document.getElementById('screening-header-actions');
+        const contactsHeaderActions = document.getElementById('contacts-header-actions');
+        const addContactBtn = document.getElementById('add-contact-button');
+        const snapContainer = document.getElementById('snap-household-container');
+        const liheapContainer = document.getElementById('liheap-household-container');
+        const stopScreeningContainer = document.getElementById('stop-screening-container');
+
+        // Hide everything first
+        screeningList.style.display = 'none';
+        contactsList.style.display = 'none';
+        screeningHeaderActions.style.display = 'none';
+        contactsHeaderActions.style.display = 'none';
+        addContactBtn.style.display = 'none';
+        if (snapContainer) snapContainer.style.display = 'none';
+        if (liheapContainer) liheapContainer.style.display = 'none';
+        if (stopScreeningContainer) stopScreeningContainer.style.display = 'none';
+
+        if (view === 'screening') {
+            screeningBtn.classList.add('active');
+            contactsBtn.classList.remove('active');
+
+            // Check if screening is actually in progress before showing benefit cards
+            const clientId = getQueryParam('id');
+            let screeningActive = false;
+            try {
+                const res = await fetch(`/get-client/${clientId}`);
+                if (res.ok) {
+                    const client = await res.json();
+                    screeningActive = client?.screeningInProgress === true;
+                }
+            } catch (e) {
+                console.error('Error checking screening status:', e);
+            }
+
+            requestAnimationFrame(() => {
+                screeningList.style.display = screeningActive ? '' : 'none';
+                screeningHeaderActions.style.display = 'flex';
+                if (snapContainer) snapContainer.style.display = screeningActive ? '' : 'none';
+                if (liheapContainer) liheapContainer.style.display = screeningActive ? '' : 'none';
+                if (stopScreeningContainer) stopScreeningContainer.style.display = '';
+            });
+        } else if (view === 'contacts') {
+            screeningBtn.classList.remove('active');
+            contactsBtn.classList.add('active');
+
+            // Render contacts first, then reveal once ready
+            renderContacts().then(() => {
+                requestAnimationFrame(() => {
+                    contactsList.style.display = 'flex';
+                    addContactBtn.style.display = '';
+                    // Ensure screening containers stay hidden (estimations.js may have rendered them)
+                    screeningList.style.display = 'none';
+                    if (snapContainer) snapContainer.style.display = 'none';
+                    if (liheapContainer) liheapContainer.style.display = 'none';
+                    if (stopScreeningContainer) stopScreeningContainer.style.display = 'none';
+                    screeningHeaderActions.style.display = 'none';
+                });
+            }).catch(() => {
+                // Still show the tab even if rendering fails
+                requestAnimationFrame(() => {
+                    contactsList.style.display = 'flex';
+                    addContactBtn.style.display = '';
+                    screeningList.style.display = 'none';
+                    if (snapContainer) snapContainer.style.display = 'none';
+                    if (liheapContainer) liheapContainer.style.display = 'none';
+                    if (stopScreeningContainer) stopScreeningContainer.style.display = 'none';
+                    screeningHeaderActions.style.display = 'none';
+                });
+            });
+        }
+    }
 
     // ===== UTILITIES =====
     function formatPhoneNumber(phone) {
@@ -519,6 +589,10 @@
             return `(${digits.substring(0, 3)})-${digits.substring(3, 6)}-${digits.substring(6)}`;
         }
         return String(phone).trim();
+    }
+
+    function getQueryParam(name) {
+        return new URLSearchParams(window.location.search).get(name);
     }
 
     function fieldsMatchCount(a, b) {
@@ -539,6 +613,13 @@
         });
         if (!response.ok) throw new Error(`Failed to fetch client: ${response.statusText}`);
         return response.json();
+    }
+
+    async function fetchClientData() {
+        const response = await fetch(`/get-client/${CLIENT_ID}`);
+        if (!response.ok) throw new Error(response.statusText);
+        cachedClient = await response.json();
+        return cachedClient;
     }
 
     // ===== BATCHED SAVE: Collect changes and flush in one PUT =====
@@ -569,13 +650,11 @@
         }
     }
 
-    // Force immediate save (used before navigation)
     async function flushChangesImmediate() {
         clearTimeout(saveDebounceTimer);
         await flushChanges();
     }
 
-    // Full client save from form (used before redirects)
     function collectFormData() {
         return {
             firstName: document.getElementById('firstName').value,
@@ -612,34 +691,28 @@
         }
     }
 
-        // ===== POPULATE UI FROM CLIENT DATA (no fetch) =====
-        function checkForOpenScreening(data) {
+    // ===== CHECK FOR OPEN SCREENING =====
+    function checkForOpenScreening(data) {
         const allBenefits = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
-
-        // Check household members for any benefit screeningInProgress
         const members = data.householdMembers || [];
         for (const member of members) {
             for (const benefit of allBenefits) {
-                if (member[benefit]?.screeningInProgress === true) {
-                    return true;
-                }
+                if (member[benefit]?.screeningInProgress === true) return true;
             }
         }
-
-        // Check client-level programStatus for SNAP/LIHEAP screeningInProgress
         const programStatus = data.programStatus || {};
         if (programStatus.SNAP?.screeningInProgress === true) return true;
         if (programStatus.LIHEAP?.screeningInProgress === true) return true;
-
         return false;
     }
 
-    // ===== POPULATE UI FROM CLIENT DATA (no fetch) =====
+    // ===== POPULATE UI FROM CLIENT DATA =====
     function populateForm(data) {
         client = data;
+        cachedClient = data;
 
-                // Check for open screening and show banner
-                const banner = document.getElementById('screening-banner');
+        // Check for open screening and show banner
+        const banner = document.getElementById('screening-banner');
         const hasOpenScreening = checkForOpenScreening(data);
         if (hasOpenScreening) {
             banner.style.display = 'block';
@@ -667,9 +740,9 @@
         // Screening button
         document.getElementById('call-logging-button').style.display = data.screeningInProgress ? 'none' : 'block';
 
-        // Contacts sidebar always visible; screenings sidebar never shown on this page
-        document.getElementById('contactsSidebarContainer').style.display = 'block';
-        document.getElementById('leftSidebarContainer').style.display = 'none';
+        // Show sidebar
+        document.getElementById('leftSidebarContainer').style.display = 'block';
+
         // Form fields
         document.getElementById('firstName').value = (data.firstName || '').toUpperCase();
         document.getElementById('lastName').value = (data.lastName || '').toUpperCase();
@@ -702,8 +775,27 @@
         // Interaction tracker
         populateInteractions(data.callLogs);
 
-        // Contacts
-        renderContacts();
+        // Default sidebar to contacts view
+        showSidebarView('contacts');
+
+        // Re-enforce contacts view after estimations.js finishes rendering
+        // (estimations.js runs async and may show screening containers after showSidebarView)
+        setTimeout(() => {
+            const contactsBtn = document.getElementById('toggle-contacts-btn');
+            if (contactsBtn && contactsBtn.classList.contains('active')) {
+                const screeningList = document.getElementById('household-members-container');
+                const snapContainer = document.getElementById('snap-household-container');
+                const liheapContainer = document.getElementById('liheap-household-container');
+                const stopScreeningContainer = document.getElementById('stop-screening-container');
+                const screeningHeaderActions = document.getElementById('screening-header-actions');
+
+                if (screeningList) screeningList.style.display = 'none';
+                if (snapContainer) snapContainer.style.display = 'none';
+                if (liheapContainer) liheapContainer.style.display = 'none';
+                if (stopScreeningContainer) stopScreeningContainer.style.display = 'none';
+                if (screeningHeaderActions) screeningHeaderActions.style.display = 'none';
+            }
+        }, 500);
     }
 
     function setSelectionBox(containerSelector, value) {
@@ -746,33 +838,11 @@
         list.appendChild(fragment);
     }
 
-    // ===== CONTACTS =====
-    function renderContacts() {
-        const container = document.getElementById('contacts-list');
-        container.innerHTML = '';
-
-        if (!client.Contacts || client.Contacts.length === 0) {
-            container.innerHTML = '<p>No contacts available.</p>';
-            return;
-        }
-
-        const fragment = document.createDocumentFragment();
-        client.Contacts.forEach((contact, index) => {
-            const div = document.createElement('div');
-            div.classList.add('contact-card');
-            div.innerHTML = `
-                <p><strong>Name:</strong><br> ${(contact.firstName || 'N/A').toUpperCase()} ${(contact.lastName || 'N/A').toUpperCase()}</p>
-                <p><strong>Phone:</strong><br> ${formatPhoneNumber(contact.phoneNumber) || 'N/A'}</p>
-                <p><strong>Authorized Representative:</strong><br> ${(contact.authorizedRepresentative || 'N/A').toUpperCase()}</p>
-                <button onclick="openContactModalByIndex(${index})">Edit Contact</button>
-            `;
-            fragment.appendChild(div);
-        });
-        container.appendChild(fragment);
-    }
-
-    function openContactModal(contact = null, index = null) {
+    // ===== CONTACTS CRUD (matching currentenrollmentsedit.html exactly) =====
+    function openContactModal(index = null) {
+        editingContactIndex = index;
         const modal = document.getElementById('contactModal');
+        const title = document.getElementById('contact-modal-title');
         const buttonContainer = modal.querySelector('.button-container');
 
         buttonContainer.innerHTML = `
@@ -780,13 +850,15 @@
             <button type="button" onclick="closeContactModal()">Cancel</button>
         `;
 
-        if (contact) {
-            document.getElementById('modal-title').textContent = 'Edit Contact';
-            document.getElementById('contactFirstName').value = contact.firstName || '';
-            document.getElementById('contactLastName').value = contact.lastName || '';
-            document.getElementById('contactPhoneNumber').value = formatPhoneNumber(contact.phoneNumber) || '';
-            document.getElementById('authorizedRepresentative').value = contact.authorizedRepresentative || 'N/A';
-            editingContactIndex = index;
+        if (index !== null && cachedClient) {
+            title.textContent = 'Edit Contact';
+            const contact = (cachedClient.Contacts || [])[index];
+            if (contact) {
+                document.getElementById('contactFirstName').value = contact.firstName || '';
+                document.getElementById('contactLastName').value = contact.lastName || '';
+                document.getElementById('contactPhoneNumber').value = formatPhoneNumber(contact.phoneNumber) || '';
+                document.getElementById('authorizedRepresentative').value = contact.authorizedRepresentative || 'N/A';
+            }
 
             const deleteButton = document.createElement('button');
             deleteButton.textContent = 'Delete';
@@ -797,28 +869,25 @@
             deleteButton.onclick = () => deleteContact(index);
             buttonContainer.appendChild(deleteButton);
         } else {
-            document.getElementById('modal-title').textContent = 'Add Contact';
-            document.getElementById('contactFirstName').value = '';
-            document.getElementById('contactLastName').value = '';
-            document.getElementById('contactPhoneNumber').value = '';
-            document.getElementById('authorizedRepresentative').value = 'N/A';
-            editingContactIndex = null;
+            title.textContent = 'Add Contact';
+            document.getElementById('contactForm').reset();
         }
 
-        modal.style.display = 'flex';
-    }
-
-    function openContactModalByIndex(index) {
-        openContactModal(client.Contacts[index], index);
+        modal.classList.add('show');
     }
 
     function closeContactModal() {
-        document.getElementById('contactModal').style.display = 'none';
+        const modal = document.getElementById('contactModal');
+        modal.classList.remove('show');
+        editingContactIndex = null;
+        document.getElementById('contactForm').reset();
     }
 
-    window.addEventListener('click', (event) => {
-        const modal = document.getElementById('contactModal');
-        if (event.target === modal) closeContactModal();
+    // Close contact modal when clicking outside
+    document.getElementById('contactModal').addEventListener('click', function(event) {
+        if (event.target === this) {
+            closeContactModal();
+        }
     });
 
     async function saveContact() {
@@ -841,39 +910,40 @@
             return;
         }
 
-        const newContact = {
-            firstName,
-            lastName,
-            phoneNumber: cleanedPhone,
-            authorizedRepresentative,
-            contactId: editingContactIndex !== null
-                ? client.Contacts[editingContactIndex].contactId
-                : `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        };
-
-        if (!client.Contacts) client.Contacts = [];
-
-        const isDuplicate = client.Contacts.some((c, i) =>
-            i !== editingContactIndex &&
-            c.firstName === newContact.firstName &&
-            c.lastName === newContact.lastName &&
-            c.phoneNumber === newContact.phoneNumber
-        );
-        if (isDuplicate) {
-            alert('This contact already exists.');
-            return;
-        }
-
         try {
-            let oldContactData = null;
+            const clientData = await fetchClientData();
+            if (!clientData.Contacts) clientData.Contacts = [];
+
+            const newContact = {
+                firstName,
+                lastName,
+                phoneNumber: cleanedPhone,
+                authorizedRepresentative,
+                contactId: editingContactIndex !== null
+                    ? clientData.Contacts[editingContactIndex]?.contactId
+                    : `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            };
+
+            const isDuplicate = clientData.Contacts.some((c, i) =>
+                i !== editingContactIndex &&
+                (c.firstName || '').toUpperCase() === newContact.firstName.toUpperCase() &&
+                (c.lastName || '').toUpperCase() === newContact.lastName.toUpperCase() &&
+                (c.phoneNumber || '').replace(/\D/g, '') === newContact.phoneNumber
+            );
+            if (isDuplicate) {
+                alert('This contact already exists.');
+                return;
+            }
+
             const requestBody = { clientId: CLIENT_ID, contact: newContact };
 
+            let oldContactData = null;
             if (editingContactIndex !== null) {
-                oldContactData = { ...client.Contacts[editingContactIndex] };
+                oldContactData = { ...clientData.Contacts[editingContactIndex] };
                 requestBody.index = editingContactIndex;
-                client.Contacts[editingContactIndex] = newContact;
+                clientData.Contacts[editingContactIndex] = newContact;
             } else {
-                client.Contacts.push(newContact);
+                clientData.Contacts.push(newContact);
             }
 
             const response = await fetch('/add-to-contacts', {
@@ -918,6 +988,8 @@
                 document.getElementById('phoneNumber').value = formatPhoneNumber(cleanedPhone);
             }
 
+            cachedClient = clientData;
+            client.Contacts = clientData.Contacts;
             closeContactModal();
             renderContacts();
         } catch (error) {
@@ -929,8 +1001,10 @@
     async function deleteContact(index) {
         if (!confirm('Are you sure you want to delete this contact?')) return;
 
-        const deletedContact = client.Contacts.splice(index, 1)[0];
         try {
+            const clientData = await fetchClientData();
+            const deletedContact = (clientData.Contacts || []).splice(index, 1)[0];
+
             const response = await fetch('/add-to-contacts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -941,15 +1015,51 @@
                     delete: true,
                 }),
             });
+
             const result = await response.json();
             if (!result.success) {
                 console.error('Failed to delete contact:', result.message);
             }
+
+            cachedClient = clientData;
+            client.Contacts = clientData.Contacts;
+            renderContacts();
+            closeContactModal();
         } catch (error) {
             console.error('Error deleting contact:', error);
         }
-        renderContacts();
-        closeContactModal();
+    }
+
+    async function renderContacts() {
+        const container = document.getElementById('contacts-list');
+        container.innerHTML = '';
+
+        try {
+            const clientData = await fetchClientData();
+            const contacts = clientData.Contacts || [];
+
+            if (contacts.length === 0) {
+                container.innerHTML = '<p>No contacts available.</p>';
+                return;
+            }
+
+            const fragment = document.createDocumentFragment();
+            contacts.forEach((contact, index) => {
+                const div = document.createElement('div');
+                div.classList.add('contact-card');
+                div.innerHTML = `
+                    <p><strong>Name:</strong><br> ${(contact.firstName || 'N/A').toUpperCase()} ${(contact.lastName || 'N/A').toUpperCase()}</p>
+                    <p><strong>Phone:</strong><br> ${formatPhoneNumber(contact.phoneNumber) || 'N/A'}</p>
+                    <p><strong>Authorized Representative:</strong><br> ${(contact.authorizedRepresentative || 'N/A').toUpperCase()}</p>
+                    <button onclick="openContactModal(${index})">Edit Contact</button>
+                `;
+                fragment.appendChild(div);
+            });
+            container.appendChild(fragment);
+        } catch (error) {
+            console.error('Error rendering contacts:', error);
+            container.innerHTML = '<p style="color:red;">Error loading contacts.</p>';
+        }
     }
 
     // ===== SYNC CLIENT -> CONTACT =====
@@ -995,11 +1105,9 @@
         queueChange('interpreter', value);
     }
 
-    // ===== EVENT LISTENERS (batched saves, no full reload) =====
+    // ===== EVENT LISTENERS =====
     function setupFieldListeners() {
-    // Text inputs: queue changes on blur, uppercase display, sync contacts
-    document.querySelectorAll('#clientForm input[type="text"]').forEach(input => {
-
+        document.querySelectorAll('#clientForm input[type="text"]').forEach(input => {
             input.addEventListener('blur', async (event) => {
                 const field = event.target.id;
                 let value = event.target.value;
@@ -1008,17 +1116,14 @@
                     value = value.replace(/\D/g, '');
                 }
 
-                // Capture old client data for contact sync
                 const oldClientData = {
                     firstName: client.firstName || '',
                     lastName: client.lastName || '',
                     phoneNumber: client.phoneNumber || '',
                 };
 
-                // Queue the change for batched save
                 queueChange(field, value);
 
-                // If zip code, also update county
                 if (field === 'zipCode') {
                     const zipCode = value.trim();
                     const countyDropdown = document.getElementById('county');
@@ -1030,7 +1135,6 @@
                     }
                 }
 
-                // Sync client -> contact for name/phone changes
                 if (['firstName', 'lastName', 'phoneNumber'].includes(field)) {
                     const newClientData = { ...oldClientData, [field]: value };
                     client[field] = value;
@@ -1039,7 +1143,6 @@
                     client[field] = value;
                 }
 
-                // Re-display in uppercase without refetching
                 if (field === 'phoneNumber') {
                     event.target.value = formatPhoneNumber(value);
                 } else if (field !== 'zipCode') {
@@ -1048,23 +1151,21 @@
             });
         });
 
-    // Dropdowns: queue changes on change
-    document.querySelectorAll('#clientForm select').forEach(select => {
-        select.addEventListener('change', (event) => {
-            const field = event.target.id;
-            const value = event.target.value || null;
-            queueChange(field, value);
+        document.querySelectorAll('#clientForm select').forEach(select => {
+            select.addEventListener('change', (event) => {
+                const field = event.target.id;
+                const value = event.target.value || null;
+                queueChange(field, value);
+            });
         });
-    });
 
-    // County dropdown: save immediately on selection
-    document.getElementById('county').addEventListener('change', async (event) => {
-        const value = event.target.value || null;
-        pendingChanges['county'] = value;
-        clearTimeout(saveDebounceTimer);
-        await flushChanges();
-    });
-}
+        document.getElementById('county').addEventListener('change', async (event) => {
+            const value = event.target.value || null;
+            pendingChanges['county'] = value;
+            clearTimeout(saveDebounceTimer);
+            await flushChanges();
+        });
+    }
 
     // ===== ACTION HANDLERS =====
     async function confirmSaveAndRelease() {
@@ -1095,7 +1196,6 @@
                 }),
             });
 
-            // Add note
             await fetch('/add-note-to-client', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1116,128 +1216,116 @@
     }
 
     async function updateClientProgramStatus(clientId, benefit, isOpen, closeReason = null) {
-    try {
-        // Fetch current client to get existing programStatus
-        const getResp = await fetch(`/get-client/${clientId}`, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
-        });
-        if (!getResp.ok) {
-            console.error(`Failed to fetch client ${clientId} for program status update`);
-            return;
+        try {
+            const getResp = await fetch(`/get-client/${clientId}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            if (!getResp.ok) {
+                console.error(`Failed to fetch client ${clientId} for program status update`);
+                return;
+            }
+            const clientData = await getResp.json();
+            const programStatus = clientData.programStatus || {};
+
+            const current = programStatus[benefit] || {};
+            const updated = { ...current, screeningInProgress: !!isOpen };
+
+            if (!isOpen) {
+                updated.screeningCloseReason = closeReason || updated.screeningCloseReason || null;
+            } else {
+                if ('screeningCloseReason' in updated) delete updated.screeningCloseReason;
+            }
+
+            programStatus[benefit] = updated;
+
+            const putResp = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, clientData: { programStatus } }),
+            });
+
+            if (!putResp.ok) {
+                const errText = await putResp.text().catch(() => '');
+                console.error(`Failed to update program status for ${benefit}:`, errText);
+            }
+        } catch (error) {
+            console.error(`Error updating ${benefit} program status:`, error);
         }
-        const clientData = await getResp.json();
-        const programStatus = clientData.programStatus || {};
-
-        // Ensure benefit key exists and preserve other keys
-        const current = programStatus[benefit] || {};
-        const updated = { ...current, screeningInProgress: !!isOpen };
-
-        if (!isOpen) {
-            updated.screeningCloseReason = closeReason || updated.screeningCloseReason || null;
-        } else {
-            // remove close reason when reopening
-            if ('screeningCloseReason' in updated) delete updated.screeningCloseReason;
-        }
-
-        programStatus[benefit] = updated;
-
-        // Persist via the general client update endpoint
-        const putResp = await fetch('/update-client', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clientId, clientData: { programStatus } }),
-        });
-
-        if (!putResp.ok) {
-            const errText = await putResp.text().catch(() => '');
-            console.error(`Failed to update program status for ${benefit}:`, errText);
-        }
-    } catch (error) {
-        console.error(`Error updating ${benefit} program status:`, error);
     }
-}
 
-async function confirmAndRedirect() {
-    const confirmAction = confirm("Are you sure you want to start a new screening?");
-    if (!confirmAction) return;
+    async function confirmAndRedirect() {
+        const confirmAction = confirm("Are you sure you want to start a new screening?");
+        if (!confirmAction) return;
 
-    const activeUser = sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User';
+        const activeUser = sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User';
 
-    try {
-        // 1. Fetch current household members
-        const membersResponse = await fetch(`/get-client/${CLIENT_ID}`);
-        if (!membersResponse.ok) throw new Error('Failed to fetch client data');
-        const clientData = await membersResponse.json();
-        const currentMembers = clientData.householdMembers || [];
+        try {
+            const membersResponse = await fetch(`/get-client/${CLIENT_ID}`);
+            if (!membersResponse.ok) throw new Error('Failed to fetch client data');
+            const clientData = await membersResponse.json();
+            const currentMembers = clientData.householdMembers || [];
 
-        // 2. Reopen screening for all benefits on all members
-        const allBenefits = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
-        for (const member of currentMembers) {
-            for (const benefit of allBenefits) {
-                if (member[benefit]) {
-                    member[benefit].screeningInProgress = true;
-                    member[benefit].screeningCloseReason = null;
+            const allBenefits = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
+            for (const member of currentMembers) {
+                for (const benefit of allBenefits) {
+                    if (member[benefit]) {
+                        member[benefit].screeningInProgress = true;
+                        member[benefit].screeningCloseReason = null;
+                    }
                 }
             }
+
+            const saveResponse = await fetch(`/save-household-members`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId: CLIENT_ID, householdMembers: currentMembers })
+            });
+
+            if (!saveResponse.ok) {
+                console.error('Failed to save household members.');
+                return;
+            }
+
+            const updateResponse = await fetch(`/update-client`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId: CLIENT_ID, clientData: { screeningInProgress: true } })
+            });
+
+            if (!updateResponse.ok) {
+                console.error('Failed to update client screening status.');
+                return;
+            }
+
+            // Set programStatus screeningInProgress for ALL benefits
+            for (const benefit of allBenefits) {
+                await updateClientProgramStatus(CLIENT_ID, benefit, true);
+            }
+
+            const note = {
+                text: '<strong>New screening initiated.</strong>',
+                timestamp: new Date().toLocaleString(),
+                username: activeUser
+            };
+            await fetch('/add-note-to-client', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId: CLIENT_ID, note })
+            });
+
+            console.log('All screening reopened successfully.');
+
+            if (typeof window.renderNotes === 'function') {
+                await window.renderNotes(CLIENT_ID);
+            }
+
+            client.screeningInProgress = true;
+            window.location.href = `householdedit.html?id=${CLIENT_ID}`;
+        } catch (error) {
+            console.error('Error starting new screening:', error);
         }
-
-        // 3. Save updated household members
-        const saveResponse = await fetch(`/save-household-members`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clientId: CLIENT_ID, householdMembers: currentMembers })
-        });
-
-        if (!saveResponse.ok) {
-            console.error('Failed to save household members.');
-            return;
-        }
-
-        // 4. Update client-level screeningInProgress to true
-        const updateResponse = await fetch(`/update-client`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clientId: CLIENT_ID, clientData: { screeningInProgress: true } })
-        });
-
-        if (!updateResponse.ok) {
-            console.error('Failed to update client screening status.');
-            return;
-        }
-
-        // 5. Restart SNAP and LIHEAP program statuses at the client level
-        await updateClientProgramStatus(CLIENT_ID, 'SNAP', true);
-        await updateClientProgramStatus(CLIENT_ID, 'LIHEAP', true);
-
-        // 6. Add a note
-        const note = {
-            text: '<strong>New screening initiated.</strong>',
-            timestamp: new Date().toLocaleString(),
-            username: activeUser
-        };
-        await fetch('/add-note-to-client', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clientId: CLIENT_ID, note })
-        });
-
-        console.log('All screening reopened successfully.');
-
-        // Re-render notes if function is available
-        if (typeof window.renderNotes === 'function') {
-            await window.renderNotes(CLIENT_ID);
-        }
-
-        // Update local client object
-        client.screeningInProgress = true;
-
-        // Redirect to householdedit.html
-        window.location.href = `householdedit.html?id=${CLIENT_ID}`;
-    } catch (error) {
-        console.error('Error starting new screening:', error);
     }
-}
 
     async function confirmAndTerminate() {
         const activeUser = sessionStorage.getItem('loggedInUser');
@@ -1257,7 +1345,6 @@ async function confirmAndRedirect() {
             await flushChangesImmediate();
             await saveClientFull();
 
-            // Update termination + add note in parallel
             await Promise.all([
                 fetch('/update-client', {
                     method: 'PUT',
@@ -1308,12 +1395,11 @@ async function confirmAndRedirect() {
                     }
                 });
                 console.log('Zip-to-county data loaded.');
-                // Now that zip data is ready, load client
                 initPage();
             },
             error: function (error) {
                 console.error('Error loading CSV:', error);
-                initPage(); // Still init even if CSV fails
+                initPage();
             }
         });
     }
@@ -1338,11 +1424,77 @@ async function confirmAndRedirect() {
         }
     }
 
-    // ===== INITIALIZATION: Single fetch, single render =====
+        // ===== SCREENING STATUS REFRESH =====
+        async function refreshScreeningStatus() {
+        try {
+            const res = await fetch(`/get-client/${CLIENT_ID}`);
+            if (!res.ok) return;
+            const data = await res.json();
+
+            // Update banner
+            const banner = document.getElementById('screening-banner');
+            const hasOpenScreening = checkForOpenScreening(data);
+            if (hasOpenScreening) {
+                banner.style.display = 'block';
+                document.body.style.marginTop = '100px';
+            } else {
+                banner.style.display = 'none';
+                document.body.style.marginTop = '60px';
+            }
+
+            // Update start screening button
+            const callLoggingButton = document.getElementById('call-logging-button');
+            callLoggingButton.style.display = data.screeningInProgress ? 'none' : 'block';
+
+            // Update local client state
+            client.screeningInProgress = data.screeningInProgress;
+        } catch (error) {
+            console.error('Error refreshing screening status:', error);
+        }
+    }
+
+    // Watch for changes in screening containers (estimations.js modifies these after close-outs)
+    function setupScreeningObserver() {
+        const targets = [
+            document.getElementById('household-members-container'),
+            document.getElementById('snap-household-container'),
+            document.getElementById('liheap-household-container'),
+            document.getElementById('stop-screening-container'),
+        ].filter(Boolean);
+
+        const observer = new MutationObserver(() => {
+            refreshScreeningStatus();
+        });
+
+        targets.forEach(target => {
+            observer.observe(target, { childList: true, subtree: true });
+        });
+    }
+
+    // Also intercept fetch calls that update screening status
+    const _originalFetch = window.fetch;
+    window.fetch = async function(...args) {
+        const response = await _originalFetch.apply(this, args);
+
+        const url = args[0];
+        const options = args[1];
+
+        if (typeof url === 'string' &&
+            (url.includes('/update-client') || url.includes('/save-household-members')) &&
+            (options?.method === 'PUT' || options?.method === 'POST')) {
+            // Delay slightly to let the server process, then refresh
+            setTimeout(refreshScreeningStatus, 300);
+        }
+
+        return response;
+    };
+
+    // ===== INITIALIZATION =====
     async function initPage() {
         try {
             const data = await fetchClient();
             populateForm(data);
+            setupScreeningObserver();
             document.body.classList.add('loaded');
         } catch (error) {
             console.error('Error loading client data:', error);
@@ -1353,7 +1505,7 @@ async function confirmAndRedirect() {
 
     document.addEventListener('DOMContentLoaded', function () {
         setupFieldListeners();
-        loadZipCountyData(); // This calls initPage() when CSV is ready
+        loadZipCountyData();
     });
     </script>
 

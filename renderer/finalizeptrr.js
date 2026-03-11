@@ -11,6 +11,37 @@ async function fetchApplicantData(clientId) {
     }
 }
 
+/**
+ * Merges multiple PDF byte arrays into a single PDF document.
+ * @param {ArrayBuffer[]} pdfByteArrays - Array of PDF ArrayBuffers to merge
+ * @returns {Promise<PDFLib.PDFDocument>} - The merged PDF document
+ */
+async function mergePDFs(pdfByteArrays) {
+    const { PDFDocument } = PDFLib;
+    const mergedPdf = await PDFDocument.create();
+
+    for (const pdfBytes of pdfByteArrays) {
+        const pdf = await PDFDocument.load(pdfBytes);
+        const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+        copiedPages.forEach((page) => mergedPdf.addPage(page));
+    }
+
+    return mergedPdf;
+}
+
+/**
+ * Loads a PDF asset from the /assets/ folder and returns its ArrayBuffer.
+ * @param {string} assetPath - Path relative to /assets/ (e.g., '2025_pa-1000.pdf')
+ * @returns {Promise<ArrayBuffer>} - The PDF as an ArrayBuffer
+ */
+async function loadPDFAsset(assetPath) {
+    const response = await fetch(`/assets/${assetPath}`);
+    if (!response.ok) {
+        throw new Error(`Failed to load PDF asset: ${assetPath} (${response.statusText})`);
+    }
+    return await response.arrayBuffer();
+}
+
 async function generatePDF(data) {
     const { PDFDocument } = PDFLib;
 
@@ -1472,11 +1503,11 @@ const lesserAmountFormatted = lesserAmount.toLocaleString('en-US', { minimumFrac
 if (data.residenceStatus === 'owned' || data.residenceStatus === 'rentedowned') {
     // Write the lesser amount to the PDF at the specified coordinates
     page2.drawText(lesserAmountFormatted, {
-        x: 473, // Replace with the actual x-coordinate for the field
-        y: 628, // Replace with the actual y-coordinate for the field
+        x: 473,
+        y: 628, 
         size: 12,
         font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-        color: PDFLib.rgb(0, 0, 0), // Black color
+        color: PDFLib.rgb(0, 0, 0),
     });
     console.log(`Lesser Amount (Total Property Tax vs Rebate): ${lesserAmountFormatted}`);
 }
@@ -1484,8 +1515,8 @@ if (data.residenceStatus === 'owned' || data.residenceStatus === 'rentedowned') 
 if (data.residenceStatus === 'rented' || data.residenceStatus === 'rentedowned') {
     // Write the rebate amount to the PDF
     page2.drawText(rebateAmountFormatted, {
-        x: 232, // Replace with the actual x-coordinate for the rebate field
-        y: 567, // Replace with the actual y-coordinate for the rebate field
+        x: 232,
+        y: 567,
         size: 6,
         font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
         color: PDFLib.rgb(0, 0, 0), // Black color
@@ -1612,52 +1643,74 @@ if (ovalIndex >= 0 && ovalIndex < ovalPositions.length) {
     console.warn('No valid oval position determined.');
 }
 
-// Save the filled PDF
-const filledPdfBytes = await pdfDoc.save();
+    // Save the filled PA-1000 form
+    const filledPdfBytes = await pdfDoc.save();
 
-// Construct the filename dynamically
-const year = new Date().getFullYear() - 1; // Get the current year
-const formName = "PA-1000";
-const applicantFirstName = ptrrApplicant?.firstName || "Applicant";
-const applicantLastName = ptrrApplicant?.lastName || "Name";
-const fileName = `${year} ${formName} ${applicantFirstName} ${applicantLastName}.pdf`;
+    // Collect all PDFs to merge (starting with the filled PA-1000)
+    const pdfsToMerge = [filledPdfBytes];
 
-// Generate the email subject dynamically
-const subject = `Application Submission: ${formName} for ${applicantFirstName} ${applicantLastName}`;
+    // === ADD CONDITIONAL PDF ATTACHMENTS HERE ===
+    // Example pattern:
+    // if (someCondition) {
+    //     const additionalPdf = await loadPDFAsset('some-attachment.pdf');
+    //     pdfsToMerge.push(additionalPdf);
+    // }
 
-// Generate the email body dynamically
-const body = `
-Hello,
+    // Merge all collected PDFs into one
+    let finalPdfBytes;
+    if (pdfsToMerge.length > 1) {
+        const mergedDoc = await mergePDFs(pdfsToMerge);
+        finalPdfBytes = await mergedDoc.save();
+    } else {
+        finalPdfBytes = filledPdfBytes;
+    }
 
-Please find attached the completed ${formName} form for ${applicantFirstName} ${applicantLastName} for the year ${year}.
-
-Thank you,
-Your Team
-`;
+    // Construct the filename dynamically
+    const year = new Date().getFullYear() - 1;
+    const formName = "PA-1000";
+    const applicantFirstName = ptrrApplicant?.firstName || "Applicant";
+    const applicantLastName = ptrrApplicant?.lastName || "Name";
+    const fileName = `${year} ${formName} ${applicantFirstName} ${applicantLastName}.pdf`;
 
 // Trigger download
 const blob = new Blob([filledPdfBytes], { type: 'application/pdf' });
-const link = document.createElement('a');
-link.href = URL.createObjectURL(blob);
-link.download = fileName;
-link.click();
 
-// Log a note after the download and re-render notes
+// Upload the PDF to the client's Letters
 try {
-    const clientId = new URLSearchParams(window.location.search).get('id'); // Get client ID from URL
-    const activeUser = sessionStorage.getItem('loggedInUser') || 'Unknown User'; // Get the active user
+    const clientId = new URLSearchParams(window.location.search).get('id');
+    const activeUser = sessionStorage.getItem('loggedInUser') || 'Unknown User';
 
+    const formData = new FormData();
+    formData.append('file', blob, fileName);
+    formData.append('clientId', clientId);
+    formData.append('title', fileName.replace('.pdf', ''));
+    formData.append('generatedBy', activeUser);
+
+    const uploadResponse = await fetch('/upload-letter', {
+        method: 'POST',
+        body: formData,
+    });
+
+    const uploadResult = await uploadResponse.json();
+    if (uploadResponse.ok && uploadResult.success) {
+        console.log('Letter uploaded successfully:', uploadResult.message);
+    } else {
+        console.error('Failed to upload letter:', uploadResult.message);
+        alert('Failed to upload the letter to the client profile.');
+    }
+
+    // Log a note after the upload and re-render notes
     const noteText = 'PTRR Application completed.';
     const timestamp = new Date().toLocaleString();
 
     const note = {
-        id: crypto.randomUUID(), // Generate a unique ID for the note
+        id: crypto.randomUUID(),
         text: noteText,
         timestamp: timestamp,
         username: activeUser,
     };
 
-    const response = await fetch('/add-note-to-client', {
+    const noteResponse = await fetch('/add-note-to-client', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -1665,40 +1718,20 @@ try {
         body: JSON.stringify({ clientId, note }),
     });
 
-    const result = await response.json();
-    if (response.ok && result.success) {
-        console.log('Note logged successfully:', result.message);
+    const noteResult = await noteResponse.json();
+    if (noteResponse.ok && noteResult.success) {
+        console.log('Note logged successfully:', noteResult.message);
 
-// Re-render notes after successfully logging the note
-if (typeof window.renderNotes === 'function') {
-    window.renderNotes(clientId);
-} else {
-    console.warn('renderNotes function is not available.');
-}
+        if (typeof window.renderNotes === 'function') {
+            window.renderNotes(clientId);
+        } else {
+            console.warn('renderNotes function is not available.');
+        }
     } else {
-        console.error('Failed to log note:', result.message);
+        console.error('Failed to log note:', noteResult.message);
     }
 } catch (error) {
-    console.error('Error logging note:', error);
-}
-
-// Send the file to the backend
-const formData = new FormData();
-formData.append('file', blob, fileName); // Attach the file with the generated name
-formData.append('recipientEmail', 'lucascampbellsounddesign@gmail.com'); // Add recipient email
-formData.append('subject', subject); // Add the dynamic subject
-formData.append('body', body); // Add the dynamic body
-
-try {
-    const response = await fetch('/send-email', {
-        method: 'POST',
-        body: formData,
-    });
-
-    const result = await response.json();
-    console.log(result.message);
-} catch (error) {
-    console.error('Error sending email:', error);
+    console.error('Error uploading letter or logging note:', error);
 }}
 
 async function listFormFields() {
@@ -1706,7 +1739,7 @@ async function listFormFields() {
 
     try {
         // Load the existing PDF template
-        const pdfBytes = await fetch('/assets/2025_pa-1000.pdf').then((res) => res.arrayBuffer());
+        const pdfBytes = await fetch('/assets/2025_pa-1000rc.pdf').then((res) => res.arrayBuffer());
         const pdfDoc = await PDFDocument.load(pdfBytes);
 
         // Get the form fields

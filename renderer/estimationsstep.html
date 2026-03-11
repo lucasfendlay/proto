@@ -354,12 +354,12 @@
     <div class="left-sidebar-container" id="contactsSidebarContainer">
         <div class="sidebar-header">
             <div class="button-container" style="flex-direction: column; gap: 8px; margin-bottom: 10px;">
-                <button class="interactive" style="width: 100%; font-size: 0.85rem; font-weight: normal; padding: 8px !important;" onclick="redirectToEstimationsView()">Save and Release Profile</button>
+                <button class="interactive" style="transition: background-color 0.3s ease, color 0.3s ease;" onmouseover="this.style.backgroundColor='#0056b3'; this.style.color='white';" onmouseout="this.style.backgroundColor=''; this.style.color='';" onclick="redirectToEstimationsView()">Save and Release Profile</button>
             </div>
             <h2>Contacts</h2>
             <div id="contacts-list" class="left-sidebar"></div>
             <div class="button-container" style="justify-content: center; margin-top: 10px;">
-                <button id="add-contact-button" onclick="openContactModal()">Add New Contact</button>
+                <button id="add-contact-button" onclick="openContactModal()" style="transition: background-color 0.3s ease, color 0.3s ease;" onmouseover="this.style.backgroundColor='#0056b3'; this.style.color='white';" onmouseout="this.style.backgroundColor=''; this.style.color='';">Add New Contact</button>
             </div>
         </div>
     </div>
@@ -970,8 +970,8 @@
                 });
 
                 if (memberBenefits.length > 0) {
-                    const name = `${member.firstName.toUpperCase()} ${member.lastName.toUpperCase()}`;
-                    individualBenefitsDetails.push(`<strong>${name}</strong><br><br>${memberBenefits.join('<br>')}`);
+                    const name = `<br>${member.firstName.toUpperCase()} ${member.lastName.toUpperCase()}`;
+                    individualBenefitsDetails.push(`<strong>${name}</strong><br>${memberBenefits.join('<br>')}`);
                 }
             });
 
@@ -980,7 +980,7 @@
 
             let noteContent = '<strong>Applying</strong><br><br>';
             if (householdBenefits.size > 0) {
-                noteContent += `${householdText}<br><br>${individualText}`.trim();
+                noteContent += `${householdText}<br>${individualText}`.trim();
             } else {
                 noteContent += individualText.trim();
             }

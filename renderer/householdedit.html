@@ -158,14 +158,25 @@
     }
 
     .contactmodal .modal-content {
-        background-color: transparent;
-        border-radius: 10px;
-        width: 90%;
-        max-width: 500px;
-        text-align: left;
-        position: relative;
-        z-index: 10000;
-    }
+    background-color: #fff;
+    border-radius: 10px;
+    padding: 20px;
+    width: 90%;
+    max-width: 500px;
+    text-align: left;
+    position: relative;
+    z-index: 10000;
+}
+
+/* Ensure the household member modal is explicitly styled and not overridden */
+#householdMemberModal.modal .modal-content {
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    padding: 30px;
+    width: 90%;
+    max-width: 600px;
+    margin: 100px auto;
+}
 
     .contactmodal .modal-content label {
         display: block;
@@ -194,6 +205,9 @@
     
         <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
             <div class="sidebar-header">
+                <div class="button-container" style="flex-direction: column; gap: 8px; margin-bottom: 10px;">
+                    <button class="interactive" style="width: 100%; font-size: 0.85rem; font-weight: normal; padding: 8px !important;" onclick="confirmSaveAndRelease()" onmouseover="this.style.backgroundColor='#0056b3'" onmouseout="this.style.backgroundColor='#007bff'">Save and Release Profile</button>
+                </div>
                 <div class="sidebar-toggle">
                     <button id="toggle-screening-btn" class="toggle-btn active" onclick="showSidebarView('screening')">Screening</button>
                     <button id="toggle-contacts-btn" class="toggle-btn" onclick="showSidebarView('contacts')">Contacts</button>
@@ -647,6 +661,52 @@
             .catch(err => console.error('Error validating household data:', err));
     }
 
+    async function confirmSaveAndRelease() {
+        if (!confirm("Are you sure you want to save and release this profile?")) return;
+
+        const activeUser = sessionStorage.getItem('loggedInUser');
+        if (!activeUser) {
+            console.error("No active user found in sessionStorage.");
+            return;
+        }
+
+        const clientId = getQueryParam('id');
+
+        try {
+            await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId: clientId,
+                    clientData: {
+                        checkedOut: [{
+                            status: false,
+                            timestamp: null,
+                            user: null,
+                        }],
+                    },
+                }),
+            });
+
+            await fetch('/add-note-to-client', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId: clientId,
+                    note: {
+                        text: "Profile released.",
+                        timestamp: new Date().toLocaleString(),
+                        username: activeUser,
+                    },
+                }),
+            });
+
+            window.location.href = `profileview.html?id=${clientId}`;
+        } catch (error) {
+            console.error("Error during save and release:", error);
+        }
+    }
+
     async function redirectToHouseholdView() {
         const clientId = getQueryParam('id');
         if (!clientId) return;
@@ -884,7 +944,7 @@
     }
 
     // ── Sidebar toggle between Screening and Contacts ──
-    function showSidebarView(view) {
+    async function showSidebarView(view) {
         const screeningList = document.getElementById('household-members-container');
         const contactsList = document.getElementById('contacts-list');
         const screeningBtn = document.getElementById('toggle-screening-btn');
@@ -910,12 +970,24 @@
             screeningBtn.classList.add('active');
             contactsBtn.classList.remove('active');
 
-            // Render screening content, then reveal
+            // Check if screening is actually in progress before showing benefit cards
+            const clientId = getQueryParam('id');
+            let screeningActive = false;
+            try {
+                const res = await fetch(`/get-client/${clientId}`);
+                if (res.ok) {
+                    const client = await res.json();
+                    screeningActive = client?.screeningInProgress === true;
+                }
+            } catch (e) {
+                console.error('Error checking screening status:', e);
+            }
+
             requestAnimationFrame(() => {
-                screeningList.style.display = '';
+                screeningList.style.display = screeningActive ? '' : 'none';
                 screeningHeaderActions.style.display = 'flex';
-                if (snapContainer) snapContainer.style.display = '';
-                if (liheapContainer) liheapContainer.style.display = '';
+                if (snapContainer) snapContainer.style.display = screeningActive ? '' : 'none';
+                if (liheapContainer) liheapContainer.style.display = screeningActive ? '' : 'none';
                 if (stopScreeningContainer) stopScreeningContainer.style.display = '';
             });
         } else if (view === 'contacts') {

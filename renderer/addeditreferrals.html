@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Add/Edit Referrals</title>
     <link rel="stylesheet" href="styles.css">
-    <script src="userInfo.js"></script>
 
     <style>
         .form-container {
@@ -173,7 +172,26 @@
             </div>
             <div class="form-group">
                 <label for="needs">Needs</label>
-                <input type="text" id="needs" name="needs" placeholder="Enter needs (e.g., General, Housing)">
+                <select id="needs" name="needs" multiple required>
+                    <option value="General">General</option>
+                    <option value="Child Care">Child Care</option>
+                    <option value="Unemployment">Unemployment</option>
+                    <option value="Veterans Benefits">Veterans Benefits</option>
+                    <option value="Disability Benefits">Disability Benefits</option>
+                    <option value="Housing Assistance">Housing Assistance</option>
+                    <option value="Health Assistance">Health Assistance</option>
+                    <option value="Food Assistance">Food Assistance</option>
+                    <option value="Transportation Assistance">Transportation Assistance</option>
+                    <option value="Employment Services">Employment Services</option>
+                    <option value="Elderly Services">Elderly Services</option>
+                    <option value="Legal Aid">Legal Aid</option>
+                    <option value="Mental Health Services">Mental Health Services</option>
+                    <option value="Substance Abuse Services">Substance Abuse Services</option>
+                    <option value="Education Services">Education Services</option>
+                    <option value="Financial Assistance">Financial Assistance</option>
+                    <option value="Community Services">Community Services</option>
+                    <option value="Crisis Intervention">Crisis Intervention</option>
+                </select>
             </div>
             <div class="form-group">
                 <label for="benefits">Benefits</label>
@@ -186,22 +204,6 @@
                     <option value="LIHEAP">LIHEAP</option>
                     <option value="WIC">WIC</option>
                     <option value="TANF">TANF</option>
-                    <option value="Child Care">Child Care</option>
-                    <option value="Unemployment">Unemployment</option>
-                    <option value="Veterans Benefits">Veterans Benefits</option>
-                    <option value="Disability Benefits">Disability Benefits</option>
-                    <option value="Housing Assistance">Housing Assistance</option>
-                    <option value="Medical Assistance">Health Assistance</option>
-                    <option value="Food Assistance">Food Assistance</option>
-                    <option value="Transportation Assistance">Transportation Assistance</option>
-                    <option value="Employment Services">Employment Services</option>
-                    <option value="Legal Aid">Legal Aid</option>
-                    <option value="Mental Health Services">Mental Health Services</option>
-                    <option value="Substance Abuse Services">Substance Abuse Services</option>
-                    <option value="Education Services">Education Services</option>
-                    <option value="Financial Assistance">Financial Assistance</option>
-                    <option value="Community Services">Community Services</option>
-                    <option value="Crisis Intervention">Crisis Intervention</option>
                 </select>
             </div>
             <div class="form-group">

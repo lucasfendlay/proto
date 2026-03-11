@@ -66,6 +66,18 @@ document.addEventListener('DOMContentLoaded', async function () {
     
         const clientId = getQueryParameter('id');
 
+        // Fetch client data to check program status for individual benefits
+        let clientData = null;
+        try {
+            const clientRes = await fetch(`/get-client/${clientId}`);
+            if (clientRes.ok) {
+                clientData = await clientRes.json();
+            }
+        } catch (e) {
+            console.error('Error fetching client data for individual benefits:', e);
+        }
+        const programStatus = clientData?.programStatus || {};
+
         if (members.length === 0) {
             // Show yellow "no members found" cards for each individual benefit
             const noMemberBenefits = [
@@ -76,6 +88,53 @@ document.addEventListener('DOMContentLoaded', async function () {
             ];
 
             for (const config of noMemberBenefits) {
+                const benefitProgramStatus = programStatus[config.key];
+                const isClosed = benefitProgramStatus?.screeningInProgress === false;
+                const closeReason = benefitProgramStatus?.screeningCloseReason || 'N/A';
+
+                if (isClosed) {
+                    // Show grey closed card with reopen button
+                    const closedDiv = document.createElement('div');
+                    closedDiv.classList.add('household-member-box');
+                    closedDiv.style.backgroundColor = 'rgb(212, 212, 212)';
+                    closedDiv.style.borderColor = 'rgb(0, 0, 0)';
+                    closedDiv.style.width = '100%';
+                    closedDiv.style.boxSizing = 'border-box';
+
+                    closedDiv.innerHTML = `
+                        <h3>${config.label}</h3>
+                        <div style="padding: 8px; border-radius: 4px; margin: 8px auto; text-align: center; width: 100%; box-sizing: border-box;">
+                            <p style="margin: 0 0 6px 0;"><strong>${config.label} Screening Closed</strong></p>
+                            <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${closeReason}</p>
+                            <button class="btn-reopen-no-member-screening" data-benefit="${config.key}"
+                                style="background-color: #007bff; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 12px; cursor: pointer; transition: background-color 0.3s;"
+                                onmouseover="this.style.backgroundColor='#0056b3'" 
+                                onmouseout="this.style.backgroundColor='#007bff'">
+                                Reopen ${config.label} Screening
+                            </button>
+                        </div>
+                    `;
+
+                    householdMemberContainer.appendChild(closedDiv);
+
+                    // Attach reopen handler
+                    closedDiv.querySelector('.btn-reopen-no-member-screening').addEventListener('click', async () => {
+                        try {
+                            await updateClientProgramStatus(clientId, config.key, true);
+                            await addNoteToClient(clientId, `<strong>${config.label} screening reopened.</strong>`);
+                            await renderNotesContainer();
+                            if ((config.key === 'PACE' || config.key === 'PTRR') && window.invalidateHouseholdCache) {
+                                window.invalidateHouseholdCache();
+                            }
+                            await refreshAllDisplays();
+                        } catch (error) {
+                            console.error(`Error reopening ${config.key} screening:`, error);
+                        }
+                    });
+
+                    continue;
+                }
+
                 const noMembersDiv = document.createElement('div');
                 noMembersDiv.classList.add('household-member-box');
                 noMembersDiv.style.backgroundColor = '#fff3cd';
@@ -146,7 +205,54 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         for (const config of benefitConfigs) {
             const eligibleMembers = members.filter(config.filter);
-            if (eligibleMembers.length === 0) continue;
+            if (eligibleMembers.length === 0) {
+                // No eligible members for this benefit — check client-level program status
+                const benefitProgramStatus = programStatus[config.key];
+                const isClosed = benefitProgramStatus?.screeningInProgress === false;
+                const closeReason = benefitProgramStatus?.screeningCloseReason || 'N/A';
+
+                if (isClosed) {
+                    // Show grey closed card with reopen button
+                    const closedDiv = document.createElement('div');
+                    closedDiv.classList.add('household-member-box');
+                    closedDiv.style.backgroundColor = 'rgb(212, 212, 212)';
+                    closedDiv.style.borderColor = 'rgb(0, 0, 0)';
+                    closedDiv.style.width = '100%';
+                    closedDiv.style.boxSizing = 'border-box';
+
+                    closedDiv.innerHTML = `
+                        <h3>${config.label}</h3>
+                        <div style="padding: 8px; border-radius: 4px; margin: 8px auto; text-align: center; width: 100%; box-sizing: border-box;">
+                            <p style="margin: 0 0 6px 0;"><strong>${config.label} Screening Closed</strong></p>
+                            <p style="margin: 0 0 6px 0; font-size: 12px;">Reason: ${closeReason}</p>
+                            <button class="btn-reopen-no-member-screening" data-benefit="${config.key}"
+                                style="background-color: #007bff; color: white; border: none; border-radius: 4px; padding: 6px 14px; font-size: 12px; cursor: pointer; transition: background-color 0.3s;"
+                                onmouseover="this.style.backgroundColor='#0056b3'" 
+                                onmouseout="this.style.backgroundColor='#007bff'">
+                                Reopen ${config.label} Screening
+                            </button>
+                        </div>
+                    `;
+
+                    householdMemberContainer.appendChild(closedDiv);
+
+                    closedDiv.querySelector('.btn-reopen-no-member-screening').addEventListener('click', async () => {
+                        try {
+                            await updateClientProgramStatus(clientId, config.key, true);
+                            await addNoteToClient(clientId, `<strong>${config.label} screening reopened.</strong>`);
+                            await renderNotesContainer();
+                            if ((config.key === 'PACE' || config.key === 'PTRR') && window.invalidateHouseholdCache) {
+                                window.invalidateHouseholdCache();
+                            }
+                            await refreshAllDisplays();
+                        } catch (error) {
+                            console.error(`Error reopening ${config.key} screening:`, error);
+                        }
+                    });
+                }
+
+                continue;
+            }
 
             // Check if ALL members for this benefit have it as "Not Checked"
             const allNotChecked = eligibleMembers.every(m => m[config.key]?.eligibility?.includes('Not Checked'));
@@ -435,48 +541,50 @@ function getCloseReasonsForBenefits(selectedBenefits) {
 
     const benefitReasons = {
         'PACE': [
-            ...commonReasons,
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Age Criteria Not Met", label: "Age Criteria Not Met" },
             { value: "Enrolled in Medicaid", label: "Enrolled in Medicaid" },
             { value: "Residency Not Met", label: "PA Residency Not Met" },
+            ...commonReasons,
+
         ],
         'LIS': [
-            ...commonReasons,
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Ineligible - Assets", label: "Ineligible - Assets" },
             { value: "Not Enrolled in Medicare", label: "Not Enrolled in Medicare" },
             { value: "Enrolled in Medicaid", label: "Enrolled in Medicaid" },
+            ...commonReasons,
         ],
         'MSP': [
-            ...commonReasons,
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Ineligible - Assets", label: "Ineligible - Assets" },
             { value: "Not Enrolled in Medicare", label: "Not Enrolled in Medicare" },
             { value: "Enrolled in Medicaid", label: "Enrolled in Medicaid" },
+            ...commonReasons,
         ],
         'PTRR': [
-            ...commonReasons,
             { value: "Already Applied", label: "Already Applied This Year" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Age/Disability/Widow Criteria Not Met", label: "Age/Disability/Widow Criteria Not Met" },
             { value: "No Formal Lease", label: "No Formal Lease" },
             { value: "No Relevant Expenses", label: "No Relevant Expenses" },
+            ...commonReasons,
         ],
         'SNAP': [
-            ...commonReasons,
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Ineligible - Income and Assets", label: "Ineligible - Income and Assets" },
+            { value: "Low EBA", label: "Low EBA" },
+            ...commonReasons,
         ],
         'LIHEAP': [
-            ...commonReasons,
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Subsidized Housing and No Heating Responsibility", label: "Subsidized Housing and No Heating Responsibility" },
+            ...commonReasons,
         ]
     };
 
@@ -825,6 +933,89 @@ async function openCloseMemberModal(clientId, allMembers, memberId = null, openB
             }
         });
     });
+
+    // --- CHECK FOR "NO MEMBERS FOUND" INDIVIDUAL BENEFIT CARDS ---
+    // These are visible yellow cards with no actual member eligibility data.
+    // They should still be closeable from the modal.
+    const individualBenefitConfigsForNoMembers = [
+        { key: 'PACE', filter: (m) => (m.deceased ?? '').toLowerCase() !== 'yes' },
+        { key: 'LIS', filter: (m) => (m.deceased ?? '').toLowerCase() !== 'yes' },
+        { key: 'MSP', filter: (m) => (m.deceased ?? '').toLowerCase() !== 'yes' },
+        { key: 'PTRR', filter: (m) => m.headOfHousehold === true && (m.deceased ?? '').toLowerCase() !== 'yes' }
+    ];
+
+    for (const config of individualBenefitConfigsForNoMembers) {
+        // Skip if this benefit already has entries
+        const alreadyHasEntries = allOpenBenefitEntries.some(e => e.benefit === config.key);
+        if (alreadyHasEntries) continue;
+
+        // Skip if this benefit is already closed at client level
+        const benefitProgramStatus = programStatus[config.key];
+        if (benefitProgramStatus?.screeningInProgress === false) continue;
+
+        const eligibleMembers = allMembers.filter(config.filter);
+
+
+        // If there are no members at all, the yellow "no members found" card shows — add it
+        if (eligibleMembers.length === 0) {
+            allOpenBenefitEntries.push({
+                memberId: 'NO_MEMBERS',
+                memberName: `${config.key} (No Members)`,
+                benefit: config.key,
+                isNotEligible: false,
+                ineligibilityReason: '',
+                isHousehold: true
+            });
+            continue;
+        }
+
+        // If all eligible members have "Not Checked", card is hidden — skip
+        const allNotChecked = eligibleMembers.every(m => m[config.key]?.eligibility?.includes('Not Checked'));
+        if (allNotChecked) continue;
+
+        // If all eligible members have screening closed, card is grey — skip
+        const allClosed = eligibleMembers.every(m => m[config.key]?.screeningInProgress === false);
+        if (allClosed) continue;
+
+        // Card is visible but no member produced eligibility entries above — add closeable entry
+        allOpenBenefitEntries.push({
+            memberId: 'NO_MEMBERS',
+            memberName: `${config.key} (No Members)`,
+            benefit: config.key,
+            isNotEligible: false,
+            ineligibilityReason: '',
+            isHousehold: true
+        });
+    }
+
+    // --- CHECK FOR "NO MEMBERS FOUND" SNAP/LIHEAP CARDS ---
+    if (!allOpenBenefitEntries.some(e => e.benefit === 'SNAP')) {
+        const snapProgramClosed = programStatus.SNAP?.screeningInProgress === false;
+        if (!snapProgramClosed) {
+            allOpenBenefitEntries.push({
+                memberId: 'NO_MEMBERS',
+                memberName: 'SNAP (No Members)',
+                benefit: 'SNAP',
+                isNotEligible: false,
+                ineligibilityReason: '',
+                isHousehold: true
+            });
+        }
+    }
+
+    if (!allOpenBenefitEntries.some(e => e.benefit === 'LIHEAP')) {
+        const liheapProgramClosed = programStatus.LIHEAP?.screeningInProgress === false;
+        if (!liheapProgramClosed) {
+            allOpenBenefitEntries.push({
+                memberId: 'NO_MEMBERS',
+                memberName: 'LIHEAP (No Members)',
+                benefit: 'LIHEAP',
+                isNotEligible: false,
+                ineligibilityReason: '',
+                isHousehold: true
+            });
+        }
+    }
 
     // Separate household and individual entries
     const householdEntries = allOpenBenefitEntries.filter(e => e.isHousehold);
@@ -1221,6 +1412,19 @@ async function openCloseMemberModal(clientId, allMembers, memberId = null, openB
                     // Update client-level program status
                     await updateClientProgramStatus(clientId, 'LIHEAP', false, closeReason);
                     noteLines.push(`<br><strong><u>LIHEAP</u></strong><br><em>${closeReason}</em>`);
+                } else {
+                    // NO_MEMBERS individual benefit tiles (PACE, LIS, MSP, PTRR)
+                    // Close this benefit for all members who have it
+                    for (const member of allMembers) {
+                        if (member[benefit]) {
+                            member[benefit].screeningInProgress = false;
+                            member[benefit].screeningCloseReason = closeReason;
+                        }
+                    }
+                    // Also update client-level program status so the card shows as closed
+                    // even when there are no members
+                    await updateClientProgramStatus(clientId, benefit, false, closeReason);
+                    noteLines.push(`<br><strong><u>${benefit}</u></strong><br><em>${closeReason}</em>`);
                 }
             }
 
@@ -1611,9 +1815,42 @@ async function refreshAllDisplays() {
     const clientRes = await fetch(`/get-client/${clientId}`);
     const freshClient = clientRes.ok ? await clientRes.json() : null;
 
+    // If screening is not in progress, don't render benefit cards
+    if (!freshClient || freshClient.screeningInProgress !== true) {
+        const container = document.getElementById('household-members-container');
+        if (container) {
+            container.innerHTML = '';
+            container.style.display = 'none';
+        }
+
+        // Still refresh dependent UI sections
+        if (window.refreshCurrentEnrollments) {
+            await window.refreshCurrentEnrollments();
+        }
+        if (window.refreshIncome) {
+            await window.refreshIncome();
+        }
+        if (window.refreshFarmworkerVisibility) {
+            await window.refreshFarmworkerVisibility();
+        }
+        if (window.invalidateAssetCache) {
+            window.invalidateAssetCache();
+        }
+        if (window.refreshAssetDisplay) {
+            await window.refreshAssetDisplay();
+        }
+        if (window.refreshExpenseButtons) {
+            await window.refreshExpenseButtons();
+        }
+        return;
+    }
+
     // Clear the single container once, then append everything into it
     const container = document.getElementById('household-members-container');
-    if (container) container.innerHTML = '';
+    if (container) {
+        container.innerHTML = '';
+        container.style.display = ''; // Ensure it's visible when screening IS in progress
+    }
 
     // Add top buttons always (not just when screening is in progress)
     const topButtonsDiv = document.createElement('div');
@@ -1646,75 +1883,6 @@ async function refreshAllDisplays() {
         topButtonsDiv.appendChild(closeAllBtn);
     }
 
-    const saveReleaseBtn = document.createElement('button');
-    saveReleaseBtn.textContent = 'Save and Release Profile';
-    saveReleaseBtn.className = 'interactive';
-    saveReleaseBtn.style.cssText = `
-        width: 100%;
-        font-size: 0.85rem;
-        font-weight: normal;
-        padding: 8px !important;
-        background-color: #007bff;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: background-color 0.3s;
-        width: auto;
-        box-sizing: border-box;
-        flex-shrink: 0;
-    `;
-    saveReleaseBtn.addEventListener('mouseover', () => { saveReleaseBtn.style.backgroundColor = '#0056b3'; });
-    saveReleaseBtn.addEventListener('mouseout', () => { saveReleaseBtn.style.backgroundColor = '#007bff'; });
-    saveReleaseBtn.addEventListener('click', async () => {
-        if (!confirm("Are you sure you want to save and release this profile?")) return;
-
-        const activeUser = sessionStorage.getItem('loggedInUser');
-        if (!activeUser) {
-            console.error("No active user found in sessionStorage.");
-            alert("Error: No active user found.");
-            return;
-        }
-
-        try {
-            // Release checkout
-            await fetch('/update-client', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    clientId: clientId,
-                    clientData: {
-                        checkedOut: [{
-                            status: false,
-                            timestamp: null,
-                            user: null,
-                        }],
-                    },
-                }),
-            });
-
-            // Add note
-            await fetch('/add-note-to-client', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    clientId: clientId,
-                    note: {
-                        text: "Profile released.",
-                        timestamp: new Date().toLocaleString(),
-                        username: activeUser,
-                    },
-                }),
-            });
-
-            window.location.href = `profileview.html?id=${clientId}`;
-        } catch (error) {
-            console.error("Error during save and release:", error);
-            alert("An error occurred while saving and releasing the profile.");
-        }
-    });
-
-    topButtonsDiv.appendChild(saveReleaseBtn);
     container.appendChild(topButtonsDiv);
 
     await displaySNAPHouseholds(freshMembers, freshClient);
@@ -1767,6 +1935,22 @@ async function refreshAllDisplays() {
 
     // Check if all screenings are now closed across all members
     await checkAndAutoTerminateScreening(freshMembers);
+
+        // Respect the active sidebar tab — if contacts tab is active, hide screening containers
+        const contactsBtn = document.getElementById('toggle-contacts-btn');
+        if (contactsBtn && contactsBtn.classList.contains('active')) {
+            const container = document.getElementById('household-members-container');
+            const snapContainer = document.getElementById('snap-household-container');
+            const liheapContainer = document.getElementById('liheap-household-container');
+            const stopScreeningContainer = document.getElementById('stop-screening-container');
+            const screeningHeaderActions = document.getElementById('screening-header-actions');
+    
+            if (container) container.style.display = 'none';
+            if (snapContainer) snapContainer.style.display = 'none';
+            if (liheapContainer) liheapContainer.style.display = 'none';
+            if (stopScreeningContainer) stopScreeningContainer.style.display = 'none';
+            if (screeningHeaderActions) screeningHeaderActions.style.display = 'none';
+        }
 }
 
 // Auto-terminate screening if all benefits are closed for all members
@@ -1774,17 +1958,42 @@ async function checkAndAutoTerminateScreening(members) {
     // Only check if screening is currently in progress
     if (client.screeningInProgress !== true) return;
 
-    // Don't auto-terminate if there are no household members
-    if (!members || members.length === 0) return;
+    // Fetch fresh client data to check program-level statuses
+    let freshClient = null;
+    try {
+        const clientRes = await fetch(`/get-client/${clientId}`);
+        if (clientRes.ok) {
+            freshClient = await clientRes.json();
+        }
+    } catch (e) {
+        console.error('Error fetching client data for auto-terminate check:', e);
+        return;
+    }
+    const programStatus = freshClient?.programStatus || {};
 
     const allBenefits = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
 
-    // Check if every member has all their benefits either closed (screeningInProgress === false) or not checked
-    const allClosed = members.every(member => {
-        return allBenefits.every(benefit => {
-            const benefitObj = member[benefit];
-            if (!benefitObj) return true; // No benefit object = not applicable
-            if (benefitObj.eligibility?.includes('Not Checked')) return true; // Skip "Not Checked" benefits
+    // For each benefit, check if it's fully closed either at member level or client level
+    const allClosed = allBenefits.every(benefit => {
+        // First check: is this benefit closed at the client/program level?
+        if (programStatus[benefit]?.screeningInProgress === false) return true;
+
+        // Second check: do any members have this benefit open?
+        const membersWithBenefit = (members || []).filter(m => {
+            const benefitObj = m[benefit];
+            if (!benefitObj) return false;
+            if (benefitObj.eligibility?.includes('Not Checked')) return false;
+            return true;
+        });
+
+        // If no members have this benefit at all, it's still "open" (yellow card) unless closed at program level
+        if (membersWithBenefit.length === 0) return false;
+
+        // All members with this benefit must have it closed
+        return membersWithBenefit.every(m => {
+            const benefitObj = m[benefit];
+            if (!benefitObj) return true;
+            if (benefitObj.eligibility?.includes('Not Checked')) return true;
             if (benefitObj.eligibility?.includes('Not Enrolled in Medicare')) return true;
             if (benefitObj.eligibility?.includes('Enrolled in Medicaid')) return true;
             if (benefitObj.eligibility?.includes('Age Criteria Not Met')) return true;
@@ -3532,15 +3741,19 @@ function capitalizeFirstLetter(string) {
 
 // Initialize PACE eligibility check and update the UI
 const members = await loadHouseholdMembers();
-await PACEEligibilityCheck(members);
-await LISEligibilityCheck(members);
-await MSPEligibilityCheck(members);
-await PTRREligibilityCheck(members);
-await SNAPEligibilityCheck(members, client.isFarmworker);
-await LIHEAPEligibilityCheck(members);
 
- // Refresh all displays after all eligibility checks are complete
- await refreshAllDisplays();
+// Only run eligibility checks and display if screening is in progress
+if (client.screeningInProgress === true) {
+    await PACEEligibilityCheck(members);
+    await LISEligibilityCheck(members);
+    await MSPEligibilityCheck(members);
+    await PTRREligibilityCheck(members);
+    await SNAPEligibilityCheck(members, client.isFarmworker);
+    await LIHEAPEligibilityCheck(members);
+
+    // Refresh all displays after all eligibility checks are complete
+    await refreshAllDisplays();
+}
 
 // Add "Stop Screening" button at the top of the estimations container
 function createStopScreeningButton() {
@@ -3560,21 +3773,6 @@ function createStopScreeningButton() {
         stoppedContainer.id = 'stop-screening-container';
         stoppedContainer.style.cssText = 'margin-bottom: 16px; text-align: left;';
         stoppedContainer.innerHTML = `
-            <div style="text-align: center; margin-bottom: 12px;">
-                <button id="save-release-no-screening-btn" style="
-                    width: auto;
-                    font-size: 0.85rem;
-                    font-weight: normal;
-                    padding: 8px 16px;
-                    background-color: #007bff;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    transition: background-color 0.3s;
-                    box-sizing: border-box;
-                " onmouseover="this.style.backgroundColor='#0056b3'" onmouseout="this.style.backgroundColor='#007bff'">Save and Release Profile</button>
-            </div>
             <div class="household-member-box" style="background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 12px;">
                 <p><strong>No Screening in Progress</strong></p>
                 <button id="reopen-all-screening-btn" style="
@@ -3592,53 +3790,7 @@ function createStopScreeningButton() {
         `;
         container.parentNode.insertBefore(stoppedContainer, container);
 
-        // Save and Release handler
-        document.getElementById('save-release-no-screening-btn').addEventListener('click', async () => {
-            if (!confirm("Are you sure you want to save and release this profile?")) return;
-
-            const activeUser = sessionStorage.getItem('loggedInUser');
-            if (!activeUser) {
-                console.error("No active user found in sessionStorage.");
-                alert("Error: No active user found.");
-                return;
-            }
-
-            try {
-                await fetch('/update-client', {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        clientId: clientId,
-                        clientData: {
-                            checkedOut: [{
-                                status: false,
-                                timestamp: null,
-                                user: null,
-                            }],
-                        },
-                    }),
-                });
-
-                await fetch('/add-note-to-client', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        clientId: clientId,
-                        note: {
-                            text: "Profile released.",
-                            timestamp: new Date().toLocaleString(),
-                            username: activeUser,
-                        },
-                    }),
-                });
-
-                window.location.href = `profileview.html?id=${clientId}`;
-            } catch (error) {
-                console.error("Error during save and release:", error);
-                alert("An error occurred while saving and releasing the profile.");
-            }
-        });
-
+        // Reopen all screening handler
         document.getElementById('reopen-all-screening-btn').addEventListener('click', async () => {
     const confirmAction = confirm("Are you sure you want to start a new screening?");
     if (!confirmAction) return;
@@ -3690,6 +3842,10 @@ function createStopScreeningButton() {
         // 5. Restart SNAP and LIHEAP program statuses at the client level
         await updateClientProgramStatus(clientId, 'SNAP', true);
         await updateClientProgramStatus(clientId, 'LIHEAP', true);
+        await updateClientProgramStatus(clientId, 'PACE', true);
+        await updateClientProgramStatus(clientId, 'LIS', true);
+        await updateClientProgramStatus(clientId, 'MSP', true);
+        await updateClientProgramStatus(clientId, 'PTRR', true);
 
         // 6. Add a note
         const note = {
@@ -3716,6 +3872,15 @@ function createStopScreeningButton() {
         // Show all estimation containers again
         const householdMemberContainer = document.getElementById('household-members-container');
         if (householdMemberContainer) householdMemberContainer.style.display = '';
+
+        // Re-run all eligibility checks before refreshing displays
+        const freshMembers = await loadHouseholdMembers();
+        await PACEEligibilityCheck(freshMembers);
+        await LISEligibilityCheck(freshMembers);
+        await MSPEligibilityCheck(freshMembers);
+        await PTRREligibilityCheck(freshMembers);
+        await SNAPEligibilityCheck(freshMembers, client.isFarmworker);
+        await LIHEAPEligibilityCheck(freshMembers);
 
         await refreshAllDisplays();
     } catch (error) {
@@ -3841,6 +4006,11 @@ async function openStopScreeningModal() {
             if (!updateResponse.ok) {
                 console.error('Failed to update client screening status.');
                 return;
+            }
+
+            // 4b. Close all program-level statuses
+            for (const benefit of allBenefits) {
+                await updateClientProgramStatus(clientId, benefit, false, reason);
             }
 
             // 5. Add a note

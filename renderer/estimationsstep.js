@@ -2774,48 +2774,50 @@ function getCloseReasonsForBenefits(selectedBenefits) {
 
     const benefitReasons = {
         'PACE': [
-            ...commonReasons,
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Age Criteria Not Met", label: "Age Criteria Not Met" },
             { value: "Enrolled in Medicaid", label: "Enrolled in Medicaid" },
             { value: "Residency Not Met", label: "PA Residency Not Met" },
+            ...commonReasons,
+
         ],
         'LIS': [
-            ...commonReasons,
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Ineligible - Assets", label: "Ineligible - Assets" },
             { value: "Not Enrolled in Medicare", label: "Not Enrolled in Medicare" },
             { value: "Enrolled in Medicaid", label: "Enrolled in Medicaid" },
+            ...commonReasons,
         ],
         'MSP': [
-            ...commonReasons,
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Ineligible - Assets", label: "Ineligible - Assets" },
             { value: "Not Enrolled in Medicare", label: "Not Enrolled in Medicare" },
             { value: "Enrolled in Medicaid", label: "Enrolled in Medicaid" },
+            ...commonReasons,
         ],
         'PTRR': [
-            ...commonReasons,
             { value: "Already Applied", label: "Already Applied This Year" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Age/Disability/Widow Criteria Not Met", label: "Age/Disability/Widow Criteria Not Met" },
             { value: "No Formal Lease", label: "No Formal Lease" },
             { value: "No Relevant Expenses", label: "No Relevant Expenses" },
+            ...commonReasons,
         ],
         'SNAP': [
-            ...commonReasons,
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Ineligible - Income and Assets", label: "Ineligible - Income and Assets" },
+            { value: "Low EBA", label: "Low EBA" },
+            ...commonReasons,
         ],
         'LIHEAP': [
-            ...commonReasons,
             { value: "Already Enrolled", label: "Already Enrolled" },
             { value: "Ineligible - Income", label: "Ineligible - Income" },
             { value: "Subsidized Housing and No Heating Responsibility", label: "Subsidized Housing and No Heating Responsibility" },
+            ...commonReasons,
         ]
     };
 

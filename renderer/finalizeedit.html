@@ -345,9 +345,42 @@ document.getElementById('generate-pdf-button').addEventListener('click', async (
        // Call listFormFields to log all field names in the PDF
        await listFormFields();
 
-    const applicantData = await fetchApplicantData(clientId);
+       const applicantData = await fetchApplicantData(clientId);
     if (applicantData) {
         await generatePDF(applicantData);
+        // Hide the button after successful PDF generation
+        document.getElementById('generate-pdf-button').style.display = 'none';
+
+        // Reset applying flag so the button doesn't reappear until user applies again
+        try {
+            const clientData = await fetchClientData(clientId);
+            const householdMembers = clientData.householdMembers || [];
+            let updated = false;
+
+            householdMembers.forEach(member => {
+                if (member.PTRR?.application) {
+                    member.PTRR.application.forEach(app => {
+                        if (app.applying === true) {
+                            app.applying = false;
+                            updated = true;
+                        }
+                    });
+                }
+            });
+
+            if (updated) {
+                await fetch('/update-client', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        clientId,
+                        clientData: { householdMembers },
+                    }),
+                });
+            }
+        } catch (error) {
+            console.error('Error resetting PTRR applying flags:', error);
+        }
     } else {
         alert('Failed to fetch applicant data.');
     }

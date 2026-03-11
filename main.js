@@ -1498,6 +1498,130 @@ app.post('/upload-to-profile', upload.single('file'), async (req, res) => {
     }
 });
 
+// Upload a letter (PDF) to a client's Letters array as base64
+app.post('/upload-letter', upload.single('file'), async (req, res) => {
+    const { file } = req;
+    const { clientId, title, generatedBy } = req.body;
+
+    if (!file || !clientId) {
+        return res.status(400).json({ success: false, message: 'File or client ID is missing.' });
+    }
+
+    try {
+        const fs = require('fs');
+        const fileBuffer = fs.readFileSync(file.path);
+        const base64Data = fileBuffer.toString('base64');
+
+        // Clean up the temp file
+        fs.unlinkSync(file.path);
+
+        const letter = {
+            letterId: `letter-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            title: title || file.originalname,
+            fileName: file.originalname,
+            mimeType: file.mimetype || 'application/pdf',
+            data: base64Data,
+            generatedBy: generatedBy || 'Unknown User',
+            timestamp: new Date().toLocaleString(),
+            createdAt: new Date().toISOString(),
+        };
+
+        const collection = db.collection('clients');
+        const result = await collection.updateOne(
+            { id: clientId },
+            { $push: { Letters: letter } }
+        );
+
+        if (result.modifiedCount > 0) {
+            res.json({ success: true, message: 'Letter uploaded successfully.', letterId: letter.letterId });
+        } else {
+            res.status(404).json({ success: false, message: 'Client not found.' });
+        }
+    } catch (error) {
+        console.error('Error uploading letter:', error);
+        res.status(500).json({ success: false, message: 'Failed to upload letter.' });
+    }
+});
+
+// Fetch a single letter's PDF data by letterId
+app.get('/get-letter/:clientId/:letterId', async (req, res) => {
+    const { clientId, letterId } = req.params;
+
+    try {
+        const collection = db.collection('clients');
+        const client = await collection.findOne({ id: clientId });
+
+        if (!client) {
+            return res.status(404).json({ success: false, message: 'Client not found.' });
+        }
+
+        const letter = (client.Letters || []).find(l => l.letterId === letterId);
+        if (!letter) {
+            return res.status(404).json({ success: false, message: 'Letter not found.' });
+        }
+
+        res.json({ success: true, letter });
+    } catch (error) {
+        console.error('Error fetching letter:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch letter.' });
+    }
+});
+
+// Delete a letter by letterId
+app.delete('/delete-letter', async (req, res) => {
+    const { clientId, letterId } = req.body;
+
+    if (!clientId || !letterId) {
+        return res.status(400).json({ success: false, message: 'Missing clientId or letterId.' });
+    }
+
+    try {
+        const collection = db.collection('clients');
+        const result = await collection.updateOne(
+            { id: clientId },
+            { $pull: { Letters: { letterId: letterId } } }
+        );
+
+        if (result.modifiedCount > 0) {
+            res.json({ success: true, message: 'Letter deleted successfully.' });
+        } else {
+            res.status(404).json({ success: false, message: 'Letter not found or client not found.' });
+        }
+    } catch (error) {
+        console.error('Error deleting letter:', error);
+        res.status(500).json({ success: false, message: 'Failed to delete letter.' });
+    }
+});
+
+// Fetch letters metadata (without base64 data) for thumbnail rendering
+app.get('/get-letters/:clientId', async (req, res) => {
+    const { clientId } = req.params;
+
+    try {
+        const collection = db.collection('clients');
+        const client = await collection.findOne({ id: clientId });
+
+        if (!client) {
+            return res.status(404).json({ success: false, message: 'Client not found.' });
+        }
+
+        // Return letters without the heavy base64 data for listing
+        const letters = (client.Letters || []).map(l => ({
+            letterId: l.letterId,
+            title: l.title,
+            fileName: l.fileName,
+            generatedBy: l.generatedBy,
+            timestamp: l.timestamp,
+            createdAt: l.createdAt,
+        }));
+
+        res.json({ success: true, letters });
+    } catch (error) {
+        console.error('Error fetching letters:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch letters.' });
+    }
+});
+
 app.post('/notify-user', (req, res) => {
     const { username, redirectUrl } = req.body;
 

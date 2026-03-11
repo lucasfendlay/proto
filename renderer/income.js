@@ -655,7 +655,7 @@ function setupModalEventListeners() {
     // Click outside modal to close
     document.addEventListener('click', e => {
         const isVisible = !modal.classList.contains('hidden') && modal.style.display !== 'none';
-        const modalContent = document.querySelector('.modal-content');
+        const modalContent = modal.querySelector('.modal-content');
         
         if (isVisible && 
             !modalContent.contains(e.target) && 
