@@ -307,7 +307,6 @@ function generatePACEQuestionsHTML() {
             <label>Is this person currently enrolled in PACE?</label>
             <div data-value="yes" class="selection-option">Yes</div>
             <div data-value="no" class="selection-option">No</div>
-            <div data-value="notinterested" class="selection-option">Not Interested</div>
         </div>
     `;
 }
@@ -318,7 +317,6 @@ function generateLISQuestionHTML() {
             <label>Is this person currently enrolled in LIS/ Extra Help?</label>
             <div data-value="yes" class="selection-option">Yes</div>
             <div data-value="no" class="selection-option">No</div>
-            <div data-value="notinterested" class="selection-option">Not Interested</div>
         </div>
     `;
 }
@@ -329,7 +327,6 @@ function generateMSPQuestionHTML() {
             <label>Is this person currently enrolled in the Medicare Savings Program?</label>
             <div data-value="yes" class="selection-option">Yes</div>
             <div data-value="no" class="selection-option">No</div>
-            <div data-value="notinterested" class="selection-option">Not Interested</div>
         </div>
     `;
 }
@@ -340,7 +337,6 @@ function generatePTRRQuestionHTML() {
             <label>Has this person already applied for PTRR this year?</label>
             <div data-value="yes" class="selection-option">Yes</div>
             <div data-value="no" class="selection-option">No</div>
-            <div data-value="notinterested" class="selection-option">Not Interested</div>
         </div>
     `;
 }

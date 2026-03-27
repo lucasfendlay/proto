@@ -1148,6 +1148,8 @@ if (member.previousMaritalStatus === 'Widowed') {
         }
     }
 
+    togglePACEFields(member.householdMemberId || member.id);
+
     // Step 5: Set up the button for updating the member
     setupAddOrUpdateButton(true, member);
 

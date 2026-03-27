@@ -229,6 +229,11 @@ margin: 0; /* Remove global margin */
     background-color: #e6f0ff;
 }
 
+.modal .modal-content .selection-box div.selected:hover {
+    background-color: #007bff;
+    color: white;
+}
+
 .error {
 border: 2px solid red;
 background-color: #ffe6e6; /* Light red background */
@@ -559,6 +564,7 @@ body {
                 <button id="add-contact-button" onclick="openContactModal()">Add New Contact</button>
             </div>
             <div id="applications-header-actions" class="button-container">
+                <button id="stop-all-applications-btn" class="stop-applying-btn" style="width: 100%; padding: 8px !important; font-size: 0.85rem; background-color: #dc3545; color: white; border: 1px solid #dc3545; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease;" onclick="openStopAllApplicationsModal()" onmouseover="this.style.backgroundColor='#a71d2a'; this.style.borderColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'; this.style.borderColor='#dc3545'">Close All Applications</button>
             </div>
         </div>
         <div id="contacts-list" class="left-sidebar" style="display: none;"></div>
@@ -608,6 +614,28 @@ body {
         <div class="button-container">
             <button type="button" onclick="closeStopApplyingModal()">Cancel</button>
             <button type="button" class="confirm-stop-btn" onclick="confirmStopApplying()">Confirm Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Stop All Applications -->
+<div id="stopAllApplicationsModal" class="stop-applying-modal">
+    <div class="modal-content">
+        <h2>Close All Applications</h2>
+        <p id="stopAllProgramsList"></p>
+
+        <label for="closeoutReasonAll">Closeout Reason:</label>
+        <select id="closeoutReasonAll">
+            <option value="" disabled selected>Select a closeout reason</option>
+            <option value="Not Interested">Not Interested</option>
+            <option value="Too Confusing">Too Confusing</option>
+            <option value="Will Call Back">Will Call Back</option>
+            <option value="Client Disconnected">Client Unresponsive</option>
+        </select>
+
+        <div class="button-container">
+            <button type="button" onclick="closeStopAllApplicationsModal()">Cancel</button>
+            <button type="button" class="confirm-stop-btn" onclick="confirmStopAllApplications()">Confirm Close</button>
         </div>
     </div>
 </div>
@@ -1117,19 +1145,19 @@ body {
                 </select>
             </div>
 
-            <div id="homeboundQuestion" class="selection-box">
+            <div id="homeboundQuestion" class="selection-box" style="display: none;">
                 <label>Is this person homebound?</label>
                 <div id="modal-homebound-yes" data-value="yes">Yes</div>
                 <div id="modal-homebound-no" data-value="no">No</div>
             </div>
 
-            <div id="militaryServiceQuestion" class="selection-box">
+            <div id="militaryServiceQuestion" class="selection-box" style="display: none;">
                 <label>Has this person ever served in the military?</label>
                 <div id="modal-military-yes" data-value="yes">Yes</div>
                 <div id="modal-military-no" data-value="no">No</div>
             </div>
             
-            <div id="religiousOrderQuestion" class="selection-box">
+            <div id="religiousOrderQuestion" class="selection-box" style="display: none;">
                 <label>Is this person a member of a religious order?</label>
                 <div id="modal-religious-yes" data-value="yes">Yes</div>
                 <div id="modal-religious-no" data-value="no">No</div>
@@ -1394,6 +1422,54 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+function shouldShowPACEFields(memberId) {
+    if (!client || !client.householdMembers) return false;
+
+    const member = client.householdMembers.find(m => m.householdMemberId === memberId || m.id === memberId);
+    if (!member) return false;
+
+    // Check if this member is applying for PACE
+    const memberApplyingPACE = member.PACE?.application?.some(app => app.applying === true);
+    if (memberApplyingPACE) return true;
+
+    // Check if this member's current spouse is applying for PACE
+    // Find spouse by checking marital status and matching spouseId or relationship
+    for (const otherMember of client.householdMembers) {
+        if (otherMember.householdMemberId === memberId || otherMember.id === memberId) continue;
+
+        // Check if otherMember is the spouse of this member
+        const isSpouse = (
+            (member.spouseId && member.spouseId === (otherMember.householdMemberId || otherMember.id)) ||
+            (otherMember.spouseId && otherMember.spouseId === (member.householdMemberId || member.id)) ||
+            // Also check relationships array
+            (member.relationships?.some(r => r.memberId === (otherMember.householdMemberId || otherMember.id) && r.relationship?.toLowerCase() === 'spouse')) ||
+            (otherMember.relationships?.some(r => r.memberId === (member.householdMemberId || member.id) && r.relationship?.toLowerCase() === 'spouse'))
+        );
+
+        if (isSpouse) {
+            const spouseApplyingPACE = otherMember.PACE?.application?.some(app => app.applying === true);
+            if (spouseApplyingPACE) return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Toggles visibility of PACE-specific fields in the household member modal.
+ */
+function togglePACEFields(memberId) {
+    const show = shouldShowPACEFields(memberId);
+    const display = show ? 'block' : 'none';
+
+    document.getElementById('homeboundQuestion').style.display = display;
+    document.getElementById('militaryServiceQuestion').style.display = display;
+    document.getElementById('religiousOrderQuestion').style.display = display;
+
+    const dlContainer = document.getElementById('driversLicenseContainer');
+    if (dlContainer) dlContainer.style.display = display;
+}
     </script>
 <label for="socialSecurityNumber">Social Security Number:</label>
 <input 
@@ -1420,8 +1496,10 @@ document.addEventListener('DOMContentLoaded', () => {
     <button type="button" id="editSSNButton" onclick="editSSN()" style="display: none;">Edit SSN</button>
 </div>
 
-<label for="driversLicenseNumber">Driver's License Number:</label>
-<input type="text" id="driversLicenseNumber" name="driversLicenseNumber" placeholder="Enter Driver's License Number">
+<div id="driversLicenseContainer" style="display: none;">
+    <label for="driversLicenseNumber">Driver's License Number:</label>
+    <input type="text" id="driversLicenseNumber" name="driversLicenseNumber" placeholder="Enter Driver's License Number">
+    </div>
 
 <div id="disabilityQuestion" class="selection-box">
     <label>Is this person receiving disability benefits?</label>
@@ -2878,6 +2956,12 @@ function renderApplications() {
         cardsRendered++;
     });
 
+    // Show or hide the "Close All Applications" button based on active applications
+    const stopAllBtn = document.getElementById('stop-all-applications-btn');
+    if (stopAllBtn) {
+        stopAllBtn.style.display = cardsRendered > 0 ? 'block' : 'none';
+    }
+
     if (cardsRendered === 0) {
         applicationsContainer.innerHTML = '<p>No Applications in Progress</p>';
     }
@@ -3092,6 +3176,177 @@ async function saveCloseoutNote(clientId, noteText) {
         }
     } catch (error) {
         console.error('Error saving closeout note:', error);
+    }
+}
+
+// === STOP ALL APPLICATIONS ===
+
+function openStopAllApplicationsModal() {
+    if (!client || !client.householdMembers || client.householdMembers.length === 0) {
+        alert('No applications to close.');
+        return;
+    }
+
+    const programKeys = ['SNAP', 'LIHEAP', 'PACE', 'LIS', 'MSP', 'PTRR'];
+
+    // Find all active programs
+    const activePrograms = new Set();
+    client.householdMembers.forEach(member => {
+        programKeys.forEach(key => {
+            const programData = member[key];
+            if (programData && programData.application && Array.isArray(programData.application)) {
+                if (programData.application.some(app => app.applying === true)) {
+                    activePrograms.add(key);
+                }
+            }
+        });
+    });
+
+    if (activePrograms.size === 0) {
+        alert('No active applications to close.');
+        return;
+    }
+
+    // Show the list of programs that will be closed
+    const label = document.getElementById('stopAllProgramsList');
+    const programList = Array.from(activePrograms).join(', ');
+    label.innerHTML = `<strong>Programs to close:</strong> ${programList}`;
+
+    const modal = document.getElementById('stopAllApplicationsModal');
+    modal.classList.add('show');
+}
+
+function closeStopAllApplicationsModal() {
+    const modal = document.getElementById('stopAllApplicationsModal');
+    modal.classList.remove('show');
+}
+
+// Close modal when clicking outside
+window.addEventListener('click', (event) => {
+    const stopAllModal = document.getElementById('stopAllApplicationsModal');
+    if (event.target === stopAllModal) {
+        closeStopAllApplicationsModal();
+    }
+});
+
+async function confirmStopAllApplications() {
+    const closeoutReason = document.getElementById('closeoutReasonAll').value;
+
+    if (!closeoutReason) {
+        alert('Please select a closeout reason.');
+        return;
+    }
+
+    if (!client || !client.householdMembers) {
+        alert('Error: Missing client data.');
+        return;
+    }
+
+    const clientId = getQueryParam('id');
+    if (!clientId) {
+        console.error('Client ID not found.');
+        return;
+    }
+
+    const programKeys = ['SNAP', 'LIHEAP', 'PACE', 'LIS', 'MSP', 'PTRR'];
+
+    try {
+        const closedPrograms = new Set();
+        const affectedMembersByProgram = {};
+
+        // Update each household member for all programs
+        for (const member of client.householdMembers) {
+            const memberName = `${member.firstName || 'Unknown'} ${member.lastName || ''}`.trim();
+
+            for (const key of programKeys) {
+                const programData = member[key];
+                if (programData && programData.application && Array.isArray(programData.application)) {
+                    let changed = false;
+                    programData.application.forEach((app) => {
+                        if (app.applying === true) {
+                            app.applying = false;
+                            app.status = 'Closed';
+                            app.closeoutDate = new Date().toISOString();
+                            changed = true;
+                        }
+                    });
+
+                    if (changed) {
+                        closedPrograms.add(key);
+                        if (!affectedMembersByProgram[key]) {
+                            affectedMembersByProgram[key] = [];
+                        }
+                        affectedMembersByProgram[key].push(memberName);
+                    }
+                }
+
+                // Close screening for this benefit
+                if (member[key] && closedPrograms.has(key)) {
+                    member[key].screeningInProgress = false;
+                    member[key].screeningCloseReason = closeoutReason;
+                }
+            }
+        }
+
+        if (closedPrograms.size === 0) {
+            alert('No active applications found to close.');
+            closeStopAllApplicationsModal();
+            return;
+        }
+
+        // Save all updated household members
+        const saveResponse = await fetch('/save-household-members', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, householdMembers: client.householdMembers }),
+        });
+
+        if (!saveResponse.ok) {
+            console.error('Failed to save household members');
+            alert('Failed to save changes. Please try again.');
+            return;
+        }
+
+        // Update client-level program status for all closed programs
+        const programStatus = client.programStatus || {};
+        closedPrograms.forEach(key => {
+            programStatus[key] = {
+                screeningInProgress: false,
+                screeningCloseReason: closeoutReason
+            };
+        });
+
+        const updateResponse = await fetch('/update-client', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                clientId,
+                clientData: { programStatus }
+            })
+        });
+
+        if (!updateResponse.ok) {
+            console.error('Failed to update client program status');
+        }
+
+        // Build and save a single closeout note for all programs
+        let noteText = `<strong>All applications closed.</strong><br><br>`;
+        for (const [key, members] of Object.entries(affectedMembersByProgram)) {
+            noteText += `<strong>${key}:</strong> ${members.join(', ')}<br>`;
+        }
+        noteText += `<br><strong>Reason:</strong> ${closeoutReason}`;
+
+        await saveCloseoutNote(clientId, noteText);
+
+        console.log(`Successfully closed all applications. Reason: ${closeoutReason}`);
+
+        // Re-render the applications sidebar
+        renderApplications();
+        closeStopAllApplicationsModal();
+
+    } catch (error) {
+        console.error('Error stopping all applications:', error);
+        alert('An error occurred while stopping all applications. Please try again.');
     }
 }
     </script>

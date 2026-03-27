@@ -425,6 +425,24 @@ async function loadSavedData() {
             await applyLiheapVisibility(clientData);
         }
 
+            // Subsidized Housing Previous — show only if residenceStatus is rented or rentedowned
+    const shPrevContainer = document.getElementById('subsidizedHousingPrevious-container');
+    if (shPrevContainer) {
+        if (clientData.residenceStatus === 'rented' || clientData.residenceStatus === 'rentedowned') {
+            shPrevContainer.style.display = 'block';
+        } else {
+            shPrevContainer.style.display = 'none';
+        }
+    }
+
+    // Restore subsidizedHousingPrevious selection
+    if (clientData.subsidizedHousingPrevious) {
+        highlightSelection(
+            ['subsidizedHousingPrevious-yes', 'subsidizedHousingPrevious-no'],
+            clientData.subsidizedHousingPrevious
+        );
+    }
+
         // Run eligibility checks
         const members = clientData.householdMembers || [];
         await runAllEligibilityChecks(members);
@@ -1359,7 +1377,7 @@ async function handleSubsidizedHousingClick(selectedValue) {
     }
 }
 
-// Refactored handleHeatingCostClick
+// HandleHeatingCostClick
 async function handleHeatingCostClick(selectedValue) {
     const clientId = getQueryParam('id');
     if (!clientId) return;
@@ -1377,6 +1395,26 @@ async function handleHeatingCostClick(selectedValue) {
 
     } catch (error) {
         console.error('Error saving heatingCost:', error);
+    }
+}
+
+// Subsidized Housing Previous Year
+async function handleSubsidizedHousingPreviousClick(selectedValue) {
+    const clientId = getQueryParam('id');
+    if (!clientId) return;
+
+    try {
+        const response = await fetch('/update-client', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, clientData: { subsidizedHousingPrevious: selectedValue } }),
+        });
+        if (!response.ok) throw new Error('Failed to save subsidizedHousingPrevious');
+
+        await loadSavedData();
+
+    } catch (error) {
+        console.error('Error saving subsidizedHousingPrevious:', error);
     }
 }
 
@@ -1448,11 +1486,19 @@ async function handleMainQuestionClick(question, element) {
         await updateAllMembers('meals', 'no');
     } else if (question.id === 'residenceStatus') {
         await updateAllMembers('residenceStatus', value);
+
+        // Show/hide subsidized housing previous based on residence status
+        const shPrevContainer = document.getElementById('subsidizedHousingPrevious-container');
+        if (value === 'rented' || value === 'rentedowned') {
+            if (shPrevContainer) shPrevContainer.style.display = 'block';
+        } else {
+            if (shPrevContainer) shPrevContainer.style.display = 'none';
+            // Clear the saved value when hiding
+            await saveClientField(clientId, 'subsidizedHousingPrevious', null);
+        }
     }
 
     await loadSavedData();
-    const members = await loadHouseholdMembers();
-    await runAllEligibilityChecks(members);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1582,6 +1628,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             await handleHeatingCostClick(val);
         });
     });
+
+        // ── Subsidized Housing Previous options ──
+        document.querySelectorAll('[id^="subsidizedHousingPrevious-"]').forEach(option => {
+            option.addEventListener('click', async () => {
+                const val = option.getAttribute('data-value');
+                if (!val) return;
+                highlightSelection(['subsidizedHousingPrevious-yes', 'subsidizedHousingPrevious-no'], val);
+                await handleSubsidizedHousingPreviousClick(val);
+            });
+        });
 
     // ── Non-citizen / Student dropdowns ──
     setupNonCitizenDropdown();

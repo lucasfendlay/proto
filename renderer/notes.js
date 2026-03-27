@@ -406,6 +406,7 @@ document.addEventListener('DOMContentLoaded', function () {
             !noteText.includes('Screening(s) closed.') &&
             !noteText.includes('screening reopened') &&
             !noteText.includes('application closed.') &&
+            !noteText.includes('applications closed.') &&
             !noteText.includes('Referral provided');
 
             let shouldShowButtons = isCustomNote && cleanedUsername === activeUser;

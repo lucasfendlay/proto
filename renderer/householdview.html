@@ -223,6 +223,45 @@
     </div>
 
     <div class="selection-box">
+        <label id="snap-label">Are you currently enrolled in SNAP?</label>
+        <div id="snap-yes" data-value="yes" class="read-only">Yes</div>
+        <div id="snap-no" data-value="no" class="read-only">No</div>
+        <div id="snap-notinterested" data-value="notinterested" class="read-only">Not Interested</div>
+    </div>
+
+    <div class="selection-box">
+        <label id="liheap-label">Has your household already received LIHEAP this season?</label>
+        <div id="liheap-yes" data-value="yes" class="read-only">Yes</div>
+        <div id="liheap-no" data-value="no" class="read-only">No</div>
+    </div>
+
+    <div class="selection-box" id="heatingCrisis-container" style="display: block;">
+        <label id="heatingCrisis-label">Are you in danger of losing your heating in the next 15 days?</label>
+        <div id="heatingCrisis-yes" data-value="yes" class="read-only">Yes</div>
+        <div id="heatingCrisis-no" data-value="no" class="read-only">No</div>
+    </div>
+
+    <div class="selection-box" id="residenceStatusCurrent-container">
+        <label id="residenceStatusCurrent-label">What is your current residence status?</label>
+        <div id="residenceStatusCurrent-owned" data-value="owned" class="read-only">Own Home</div>
+        <div id="residenceStatusCurrent-rented" data-value="rented" class="read-only">Renting with Formal Lease</div>
+        <div id="residenceStatusCurrent-rentedowned" data-value="rentedowned" class="read-only">Own/Rent</div>
+        <div id="residenceStatusCurrent-other" data-value="other" class="read-only">Other/No Formal Agreement</div>
+    </div>
+
+    <div class="selection-box" id="subsidizedHousing-container" style="display: none;">
+        <label id="subsidizedHousing-label">Does your household receive a housing subsidy, such as Section 8?</label>
+        <div id="subsidizedHousing-yes" data-value="yes" class="read-only">Yes</div>
+        <div id="subsidizedHousing-no" data-value="no" class="read-only">No</div>
+    </div>
+
+    <div class="selection-box" id="heatingCost-container" style="display: none;">
+        <label id="heatingCost-label">Is the cost of your heating included in the cost of rent?</label>
+        <div id="heatingCost-yes" data-value="yes" class="read-only">Yes</div>
+        <div id="heatingCost-no" data-value="no" class="read-only">No</div>
+    </div>
+
+    <div class="selection-box">
         <label id="residenceStatus-label">What was your residence status during the previous year?</label>
         <div id="residenceStatus-owned" data-value="owned" class="read-only">Owned Home</div>
         <div id="residenceStatus-rented" data-value="rented" class="read-only">Rented with Formal Lease</div>
@@ -230,12 +269,11 @@
         <div id="residenceStatus-other" data-value="other" class="read-only">Other/No Formal Agreement</div>
     </div>
 
-    <div class="selection-box">
-        <label id="snap-label">Are you currently enrolled in SNAP?</label>
-        <div id="snap-yes" data-value="yes" class="read-only">Yes</div>
-        <div id="snap-no" data-value="no" class="read-only">No</div>
-        <div id="snap-notinterested" data-value="notinterested" class="read-only">Not Interested</div>
-    </div>
+    <div class="selection-box" id="subsidizedHousingPrevious-container" style="display: none;">
+        <label id="subsidizedHousingPrevious-label">Did your household receive a housing subsidy, such as Section 8, during the previous year?</label>
+        <div id="subsidizedHousingPrevious-yes" data-value="yes" class="read-only">Yes</div>
+        <div id="subsidizedHousingPrevious-no" data-value="no" class="read-only">No</div>
+        </div>
 
     <div id="householdMemberContainer" class="household-member-container"></div>
 

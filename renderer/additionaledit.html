@@ -102,6 +102,93 @@ text-align: left;
         }
 
         .error { border: 2px solid red; background-color: #ffe6e6; }
+
+        /* Multiple Homes side-by-side containers (matching applicationedit address-container) */
+        .homes-row {
+            display: flex;
+            width: 1000px;
+            justify-content: space-between;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .home-card {
+            flex: 1;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        .home-card h3 {
+            margin-top: 0;
+            margin-bottom: 14px;
+            font-size: 1.1em;
+            color: #333;
+        }
+        .home-card .form-field {
+            margin-bottom: 10px;
+        }
+        .home-card .form-field label {
+            display: block;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+        .home-card .form-field input {
+            width: 100%;
+            padding: 12px;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        .home-card .button-container {
+            margin-bottom: 12px;
+        }
+        .home-card .button-container button {
+            width: 100%;
+            padding: 10px 15px;
+            font-size: 0.9em;
+            background-color: #007bff;
+            border: 1px solid #000000;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .home-card .button-container button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Previous Year Address card (matching applicationedit address-section) */
+        .previous-year-card {
+            max-width: 600px;
+            width: 600px;
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        .previous-year-card h3 {
+            margin-top: 0;
+            margin-bottom: 14px;
+            font-size: 1.1em;
+            color: #333;
+        }
+        .previous-year-card .form-field {
+            margin-bottom: 10px;
+        }
+        .previous-year-card .form-field label {
+            display: block;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+        .previous-year-card .form-field input {
+            width: 100%;
+            padding: 12px;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
             </style>
 </head>
 <body class="narrow-body">
@@ -133,6 +220,331 @@ text-align: left;
         </select>
     </div>
 
+    <!-- Container for dynamically added PTRR Questions -->
+    <div class="selection-box" id="subsidizedHousingPrevious-container" style="display: none;">
+        <label id="subsidizedHousingPrevious-label">Did your household receive a housing subsidy, such as Section 8, during the previous year?</label>
+        <div id="subsidizedHousingPrevious-yes" data-value="yes">Yes</div>
+        <div id="subsidizedHousingPrevious-no" data-value="no">No</div>
+    </div>
+
+    <div class="form-field" id="subsidizedRentAmount-container" style="display: none;">
+        <label for="subsidizedRentAmount">How much of your monthly rent in the previous year was subsidized?</label>
+        <input type="number" id="subsidizedRentAmount" name="subsidizedRentAmount" min="0" step="0.01" placeholder="Enter dollar amount">
+    </div>
+
+    <div class="selection-box" id="rentaltype-container" style="display: none;">
+        <label id="rentalType-label">What type of rental housing is the property?</label>
+        <div class="rental-type-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 800px;">
+            <div id="rentalType-apartmentHouse" data-value="apartmentHouse">Apartment in a House</div>
+            <div id="rentalType-apartmentBuilding" data-value="apartmentBuilding">Apartment in a Building</div>
+            <div id="rentalType-boardingHome" data-value="boardingHome">Boarding Home</div>
+            <div id="rentalType-mobileHome" data-value="mobileHome">Mobile Home</div>
+            <div id="rentalType-personalCareHome" data-value="personalCareHome">Personal Care Home</div>
+            <div id="rentalType-mobileHomeLot" data-value="mobileHomeLot">Mobile Home Lot</div>
+            <div id="rentalType-nursingHome" data-value="nursingHome">Nursing Home</div>
+            <div id="rentalType-privateHome" data-value="privateHome">Private Home</div>
+            <div id="rentalType-assistedLiving" data-value="assistedLiving">Assisted Living</div>
+            <div id="rentalType-condiminium" data-value="condominium">Condominium</div>
+        </div>
+    </div>
+
+    <div class="textbox-container" id="buildingName-container" style="display: none;">
+        <label for="buildingNameInput">Building Name:</label>
+        <input type="text" id="buildingNameInput" name="buildingName" placeholder="Enter building name">
+    </div>
+
+    <div class="selection-box" id="domicilliaryFosterCare-container" style="display: none;">
+        <label id="domicilliaryFosterCare-label">Is the property a domiciliary or foster care facility?</label>
+        <div id="domicilliaryFosterCare-yes" data-value="domicillary">Domicilliary Care</div>
+        <div id="domicilliaryFosterCare-no" data-value="foster">Foster Care</div>
+        <div id="domicilliaryFosterCare-none" data-value="no">No</div>
+        </div>
+
+    <!-- Multiple Homes (PTRR + owned/rentedowned) -->
+    <div class="selection-box" id="multipleHomes-container" style="display: none;">
+        <label id="multipleHomes-label">Did you live at more than one residence in the previous year?</label>
+        <div id="multipleHomes-yes" data-value="yes">Yes</div>
+        <div id="multipleHomes-no" data-value="no">No</div>
+    </div>
+
+    <!-- Two-home address fields (shown when multipleHomes = yes) -->
+    <div id="multipleHomesAddresses-container" style="display: none;">
+        <div class="homes-row">
+            <!-- First Home -->
+            <div class="home-card">
+                <h2>First Home</h2>
+                <div class="form-field">
+                    <label for="firstHomeStreetAddress">Street Address:</label>
+                    <input type="text" id="firstHomeStreetAddress" placeholder="Enter Street Address">
+                </div>
+                <div class="form-field">
+                    <label for="firstHomeStreetAddressLine2">Street Address Line 2:</label>
+                    <input type="text" id="firstHomeStreetAddressLine2" placeholder="Enter Street Address Line 2">
+                </div>
+                <div class="form-field">
+                    <label for="firstHomeCity">City:</label>
+                    <input type="text" id="firstHomeCity" placeholder="Enter City">
+                </div>
+                <div class="form-field">
+                    <label for="firstHomeState">State:</label>
+                    <select id="firstHomeState">
+                        <option value="" disabled selected>Select State</option>
+                        <option value="PA">PA</option>
+                        <option value="AL">AL</option>
+                        <option value="AK">AK</option>
+                        <option value="AZ">AZ</option>
+                        <option value="AR">AR</option>
+                        <option value="CA">CA</option>
+                        <option value="CO">CO</option>
+                        <option value="CT">CT</option>
+                        <option value="DE">DE</option>
+                        <option value="FL">FL</option>
+                        <option value="GA">GA</option>
+                        <option value="HI">HI</option>
+                        <option value="ID">ID</option>
+                        <option value="IL">IL</option>
+                        <option value="IN">IN</option>
+                        <option value="IA">IA</option>
+                        <option value="KS">KS</option>
+                        <option value="KY">KY</option>
+                        <option value="LA">LA</option>
+                        <option value="ME">ME</option>
+                        <option value="MD">MD</option>
+                        <option value="MA">MA</option>
+                        <option value="MI">MI</option>
+                        <option value="MN">MN</option>
+                        <option value="MS">MS</option>
+                        <option value="MO">MO</option>
+                        <option value="MT">MT</option>
+                        <option value="NE">NE</option>
+                        <option value="NV">NV</option>
+                        <option value="NH">NH</option>
+                        <option value="NJ">NJ</option>
+                        <option value="NM">NM</option>
+                        <option value="NY">NY</option>
+                        <option value="NC">NC</option>
+                        <option value="ND">ND</option>
+                        <option value="OH">OH</option>
+                        <option value="OK">OK</option>
+                        <option value="OR">OR</option>
+                        <option value="RI">RI</option>
+                        <option value="SC">SC</option>
+                        <option value="SD">SD</option>
+                        <option value="TN">TN</option>
+                        <option value="TX">TX</option>
+                        <option value="UT">UT</option>
+                        <option value="VT">VT</option>
+                        <option value="VA">VA</option>
+                        <option value="WA">WA</option>
+                        <option value="WV">WV</option>
+                        <option value="WI">WI</option>
+                        <option value="WY">WY</option>
+                        <option value="DC">DC</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="firstHomeZipCode">ZIP Code:</label>
+                    <input type="text" id="firstHomeZipCode" placeholder="Enter ZIP Code" maxlength="5">
+                </div>
+                <div class="form-field">
+                    <label for="firstHomeMoveInDate">Move-In Date:</label>
+                    <input type="date" id="firstHomeMoveInDate">
+                </div>
+                <div class="form-field">
+                    <label for="firstHomeMoveOutDate">Move-Out Date:</label>
+                    <input type="date" id="firstHomeMoveOutDate">
+                </div>
+                <div class="form-field">
+                    <label for="firstHomePropertyTaxPaid">Property Taxes Paid:</label>
+                    <input type="number" id="firstHomePropertyTaxPaid" min="0" step="0.01" placeholder="Enter dollar amount">
+                </div>
+            </div>
+
+            <!-- Second Home -->
+            <div class="home-card">
+                <h2>Second Home</h2>
+                <div class="form-field">
+                    <label for="secondHomeStreetAddress">Street Address:</label>
+                    <input type="text" id="secondHomeStreetAddress" placeholder="Enter Street Address">
+                </div>
+                <div class="form-field">
+                    <label for="secondHomeStreetAddressLine2">Street Address Line 2:</label>
+                    <input type="text" id="secondHomeStreetAddressLine2" placeholder="Enter Street Address Line 2">
+                </div>
+                <div class="form-field">
+                    <label for="secondHomeCity">City:</label>
+                    <input type="text" id="secondHomeCity" placeholder="Enter City">
+                </div>
+                <div class="form-field">
+                    <label for="secondHomeState">State:</label>
+                    <select id="secondHomeState">
+                        <option value="" disabled selected>Select State</option>
+                        <option value="PA">PA</option>
+                        <option value="AL">AL</option>
+                        <option value="AK">AK</option>
+                        <option value="AZ">AZ</option>
+                        <option value="AR">AR</option>
+                        <option value="CA">CA</option>
+                        <option value="CO">CO</option>
+                        <option value="CT">CT</option>
+                        <option value="DE">DE</option>
+                        <option value="FL">FL</option>
+                        <option value="GA">GA</option>
+                        <option value="HI">HI</option>
+                        <option value="ID">ID</option>
+                        <option value="IL">IL</option>
+                        <option value="IN">IN</option>
+                        <option value="IA">IA</option>
+                        <option value="KS">KS</option>
+                        <option value="KY">KY</option>
+                        <option value="LA">LA</option>
+                        <option value="ME">ME</option>
+                        <option value="MD">MD</option>
+                        <option value="MA">MA</option>
+                        <option value="MI">MI</option>
+                        <option value="MN">MN</option>
+                        <option value="MS">MS</option>
+                        <option value="MO">MO</option>
+                        <option value="MT">MT</option>
+                        <option value="NE">NE</option>
+                        <option value="NV">NV</option>
+                        <option value="NH">NH</option>
+                        <option value="NJ">NJ</option>
+                        <option value="NM">NM</option>
+                        <option value="NY">NY</option>
+                        <option value="NC">NC</option>
+                        <option value="ND">ND</option>
+                        <option value="OH">OH</option>
+                        <option value="OK">OK</option>
+                        <option value="OR">OR</option>
+                        <option value="RI">RI</option>
+                        <option value="SC">SC</option>
+                        <option value="SD">SD</option>
+                        <option value="TN">TN</option>
+                        <option value="TX">TX</option>
+                        <option value="UT">UT</option>
+                        <option value="VT">VT</option>
+                        <option value="VA">VA</option>
+                        <option value="WA">WA</option>
+                        <option value="WV">WV</option>
+                        <option value="WI">WI</option>
+                        <option value="WY">WY</option>
+                        <option value="DC">DC</option>
+                    </select>
+                </div>
+                <div class="form-field">
+                    <label for="secondHomeZipCode">ZIP Code:</label>
+                    <input type="text" id="secondHomeZipCode" placeholder="Enter ZIP Code" maxlength="5">
+                </div>
+                <div class="form-field">
+                    <label for="secondHomeMoveInDate">Move-In Date:</label>
+                    <input type="date" id="secondHomeMoveInDate">
+                </div>
+                <div class="form-field">
+                    <label for="secondHomeMoveOutDate">Move-Out Date:</label>
+                    <input type="date" id="secondHomeMoveOutDate">
+                </div>
+                <div class="form-field">
+                    <label for="secondHomePropertyTaxPaid">Property Taxes Paid:</label>
+                    <input type="number" id="secondHomePropertyTaxPaid" min="0" step="0.01" placeholder="Enter dollar amount">
+                </div>
+                <div class="button-container">
+                    <button type="button" id="sameAsCurrentAddressBtn">Same as Current Residential Address</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Same address question (shown when multipleHomes = no) -->
+    <div class="selection-box" id="sameAddressPreviousYear-container" style="display: none;">
+        <label id="sameAddressPreviousYear-label">Is the home you resided in during the previous year the same address as your current residence?</label>
+        <div id="sameAddressPreviousYear-yes" data-value="yes">Yes</div>
+        <div id="sameAddressPreviousYear-no" data-value="no">No</div>
+    </div>
+
+    <!-- Previous year address (shown when sameAddressPreviousYear = no) -->
+    <div id="previousYearAddress-container" style="display: none;">
+        <div class="previous-year-card">
+            <h2>Previous Year Address</h2>
+            <div class="form-field">
+                <label for="previousYearStreetAddress">Street Address:</label>
+                <input type="text" id="previousYearStreetAddress" placeholder="Enter Street Address">
+            </div>
+                <div class="form-field">
+                    <label for="previousYearStreetAddressLine2">Street Address Line 2:</label>
+                    <input type="text" id="previousYearStreetAddressLine2" placeholder="Enter Street Address Line 2">
+                </div>
+            <div class="form-field">
+                <label for="previousYearCity">City:</label>
+                <input type="text" id="previousYearCity" placeholder="Enter City">
+            </div>
+            <div class="form-field">
+                <label for="previousYearState">State:</label>
+                <select id="previousYearState">
+                    <option value="" disabled selected>Select State</option>
+                    <option value="PA">PA</option>
+                    <option value="AL">AL</option>
+                    <option value="AK">AK</option>
+                    <option value="AZ">AZ</option>
+                    <option value="AR">AR</option>
+                    <option value="CA">CA</option>
+                    <option value="CO">CO</option>
+                    <option value="CT">CT</option>
+                    <option value="DE">DE</option>
+                    <option value="FL">FL</option>
+                    <option value="GA">GA</option>
+                    <option value="HI">HI</option>
+                    <option value="ID">ID</option>
+                    <option value="IL">IL</option>
+                    <option value="IN">IN</option>
+                    <option value="IA">IA</option>
+                    <option value="KS">KS</option>
+                    <option value="KY">KY</option>
+                    <option value="LA">LA</option>
+                    <option value="ME">ME</option>
+                    <option value="MD">MD</option>
+                    <option value="MA">MA</option>
+                    <option value="MI">MI</option>
+                    <option value="MN">MN</option>
+                    <option value="MS">MS</option>
+                    <option value="MO">MO</option>
+                    <option value="MT">MT</option>
+                    <option value="NE">NE</option>
+                    <option value="NV">NV</option>
+                    <option value="NH">NH</option>
+                    <option value="NJ">NJ</option>
+                    <option value="NM">NM</option>
+                    <option value="NY">NY</option>
+                    <option value="NC">NC</option>
+                    <option value="ND">ND</option>
+                    <option value="OH">OH</option>
+                    <option value="OK">OK</option>
+                    <option value="OR">OR</option>
+                    <option value="RI">RI</option>
+                    <option value="SC">SC</option>
+                    <option value="SD">SD</option>
+                    <option value="TN">TN</option>
+                    <option value="TX">TX</option>
+                    <option value="UT">UT</option>
+                    <option value="VT">VT</option>
+                    <option value="VA">VA</option>
+                    <option value="WA">WA</option>
+                    <option value="WV">WV</option>
+                    <option value="WI">WI</option>
+                    <option value="WY">WY</option>
+                    <option value="DC">DC</option>
+                </select>
+            </div>
+            <div class="form-field">
+                <label for="previousYearZipCode">ZIP Code:</label>
+                <input type="text" id="previousYearZipCode" placeholder="Enter ZIP Code" maxlength="5">
+            </div>
+        </div>
+    </div>
+
+
+
+
     <!-- Contact Modal -->
     <div id="contactModal" class="contactmodal" style="display: none;">
         <div class="modal-content">
@@ -151,7 +563,60 @@ text-align: left;
                 <label for="authorizedRepresentativeCity">City:</label>
                 <input type="text" id="authorizedRepresentativeCity" placeholder="City">
                 <label for="authorizedRepresentativeState">State:</label>
-                <input type="text" id="authorizedRepresentativeState" placeholder="State">
+                <select id="authorizedRepresentativeState">
+                    <option value="" disabled selected>Select State</option>
+                    <option value="PA">PA</option>
+                    <option value="AL">AL</option>
+                    <option value="AK">AK</option>
+                    <option value="AZ">AZ</option>
+                    <option value="AR">AR</option>
+                    <option value="CA">CA</option>
+                    <option value="CO">CO</option>
+                    <option value="CT">CT</option>
+                    <option value="DE">DE</option>
+                    <option value="FL">FL</option>
+                    <option value="GA">GA</option>
+                    <option value="HI">HI</option>
+                    <option value="ID">ID</option>
+                    <option value="IL">IL</option>
+                    <option value="IN">IN</option>
+                    <option value="IA">IA</option>
+                    <option value="KS">KS</option>
+                    <option value="KY">KY</option>
+                    <option value="LA">LA</option>
+                    <option value="ME">ME</option>
+                    <option value="MD">MD</option>
+                    <option value="MA">MA</option>
+                    <option value="MI">MI</option>
+                    <option value="MN">MN</option>
+                    <option value="MS">MS</option>
+                    <option value="MO">MO</option>
+                    <option value="MT">MT</option>
+                    <option value="NE">NE</option>
+                    <option value="NV">NV</option>
+                    <option value="NH">NH</option>
+                    <option value="NJ">NJ</option>
+                    <option value="NM">NM</option>
+                    <option value="NY">NY</option>
+                    <option value="NC">NC</option>
+                    <option value="ND">ND</option>
+                    <option value="OH">OH</option>
+                    <option value="OK">OK</option>
+                    <option value="OR">OR</option>
+                    <option value="RI">RI</option>
+                    <option value="SC">SC</option>
+                    <option value="SD">SD</option>
+                    <option value="TN">TN</option>
+                    <option value="TX">TX</option>
+                    <option value="UT">UT</option>
+                    <option value="VT">VT</option>
+                    <option value="VA">VA</option>
+                    <option value="WA">WA</option>
+                    <option value="WV">WV</option>
+                    <option value="WI">WI</option>
+                    <option value="WY">WY</option>
+                    <option value="DC">DC</option>
+                </select>
                 <label for="authorizedRepresentativeZipCode">Zip Code:</label>
                 <input type="text" id="authorizedRepresentativeZipCode" placeholder="Zip Code">
                 <label for="canSign">Can this person sign and submit the application(s) on behalf of applicant(s)?</label>
@@ -217,9 +682,11 @@ text-align: left;
             const response = await fetch(`/get-client/${clientId}`);
             if (!response.ok) throw new Error(`Failed to fetch client data: ${response.statusText}`);
             client = await response.json();
-            renderAuthorizedRepresentative(); // was renderContacts()
+            renderAuthorizedRepresentative();
             populateAuthorizedRepresentativeDropdown();
-            // Initialize notes UI from notes.js
+            checkAndRenderPTRRDeceasedQuestion();
+            initSubsidizedHousingPrevious();
+            initMultipleHomes();
         } catch (err) {
             console.error('Error loading client data:', err);
         }
@@ -556,15 +1023,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             const response = await fetch(`/get-client/${clientId}`);
             if (!response.ok) throw new Error(`Failed to fetch client data: ${response.statusText}`);
             client = await response.json();
-            renderAuthorizedRepresentative(); // was renderContacts()
+            renderAuthorizedRepresentative();
             populateAuthorizedRepresentativeDropdown();
-            checkAndRenderPTRRDeceasedQuestion(); // NEW: render conditional question
-            // Initialize notes UI from notes.js
+            checkAndRenderPTRRDeceasedQuestion();
+            initSubsidizedHousingPrevious();
         } catch (err) {
             console.error('Error loading client data:', err);
         }
     });
-// ...existing code...
 
     // Conditionally render: "Are you filing for PTRR on behalf of someone who is deceased?"
     function checkAndRenderPTRRDeceasedQuestion() {
@@ -671,11 +1137,784 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 container.innerHTML = '';
             }
-// ...existing code...
-
         } catch (e) {
             console.error('Error rendering PTRR deceased question:', e);
         }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // SUBSIDIZED HOUSING PREVIOUS + RENT AMOUNT (PTRR + rented)
+    // ══════════════════════════════════════════════════════════════
+
+    function getQueryParamLocal(name) {
+        return new URLSearchParams(window.location.search).get(name);
+    }
+
+    function isPTRRApplyingAndRented() {
+        if (!client) return false;
+
+        // Check residenceStatus is rented or rentedowned
+        const residence = client.residenceStatus;
+        if (residence !== 'rented' && residence !== 'rentedowned') return false;
+
+        // Check if any member has PTRR applying = true
+        const members = Array.isArray(client?.householdMembers) ? client.householdMembers : [];
+        return members.some(m => {
+            const ptrrApps = Array.isArray(m?.PTRR?.application) ? m.PTRR.application : [];
+            const hasApplyingInArray = ptrrApps.some(a => a?.applying === true);
+
+            const applyingFlags = [
+                m?.applications?.PTRR?.applying,
+                m?.PTRR?.applying,
+                m?.application?.PTRR?.applying
+            ];
+            const hasDirectFlag = applyingFlags.some(v => String(v).toLowerCase() === 'true' || v === true);
+
+            return hasApplyingInArray || hasDirectFlag;
+        });
+    }
+
+    function highlightSubsidizedSelection(value) {
+        const yesEl = document.getElementById('subsidizedHousingPrevious-yes');
+        const noEl = document.getElementById('subsidizedHousingPrevious-no');
+        if (yesEl) yesEl.classList.toggle('selected', value === 'yes');
+        if (noEl) noEl.classList.toggle('selected', value === 'no');
+    }
+
+    function showSubsidizedRentAmount(show) {
+        const container = document.getElementById('subsidizedRentAmount-container');
+        if (container) container.style.display = show ? 'block' : 'none';
+    }
+
+    function showSubsidizedRentAmount(show) {
+        const container = document.getElementById('subsidizedRentAmount-container');
+        if (container) container.style.display = show ? 'block' : 'none';
+    }
+
+    function showRentalType(show) {
+        const container = document.getElementById('rentaltype-container');
+        if (container) container.style.display = show ? 'block' : 'none';
+    }
+
+    function highlightRentalTypeSelection(value) {
+        const allOptions = document.querySelectorAll('#rentaltype-container [data-value]');
+        allOptions.forEach(el => {
+            el.classList.toggle('selected', el.getAttribute('data-value') === value);
+        });
+    }
+
+    function showBuildingName(show) {
+        const container = document.getElementById('buildingName-container');
+        if (container) container.style.display = show ? 'block' : 'none';
+    }
+
+    function showDomicilliaryFosterCare(show) {
+        const container = document.getElementById('domicilliaryFosterCare-container');
+        if (container) container.style.display = show ? 'block' : 'none';
+    }
+
+    function highlightDomicilliaryFosterCareSelection(value) {
+        const options = document.querySelectorAll('#domicilliaryFosterCare-container [data-value]');
+        options.forEach(el => {
+            el.classList.toggle('selected', el.getAttribute('data-value') === value);
+        });
+    }
+
+    async function saveRentalType(value) {
+        const clientId = getQueryParamLocal('id');
+        if (!clientId) return;
+
+        try {
+            const resp = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, clientData: { rentalType: value } })
+            });
+            if (!resp.ok) throw new Error('Failed to save rentalType');
+
+            client.rentalType = value;
+            console.log('Saved rentalType:', value);
+        } catch (e) {
+            console.error('Error saving rentalType:', e);
+        }
+    }
+
+    async function saveBuildingName(name) {
+        const clientId = getQueryParamLocal('id');
+        if (!clientId) return;
+
+        try {
+            const resp = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, clientData: { buildingName: name } })
+            });
+            if (!resp.ok) throw new Error('Failed to save buildingName');
+
+            client.buildingName = name;
+            console.log('Saved buildingName:', name);
+        } catch (e) {
+            console.error('Error saving buildingName:', e);
+        }
+    }
+
+    async function saveDomicilliaryFosterCare(value) {
+        const clientId = getQueryParamLocal('id');
+        if (!clientId) return;
+
+        try {
+            const resp = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, clientData: { domicilliaryFosterCare: value } })
+            });
+            if (!resp.ok) throw new Error('Failed to save domicilliaryFosterCare');
+
+            client.domicilliaryFosterCare = value;
+            console.log('Saved domicilliaryFosterCare:', value);
+        } catch (e) {
+            console.error('Error saving domicilliaryFosterCare:', e);
+        }
+    }
+
+    async function saveSubsidizedHousingPrevious(value) {
+        const clientId = getQueryParamLocal('id');
+        if (!clientId) return;
+
+        try {
+            const resp = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, clientData: { subsidizedHousingPrevious: value } })
+            });
+            if (!resp.ok) throw new Error('Failed to save subsidizedHousingPrevious');
+
+            // Update local cache
+            client.subsidizedHousingPrevious = value;
+            console.log('Saved subsidizedHousingPrevious:', value);
+        } catch (e) {
+            console.error('Error saving subsidizedHousingPrevious:', e);
+        }
+    }
+
+    async function saveSubsidizedRentAmount(amount) {
+        const clientId = getQueryParamLocal('id');
+        if (!clientId) return;
+
+        try {
+            const resp = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, clientData: { subsidizedRentAmount: amount } })
+            });
+            if (!resp.ok) throw new Error('Failed to save subsidizedRentAmount');
+
+            // Update local cache
+            client.subsidizedRentAmount = amount;
+            console.log('Saved subsidizedRentAmount:', amount);
+        } catch (e) {
+            console.error('Error saving subsidizedRentAmount:', e);
+        }
+    }
+
+    function initSubsidizedHousingPrevious() {
+        const shContainer = document.getElementById('subsidizedHousingPrevious-container');
+        const rentContainer = document.getElementById('subsidizedRentAmount-container');
+        const rentInput = document.getElementById('subsidizedRentAmount');
+        const rentalTypeContainer = document.getElementById('rentaltype-container');
+
+        // Visibility: only show if PTRR applying AND rented
+        if (!isPTRRApplyingAndRented()) {
+            if (shContainer) shContainer.style.display = 'none';
+            if (rentContainer) rentContainer.style.display = 'none';
+            showRentalType(false);
+            showDomicilliaryFosterCare(false);
+            return;
+        }
+
+        // Show the subsidized housing question
+        if (shContainer) shContainer.style.display = 'block';
+
+        // Show the rental type question
+        showRentalType(true);
+
+        // Show the domiciliary/foster care question
+        showDomicilliaryFosterCare(true);
+
+        // Show building name if rental type
+        showBuildingName(true);
+
+        // Restore saved building name and save on keystrokes (debounced)
+        const buildingNameInput = document.getElementById('buildingNameInput');
+        if (buildingNameInput) {
+            if (client.buildingName) {
+                buildingNameInput.value = client.buildingName;
+            }
+
+            let buildingNameDebounce = null;
+            buildingNameInput.addEventListener('input', () => {
+                clearTimeout(buildingNameDebounce);
+                buildingNameDebounce = setTimeout(async () => {
+                    await saveBuildingName(buildingNameInput.value);
+                }, 400);
+            });
+        }
+
+        // Restore saved domiciliary/foster care selection
+        if (client.domicilliaryFosterCare) {
+            highlightDomicilliaryFosterCareSelection(client.domicilliaryFosterCare);
+        }
+
+        // Restore saved rental type selection
+        if (client.rentalType) {
+            highlightRentalTypeSelection(client.rentalType);
+        }
+
+        // Rental type click handlers
+        const rentalTypeOptions = document.querySelectorAll('#rentaltype-container [data-value]');
+        rentalTypeOptions.forEach(option => {
+            option.addEventListener('click', async () => {
+                const val = option.getAttribute('data-value');
+                highlightRentalTypeSelection(val);
+                await saveRentalType(val);
+            });
+        });
+
+        // Restore saved selection
+        const savedValue = client.subsidizedHousingPrevious || null;
+        if (savedValue) {
+            highlightSubsidizedSelection(savedValue);
+        }
+
+        // Show rent amount if answer is yes, restore saved amount
+        if (savedValue === 'yes') {
+            showSubsidizedRentAmount(true);
+            if (rentInput && client.subsidizedRentAmount != null) {
+                rentInput.value = client.subsidizedRentAmount;
+            }
+        } else {
+            showSubsidizedRentAmount(false);
+        }
+
+        // Click handlers for yes/no options
+        const yesEl = document.getElementById('subsidizedHousingPrevious-yes');
+        const noEl = document.getElementById('subsidizedHousingPrevious-no');
+
+        if (yesEl) {
+            yesEl.addEventListener('click', async () => {
+                highlightSubsidizedSelection('yes');
+                await saveSubsidizedHousingPrevious('yes');
+                showSubsidizedRentAmount(true);
+                // Restore amount if previously saved
+                if (rentInput && client.subsidizedRentAmount != null) {
+                    rentInput.value = client.subsidizedRentAmount;
+                }
+            });
+        }
+
+        if (noEl) {
+            noEl.addEventListener('click', async () => {
+                highlightSubsidizedSelection('no');
+                await saveSubsidizedHousingPrevious('no');
+                showSubsidizedRentAmount(false);
+                // Clear saved amount when answer is no
+                await saveSubsidizedRentAmount(null);
+                if (rentInput) rentInput.value = '';
+            });
+        }
+
+        // Rent amount save on change
+        if (rentInput) {
+            rentInput.addEventListener('change', async () => {
+                const val = rentInput.value ? parseFloat(rentInput.value) : null;
+                await saveSubsidizedRentAmount(val);
+            });
+        }
+    }
+
+        // Domicilliary foster care handlers
+        const dfcOptions = document.querySelectorAll('#domicilliaryFosterCare-container [data-value]');
+        dfcOptions.forEach(option => {
+            option.addEventListener('click', async () => {
+                const val = option.getAttribute('data-value');
+                highlightDomicilliaryFosterCareSelection(val);
+                await saveDomicilliaryFosterCare(val);
+            });
+        });
+
+    // Hook into the existing DOMContentLoaded that loads client data
+    // We need to call initSubsidizedHousingPrevious after client is loaded.
+    // Wrap the existing second DOMContentLoaded to also call our init:
+    const _originalDCL = document.addEventListener;
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Wait a tick for the other DOMContentLoaded handlers to finish loading client
+        setTimeout(() => {
+            if (client) {
+                initSubsidizedHousingPrevious();
+            }
+        }, 100);
+    });    
+
+        // ══════════════════════════════════════════════════════════════
+    // MULTIPLE HOMES / PREVIOUS ADDRESS (PTRR + owned/rentedowned)
+    // ══════════════════════════════════════════════════════════════
+
+    function isPTRRApplyingAndOwned() {
+        if (!client) return false;
+        const residence = client.residenceStatus;
+        if (residence !== 'owned' && residence !== 'rentedowned') return false;
+
+        const members = Array.isArray(client?.householdMembers) ? client.householdMembers : [];
+        return members.some(m => {
+            const ptrrApps = Array.isArray(m?.PTRR?.application) ? m.PTRR.application : [];
+            const hasApplyingInArray = ptrrApps.some(a => a?.applying === true);
+            const applyingFlags = [
+                m?.applications?.PTRR?.applying,
+                m?.PTRR?.applying,
+                m?.application?.PTRR?.applying
+            ];
+            const hasDirectFlag = applyingFlags.some(v => String(v).toLowerCase() === 'true' || v === true);
+            return hasApplyingInArray || hasDirectFlag;
+        });
+    }
+
+    /**
+     * Check if the applying member has a "previous year" property tax expense
+     * that does NOT span the entire tax year (Jan 1 – Dec 31).
+     * If the expense covers the full year, there's no need for PA-1000A.
+     */
+    function hasPartialYearPropertyTaxExpense() {
+        if (!client) return false;
+
+        const taxYear = new Date().getFullYear() - 1; // 2025 in 2026
+        const yearStart = `${taxYear}-01-01`;
+        const yearEnd = `${taxYear}-12-31`;
+
+        const member = getApplyingMember();
+        if (!member) return false;
+
+        const expenses = Array.isArray(member?.expenses) ? member.expenses : [];
+
+        // Find "previous year" expenses that are property-tax related
+        const propertyTaxPreviousExpenses = expenses.filter(exp => {
+            const typeLower = (exp?.type || '').toLowerCase().trim();
+            const kindLower = (exp?.kind || '').toLowerCase().trim();
+
+            // Must be "previous year" type and "property taxes" kind
+            const isPreviousYear = typeLower === 'previous year' || typeLower === 'previousyear' || typeLower === 'previous';
+            const isPropertyTax = kindLower.includes('property tax') || kindLower === 'propertytaxes' || kindLower === 'property taxes';
+
+            return isPreviousYear && isPropertyTax;
+        });
+
+        if (propertyTaxPreviousExpenses.length === 0) return false;
+
+        // Check if ANY of these expenses do NOT cover the full year
+        return propertyTaxPreviousExpenses.some(exp => {
+            const startDate = (exp.startDate || exp.beginDate || exp.fromDate || '').trim();
+            const endDate = (exp.endDate || exp.toDate || exp.throughDate || '').trim();
+
+            // If dates are missing, we can't confirm full year — treat as partial
+            if (!startDate || !endDate) return true;
+
+            // Normalize to YYYY-MM-DD for comparison
+            const normStart = startDate.slice(0, 10);
+            const normEnd = endDate.slice(0, 10);
+
+            // If start is after Jan 1 OR end is before Dec 31, it's partial
+            const coversFullYear = (normStart <= yearStart) && (normEnd >= yearEnd);
+            return !coversFullYear;
+        });
+    }
+
+    function highlightMultipleHomesSelection(value) {
+        const yesEl = document.getElementById('multipleHomes-yes');
+        const noEl = document.getElementById('multipleHomes-no');
+        if (yesEl) yesEl.classList.toggle('selected', value === 'yes');
+        if (noEl) noEl.classList.toggle('selected', value === 'no');
+    }
+
+    function highlightSameAddressSelection(value) {
+        const yesEl = document.getElementById('sameAddressPreviousYear-yes');
+        const noEl = document.getElementById('sameAddressPreviousYear-no');
+        if (yesEl) yesEl.classList.toggle('selected', value === 'yes');
+        if (noEl) noEl.classList.toggle('selected', value === 'no');
+    }
+
+    function showMultipleHomesAddresses(show) {
+        const el = document.getElementById('multipleHomesAddresses-container');
+        if (el) el.style.display = show ? 'block' : 'none';
+    }
+
+    function showSameAddressQuestion(show) {
+        const el = document.getElementById('sameAddressPreviousYear-container');
+        if (el) el.style.display = show ? 'block' : 'none';
+    }
+
+    function showPreviousYearAddress(show) {
+        const el = document.getElementById('previousYearAddress-container');
+        if (el) el.style.display = show ? 'block' : 'none';
+    }
+
+    // --- Save helpers ---
+
+    async function saveClientField(field, value) {
+        const clientId = getQueryParamLocal('id');
+        if (!clientId) return;
+        try {
+            const resp = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, clientData: { [field]: value } })
+            });
+            if (!resp.ok) throw new Error(`Failed to save ${field}`);
+            client[field] = value;
+            console.log(`Saved ${field}:`, value);
+        } catch (e) {
+            console.error(`Error saving ${field}:`, e);
+        }
+    }
+
+    async function savePreviousAddresses() {
+        const clientId = getQueryParamLocal('id');
+        if (!clientId) return;
+
+        const idx = findApplyingMemberIndex();
+        if (idx < 0) return;
+
+        const members = Array.isArray(client?.householdMembers) ? [...client.householdMembers] : [];
+        const member = { ...members[idx] };
+        const appArr = Array.isArray(member?.PTRR?.application) ? [...member.PTRR.application] : [];
+        const firstApp = { ...(appArr[0] || {}) };
+
+        firstApp.previousAddresses = [
+            {
+                streetAddress: document.getElementById('firstHomeStreetAddress')?.value || '',
+                streetAddress2: document.getElementById('firstHomeStreetAddressLine2')?.value || '',
+                city: document.getElementById('firstHomeCity')?.value || '',
+                state: document.getElementById('firstHomeState')?.value || '',
+                zipCode: document.getElementById('firstHomeZipCode')?.value || '',
+                moveInDate: document.getElementById('firstHomeMoveInDate')?.value || '',
+                moveOutDate: document.getElementById('firstHomeMoveOutDate')?.value || '',
+                propertyTaxPaid: document.getElementById('firstHomePropertyTaxPaid')?.value || '',
+            },
+            {
+                streetAddress: document.getElementById('secondHomeStreetAddress')?.value || '',
+                streetAddress2: document.getElementById('secondHomeStreetAddressLine2')?.value || '',
+                city: document.getElementById('secondHomeCity')?.value || '',
+                state: document.getElementById('secondHomeState')?.value || '',
+                zipCode: document.getElementById('secondHomeZipCode')?.value || '',
+                moveInDate: document.getElementById('secondHomeMoveInDate')?.value || '',
+                moveOutDate: document.getElementById('secondHomeMoveOutDate')?.value || '',
+                propertyTaxPaid: document.getElementById('secondHomePropertyTaxPaid')?.value || '',
+            }
+        ];
+
+        appArr[0] = firstApp;
+        member.PTRR = { ...(member.PTRR || {}), application: appArr };
+        members[idx] = member;
+
+        try {
+            const resp = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, clientData: { householdMembers: members } })
+            });
+            if (!resp.ok) throw new Error('Failed to save previousAddresses');
+            client.householdMembers = members;
+            console.log('Saved previousAddresses');
+        } catch (e) {
+            console.error('Error saving previousAddresses:', e);
+        }
+    }
+
+    async function savePreviousYearAddress() {
+        const clientId = getQueryParamLocal('id');
+        if (!clientId) return;
+
+        const idx = findApplyingMemberIndex();
+        if (idx < 0) return;
+
+        const members = Array.isArray(client?.householdMembers) ? [...client.householdMembers] : [];
+        const member = { ...members[idx] };
+        const appArr = Array.isArray(member?.PTRR?.application) ? [...member.PTRR.application] : [];
+        const firstApp = { ...(appArr[0] || {}) };
+
+        firstApp.previousYearAddress = {
+            streetAddress: document.getElementById('previousYearStreetAddress')?.value || '',
+            city: document.getElementById('previousYearCity')?.value || '',
+            state: document.getElementById('previousYearState')?.value || '',
+            zipCode: document.getElementById('previousYearZipCode')?.value || '',
+        };
+
+        appArr[0] = firstApp;
+        member.PTRR = { ...(member.PTRR || {}), application: appArr };
+        members[idx] = member;
+
+        try {
+            const resp = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, clientData: { householdMembers: members } })
+            });
+            if (!resp.ok) throw new Error('Failed to save previousYearAddress');
+            client.householdMembers = members;
+            console.log('Saved previousYearAddress');
+        } catch (e) {
+            console.error('Error saving previousYearAddress:', e);
+        }
+    }
+
+    // --- Restore from saved data ---
+
+    function restorePreviousAddresses() {
+        const member = getApplyingMember();
+        const app = getApplyingMemberPTRRApplicationObj(member);
+        const addresses = app?.previousAddresses || [];
+
+        const home1 = addresses[0] || {};
+        document.getElementById('firstHomeStreetAddress').value = home1.streetAddress || '';
+        document.getElementById('firstHomeStreetAddressLine2').value = home1.streetAddress2 || '';
+        document.getElementById('firstHomeCity').value = home1.city || '';
+        document.getElementById('firstHomeState').value = home1.state || '';
+        document.getElementById('firstHomeZipCode').value = home1.zipCode || '';
+        document.getElementById('firstHomeMoveInDate').value = home1.moveInDate || '';
+        document.getElementById('firstHomeMoveOutDate').value = home1.moveOutDate || '';
+        document.getElementById('firstHomePropertyTaxPaid').value = home1.propertyTaxPaid || '';
+
+        const home2 = addresses[1] || {};
+        document.getElementById('secondHomeStreetAddress').value = home2.streetAddress || '';
+        document.getElementById('secondHomeStreetAddressLine2').value = home2.streetAddress2 || '';
+        document.getElementById('secondHomeCity').value = home2.city || '';
+        document.getElementById('secondHomeState').value = home2.state || '';
+        document.getElementById('secondHomeZipCode').value = home2.zipCode || '';
+        document.getElementById('secondHomeMoveInDate').value = home2.moveInDate || '';
+        document.getElementById('secondHomeMoveOutDate').value = home2.moveOutDate || '';
+        document.getElementById('secondHomePropertyTaxPaid').value = home2.propertyTaxPaid || '';
+    }
+
+    function restorePreviousYearAddress() {
+        const member = getApplyingMember();
+        const app = getApplyingMemberPTRRApplicationObj(member);
+        const addr = app?.previousYearAddress || {};
+
+        document.getElementById('previousYearStreetAddress').value = addr.streetAddress || '';
+        document.getElementById('previousYearStreetAddressLine2').value = addr.streetAddress2 || '';
+        document.getElementById('previousYearCity').value = addr.city || '';
+        document.getElementById('previousYearState').value = addr.state || '';
+        document.getElementById('previousYearZipCode').value = addr.zipCode || '';
+    }
+
+    // --- Init ---
+
+    function initMultipleHomes() {
+        const container = document.getElementById('multipleHomes-container');
+
+        // Multiple homes question: only for PTRR + owned/rentedowned + partial year expense
+        const showMultipleHomesQuestion = isPTRRApplyingAndOwned() && hasPartialYearPropertyTaxExpense();
+
+        if (!showMultipleHomesQuestion) {
+            if (container) container.style.display = 'none';
+            showMultipleHomesAddresses(false);
+        }
+
+        // Same address question: show if EITHER condition is met
+        // Condition A: owned/rentedowned + partial year + multipleHomes = no
+        // Condition B: PTRR applying + rented
+        const isRentedPTRR = isPTRRApplyingAndRented();
+
+        if (!showMultipleHomesQuestion && !isRentedPTRR) {
+            // Neither condition can be met — hide everything
+            if (container) container.style.display = 'none';
+            showMultipleHomesAddresses(false);
+            showSameAddressQuestion(false);
+            showPreviousYearAddress(false);
+            return;
+        }
+
+        // --- Rented path: skip multipleHomes, go straight to sameAddress ---
+        if (isRentedPTRR && !showMultipleHomesQuestion) {
+            if (container) container.style.display = 'none';
+            showMultipleHomesAddresses(false);
+
+            // Show same address question directly
+            showSameAddressQuestion(true);
+
+            const savedSameAddress = client.sameAddressPreviousYear || null;
+            if (savedSameAddress) {
+                highlightSameAddressSelection(savedSameAddress);
+                if (savedSameAddress === 'no') {
+                    showPreviousYearAddress(true);
+                    restorePreviousYearAddress();
+                } else {
+                    showPreviousYearAddress(false);
+                }
+            } else {
+                showPreviousYearAddress(false);
+            }
+
+            // Attach click handlers for same address (only if not already attached by owned path)
+            attachSameAddressHandlers();
+            attachPreviousYearAddressDebounce();
+            return;
+        }
+
+        // --- Owned path: show multipleHomes question ---
+        if (container) container.style.display = 'block';
+
+        // Restore saved multipleHomes answer
+        const savedMultipleHomes = client.multipleHomesPreviousYear || null;
+        if (savedMultipleHomes) {
+            highlightMultipleHomesSelection(savedMultipleHomes);
+
+            if (savedMultipleHomes === 'yes') {
+                showMultipleHomesAddresses(true);
+                showSameAddressQuestion(false);
+                showPreviousYearAddress(false);
+                restorePreviousAddresses();
+            } else if (savedMultipleHomes === 'no') {
+                showMultipleHomesAddresses(false);
+                showSameAddressQuestion(true);
+
+                const savedSameAddress = client.sameAddressPreviousYear || null;
+                if (savedSameAddress) {
+                    highlightSameAddressSelection(savedSameAddress);
+                    if (savedSameAddress === 'no') {
+                        showPreviousYearAddress(true);
+                        restorePreviousYearAddress();
+                    } else {
+                        showPreviousYearAddress(false);
+                    }
+                }
+            }
+        }
+
+        // --- Click handlers: Multiple Homes Yes/No ---
+        const yesEl = document.getElementById('multipleHomes-yes');
+        const noEl = document.getElementById('multipleHomes-no');
+
+        if (yesEl) {
+            yesEl.addEventListener('click', async () => {
+                highlightMultipleHomesSelection('yes');
+                await saveClientField('multipleHomesPreviousYear', 'yes');
+                showMultipleHomesAddresses(true);
+                showSameAddressQuestion(false);
+                showPreviousYearAddress(false);
+                restorePreviousAddresses();
+            });
+        }
+
+        if (noEl) {
+            noEl.addEventListener('click', async () => {
+                highlightMultipleHomesSelection('no');
+                await saveClientField('multipleHomesPreviousYear', 'no');
+                showMultipleHomesAddresses(false);
+                showSameAddressQuestion(true);
+
+                const savedSameAddress = client.sameAddressPreviousYear || null;
+                if (savedSameAddress) {
+                    highlightSameAddressSelection(savedSameAddress);
+                    if (savedSameAddress === 'no') {
+                        showPreviousYearAddress(true);
+                        restorePreviousYearAddress();
+                    }
+                } else {
+                    showPreviousYearAddress(false);
+                }
+            });
+        }
+
+        attachSameAddressHandlers();
+
+        // --- "Same as Current Residential Address" button ---
+        const sameAsCurrentBtn = document.getElementById('sameAsCurrentAddressBtn');
+        if (sameAsCurrentBtn) {
+            sameAsCurrentBtn.addEventListener('click', () => {
+                document.getElementById('secondHomeStreetAddress').value = client.streetAddress || '';
+                document.getElementById('secondHomeCity').value = client.city || '';
+                document.getElementById('secondHomeState').value = (client.state || '').toUpperCase().slice(0, 2);
+                document.getElementById('secondHomeZipCode').value = client.zipCode || '';
+                savePreviousAddresses();
+            });
+        }
+
+        // --- Debounced save on input for multiple homes address fields ---
+        let multipleHomesDebounce = null;
+        const multipleHomesInputIds = [
+            'firstHomeStreetAddress', 'firstHomeStreetAddressLine2', 'firstHomeCity', 'firstHomeState', 'firstHomeZipCode',
+            'firstHomeMoveInDate', 'firstHomeMoveOutDate', 'firstHomePropertyTaxPaid',
+            'secondHomeStreetAddress', 'secondHomeStreetAddressLine2', 'secondHomeCity', 'secondHomeState', 'secondHomeZipCode',
+            'secondHomeMoveInDate', 'secondHomeMoveOutDate', 'secondHomePropertyTaxPaid',
+        ];
+
+        multipleHomesInputIds.forEach(id => {
+            const input = document.getElementById(id);
+            if (input) {
+                input.addEventListener('input', () => {
+                    clearTimeout(multipleHomesDebounce);
+                    multipleHomesDebounce = setTimeout(() => savePreviousAddresses(), 500);
+                });
+                input.addEventListener('change', () => {
+                    clearTimeout(multipleHomesDebounce);
+                    multipleHomesDebounce = setTimeout(() => savePreviousAddresses(), 200);
+                });
+            }
+        });
+
+        attachPreviousYearAddressDebounce();
+    }
+
+    // --- Shared handler attachments (prevent duplicate listeners) ---
+
+    let _sameAddressHandlersAttached = false;
+    function attachSameAddressHandlers() {
+        if (_sameAddressHandlersAttached) return;
+        _sameAddressHandlersAttached = true;
+
+        const sameYes = document.getElementById('sameAddressPreviousYear-yes');
+        const sameNo = document.getElementById('sameAddressPreviousYear-no');
+
+        if (sameYes) {
+            sameYes.addEventListener('click', async () => {
+                highlightSameAddressSelection('yes');
+                await saveClientField('sameAddressPreviousYear', 'yes');
+                showPreviousYearAddress(false);
+            });
+        }
+
+        if (sameNo) {
+            sameNo.addEventListener('click', async () => {
+                highlightSameAddressSelection('no');
+                await saveClientField('sameAddressPreviousYear', 'no');
+                showPreviousYearAddress(true);
+                restorePreviousYearAddress();
+            });
+        }
+    }
+
+    let _prevYearDebounceAttached = false;
+    function attachPreviousYearAddressDebounce() {
+        if (_prevYearDebounceAttached) return;
+        _prevYearDebounceAttached = true;
+
+        let prevYearDebounce = null;
+        const prevYearInputIds = [
+            'previousYearStreetAddress', 'previousYearStreetAddressLine2', 'previousYearCity', 'previousYearState', 'previousYearZipCode',
+        ];
+
+        prevYearInputIds.forEach(id => {
+            const input = document.getElementById(id);
+            if (input) {
+                input.addEventListener('input', () => {
+                    clearTimeout(prevYearDebounce);
+                    prevYearDebounce = setTimeout(() => savePreviousYearAddress(), 500);
+                });
+                input.addEventListener('change', () => {
+                    clearTimeout(prevYearDebounce);
+                    prevYearDebounce = setTimeout(() => savePreviousYearAddress(), 200);
+                });
+            }
+        });
     }
 
     // Helpers to read/write PTRR deceased fields on applying member

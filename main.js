@@ -1498,7 +1498,7 @@ app.post('/upload-to-profile', upload.single('file'), async (req, res) => {
     }
 });
 
-// Upload a letter (PDF) to a client's Letters array as base64
+// Upload a letter (PDF) to a separate 'letters' collection
 app.post('/upload-letter', upload.single('file'), async (req, res) => {
     const { file } = req;
     const { clientId, title, generatedBy } = req.body;
@@ -1517,6 +1517,7 @@ app.post('/upload-letter', upload.single('file'), async (req, res) => {
 
         const letter = {
             letterId: `letter-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+            clientId: clientId,
             title: title || file.originalname,
             fileName: file.originalname,
             mimeType: file.mimetype || 'application/pdf',
@@ -1526,17 +1527,11 @@ app.post('/upload-letter', upload.single('file'), async (req, res) => {
             createdAt: new Date().toISOString(),
         };
 
-        const collection = db.collection('clients');
-        const result = await collection.updateOne(
-            { id: clientId },
-            { $push: { Letters: letter } }
-        );
+        // Store in a separate 'letters' collection
+        const collection = db.collection('letters');
+        await collection.insertOne(letter);
 
-        if (result.modifiedCount > 0) {
-            res.json({ success: true, message: 'Letter uploaded successfully.', letterId: letter.letterId });
-        } else {
-            res.status(404).json({ success: false, message: 'Client not found.' });
-        }
+        res.json({ success: true, message: 'Letter uploaded successfully.', letterId: letter.letterId });
     } catch (error) {
         console.error('Error uploading letter:', error);
         res.status(500).json({ success: false, message: 'Failed to upload letter.' });
@@ -1548,14 +1543,9 @@ app.get('/get-letter/:clientId/:letterId', async (req, res) => {
     const { clientId, letterId } = req.params;
 
     try {
-        const collection = db.collection('clients');
-        const client = await collection.findOne({ id: clientId });
+        const collection = db.collection('letters');
+        const letter = await collection.findOne({ clientId, letterId });
 
-        if (!client) {
-            return res.status(404).json({ success: false, message: 'Client not found.' });
-        }
-
-        const letter = (client.Letters || []).find(l => l.letterId === letterId);
         if (!letter) {
             return res.status(404).json({ success: false, message: 'Letter not found.' });
         }
@@ -1576,16 +1566,13 @@ app.delete('/delete-letter', async (req, res) => {
     }
 
     try {
-        const collection = db.collection('clients');
-        const result = await collection.updateOne(
-            { id: clientId },
-            { $pull: { Letters: { letterId: letterId } } }
-        );
+        const collection = db.collection('letters');
+        const result = await collection.deleteOne({ clientId, letterId });
 
-        if (result.modifiedCount > 0) {
+        if (result.deletedCount > 0) {
             res.json({ success: true, message: 'Letter deleted successfully.' });
         } else {
-            res.status(404).json({ success: false, message: 'Letter not found or client not found.' });
+            res.status(404).json({ success: false, message: 'Letter not found.' });
         }
     } catch (error) {
         console.error('Error deleting letter:', error);
@@ -1593,29 +1580,28 @@ app.delete('/delete-letter', async (req, res) => {
     }
 });
 
-// Fetch letters metadata (without base64 data) for thumbnail rendering
+// Fetch letters metadata (without base64 data) for listing
 app.get('/get-letters/:clientId', async (req, res) => {
     const { clientId } = req.params;
 
     try {
-        const collection = db.collection('clients');
-        const client = await collection.findOne({ id: clientId });
+        const collection = db.collection('letters');
+        const letters = await collection.find(
+            { clientId },
+            { projection: { data: 0 } } // Exclude the heavy base64 data
+        ).toArray();
 
-        if (!client) {
-            return res.status(404).json({ success: false, message: 'Client not found.' });
-        }
-
-        // Return letters without the heavy base64 data for listing
-        const letters = (client.Letters || []).map(l => ({
-            letterId: l.letterId,
-            title: l.title,
-            fileName: l.fileName,
-            generatedBy: l.generatedBy,
-            timestamp: l.timestamp,
-            createdAt: l.createdAt,
-        }));
-
-        res.json({ success: true, letters });
+        res.json({
+            success: true,
+            letters: letters.map(l => ({
+                letterId: l.letterId,
+                title: l.title,
+                fileName: l.fileName,
+                generatedBy: l.generatedBy,
+                timestamp: l.timestamp,
+                createdAt: l.createdAt,
+            }))
+        });
     } catch (error) {
         console.error('Error fetching letters:', error);
         res.status(500).json({ success: false, message: 'Failed to fetch letters.' });

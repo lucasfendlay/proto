@@ -1162,37 +1162,64 @@ document.addEventListener('DOMContentLoaded', async function () {
             } else if (applicationStatus.toLowerCase().trim() === "no" && totalGrossIncome > Utils.PTRR_THRESHOLDS.incomeLimit) {
                 eligibility.push("Not Likely Eligible for PTRR (Income)");
             } else {
-                        const relevantExpenses = (member.expenses || []).filter(expense => {
-                            const residenceStatus = freshClient.residenceStatus?.toLowerCase();
-                            const isPropertyTax = expense.kind?.trim() === "Property Taxes";
-                            const isRent = expense.kind?.trim() === "Rent";
-                            const isPreviousYear = expense.type?.trim() === "Previous Year";
-                        
-                            if (residenceStatus === "owned") {
-                                return isPropertyTax && isPreviousYear;
-                            } else if (residenceStatus === "rented") {
-                                return isRent && isPreviousYear;
-                            } else if (residenceStatus === "rentedowned") {
-                                return (isPropertyTax && isRent) && isPreviousYear;
-                            }
-                            return false;
-                        });
-        
-                        if (applicationStatus.toLowerCase().trim() === "no" && relevantExpenses.length === 0) {
-                            const residenceStatus = freshClient.residenceStatus?.toLowerCase();
-                            if (residenceStatus === "owned") {
-                                eligibility.push("Needs Previous Year Property Tax Expense");
-                            } else if (residenceStatus === "rented") {
-                                eligibility.push("Needs Previous Year Rent Expense");
-                            } else if (residenceStatus === "rentedowned") {
-                                eligibility.push("Needs Previous Year Property Tax and Rent Expense");
-                            } else {
-                                eligibility.push("Not Likely Eligible for PTRR (No Relevant Expenses)");
-                            }
+                const relevantExpenses = (member.expenses || []).filter(expense => {
+                    const residenceStatus = freshClient.residenceStatus?.toLowerCase();
+                    const isPropertyTax = expense.kind?.trim() === "Property Taxes";
+                    const isRent = expense.kind?.trim() === "Rent";
+                    const isPreviousYear = expense.type?.trim() === "Previous Year";
+                
+                    if (residenceStatus === "owned") {
+                        return isPropertyTax && isPreviousYear;
+                    } else if (residenceStatus === "rented") {
+                        return isRent && isPreviousYear;
+                    } else if (residenceStatus === "rentedowned") {
+                        return (isPropertyTax || isRent) && isPreviousYear;
+                    }
+                    return false;
+                });
+
+                if (applicationStatus.toLowerCase().trim() === "no" && relevantExpenses.length === 0) {
+                    const residenceStatus = freshClient.residenceStatus?.toLowerCase();
+                    if (residenceStatus === "owned") {
+                        eligibility.push("Needs Previous Year Property Tax Expense");
+                    } else if (residenceStatus === "rented") {
+                        eligibility.push("Needs Previous Year Rent Expense");
+                    } else if (residenceStatus === "rentedowned") {
+                        eligibility.push("Needs Previous Year Property Tax and Rent Expense");
+                    } else {
+                        eligibility.push("Not Likely Eligible for PTRR (No Relevant Expenses)");
+                    }
+                } else if (applicationStatus.toLowerCase().trim() === "no" && freshClient.residenceStatus?.toLowerCase() === "rentedowned") {
+                    // For rentedowned, must have BOTH a Property Tax AND a Rent expense with amount > 0
+                    const hasPreviousPropertyTax = relevantExpenses.some(e => e.kind?.trim() === "Property Taxes" && Number(e.amount || 0) > 0);
+                    const hasPreviousRent = relevantExpenses.some(e => e.kind?.trim() === "Rent" && Number(e.amount || 0) > 0);
+    
+                    if (!hasPreviousPropertyTax && !hasPreviousRent) {
+                        eligibility.push("Needs Previous Year Property Tax and Rent Expense");
+                    } else if (!hasPreviousPropertyTax) {
+                        eligibility.push("Needs Previous Year Property Tax Expense");
+                    } else if (!hasPreviousRent) {
+                        eligibility.push("Needs Previous Year Rent Expense");
+                    } else {
+                        eligibility.push("Likely Eligible for PTRR");
+                    }
+                } else {
+                    // For owned or rented, check that relevant expenses amount to more than $0
+                    const totalRelevantExpenseAmount = relevantExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+                    if (totalRelevantExpenseAmount > 0) {
+                        eligibility.push("Likely Eligible for PTRR");
+                    } else {
+                        const residenceStatus = freshClient.residenceStatus?.toLowerCase();
+                        if (residenceStatus === "owned") {
+                            eligibility.push("Needs Previous Year Property Tax Expense");
+                        } else if (residenceStatus === "rented") {
+                            eligibility.push("Needs Previous Year Rent Expense");
                         } else {
-                            eligibility.push("Likely Eligible for PTRR");
+                            eligibility.push("Needs Previous Year Property Tax and Rent Expense");
                         }
                     }
+                }
+            }
         
                     member.PTRR = {
                         combinedIncome: totalGrossIncome,
