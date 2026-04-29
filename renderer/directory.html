@@ -241,6 +241,35 @@
     .chip-row > strong {
         flex-shrink: 0;
     }
+
+    .person-id {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 16px;
+        color: #000000;
+    }
+
+    /* Status pills shown next to the profile ID */
+    .status-pill {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        line-height: 1.4;
+        margin-left: 6px;
+    }
+    .status-pill.checked-out {
+        background-color: #e5e7eb;
+        color: #374151;
+        border: 1px solid #d1d5db;
+    }
+    .status-pill.terminated {
+        background-color: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fca5a5;
+    }
 </style>
 
 <body>
@@ -395,10 +424,12 @@ async function loadClients() {
 // ---- Shared rendering helpers ----
 
 function formatAddress(p) {
-    if (!(p.streetAddress.toUpperCase() || p.city.toUpperCase() || p.state.toUpperCase() || p.zipCode.toUpperCase())) return '';
-    return `ADDRESS: ${[
-        p.streetAddress, p.city, p.state, p.zipCode
-    ].filter(Boolean).join(', ').toUpperCase()}`;
+    const street = (p.streetAddress || '').toUpperCase();
+    const city = (p.city || '').toUpperCase();
+    const state = (p.state || '').toUpperCase();
+    const zip = (p.zipCode || '').toUpperCase();
+    if (!(street || city || state || zip)) return '';
+    return `ADDRESS: ${[street, city, state, zip].filter(Boolean).join(', ')}`;
 }
 
 function formatCounty(p) {
@@ -406,15 +437,62 @@ function formatCounty(p) {
 }
 
 function profileIdLineHtml(client) {
+    const checkedOutEntry = Array.isArray(client.checkedOut)
+        ? client.checkedOut.find(e => e && e.status === true)
+        : (client.checkedOut && client.checkedOut.status === true ? client.checkedOut : null);
+    const isTerminated = client.terminated === true
+        || client.status === 'terminated'
+        || client.profileStatus === 'terminated';
+
+    const pills = [];
+    if (isTerminated) {
+        pills.push(`<span class="status-pill terminated">Terminated</span>`);
+    }
+    if (checkedOutEntry) {
+        const who = checkedOutEntry.user ? ` by ${String(checkedOutEntry.user).trim()}` : '';
+        pills.push(`<span class="status-pill checked-out">Checked Out${who}</span>`);
+    }
+
     return `<div>
         <strong class="badge badge-profile">Profile</strong>
         <span class="person-id">${client.id || ''}</span>
+        ${pills.join('')}
     </div>`;
 }
 
-function profileDetailsLineHtml(person) {
+function formatPhoneDisplay(raw) {
+    if (!raw) return '';
+    const cleaned = String(raw).trim().replace(/\D/g, '');
+    const digits = cleaned.length === 11 && cleaned.startsWith('1') ? cleaned.substring(1) : cleaned;
+    if (digits.length === 10) {
+        return `(${digits.substring(0, 3)})-${digits.substring(3, 6)}-${digits.substring(6)}`;
+    }
+    return String(raw).trim();
+}
+
+function profileDetailsLineHtml(person, extraPeople = []) {
+    // Gather unique, non-empty phone numbers from primary + extras
+    const phones = [];
+    const seenPhones = new Set();
+    const pushPhone = (raw) => {
+        if (!raw) return;
+        const display = formatPhoneDisplay(raw);
+        if (!display) return;
+        const key = display.replace(/\D/g, '') || display.toLowerCase();
+        if (seenPhones.has(key)) return;
+        seenPhones.add(key);
+        phones.push(display);
+    };
+
+    pushPhone(person.phoneNumber);
+    extraPeople.forEach(p => pushPhone(p && p.phoneNumber));
+
+    const phonePart = phones.length
+        ? `${phones.length > 1 ? 'PHONES' : 'PHONE'}: ${phones.join(' <span class="sep">|</span> ')}`
+        : '';
+
     const parts = [
-        person.phoneNumber ? `PHONE: ${person.phoneNumber}` : '',
+        phonePart,
         formatAddress(person),
         formatCounty(person),
     ].filter(Boolean);
@@ -423,7 +501,7 @@ function profileDetailsLineHtml(person) {
 }
 
 function personChipHtml(person, kind /* 'household-member' | 'contact' */) {
-    const name = `${person.firstName.toUpperCase() || ''} ${person.lastName.toUpperCase() || ''}`.trim() || '(unnamed)';
+    const name = `${(person.firstName || '').toUpperCase()} ${(person.lastName || '').toUpperCase()}`.trim() || '(unnamed)';
     return `<span class="chip chip-${kind}">${name}</span>`;
 }
 
@@ -435,7 +513,7 @@ function chipRowHtml(label, kind, people) {
 }
 
 function sigOf(p) {
-    return `${(p.firstName || '').trim().toLowerCase()}|${(p.lastName || '').trim().toLowerCase()}|${(p.phoneNumber || '').trim()}`;
+    return `${(p.firstName || '').trim().toLowerCase()}|${(p.lastName || '').trim().toLowerCase()}|${(p.phoneNumber || '').trim().replace(/\D/g, '')}`;
 }
 
 // Renders ONE <li> containing the primary, all household members, and unique contacts.
@@ -453,18 +531,22 @@ function renderProfileCard(client, activeUser) {
     const rawHousehold = client.householdMembers || client.HouseholdMembers || [];
     const rawContacts  = client.contacts || client.Contacts || [];
 
-    const seen = new Set();
-    seen.add(sigOf(client));
-
-    const householdMembers = rawHousehold.filter(m => {
-        seen.add(sigOf(m));
-        return true;
+    // Build dedup sets from household members: by linking ID and by name/phone signature.
+    const householdIds = new Set();
+    const householdSigs = new Set();
+    rawHousehold.forEach(m => {
+        if (m && m.householdMemberId) householdIds.add(String(m.householdMemberId));
+        householdSigs.add(sigOf(m || {}));
     });
 
+    const householdMembers = rawHousehold.slice();
+
+    // A contact is "also a household member" if its contactId matches a householdMemberId,
+    // OR (fallback) its name+phone signature matches a household member's.
     const contacts = rawContacts.filter(c => {
-        const s = sigOf(c);
-        if (seen.has(s)) return false;
-        seen.add(s);
+        if (!c) return false;
+        if (c.contactId && householdIds.has(String(c.contactId))) return false;
+        if (householdSigs.has(sigOf(c))) return false;
         return true;
     });
 
@@ -477,12 +559,14 @@ function renderProfileCard(client, activeUser) {
     const householdLabel = householdMembers.length > 1 ? 'Household Members' : 'Household Member';
     lines.push(chipRowHtml(householdLabel, 'household-member', householdMembers));
 
-    // 3) Contacts
+    // 3) Contacts (only those NOT already household members)
     const contactLabel = contacts.length > 1 ? 'Contacts' : 'Contact';
     lines.push(chipRowHtml(contactLabel, 'contact', contacts));
 
     // 4) Phone / Address / County
-    lines.push(profileDetailsLineHtml(client));
+    //   Pull phones from RAW lists (not the filtered contacts) so a contact's
+    //   phone isn't lost when that contact is also a household member.
+    lines.push(profileDetailsLineHtml(client, [...rawHousehold, ...rawContacts]));
 
     // 5) Most Recent Activity
     lines.push(`<div><strong>Most Recent Activity:</strong> ${mostRecentActivity}</div>`);

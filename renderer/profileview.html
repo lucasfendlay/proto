@@ -243,28 +243,24 @@
         </div>
     </div>
 
-    <h2 id="profileId">Profile: Loading...</h2>
     <p id="terminationStatus" style="color: red; display: none;"><strong>PROFILE TERMINATED</strong></p>
 
     <button id="call-logging-button" class="interactive" onclick="confirmAndLogCall()">Log New Call</button>
 
     <form id="clientForm" class="centered-form">
-        <h2>Primary Client</h2>
-        <div class="form-field">
+        <h2>Client Profile</h2>
+        <h2 id="profileId" style="margin: 4px auto 16px; display: inline-block; font-size: 1.4rem; font-weight: 600; color: #fff; background-color: #007bff; padding: 4px 14px; border-radius: 999px; letter-spacing: 0.03em; box-shadow: 0 1px 3px rgba(0, 123, 255, 0.3);">Loading...</h2>
+        <div class="form-field" style="display: none;">
             <label for="firstName">First Name:</label>
-            <span id="firstName" class="read-only-field">Loading...</span>
+            <input type="text" id="firstName" name="firstName">
         </div>
-        <div class="form-field">
+        <div class="form-field" style="display: none">
             <label for="lastName">Last Name:</label>
-            <span id="lastName" class="read-only-field">Loading...</span>
+            <input type="text" id="lastName" name="lastName">
         </div>
-        <div class="form-field">
+        <div class="form-field" style="display: none">
             <label for="phoneNumber">Phone Number:</label>
-            <span id="phoneNumber" class="read-only-field">Loading...</span>
-        </div>
-        <div class="form-field">
-            <label for="homelessness">Are you currently experiencing homelessness?</label>
-            <span id="homelessness" class="read-only-field">Loading...</span>
+            <input type="text" id="phoneNumber" name="phoneNumber">
         </div>
         <div class="form-field">
             <label for="streetAddress">Street Address:</label>
@@ -289,6 +285,10 @@
         <div class="form-field">
             <label for="county">County:</label>
             <span id="county" class="read-only-field">Loading...</span>
+        </div>
+        <div class="form-field">
+            <label for="homelessness">Are you currently experiencing homelessness?</label>
+            <span id="homelessness" class="read-only-field">Loading...</span>
         </div>
         <div class="form-field">
             <label for="speakingLanguage">Preferred Speaking Language:</label>
@@ -341,7 +341,7 @@
         client = data;
 
         // Profile header
-        document.getElementById('profileId').textContent = `Profile: ${data.id || 'N/A'}`;
+        document.getElementById('profileId').textContent = `${data.id || 'N/A'}`;
 
         // Termination
         document.getElementById('terminationStatus').style.display = data.terminated ? 'block' : 'none';

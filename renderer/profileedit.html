@@ -211,15 +211,14 @@
         }
 
         .contactmodal .modal-content {
-            background: transparent;
+            background-color: #fff;
             border-radius: 10px;
             width: 90%;
             max-width: 500px;
             text-align: left;
             position: relative;
             z-index: 10000;
-            box-shadow: none;
-            padding: 0;
+            padding: 20px;
         }
 
         .contactmodal .modal-content label {
@@ -240,6 +239,25 @@
 
         .contactmodal .button-container {
             margin-top: 15px;
+        }
+
+        .contactmodal .button-container button {
+            flex: 1;
+            padding: 10px 15px !important;
+            font-size: 1rem;
+            cursor: pointer;
+            border: 1px solid #000;
+            border-radius: 5px;
+            margin: 0;
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+
+        .contactmodal .button-container button:hover {
+            background-color: #0056b3;
+            color: #fff;
+            border-color: #003f7f;
         }
 
         .error {
@@ -335,7 +353,6 @@
         </div>
     </div>
 
-    <h2 id="profileId">Profile: Loading...</h2>
     <p id="terminationStatus" style="color: red; display: none;"><strong>PROFILE TERMINATED</strong></p>
 
     <div id="screening-banner" style="display: none; background-color: #007bff; color: white; width: 10000px; text-align: center; padding: 12px; font-size: 1.1rem; font-weight: bold; z-index: 1; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
@@ -343,25 +360,19 @@
     </div>
 
     <form id="clientForm" class="centered-form">
-        <h2>Primary Client</h2>
-        <div class="form-field">
+        <h2>Client Profile</h2>
+        <h2 id="profileId" style="margin: 4px auto 16px; display: inline-block; font-size: 1.4rem; font-weight: 600; color: #fff; background-color: #007bff; padding: 4px 14px; border-radius: 999px; letter-spacing: 0.03em; box-shadow: 0 1px 3px rgba(0, 123, 255, 0.3);">Loading...</h2>
+        <div class="form-field" style="display: none;">
             <label for="firstName">First Name:</label>
             <input type="text" id="firstName" name="firstName">
         </div>
-        <div class="form-field">
+        <div class="form-field" style="display: none">
             <label for="lastName">Last Name:</label>
             <input type="text" id="lastName" name="lastName">
         </div>
-        <div class="form-field">
+        <div class="form-field" style="display: none">
             <label for="phoneNumber">Phone Number:</label>
             <input type="text" id="phoneNumber" name="phoneNumber">
-        </div>
-        <div class="form-field">
-            <label>Are you currently experiencing homelessness?</label>
-            <div class="selection-box homelessness-container">
-                <div data-value="yes" onclick="updateHomelessness('yes')">Yes</div>
-                <div data-value="no" onclick="updateHomelessness('no')">No</div>
-            </div>
         </div>
         <div class="form-field">
             <label for="streetAddress">Street Address:</label>
@@ -441,6 +452,13 @@
                 <option value="Westmoreland">Westmoreland</option><option value="Wyoming">Wyoming</option>
                 <option value="York">York</option>
             </select>
+        </div>
+        <div class="form-field">
+            <label>Are you currently experiencing homelessness?</label>
+            <div class="selection-box homelessness-container">
+                <div data-value="yes" onclick="updateHomelessness('yes')">Yes</div>
+                <div data-value="no" onclick="updateHomelessness('no')">No</div>
+            </div>
         </div>
         <div class="form-field">
             <label for="speakingLanguage">Preferred Speaking Language:</label>
@@ -723,7 +741,7 @@
         }
 
         // Profile header
-        document.getElementById('profileId').textContent = `Profile: ${data.id || 'N/A'}`;
+        document.getElementById('profileId').textContent = `${data.id || 'N/A'}`;
 
         // Termination
         const terminationStatus = document.getElementById('terminationStatus');
@@ -844,10 +862,16 @@
         const modal = document.getElementById('contactModal');
         const title = document.getElementById('contact-modal-title');
         const buttonContainer = modal.querySelector('.button-container');
+        const form = document.getElementById('contactForm');
 
+        // Remove any previously injected "Add to Household" button
+        const existingAddBtn = document.getElementById('addContactToHouseholdBtn');
+        if (existingAddBtn) existingAddBtn.remove();
+
+        // Rebuild buttons
         buttonContainer.innerHTML = `
-            <button type="button" onclick="saveContact()">Save</button>
             <button type="button" onclick="closeContactModal()">Cancel</button>
+            <button type="button" onclick="saveContact()">Save</button>
         `;
 
         if (index !== null && cachedClient) {
@@ -858,6 +882,32 @@
                 document.getElementById('contactLastName').value = contact.lastName || '';
                 document.getElementById('contactPhoneNumber').value = formatPhoneNumber(contact.phoneNumber) || '';
                 document.getElementById('authorizedRepresentative').value = contact.authorizedRepresentative || 'N/A';
+
+                // Show "Add to Household" button only if this contact is not already a household member
+                const members = cachedClient.householdMembers || [];
+                const alreadyMember = members.some(m =>
+                    m && (m.householdMemberId === contact.contactId)
+                );
+
+                if (!alreadyMember && contact.contactId) {
+                    const addToHouseholdBtn = document.createElement('button');
+                    addToHouseholdBtn.id = 'addContactToHouseholdBtn';
+                    addToHouseholdBtn.type = 'button';
+                    addToHouseholdBtn.textContent = 'Add to Household';
+                    addToHouseholdBtn.style.cssText =
+                        'display:block;width:100%;margin-bottom:12px;padding:10px;' +
+                        'background-color:#007bff;color:#fff;border:1px solid #003f7f;' +
+                        'border-radius:5px;cursor:pointer;font-weight:600;';
+                    addToHouseholdBtn.onmouseover = () => addToHouseholdBtn.style.backgroundColor = '#0056b3';
+                    addToHouseholdBtn.onmouseout = () => addToHouseholdBtn.style.backgroundColor = '#007bff';
+                    addToHouseholdBtn.onclick = () => addContactToHousehold(index);
+
+                    // Insert above the First Name label
+                    const firstNameLabel = form.querySelector('label[for="contactFirstName"]');
+                    if (firstNameLabel) {
+                        form.insertBefore(addToHouseholdBtn, firstNameLabel);
+                    }
+                }
             }
 
             const deleteButton = document.createElement('button');
@@ -867,13 +917,98 @@
             deleteButton.onmouseover = () => deleteButton.style.backgroundColor = 'darkred';
             deleteButton.onmouseout = () => deleteButton.style.backgroundColor = 'red';
             deleteButton.onclick = () => deleteContact(index);
-            buttonContainer.appendChild(deleteButton);
+            buttonContainer.prepend(deleteButton);
         } else {
             title.textContent = 'Add Contact';
             document.getElementById('contactForm').reset();
         }
 
         modal.classList.add('show');
+    }
+
+    // ── Add a contact as a household member (sharing IDs so name edits stay in sync) ──
+    async function addContactToHousehold(index) {
+        const clientId = getQueryParam('id');
+        if (!clientId) return;
+
+        try {
+            const client = await fetchClientData();
+            const contact = (client.Contacts || [])[index];
+            if (!contact) {
+                alert('Contact not found.');
+                return;
+            }
+
+            if (!client.householdMembers) client.householdMembers = [];
+
+            // Guard against duplicates
+            const alreadyMember = client.householdMembers.some(m =>
+                m && m.householdMemberId === contact.contactId
+            );
+            if (alreadyMember) {
+                alert('This contact is already a household member.');
+                return;
+            }
+
+            if (!confirm(`Add ${(contact.firstName || '').toUpperCase()} ${(contact.lastName || '').toUpperCase()} to the household?`)) {
+                return;
+            }
+
+            // Build new household member with N/A for fields not captured by the contact modal.
+            // householdMemberId is intentionally set to the contactId so name edits stay in sync.
+            const newMember = {
+                householdMemberId: contact.contactId,
+                prefix: '',
+                firstName: contact.firstName || '',
+                middleInitial: '',
+                lastName: contact.lastName || '',
+                suffix: '',
+                dob: 'N/A',
+                legalSex: '',
+                deceased: '',
+                dateOfDeath: '',
+                maritalStatus: '',
+                previousMaritalStatus: '',
+                socialSecurityNumber: '',
+                disability: '',
+                medicare: '',
+                medicaid: '',
+                citizen: '',
+                nonCitizenStatus: '',
+                student: '',
+                studentStatus: '',
+                meals: ''
+            };
+
+            client.householdMembers.push(newMember);
+
+            const response = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId,
+                    clientData: { householdMembers: client.householdMembers }
+                })
+            });
+
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || result.success === false) {
+                console.error('Failed to add contact to household:', result.message);
+                alert(`Error: ${result.message || 'Could not add contact to household.'}`);
+                return;
+            }
+
+            cachedClient = client;
+            closeContactModal();
+
+            // Refresh sidebar/household UI if available
+            if (typeof loadSavedData === 'function') {
+                try { await loadSavedData(); } catch (e) { /* ignore */ }
+            }
+        } catch (error) {
+            console.error('Error adding contact to household:', error);
+            alert('An error occurred while adding the contact to the household.');
+        }
     }
 
     function closeContactModal() {

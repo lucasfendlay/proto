@@ -505,10 +505,16 @@
         const modal = document.getElementById('contactModal');
         const title = document.getElementById('contact-modal-title');
         const buttonContainer = modal.querySelector('.button-container');
+        const form = document.getElementById('contactForm');
 
+        // Remove any previously injected "Add to Household" button
+        const existingAddBtn = document.getElementById('addContactToHouseholdBtn');
+        if (existingAddBtn) existingAddBtn.remove();
+
+        // Rebuild buttons
         buttonContainer.innerHTML = `
-            <button type="button" onclick="saveContact()">Save</button>
             <button type="button" onclick="closeContactModal()">Cancel</button>
+            <button type="button" onclick="saveContact()">Save</button>
         `;
 
         if (index !== null && cachedClient) {
@@ -519,6 +525,32 @@
                 document.getElementById('contactLastName').value = contact.lastName || '';
                 document.getElementById('contactPhoneNumber').value = formatPhoneNumber(contact.phoneNumber) || '';
                 document.getElementById('authorizedRepresentative').value = contact.authorizedRepresentative || 'N/A';
+
+                // Show "Add to Household" button only if this contact is not already a household member
+                const members = cachedClient.householdMembers || [];
+                const alreadyMember = members.some(m =>
+                    m && (m.householdMemberId === contact.contactId)
+                );
+
+                if (!alreadyMember && contact.contactId) {
+                    const addToHouseholdBtn = document.createElement('button');
+                    addToHouseholdBtn.id = 'addContactToHouseholdBtn';
+                    addToHouseholdBtn.type = 'button';
+                    addToHouseholdBtn.textContent = 'Add to Household';
+                    addToHouseholdBtn.style.cssText =
+                        'display:block;width:100%;margin-bottom:12px;padding:10px;' +
+                        'background-color:#007bff;color:#fff;border:1px solid #003f7f;' +
+                        'border-radius:5px;cursor:pointer;font-weight:600;';
+                    addToHouseholdBtn.onmouseover = () => addToHouseholdBtn.style.backgroundColor = '#0056b3';
+                    addToHouseholdBtn.onmouseout = () => addToHouseholdBtn.style.backgroundColor = '#007bff';
+                    addToHouseholdBtn.onclick = () => addContactToHousehold(index);
+
+                    // Insert above the First Name label
+                    const firstNameLabel = form.querySelector('label[for="contactFirstName"]');
+                    if (firstNameLabel) {
+                        form.insertBefore(addToHouseholdBtn, firstNameLabel);
+                    }
+                }
             }
 
             const deleteButton = document.createElement('button');
@@ -528,13 +560,98 @@
             deleteButton.onmouseover = () => deleteButton.style.backgroundColor = 'darkred';
             deleteButton.onmouseout = () => deleteButton.style.backgroundColor = 'red';
             deleteButton.onclick = () => deleteContact(index);
-            buttonContainer.appendChild(deleteButton);
+            buttonContainer.prepend(deleteButton);
         } else {
             title.textContent = 'Add Contact';
             document.getElementById('contactForm').reset();
         }
 
         modal.classList.add('show');
+    }
+
+    // ── Add a contact as a household member (sharing IDs so name edits stay in sync) ──
+    async function addContactToHousehold(index) {
+        const clientId = getQueryParam('id');
+        if (!clientId) return;
+
+        try {
+            const client = await fetchClientData();
+            const contact = (client.Contacts || [])[index];
+            if (!contact) {
+                alert('Contact not found.');
+                return;
+            }
+
+            if (!client.householdMembers) client.householdMembers = [];
+
+            // Guard against duplicates
+            const alreadyMember = client.householdMembers.some(m =>
+                m && m.householdMemberId === contact.contactId
+            );
+            if (alreadyMember) {
+                alert('This contact is already a household member.');
+                return;
+            }
+
+            if (!confirm(`Add ${(contact.firstName || '').toUpperCase()} ${(contact.lastName || '').toUpperCase()} to the household?`)) {
+                return;
+            }
+
+            // Build new household member with N/A for fields not captured by the contact modal.
+            // householdMemberId is intentionally set to the contactId so name edits stay in sync.
+            const newMember = {
+                householdMemberId: contact.contactId,
+                prefix: '',
+                firstName: contact.firstName || '',
+                middleInitial: '',
+                lastName: contact.lastName || '',
+                suffix: '',
+                dob: 'N/A',
+                legalSex: '',
+                deceased: '',
+                dateOfDeath: '',
+                maritalStatus: '',
+                previousMaritalStatus: '',
+                socialSecurityNumber: '',
+                disability: '',
+                medicare: '',
+                medicaid: '',
+                citizen: '',
+                nonCitizenStatus: '',
+                student: '',
+                studentStatus: '',
+                meals: ''
+            };
+
+            client.householdMembers.push(newMember);
+
+            const response = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId,
+                    clientData: { householdMembers: client.householdMembers }
+                })
+            });
+
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || result.success === false) {
+                console.error('Failed to add contact to household:', result.message);
+                alert(`Error: ${result.message || 'Could not add contact to household.'}`);
+                return;
+            }
+
+            cachedClient = client;
+            closeContactModal();
+
+            // Refresh sidebar/household UI if available
+            if (typeof loadSavedData === 'function') {
+                try { await loadSavedData(); } catch (e) { /* ignore */ }
+            }
+        } catch (error) {
+            console.error('Error adding contact to household:', error);
+            alert('An error occurred while adding the contact to the household.');
+        }
     }
 
     function closeContactModal() {

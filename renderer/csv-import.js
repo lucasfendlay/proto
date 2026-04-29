@@ -143,75 +143,91 @@ async function importClientsFromCSV() {
             const socialSecurity = row[16]?.trim() || ''; // New column
         
             // Create a new client object
-const client = {
-    id: (id || generateUniqueId()).toUpperCase(),
-    firstName: row[1]?.trim().toUpperCase(),
-    lastName: row[2]?.trim().toUpperCase(),
-    phoneNumber: row[3]?.trim().toUpperCase(),
-    streetAddress: row[4]?.trim().replace(/^"|"$/g, '').toUpperCase(),
-    city: row[5]?.trim().toUpperCase(),
-    state: row[6]?.trim().toUpperCase(),
-    zipCode: row[7]?.trim().toUpperCase(),
-    county: row[8]?.trim().toUpperCase(),
-    speakingLanguage: speakingLanguage.toUpperCase(),
-    mailID: mailID.toUpperCase(),
-    primaryBenefit: primaryBenefit.toUpperCase(),
-    dataSource: dataSource.toUpperCase(),
-    outreachMailDate: outreachMailDate.toUpperCase(),
-    householdMembers: [] // Prepare an array for household members
-};
-        
-            // Add household member data to the client object
-            if (dateOfBirth || legalSex || socialSecurity) {
-                // Normalize legalSex values
-                const normalizedLegalSex = legalSex.toUpperCase() === 'M' ? 'MALE' : legalSex.toUpperCase() === 'F' ? 'FEMALE' : legalSex.toUpperCase();
+            const client = {
+                id: (id || generateUniqueId()).toUpperCase(),
+                firstName: row[1]?.trim().toUpperCase(),
+                lastName: row[2]?.trim().toUpperCase(),
+                phoneNumber: row[3]?.trim().toUpperCase(),
+                streetAddress: row[4]?.trim().replace(/^"|"$/g, '').toUpperCase(),
+                city: row[5]?.trim().toUpperCase(),
+                state: row[6]?.trim().toUpperCase(),
+                zipCode: row[7]?.trim().toUpperCase(),
+                county: row[8]?.trim().toUpperCase(),
+                speakingLanguage: speakingLanguage.toUpperCase(),
+                mailID: mailID.toUpperCase(),
+                primaryBenefit: primaryBenefit.toUpperCase(),
+                dataSource: dataSource.toUpperCase(),
+                outreachMailDate: outreachMailDate.toUpperCase(),
+                householdMembers: [], // Prepare an array for household members
+                Contacts: []          // Prepare an array for contacts
+            };
+                    
+                        // Add household member data to the client object
+                        {
+                            // Normalize legalSex values
+                            const normalizedLegalSex = legalSex
+                                ? (legalSex.toUpperCase() === 'M' ? 'MALE' : legalSex.toUpperCase() === 'F' ? 'FEMALE' : legalSex.toUpperCase())
+                                : '';
             
-                // Helper function to calculate age in years, months, and days
-const calculateAge = (dob) => {
-    const birthDate = new Date(dob);
-    const today = new Date();
-    today.setDate(today.getDate() - 1); // Subtract 1 day from the current date
-    let years = today.getFullYear() - birthDate.getFullYear();
-    let months = today.getMonth() - birthDate.getMonth();
-    let days = today.getDate() - birthDate.getDate();
-
-    if (days < 0) {
-        months -= 1;
-        days += new Date(today.getFullYear(), today.getMonth(), 0).getDate();
-    }
-    if (months < 0) {
-        years -= 1;
-        months += 12;
-    }
-
-    return { years, months, days };
-};
-
-// Reformat dateOfBirth from MM/DD/YYYY to YYYY/MM/DD and calculate age
-let formattedDateOfBirth = '';
-let age = null;
-
-if (dateOfBirth) {
-    const [month, day, year] = dateOfBirth.split('/');
-    if (month && day && year) {
-        formattedDateOfBirth = `${year}-${month}-${day}`; // Ensure correct order
-
-        // Calculate age
-        const { years, months, days } = calculateAge(formattedDateOfBirth);
-        age = `${years} years, ${months} months, ${days} days`; // Format age as a string
-    }
-}
-
-client.householdMembers.push({
-    householdMemberId: crypto.randomUUID(), // Ensure a unique ID is generated
-    firstName: client.firstName.toUpperCase(),
-    lastName: client.lastName.toUpperCase(),
-    dob: formattedDateOfBirth,
-    age: age, // Include the calculated age as a string
-    legalSex: normalizedLegalSex || '',
-    socialSecurityNumber: socialSecurity ? socialSecurity.toUpperCase() : ''
-});
+                        
+                            // Helper function to calculate age in years, months, and days
+            const calculateAge = (dob) => {
+                const birthDate = new Date(dob);
+                const today = new Date();
+                today.setDate(today.getDate() - 1); // Subtract 1 day from the current date
+                let years = today.getFullYear() - birthDate.getFullYear();
+                let months = today.getMonth() - birthDate.getMonth();
+                let days = today.getDate() - birthDate.getDate();
+            
+                if (days < 0) {
+                    months -= 1;
+                    days += new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+                }
+                if (months < 0) {
+                    years -= 1;
+                    months += 12;
+                }
+            
+                return { years, months, days };
+            };
+            
+            // Reformat dateOfBirth from MM/DD/YYYY to YYYY/MM/DD and calculate age
+            let formattedDateOfBirth = '';
+            let age = null;
+            
+            if (dateOfBirth) {
+                const [month, day, year] = dateOfBirth.split('/');
+                if (month && day && year) {
+                    formattedDateOfBirth = `${year}-${month}-${day}`; // Ensure correct order
+            
+                    // Calculate age
+                    const { years, months, days } = calculateAge(formattedDateOfBirth);
+                    age = `${years} years, ${months} months, ${days} days`; // Format age as a string
+                }
             }
+            
+            // Shared ID so the household member and contact stay linked.
+            // Editing the name on either record can later be synced by ID lookup.
+            const sharedPersonId = crypto.randomUUID();
+            
+            client.householdMembers.push({
+                householdMemberId: sharedPersonId,
+                firstName: client.firstName.toUpperCase(),
+                lastName: client.lastName.toUpperCase(),
+                dob: formattedDateOfBirth,
+                age: age, // Include the calculated age as a string
+                legalSex: normalizedLegalSex || '',
+                socialSecurityNumber: socialSecurity ? socialSecurity.toUpperCase() : ''
+            });
+            
+            client.Contacts.push({
+                contactId: sharedPersonId,
+                firstName: client.firstName.toUpperCase(),
+                lastName: client.lastName.toUpperCase(),
+                phoneNumber: client.phoneNumber || '',
+                authorizedRepresentative: 'N/A'
+            });
+                        }
 
             updatedRows.push([
                 client.id,
@@ -285,6 +301,9 @@ client.householdMembers.push({
             for (const member of client.householdMembers) {
                 await createHouseholdMember(client.id, member);
             }
+            for (const contact of client.Contacts) {
+                await createContact(client.id, contact);
+            }
         }
 
         // Trigger CSV download only if new clients were added
@@ -338,6 +357,33 @@ async function createHouseholdMember(clientId, householdMemberData) {
         }
     } catch (error) {
         console.error(`Error creating household member for client ${clientId}:`, error);
+    }
+}
+
+async function createContact(clientId, contactData) {
+    try {
+        // Ensure the contactId is included
+        contactData.contactId = contactData.contactId || crypto.randomUUID();
+
+        console.log('Sending contactData:', contactData);
+
+        const response = await fetch('/save-contact', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                clientId: clientId,
+                contact: contactData
+            })
+        });
+
+        if (!response.ok) {
+            const errorDetails = await response.text();
+            console.error(`Failed to create contact for client ${clientId}:`, errorDetails);
+        } else {
+            console.log(`Contact created successfully for client ${clientId}`);
+        }
+    } catch (error) {
+        console.error(`Error creating contact for client ${clientId}:`, error);
     }
 }
 
