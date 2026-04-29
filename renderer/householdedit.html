@@ -418,6 +418,18 @@
                     </select><br><br>
                 </div>
 
+                <div id="deceasedQuestion" class="selection-box">
+                    <label>Is this person deceased?</label>
+                    <div id="modal-deceased-yes" data-value="yes">Yes</div>
+                    <div id="modal-deceased-no" data-value="no">No</div>
+                </div>
+
+                <div id="dateOfDeathContainer" class="selection-box" style="display: none;">
+                    <label for="dateOfDeath">Date of Death:</label>
+                    <input type="date" id="dateOfDeath" name="dateOfDeath" class="selection-box-input" min="2025-01-01" max="2025-12-31">
+                    <p style="font-size: 12px; color: #666; margin-top: 4px;">Date of death must be in 2025. If the person was not living during the previous year, they should not be added to the profile.</p>
+                </div>
+
                 <div class="selection-box">
                     <label for="maritalStatus">Current Marital Status:</label>
                     <select id="maritalStatus" name="maritalStatus" class="selection-box-input">
@@ -560,44 +572,6 @@
     function getQueryParameter(name) {
         return getQueryParam(name);
     }
-
-    // ── Deceased toggle (modal) ──
-    function updateVisibilityForDeceased(isDeceased) {
-        const toggleIds = [
-            'disabilityQuestion', 'medicareQuestion', 'medicaidQuestion',
-            'studentQuestion', 'mealsQuestion', 'citizenQuestion',
-            'nonCitizenStatusContainer', 'studentStatusContainer'
-        ];
-
-        const maritalWrapper = document.querySelector('label[for="maritalStatus"]')?.closest('.selection-box');
-        const prevMaritalWrapper = document.getElementById('previousMaritalStatus')?.closest('.selection-box')
-            || document.querySelector('label[for="previousMaritalStatus"]')?.closest('.selection-box');
-
-        if (maritalWrapper) maritalWrapper.style.display = isDeceased ? 'none' : '';
-        if (prevMaritalWrapper) prevMaritalWrapper.style.display = isDeceased ? 'none' : '';
-
-        toggleIds.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.style.display = isDeceased ? 'none' : '';
-        });
-
-        const dodContainer = document.getElementById('dateOfDeathContainer');
-        const dodInput = document.getElementById('dateOfDeath');
-        if (dodContainer) dodContainer.style.display = isDeceased ? 'block' : 'none';
-        if (!isDeceased && dodInput) dodInput.value = '';
-    }
-
-    document.getElementById('modal-deceased-yes')?.addEventListener('click', () => {
-        document.getElementById('modal-deceased-no')?.classList.remove('selected');
-        document.getElementById('modal-deceased-yes')?.classList.add('selected');
-        updateVisibilityForDeceased(true);
-    });
-
-    document.getElementById('modal-deceased-no')?.addEventListener('click', () => {
-        document.getElementById('modal-deceased-yes')?.classList.remove('selected');
-        document.getElementById('modal-deceased-no')?.classList.add('selected');
-        updateVisibilityForDeceased(false);
-    });
 
     // ── SSN handling ──
     function formatSSN(input) {
@@ -1243,12 +1217,78 @@
     // Initialize the listener on page load
     setupSnapCloseoutListener();
 
-    window.addEventListener('load', toggleSidebarVisibility);
+    window.addEventListener('load', toggleSidebarVisibility);    
+    
+        // Initialize the listener on page load
+        setupSnapCloseoutListener();
 
-    // Initialize the listener on page load
-    setupSnapCloseoutListener();
+window.addEventListener('load', toggleSidebarVisibility);
 
-    window.addEventListener('load', toggleSidebarVisibility);
+// ── Date of Death Validation ──
+function isDeceasedSelected() {
+    const deceasedYes = document.getElementById('modal-deceased-yes');
+    if (!deceasedYes) return false;
+    // Check all possible class names that householdedit.js might apply
+    return deceasedYes.classList.contains('highlight') || 
+           deceasedYes.classList.contains('selected') ||
+           deceasedYes.classList.contains('active') ||
+           deceasedYes.style.backgroundColor === 'rgb(0, 123, 255)' ||
+           deceasedYes.getAttribute('data-selected') === 'true';
+}
+
+function validateDateOfDeath() {
+    if (!isDeceasedSelected()) return true;
+
+    const dateOfDeathInput = document.getElementById('dateOfDeath');
+    const dateOfDeath = dateOfDeathInput?.value;
+
+    if (!dateOfDeath) {
+        alert('Please enter a date of death for the deceased member.');
+        dateOfDeathInput?.classList.add('error');
+        return false;
+    }
+
+    // Parse the date value directly (YYYY-MM-DD format)
+    const parts = dateOfDeath.split('-');
+    const deathYear = parseInt(parts[0], 10);
+
+    if (deathYear !== 2025) {
+        alert('Date of death must be in 2025. If this person was not living during the previous year, they should not be added to the profile.');
+        dateOfDeathInput.value = '';
+        dateOfDeathInput?.classList.add('error');
+        return false;
+    }
+
+    dateOfDeathInput?.classList.remove('error');
+    return true;
+}
+
+// Hook into the add-member button to validate before submission
+const addMemberBtn = document.getElementById('add-member');
+if (addMemberBtn) {
+    addMemberBtn.addEventListener('click', function (e) {
+        if (!validateDateOfDeath()) {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            return false;
+        }
+    }, true); // Use capture phase to run before householdedit.js handler
+}
+
+// Also validate when the date of death input changes
+document.getElementById('dateOfDeath')?.addEventListener('change', function () {
+    this.classList.remove('error');
+    const value = this.value;
+    if (value) {
+        const parts = value.split('-');
+        const year = parseInt(parts[0], 10);
+        if (year !== 2025) {
+            alert('Date of death must be in 2025. If this person was not living during the previous year, they should not be added to the profile.');
+            this.value = '';
+            this.classList.add('error');
+        }
+    }
+});
     </script>
 </body>
 </html>

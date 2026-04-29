@@ -12,6 +12,11 @@
         visibility: hidden;
         opacity: 0;
         transition: opacity 0.3s ease;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background-color: #f5f7fa;
+        color: #1f2937;
+        margin: 0;
+        padding: 20px;
     }
 
     body.loaded {
@@ -19,59 +24,222 @@
         opacity: 1;
     }
 
-     /* Shared container width */
-     .container {
-        width: 100%; /* Full width */
-        max-width: 1500px; /* Optional: Limit the maximum width */
-        margin: 0 auto; /* Center the container horizontally */
-        display: flex; /* Enable flexbox */
-        flex-direction: column; /* Stack children vertically */
-        align-items: center; /* Center children horizontally */
+    h1 {
+        text-align: center;
+        color: #1f2937;
+        margin-bottom: 20px;
     }
 
-    /* Input fields */
-    input[type="text"] {
-        width: 100%; /* Full width within the container */
-        max-width: 1500px; /* Optional: Limit the maximum width */
-        box-sizing: border-box; /* Include padding and border in the width */
-        margin-bottom: 10px; /* Add spacing between inputs */
-        align-self: center; /* Center the input fields */
-        padding: 10px; /* Add padding for better usability */
-        border: 1px solid #ccc; /* Light gray border */
-        border-radius: 4px; /* Slightly rounded corners */
-        font-size: 16px; /* Increase font size for better readability */
+    /* Shared container width */
+    /* Shared container width */
+    .container {
+        width: 100%;
+        max-width: 1600px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    /* Search inputs grid */
+    .container input[type="text"] {
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 10px;
+        padding: 12px 14px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 15px;
+        background-color: #fff;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .container input[type="text"]:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
     }
 
     /* Client list container */
     #clientList {
-        width: 100%; /* Full width within the container */
-        max-width: 1500px; /* Optional: Limit the maximum width */
-        padding: 0; /* Remove default padding */
-        display: flex; /* Enable flexbox for the list */
-        flex-direction: column; /* Stack list items vertically */
-        align-items: center; /* Center list items horizontally */
-        text-transform: uppercase; /* Force all text to display in uppercase */
-
+        width: 100%;
+        padding: 0;
+        margin: 16px 0 0 0;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        list-style: none;
     }
 
-    /* List items */
+    /* Each result is a card */
     #clientList li {
-        width: 100%; /* Full width of the container */
-        max-width: 1500px; /* Optional: Limit the maximum width */
-        text-align: center; /* Center the text */
-        padding: 10px; /* Add padding for readability */
-        border-bottom: 1px solid #ccc; /* Optional: Add a border for separation */
-        list-style: none; /* Remove default bullet points */
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0;
+        background-color: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        list-style: none;
+        overflow: hidden;
+        transition: box-shadow 0.15s, transform 0.15s, border-color 0.15s;
     }
 
-    /* Links inside list items */
+    #clientList li:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        border-color: #c7d2fe;
+        transform: translateY(-1px);
+    }
+
+    /* Single anchor wraps the whole card */
     #clientList li a {
-        color: #000dff; /* Set link color to black */
-        display: block; /* Make the link take up the full width of the list item */
+        display: block;
+        padding: 16px 20px;
+        color: #1f2937;
+        text-decoration: none;
     }
 
     #clientList li a:hover {
-        background-color: #f0f0f0; /* Optional: Add a hover effect */
+        background-color: transparent;
+    }
+
+    /* Each line inside the card */
+    #clientList li a > div {
+        padding: 8px 0;
+        border-top: 1px solid #f1f5f9;
+        font-size: 14px;
+        line-height: 1.5;
+        text-align: left;
+        text-transform: none; /* override the previous uppercase */
+        color: #000000;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 14px;
+        align-items: center;
+    }
+
+    /* First line (Profile) has no top border and is emphasized */
+    #clientList li a > div:first-child {
+        border-top: none;
+        font-size: 15px;
+        font-weight: 600;
+        color: #111827;
+        padding-top: 0;
+    }
+
+    /* Last line (Most Recent Activity) styled subtly */
+    #clientList li a > div:last-child {
+        font-size: 13px;
+        color: #6b7280;
+        font-style: italic;
+    }
+
+    /* Style the "label" (Profile / Household Member / Contact / Most Recent Activity) */
+    #clientList li a > div strong {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #fff;
+        background-color: #6b7280;
+        padding: 3px 8px;
+        border-radius: 4px;
+        margin-right: 4px;
+    }
+
+    /* Color-code each label type via :has() */
+    #clientList li a > div:first-child strong {
+        background-color: #2563eb; /* Profile - blue */
+    }
+    #clientList li a > div:nth-child(n+2):not(:last-child) strong {
+        background-color: #059669; /* Household / Contact - green-ish default */
+    }
+    #clientList li a > div:last-child strong {
+        background-color: transparent;
+        color: #6b7280;
+        padding: 0;
+        font-style: normal;
+    }
+
+    /* Top action buttons */
+    body > button {
+        background-color: #2563eb;
+        color: #fff;
+        border: none;
+        padding: 10px 18px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        margin: 4px 6px;
+        transition: background-color 0.15s;
+    }
+
+    body > button:hover {
+        background-color: #1d4ed8;
+    }
+
+    /* Empty state */
+    #clientList li.empty {
+        text-align: center;
+        color: #6b7280;
+        padding: 24px;
+        font-style: italic;
+    }
+
+    .badge-profile { background-color: #2563eb !important; }       /* blue */
+    .badge-household-member { background-color: #059669 !important; } /* green */
+    .badge-contact { background-color: #d97706 !important; }       /* amber */
+
+    .sep {
+        color: #d1d5db;
+        margin: 0 2px;
+    }
+
+    .person-id {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 16px;
+        color: #000000;
+    }
+
+    /* Inline chips used for household members and contacts */
+    .chip {
+        display: inline-block;
+        width: auto;
+        flex: 0 0 auto;       /* don't stretch inside flex rows */
+        align-self: center;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 500;
+        line-height: 1.2;
+        white-space: nowrap;
+    }
+
+    .chip-household-member {
+        background-color: #ecfdf5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+    }
+
+    .chip-contact {
+        background-color: #fffbeb;
+        color: #92400e;
+        border: 1px solid #fcd34d;
+    }
+
+    /* The "row" wrapping a label + a list of chips */
+    .chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 8px;
+        align-items: center;
+        justify-content: flex-start; /* keep chips left-aligned, not spread */
+    }
+
+    .chip-row > strong {
+        flex-shrink: 0;
     }
 </style>
 
@@ -121,147 +289,207 @@
         county: document.getElementById('searchCounty').value.trim(),
     };
 
-    // Check if all search fields are empty
     const allFieldsEmpty = Object.values(searchInputs).every(value => value === '');
     if (allFieldsEmpty) {
-        await loadClients(); // Repopulate the client list with all clients
+        await loadClients();
         return;
     }
 
     const clients = await fetchClients();
-    const activeUser = sessionStorage.getItem('loggedInUser')?.trim();
 
-    // Prepare Fuse.js options for fuzzy searching
-    const fuseOptions = {
-        includeScore: true,
-        threshold: 0.4, // Adjust for fuzziness tolerance
-    };
+    const clientsById = {};
+    clients.forEach(c => { clientsById[c.id] = c; });
 
-    // Perform field-specific searches
+    const fuseOptions = { includeScore: true, threshold: 0.4 };
+
+    const extendedClients = clients.flatMap(client => {
+        const rawHousehold = client.householdMembers || client.HouseholdMembers || [];
+        const rawContacts  = client.contacts || client.Contacts || [];
+        const householdMembers = rawHousehold.map(member => ({
+            ...member, isHouseholdMember: true, parentClientId: client.id,
+        }));
+        const contacts = rawContacts.map(contact => ({
+            ...contact, isContact: true, parentClientId: client.id,
+        }));
+        return [client, ...householdMembers, ...contacts];
+    });
+
     const fieldResults = {};
     for (const [field, query] of Object.entries(searchInputs)) {
         if (query) {
-            const fuse = new Fuse(clients, { ...fuseOptions, keys: [field] });
+            const fuse = new Fuse(extendedClients, { ...fuseOptions, keys: [field] });
             fieldResults[field] = fuse.search(query);
         }
     }
 
-    // Aggregate scores for each client
-    const clientScores = {};
-    for (const [field, results] of Object.entries(fieldResults)) {
+    const groupedScores = {};
+    function ensureGroup(parentId) {
+        if (!groupedScores[parentId]) {
+            groupedScores[parentId] = { totalScore: 0, primary: clientsById[parentId] || null };
+        }
+        return groupedScores[parentId];
+    }
+    for (const results of Object.values(fieldResults)) {
         results.forEach(({ item, score }) => {
-            if (!clientScores[item.id]) {
-                clientScores[item.id] = { client: item, totalScore: 0 };
-            }
-            clientScores[item.id].totalScore += (1 - score); // Higher score = more relevant
+            const parentId = item.isHouseholdMember || item.isContact ? item.parentClientId : item.id;
+            ensureGroup(parentId).totalScore += (1 - score);
         });
     }
 
-    // Convert aggregated scores to a sorted array
-    const sortedResults = Object.values(clientScores).sort((a, b) => {
+    const sortedGroups = Object.entries(groupedScores).sort(([, a], [, b]) => {
         if (b.totalScore === a.totalScore) {
-            // Sort by most recent note timestamp if scores are equal
-            const aLastNote = a.client.notes?.[a.client.notes.length - 1]?.timestamp || 0;
-            const bLastNote = b.client.notes?.[b.client.notes.length - 1]?.timestamp || 0;
-            return new Date(bLastNote) - new Date(aLastNote);
+            const aLast = a.primary?.notes?.[a.primary.notes.length - 1]?.timestamp || 0;
+            const bLast = b.primary?.notes?.[b.primary.notes.length - 1]?.timestamp || 0;
+            return new Date(bLast) - new Date(aLast);
         }
-        return b.totalScore - a.totalScore; // Higher total score first
+        return b.totalScore - a.totalScore;
     });
 
-    // Render the results
     const clientList = document.getElementById('clientList');
     clientList.innerHTML = '';
 
-    if (sortedResults.length === 0) {
-        const noResultsMessage = document.createElement('li');
-        noResultsMessage.textContent = 'No clients found.';
-        clientList.appendChild(noResultsMessage);
-    } else {
-        sortedResults.forEach(({ client }) => {
-            if (!client.firstName || !client.lastName) {
-                return;
-            }
-
-            // Determine if the profile is checked out by the active user
-            const checkedOutInfo = client.checkedOut?.find(entry => entry.status === true);
-            const isCheckedOutByUser = checkedOutInfo && checkedOutInfo.user === activeUser;
-
-            // Get the most recent note timestamp
-            const mostRecentNote = client.notes?.[client.notes.length - 1];
-            const mostRecentActivity = mostRecentNote ? mostRecentNote.timestamp : 'No recent activity';
-
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <a href="${isCheckedOutByUser ? `profileedit.html?id=${client.id}` : `profileview.html?id=${client.id}`}">
-                    <strong>Profile: ${client.id}</strong> | 
-                    ${client.firstName || ''} ${client.lastName || ''} | 
-                    ${client.phoneNumber ? `Phone: ${client.phoneNumber} | ` : ''}
-                    ${client.streetAddress || client.city || client.state || client.zipCode ? `Address: ${[
-                        client.streetAddress,
-                        client.city,
-                        client.state,
-                        client.zipCode,
-                        client.county ? `${client.county} County` : ''
-                    ].filter(Boolean).join(', ')} | ` : ''}
-                    <strong>Most Recent Activity:</strong> ${mostRecentActivity}
-                </a>`;
-            clientList.appendChild(li);
-        });
+    if (sortedGroups.length === 0) {
+        const li = document.createElement('li');
+        li.textContent = 'No clients found.';
+        clientList.appendChild(li);
+        return;
     }
+
+    sortedGroups.forEach(([, group]) => {
+        const primary = group.primary;
+        if (!primary) return;
+        clientList.appendChild(renderProfileCard(primary));
+    });
 }
 
 async function loadClients() {
     const clients = await fetchClients();
     const activeUser = sessionStorage.getItem('loggedInUser')?.trim();
 
-    // Sort clients by the most recent note timestamp
     clients.sort((a, b) => {
-        const aLastNote = a.notes?.[a.notes.length - 1]?.timestamp || 0;
-        const bLastNote = b.notes?.[b.notes.length - 1]?.timestamp || 0;
-        return new Date(bLastNote) - new Date(aLastNote);
+        const aLast = a.notes?.[a.notes.length - 1]?.timestamp || 0;
+        const bLast = b.notes?.[b.notes.length - 1]?.timestamp || 0;
+        return new Date(bLast) - new Date(aLast);
     });
 
     const clientList = document.getElementById('clientList');
     clientList.innerHTML = '';
 
-    if (clients.length === 0) {
-        const noResultsMessage = document.createElement('li');
-        noResultsMessage.textContent = 'No clients found.';
-        clientList.appendChild(noResultsMessage);
-    } else {
-        clients.forEach((client) => {
-            if (!client.firstName || !client.lastName) {
-                return;
-            }
+    const validClients = clients.filter(c => c.firstName && c.lastName);
 
-            // Determine if the profile is checked out by the active user
-            const checkedOutInfo = client.checkedOut?.find(entry => entry.status === true);
-            const isCheckedOutByUser = checkedOutInfo && checkedOutInfo.user === activeUser;
-
-            // Get the most recent note timestamp
-            const mostRecentNote = client.notes?.[client.notes.length - 1];
-            const mostRecentActivity = mostRecentNote ? mostRecentNote.timestamp : 'No recent activity';
-
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <a href="${isCheckedOutByUser ? `profileedit.html?id=${client.id}` : `profileview.html?id=${client.id}`}">
-                    <strong>Profile: ${client.id}</strong> | 
-                    ${client.firstName || ''} ${client.lastName || ''} | 
-                    ${client.phoneNumber ? `Phone: ${client.phoneNumber} | ` : ''}
-                    ${client.streetAddress || client.city || client.state || client.zipCode ? `Address: ${[
-                        client.streetAddress,
-                        client.city,
-                        client.state,
-                        client.zipCode,
-                        client.county ? `${client.county} County` : ''
-                    ].filter(Boolean).join(', ')} | ` : ''}
-                    <strong>Most Recent Activity:</strong> ${mostRecentActivity}
-                </a>`;
-            clientList.appendChild(li);
-        });
+    if (validClients.length === 0) {
+        const li = document.createElement('li');
+        li.textContent = 'No clients found.';
+        clientList.appendChild(li);
+        document.body.classList.add('loaded');
+        return;
     }
 
+    validClients.forEach(client => {
+        clientList.appendChild(renderProfileCard(client, activeUser));
+    });
+
     document.body.classList.add('loaded');
+}
+
+// ---- Shared rendering helpers ----
+
+function formatAddress(p) {
+    if (!(p.streetAddress.toUpperCase() || p.city.toUpperCase() || p.state.toUpperCase() || p.zipCode.toUpperCase())) return '';
+    return `ADDRESS: ${[
+        p.streetAddress, p.city, p.state, p.zipCode
+    ].filter(Boolean).join(', ').toUpperCase()}`;
+}
+
+function formatCounty(p) {
+    return p.county ? `County: ${p.county.toUpperCase()}` : '';
+}
+
+function profileIdLineHtml(client) {
+    return `<div>
+        <strong class="badge badge-profile">Profile</strong>
+        <span class="person-id">${client.id || ''}</span>
+    </div>`;
+}
+
+function profileDetailsLineHtml(person) {
+    const parts = [
+        person.phoneNumber ? `PHONE: ${person.phoneNumber}` : '',
+        formatAddress(person),
+        formatCounty(person),
+    ].filter(Boolean);
+    if (!parts.length) return '';
+    return `<div>${parts.join(' <span class="sep">|</span> ')}</div>`;
+}
+
+function personChipHtml(person, kind /* 'household-member' | 'contact' */) {
+    const name = `${person.firstName.toUpperCase() || ''} ${person.lastName.toUpperCase() || ''}`.trim() || '(unnamed)';
+    return `<span class="chip chip-${kind}">${name}</span>`;
+}
+
+function chipRowHtml(label, kind, people) {
+    if (!people.length) return '';
+    const labelClass = `badge badge-${kind}`;
+    const chips = people.map(p => personChipHtml(p, kind)).join('');
+    return `<div class="chip-row"><strong class="${labelClass}">${label}</strong>${chips}</div>`;
+}
+
+function sigOf(p) {
+    return `${(p.firstName || '').trim().toLowerCase()}|${(p.lastName || '').trim().toLowerCase()}|${(p.phoneNumber || '').trim()}`;
+}
+
+// Renders ONE <li> containing the primary, all household members, and unique contacts.
+function renderProfileCard(client, activeUser) {
+    const checkedOutInfo = client.checkedOut?.find(entry => entry.status === true);
+    const isCheckedOutByUser = checkedOutInfo && activeUser && checkedOutInfo.user === activeUser;
+    const href = isCheckedOutByUser
+        ? `profileedit.html?id=${client.id}`
+        : `profileview.html?id=${client.id}`;
+
+    const mostRecentNote = client.notes?.[client.notes.length - 1];
+    const mostRecentActivity = mostRecentNote ? mostRecentNote.timestamp : 'No recent activity';
+
+    // Schema-tolerant lookups
+    const rawHousehold = client.householdMembers || client.HouseholdMembers || [];
+    const rawContacts  = client.contacts || client.Contacts || [];
+
+    const seen = new Set();
+    seen.add(sigOf(client));
+
+    const householdMembers = rawHousehold.filter(m => {
+        seen.add(sigOf(m));
+        return true;
+    });
+
+    const contacts = rawContacts.filter(c => {
+        const s = sigOf(c);
+        if (seen.has(s)) return false;
+        seen.add(s);
+        return true;
+    });
+
+    const lines = [];
+
+    // 1) Profile ID
+    lines.push(profileIdLineHtml(client));
+
+    // 2) Household Members
+    const householdLabel = householdMembers.length > 1 ? 'Household Members' : 'Household Member';
+    lines.push(chipRowHtml(householdLabel, 'household-member', householdMembers));
+
+    // 3) Contacts
+    const contactLabel = contacts.length > 1 ? 'Contacts' : 'Contact';
+    lines.push(chipRowHtml(contactLabel, 'contact', contacts));
+
+    // 4) Phone / Address / County
+    lines.push(profileDetailsLineHtml(client));
+
+    // 5) Most Recent Activity
+    lines.push(`<div><strong>Most Recent Activity:</strong> ${mostRecentActivity}</div>`);
+
+    const li = document.createElement('li');
+    li.innerHTML = `<a href="${href}">${lines.filter(Boolean).join('')}</a>`;
+    return li;
 }
 
         async function saveClientAndLogCall() {

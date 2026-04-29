@@ -380,6 +380,20 @@
                         body: JSON.stringify({ clientId: CLIENT_ID, contact: contactData }),
                     }));
                 }
+            } else {
+                const contactsEmpty = !Array.isArray(clientCache?.Contacts) || clientCache.Contacts.length === 0;
+                const matchesClient =
+                    clientCache &&
+                    contactData.firstName === clientCache.firstName &&
+                    contactData.lastName === clientCache.lastName;
+
+                if (contactsEmpty && matchesClient) {
+                    requests.push(fetch('/add-to-contacts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ clientId: CLIENT_ID, contact: contactData }),
+                    }));
+                }
             }
 
             // 3. Update client data — only if caller is applying for themselves or outbound

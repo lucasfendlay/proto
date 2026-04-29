@@ -269,10 +269,14 @@ function renderLeaseDropdownItems(members) {
     dropdown.innerHTML = '';
     
     const options = [
-        ...members.map(m => ({
-            id: String(m.householdMemberId),
-            label: `${m.firstName} ${m.middleInitial || ''} ${m.lastName}`.replace(/\s+/g, ' ').trim()
-        })),
+        ...members.map(m => {
+            const isDeceased = (m.deceased ?? '').toLowerCase() === 'yes';
+            const name = `${m.firstName} ${m.middleInitial || ''} ${m.lastName}`.replace(/\s+/g, ' ').trim();
+            return {
+                id: String(m.householdMemberId),
+                label: isDeceased ? `${name} (DECEASED)` : name
+            };
+        }),
         { id: '__outside__', label: 'Outside of Household' }
     ];
 
@@ -380,6 +384,7 @@ async function updateSSPensionDeductionVisibility(expenseType, kind) {
 // ══════════════════════════════════════════════════════════════
 
 function generateExpenseButtons(member, allMembers) {
+    if (member.deceased === 'yes') return '';
     let buttons = '';
 
     // Shelter button (SNAP + meals = yes)
@@ -519,12 +524,14 @@ async function displayHouseholdMembers(skipEligibilityChecks = false) {
 
             member.expenses = expenses.filter(e => e && e.type);
 
+            const isDeceased = member.deceased === 'yes';
+
             const memberDiv = document.createElement('div');
             memberDiv.classList.add('household-member1-box');
             memberDiv.innerHTML = `
-                <h3>${member.firstName} ${member.middleInitial || ''} ${member.lastName}</h3>
+                <h3>${member.firstName} ${member.middleInitial || ''} ${member.lastName}${isDeceased ? ' <br><br><span style="color:rgb(0, 0, 0); font-size: 14px; border: 1px solid #000000; padding: 2px 6px; margin-left: 8px; border-radius: 4px;">DECEASED</span>' : ''}</h3>
                 <p><strong>Date of Birth:</strong> ${member.dob || 'N/A'}</p>
-                <p><strong>Marital Status:</strong> ${member.maritalStatus || 'N/A'}</p>
+                <p><strong>Previous Year Marital Status:</strong> ${member.maritalStatus || 'N/A'}</p>
                 <div class="expense-list">
                     <ul id="expense-list-${member.householdMemberId}">
                         ${populateExpenses(member.expenses)}

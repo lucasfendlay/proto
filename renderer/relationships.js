@@ -344,11 +344,67 @@ function buildRelationshipDropdownHTML(memberId, relatedMemberId) {
     `;
 }
 
+function wireSpouseDropdowns(clientId) {
+    document.querySelectorAll('.spouse-dropdown').forEach(dropdown => {
+        const memberId = dropdown.id.replace('spouse-dropdown-', '');
+        const members = getHouseholdMembers();
+        const member = members.find(m => m.householdMemberId === memberId);
+
+        // Prepopulate saved value
+        if (member?.previousSpouseId) {
+            dropdown.value = member.previousSpouseId;
+        }
+
+        // Add change listener
+        dropdown.addEventListener('change', async function() {
+            if (this.value) {
+                await handlePreviousSpouseChange(clientId, memberId, this.value);
+            }
+        });
+    });
+}
+
+function wireRelationshipDropdowns(clientId, livingMembers) {
+    document.querySelectorAll('.relationship-dropdown').forEach(dropdown => {
+        const memberId = dropdown.getAttribute('data-member-id');
+        const relatedMemberId = dropdown.getAttribute('data-related-member-id');
+
+        // Prepopulate saved value from cache
+        const members = getHouseholdMembers();
+        const member = members.find(m => m.householdMemberId === memberId);
+        const savedRel = member?.relationships?.find(r => r.relatedMemberId === relatedMemberId);
+        if (savedRel) {
+            dropdown.value = savedRel.relationship;
+        }
+
+        // Add change listener
+        dropdown.addEventListener('change', async function() {
+            const relationship = this.value;
+            if (relationship) {
+                await handleRelationshipChange(clientId, memberId, relatedMemberId, relationship);
+            }
+        });
+    });
+}
+
 function buildSpouseDropdownHTML(member, allMembers) {
-    const otherMembers = allMembers.filter(m => m.householdMemberId !== member.householdMemberId);
-    const options = otherMembers.map(m => 
-        `<option value="${m.householdMemberId}">${m.firstName} ${m.middleInitial || ''} ${m.lastName}</option>`
-    ).join('');
+    // Include living members AND deceased members who died in the previous year
+    const previousYear = new Date().getFullYear() - 1;
+    const otherMembers = allMembers.filter(m => {
+        if (m.householdMemberId === member.householdMemberId) return false;
+        if (m.deceased !== 'yes') return true;
+        // Include deceased if they died during the previous year
+        if (m.dateOfDeath) {
+            // Parse date parts directly to avoid UTC timezone shifting
+            const [year, month, day] = m.dateOfDeath.split('-').map(Number);
+            return year === previousYear;
+        }
+        return false;
+    });
+    const options = otherMembers.map(m => {
+        const deceasedLabel = m.deceased === 'yes' ? ' (Deceased)' : '';
+        return `<option value="${m.householdMemberId}">${m.firstName} ${m.middleInitial || ''} ${m.lastName}${deceasedLabel}</option>`;
+    }).join('');
 
     return `
         <div class="spouse-dropdown-container">
@@ -364,7 +420,10 @@ function buildSpouseDropdownHTML(member, allMembers) {
 }
 
 function buildMemberHTML(member, allMembers) {
-    const otherMembers = allMembers.filter(m => m.householdMemberId !== member.householdMemberId);
+    // Exclude deceased from relationship dropdowns
+    const otherMembers = allMembers.filter(m => 
+        m.householdMemberId !== member.householdMemberId && m.deceased !== 'yes'
+    );
     
     const relationshipsHTML = otherMembers.map(other => `
         <div class="relationship-entry">
@@ -391,7 +450,10 @@ function renderHouseholdMembers(clientId, members) {
     const container = document.getElementById('householdMemberContainer');
     if (!container) return;
 
-    if (!members.length) {
+    // Filter out deceased for rendering member cards
+    const livingMembers = members.filter(m => m.deceased !== 'yes');
+
+    if (!livingMembers.length) {
         container.innerHTML = '<p>No household members found.</p>';
         return;
     }
@@ -399,40 +461,22 @@ function renderHouseholdMembers(clientId, members) {
     container.innerHTML = '';
 
     // Sort: head of household first
-    const sorted = [...members].sort((a, b) => (b.headOfHousehold ? 1 : 0) - (a.headOfHousehold ? 1 : 0));
+    const sorted = [...livingMembers].sort((a, b) => (b.headOfHousehold ? 1 : 0) - (a.headOfHousehold ? 1 : 0));
 
     sorted.forEach(member => {
         const memberDiv = document.createElement('div');
         memberDiv.classList.add('household-member');
+        // Pass ALL members so spouse dropdown can include eligible deceased
         memberDiv.innerHTML = buildMemberHTML(member, members);
         container.appendChild(memberDiv);
     });
 
-    // Wire up event listeners
-    wireRelationshipDropdowns(clientId, members);
+    // Wire up event listeners with living members for relationship dropdowns
+    wireRelationshipDropdowns(clientId, livingMembers);
     wireSpouseDropdowns(clientId);
 
     // Show action buttons
     document.getElementById('actionButtons').style.display = 'block';
-}
-
-function wireRelationshipDropdowns(clientId, members) {
-    document.querySelectorAll('.relationship-dropdown').forEach(dropdown => {
-        const memberId = dropdown.dataset.memberId;
-        const relatedMemberId = dropdown.dataset.relatedMemberId;
-
-        // Prepopulate saved value
-        const member = members.find(m => m.householdMemberId === memberId);
-        const savedRelationship = member?.relationships?.find(r => r.relatedMemberId === relatedMemberId)?.relationship;
-        if (savedRelationship) {
-            dropdown.value = savedRelationship;
-        }
-
-        // Add change listener
-        dropdown.addEventListener('change', async function() {
-            await handleRelationshipChange(clientId, memberId, relatedMemberId, this.value);
-        });
-    });
 }
 
 function wireSpouseDropdowns(clientId) {

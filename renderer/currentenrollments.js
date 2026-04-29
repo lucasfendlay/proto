@@ -486,18 +486,21 @@ async function displayHouseholdMembers() {
         const client = await fetchClientData(clientId);
         const members = await loadHouseholdMembers();
 
-        if (members.length === 0) {
+        // Filter out deceased members
+        const livingMembers = members.filter(m => m.deceased !== 'yes');
+
+        if (livingMembers.length === 0) {
             container.innerHTML = '<p>No household members found.</p>';
             return;
         }
 
         // Sort: head of household first
-        members.sort((a, b) => (b.headOfHousehold ? 1 : 0) - (a.headOfHousehold ? 1 : 0));
+        livingMembers.sort((a, b) => (b.headOfHousehold ? 1 : 0) - (a.headOfHousehold ? 1 : 0));
 
         // Build all member divs first so we can sort by questions
         const memberEntries = [];
-        for (const member of members) {
-            const memberDiv = await addHouseholdMemberToUI(member, client, members);
+        for (const member of livingMembers) {
+            const memberDiv = await addHouseholdMemberToUI(member, client, livingMembers);
             if (memberDiv) {
                 const hasQuestions = !memberDiv.classList.contains('no-questions');
                 memberEntries.push({ div: memberDiv, hasQuestions });
@@ -516,8 +519,8 @@ async function displayHouseholdMembers() {
             const memberDivs = container.querySelectorAll('.household-member');
             let maxHeight = 0;
             memberDivs.forEach(div => {
-                div.style.minHeight = 'auto'; // Reset first
-                div.style.height = 'auto';    // Reset first
+                div.style.minHeight = 'auto';
+                div.style.height = 'auto';
             });
             memberDivs.forEach(div => {
                 if (div.offsetHeight > maxHeight) {

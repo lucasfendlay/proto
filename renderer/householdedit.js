@@ -514,7 +514,7 @@ function buildMemberHTML(member) {
     const info = (label, value) => `<p class="household-member-info"><strong>${label}:</strong> ${value}</p>`;
     const conditionalInfo = (show, label, value) => show ? info(label, value) : '';
 
-    const showPrevMarital = !deceased && member.previousMaritalStatus
+    const showPrevMarital =  member.previousMaritalStatus
         && typeof member.previousMaritalStatus === 'string'
         && member.previousMaritalStatus.toLowerCase() !== 'n/a';
 
@@ -725,14 +725,16 @@ async function prepareHouseholdMemberModal() {
             if (el) el.style.display = visible ? 'block' : 'none';
         });
 
-        // Previous marital status visibility
+        //         // Previous marital status visibility
         const prevMaritalContainer = document.getElementById('previousMaritalStatus')?.closest('.selection-box')
-            || document.getElementById('previousMaritalStatus')?.parentNode;
-        const hasHOH = clientData.householdMembers?.some(m => m.headOfHousehold);
+        || document.getElementById('previousMaritalStatus')?.parentNode;
+    const hasHOH = clientData.householdMembers?.some(m => m.headOfHousehold);
 
-        if (prevMaritalContainer) {
-            prevMaritalContainer.style.display = (hasHOH && !clientData.headOfHousehold) ? 'none' : 'block';
-        }
+    if (prevMaritalContainer) {
+        // When adding a new member: if there's already a HOH, this new member won't be HOH, so hide it
+        // If no HOH exists, this member will become HOH (first member), so show it
+        prevMaritalContainer.style.display = hasHOH ? 'none' : 'block';
+    }
 
         // Set up modal question click listeners
         setupModalQuestionListeners();
@@ -752,23 +754,16 @@ function setupModalQuestionListeners() {
             const fresh = element.cloneNode(true);
             element.parentNode.replaceChild(fresh, element);
 
-            fresh.addEventListener('click', () => {
+            fresh.addEventListener('click', async () => {
                 // Toggle selection
                 question.elements.forEach(id => document.getElementById(id)?.classList.remove('selected'));
                 fresh.classList.add('selected');
 
                 const value = fresh.getAttribute('data-value');
 
-                // Deceased toggle
+                // Deceased toggle — apply full visibility
                 if (question.id === 'deceased') {
-                    const dodContainer = document.getElementById('dateOfDeathContainer');
-                    const dodInput = document.getElementById('dateOfDeath');
-                    if (value === 'yes') {
-                        if (dodContainer) dodContainer.style.display = 'block';
-                    } else {
-                        if (dodContainer) dodContainer.style.display = 'none';
-                        if (dodInput) dodInput.value = '';
-                    }
+                    await applyDeceasedVisibilityInModal(value === 'yes');
                 }
 
                 // Citizen toggle
@@ -1160,23 +1155,73 @@ async function openEditModal(member) {
     document.getElementById('householdMemberModal').style.display = 'block';
 }
 
-function applyDeceasedVisibilityInModal(isDeceased) {
+async function applyDeceasedVisibilityInModal(isDeceased) {
     const toggleIds = [
         'disabilityQuestion', 'medicareQuestion', 'medicaidQuestion',
         'studentQuestion', 'mealsQuestion', 'citizenQuestion',
         'nonCitizenStatusContainer', 'studentStatusContainer',
     ];
-    toggleIds.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = isDeceased ? 'none' : '';
-    });
 
-    const maritalWrapper = document.querySelector('label[for="maritalStatus"]')?.closest('.selection-box');
-    const prevMaritalWrapper = document.getElementById('previousMaritalStatus')?.closest('.selection-box')
-        || document.querySelector('label[for="previousMaritalStatus"]')?.closest('.selection-box');
+    if (isDeceased) {
+        // Hide everything when deceased
+        toggleIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+    } else {
+        // Re-apply client-level question visibility instead of blindly showing all
+        const clientId = getQueryParam('id');
+        if (clientId) {
+            try {
+                const clientData = await fetchClient(clientId);
+                if (clientData) {
+                    const questionVisibility = {
+                        disabilityQuestion: clientData.disability === 'yes',
+                        medicareQuestion: clientData.medicare === 'yes',
+                        medicaidQuestion: clientData.medicaid === 'yes',
+                        citizenQuestion: clientData.citizen === 'no',
+                        studentQuestion: clientData.student === 'yes',
+                        mealsQuestion: !(clientData.snap === 'yes' || clientData.snap === 'notinterested'),
+                    };
 
-    if (maritalWrapper) maritalWrapper.style.display = isDeceased ? 'none' : '';
-    if (prevMaritalWrapper) prevMaritalWrapper.style.display = isDeceased ? 'none' : '';
+                    Object.entries(questionVisibility).forEach(([id, visible]) => {
+                        const el = document.getElementById(id);
+                        if (el) el.style.display = visible ? 'block' : 'none';
+                    });
+
+                    // Re-apply conditional sub-containers based on current modal selections
+                    const citizenNo = document.getElementById('modal-citizen-no');
+                    const studentYes = document.getElementById('modal-student-yes');
+
+                    const ncContainer = document.getElementById('nonCitizenStatusContainer');
+                    const ssContainer = document.getElementById('studentStatusContainer');
+
+                    if (ncContainer) {
+                        ncContainer.style.display = citizenNo?.classList.contains('selected') ? 'block' : 'none';
+                    }
+                    if (ssContainer) {
+                        ssContainer.style.display = studentYes?.classList.contains('selected') ? 'block' : 'none';
+                    }
+                }
+            } catch (error) {
+                console.error('Error re-applying visibility after deceased toggle:', error);
+            }
+        }
+    }
+
+    // Marital status — hide when deceased, show when alive
+    const maritalSelect = document.getElementById('maritalStatus');
+    const maritalWrapper = maritalSelect ? maritalSelect.closest('.selection-box') : null;
+    if (maritalWrapper) maritalWrapper.style.display = isDeceased ? 'none' : 'block';
+
+    // Previous marital status — NOT affected by deceased toggle.
+    // It's controlled solely by HOH status via applyPreviousMaritalVisibility / prepareHouseholdMemberModal.
+
+    // Show/hide date of death
+    const dodContainer = document.getElementById('dateOfDeathContainer');
+    const dodInput = document.getElementById('dateOfDeath');
+    if (dodContainer) dodContainer.style.display = isDeceased ? 'block' : 'none';
+    if (!isDeceased && dodInput) dodInput.value = '';
 }
 
 async function applyPreviousMaritalVisibility(member) {
@@ -1185,27 +1230,17 @@ async function applyPreviousMaritalVisibility(member) {
 
     try {
         const clientData = await fetchClient(clientId);
-        const hasHOH = clientData.householdMembers?.some(m => m.headOfHousehold);
         const container = document.getElementById('previousMaritalStatus')?.closest('.selection-box')
             || document.getElementById('previousMaritalStatus')?.parentNode;
 
         if (!container) return;
 
-        if (member.deceased === 'yes') {
-            container.style.display = 'none';
-        } else if (hasHOH) {
-            if (member.headOfHousehold) {
-                container.style.display = 'block';
-            } else {
-                // Show if within 30 days of 65th birthday
-                const today = new Date();
-                const dob = new Date(member.dob);
-                const ageInDays = Math.floor((today - dob) / (1000 * 60 * 60 * 24));
-                const daysUntil65 = (65 * 365) - ageInDays;
-                container.style.display = daysUntil65 <= 30 ? 'block' : 'none';
-            }
-        } else {
+        if (member.headOfHousehold) {
+            // Only show for head of household
             container.style.display = 'block';
+        } else {
+            // Hide for non-HOH members
+            container.style.display = 'none';
         }
     } catch (error) {
         console.error('Error checking previous marital visibility:', error);

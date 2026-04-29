@@ -355,28 +355,43 @@ document.addEventListener('DOMContentLoaded', async function () {
                     const memberBgColor = isNot ? '#f8d7da' : isNeeds ? '#fff3cd' : isLikely ? '#d4edda' : 'transparent';
                     const memberBorderColor = isNot ? '#f5c6cb' : isNeeds ? '#ffc107' : isLikely ? '#c3e6cb' : '#ccc';
 
-                    const spouseInfo = member.relationships?.some(r => r.relationship === 'spouse')
-                        ? `<strong>Spouse:</strong> ${
-                              capitalizeFirstLetter(members.find(m => m.householdMemberId === member.relationships.find(r => r.relationship === 'spouse')?.relatedMemberId)?.firstName || 'N/A')
-                          } ${
-                              capitalizeFirstLetter(members.find(m => m.householdMemberId === member.relationships.find(r => r.relationship === 'spouse')?.relatedMemberId)?.lastName || '')
-                          }`
-                        : '';
+                    let spouseInfo;
+                    if (config.key === 'PTRR') {
+                        // PTRR uses previous year spouse
+                        const previousSpouse = member.previousSpouseId
+                            ? members.find(m => m.householdMemberId === member.previousSpouseId)
+                            : null;
+                        spouseInfo = previousSpouse
+                            ? `<strong>Previous Year Spouse:</strong> ${
+                                  capitalizeFirstLetter(previousSpouse.firstName || 'N/A')
+                              } ${
+                                  capitalizeFirstLetter(previousSpouse.lastName || '')
+                              }`
+                            : '';
+                    } else {
+                        spouseInfo = member.relationships?.some(r => r.relationship === 'spouse')
+                            ? `<strong>Spouse:</strong> ${
+                                  capitalizeFirstLetter(members.find(m => m.householdMemberId === member.relationships.find(r => r.relationship === 'spouse')?.relatedMemberId)?.firstName || 'N/A')
+                              } ${
+                                  capitalizeFirstLetter(members.find(m => m.householdMemberId === member.relationships.find(r => r.relationship === 'spouse')?.relatedMemberId)?.lastName || '')
+                              }`
+                            : '';
+                    }
 
-                        memberRowsHTML += `
-                        <details class="custom-details member-details" style="background-color: ${memberBgColor}; border: 1px solid #000; border-radius: 4px; padding: 8px; margin: 8px 0; width: 100%; box-sizing: border-box;">
-                            <summary style="list-style: none; cursor: pointer;"><br><strong>${memberName}</strong>
-                            <br>
-                            <p>${elig.join(', ') || 'Not Available'}</p>
-                            </summary>
-                            <hr class="separator-bar">
-                            ${member.headOfHousehold ? ' <span style="font-size: 11px; border: 1px solid black; padding: 2px 5px; margin-left: 6px;">Head of Household</span>' : ''}
-                            <p><strong>Age:</strong> ${member.age?.split('Y')[0] || 'N/A'} <br> 
-                            <strong>Marital Status:</strong> <br>${capitalizeFirstLetter(member.maritalStatus || 'N/A')}<br>
-                            ${spouseInfo}</p>
-                            ${config.getDetails(member)}
-                        </details>
-                    `;
+                    memberRowsHTML += `
+                    <details class="custom-details member-details" style="background-color: ${memberBgColor}; border: 1px solid #000; border-radius: 4px; padding: 8px; margin: 8px 0; width: 100%; box-sizing: border-box;">
+                    <summary style="list-style: none; cursor: pointer;"><br><strong>${memberName}</strong>
+                    <br>
+                    <p>${elig.join(', ') || 'Not Available'}</p>
+                    </summary>
+                    <hr class="separator-bar">
+                    ${member.headOfHousehold ? ' <span style="font-size: 11px; border: 1px solid black; padding: 2px 5px; margin-left: 6px;">Head of Household</span>' : ''}
+                    <p><strong>Age:</strong> ${member.age?.split('Y')[0] || 'N/A'} <br> 
+                    <strong>${config.key === 'PTRR' ? 'Previous Year Marital Status' : 'Marital Status'}:</strong> <br>${capitalizeFirstLetter(config.key === 'PTRR' ? (member.previousMaritalStatus || 'N/A') : (member.maritalStatus || 'N/A'))}<br>
+                    ${spouseInfo}</p>
+                    ${config.getDetails(member)}
+                </details>
+            `;
                 }
             }
 
