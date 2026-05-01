@@ -417,9 +417,6 @@ async function loadSavedData() {
         // Render household members
         renderHouseholdMembers(clientData);
 
-        // "Add Self" button
-        await checkAndAddSelfButton(clientData);
-
         // LIHEAP visibility - apply if LIHEAP is open AND user has made a selection
         if (isProgramOpen(clientData, 'LIHEAP') && clientData.liheapEnrollment) {
             await applyLiheapVisibility(clientData);
@@ -552,57 +549,6 @@ function buildMemberHTML(member) {
             }
         </div>
     `;
-}
-
-// ══════════════════════════════════════════════════════════════
-// ADD SELF BUTTON
-// ══════════════════════════════════════════════════════════════
-
-async function checkAndAddSelfButton(clientData) {
-    const container = document.getElementById('householdMemberContainer');
-    document.getElementById('add-self-button')?.remove();
-
-    const hasSelf = clientData.householdMembers?.some(
-        m => m.firstName === clientData.firstName && m.lastName === clientData.lastName
-    );
-
-    if (hasSelf) return;
-
-    const btn = document.createElement('button');
-    btn.id = 'add-self-button';
-    btn.textContent = 'Add Primary Client as Household Member';
-    btn.style.cssText = 'margin-bottom: 10px; border: 1px solid black; transition: background-color 0.3s ease, color 0.3s ease;';
-
-    btn.addEventListener('mouseover', () => { btn.style.backgroundColor = '#0056b3'; btn.style.color = 'white'; });
-    btn.addEventListener('mouseout', () => { btn.style.backgroundColor = ''; btn.style.color = ''; });
-
-    btn.addEventListener('click', async () => {
-        const clientId = getQueryParam('id');
-        if (!clientId) return;
-
-        try {
-            const data = await fetchClient(clientId);
-            if (!data.householdSize || data.householdSize === 0) {
-                alert('Household size is not set. Please select a valid household size before adding members.');
-                return;
-            }
-            if (data.householdMembers.length >= data.householdSize) {
-                alert('The number of household members cannot exceed the selected household size.');
-                return;
-            }
-
-            setModalHeader('add');
-            await prepareHouseholdMemberModal();
-            document.getElementById('firstName').value = data.firstName;
-            document.getElementById('lastName').value = data.lastName;
-            setupAddOrUpdateButton(false);
-            document.getElementById('householdMemberModal').style.display = 'block';
-        } catch (error) {
-            console.error('Error fetching client data:', error);
-        }
-    });
-
-    container.parentNode.insertBefore(btn, container);
 }
 
 // ══════════════════════════════════════════════════════════════

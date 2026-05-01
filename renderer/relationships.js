@@ -403,7 +403,7 @@ function buildSpouseDropdownHTML(member, allMembers) {
     });
     const options = otherMembers.map(m => {
         const deceasedLabel = m.deceased === 'yes' ? ' (Deceased)' : '';
-        return `<option value="${m.householdMemberId}">${m.firstName} ${m.middleInitial || ''} ${m.lastName}${deceasedLabel}</option>`;
+        return `<option value="${m.householdMemberId}">${m.firstName.toUpperCase()} ${m.middleInitial.toUpperCase() || ''} ${m.lastName.toUpperCase()}${deceasedLabel}</option>`;
     }).join('');
 
     return `
@@ -427,7 +427,7 @@ function buildMemberHTML(member, allMembers) {
     
     const relationshipsHTML = otherMembers.map(other => `
         <div class="relationship-entry">
-            <p><strong>${other.firstName} ${other.middleInitial || ''} ${other.lastName}</strong></p>
+            <p><strong>${other.firstName.toUpperCase()} ${other.middleInitial.toUpperCase() || ''} ${other.lastName.toUpperCase()}</strong></p>
             ${buildRelationshipDropdownHTML(member.householdMemberId, other.householdMemberId)}
         </div>
     `).join('');
@@ -435,9 +435,9 @@ function buildMemberHTML(member, allMembers) {
     const showSpouseDropdown = member.previousMaritalStatus === 'Married (Living Together)';
 
     return `
-        <p><strong>Name:</strong> ${member.firstName} ${member.middleInitial || ''} ${member.lastName}</p>
+        <p><strong>Name:</strong> ${member.firstName.toUpperCase()} ${member.middleInitial.toUpperCase() || ''} ${member.lastName.toUpperCase()}</p>
         <p><strong>Date of Birth:</strong> ${member.dob}</p>
-        <p><strong>Marital Status:</strong><br>${member.maritalStatus || 'N/A'}</p>
+        <p><strong>Marital Status:</strong><br>${member.maritalStatus.toUpperCase() || 'N/A'}</p>
         ${showSpouseDropdown ? buildSpouseDropdownHTML(member, allMembers) : ''}
         <div class="relationships-container">
             <p><strong>Relationships:</strong></p>

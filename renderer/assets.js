@@ -306,24 +306,16 @@ async function displayHouseholdMembers() {
         memberDiv.dataset.memberId = member.householdMemberId;
 
         const assetListHTML = generateAssetListHTML(member.assets, member.householdMemberId);
-
         const hasAssets = member.assets && Array.isArray(member.assets) && member.assets.length > 0;
+        const isDeceased = (member.deceased ?? '').toLowerCase() === 'yes';
 
-        const isDeceased = member.deceased === 'yes';
-
-        const memberDiv = document.createElement('div');
-        memberDiv.classList.add('household-member1-box');
         memberDiv.innerHTML = `
-            <h3>${member.firstName} ${member.middleInitial || ''} ${member.lastName}${isDeceased ? ' <br><br><span style="color:rgb(0, 0, 0); font-size: 14px; border: 1px solid #000000; padding: 2px 6px; margin-left: 8px; border-radius: 4px;">DECEASED</span>' : ''}</h3>
+            <h3>${member.firstName.toUpperCase()} ${member.middleInitial.toUpperCase() || ''} ${member.lastName.toUpperCase()}${isDeceased ? ' <br><br><span style="color:rgb(0, 0, 0); font-size: 14px; border: 1px solid #000000; padding: 2px 6px; margin-left: 8px; border-radius: 4px;">DECEASED</span>' : ''}</h3>
             <p><strong>Date of Birth:</strong> ${member.dob || 'N/A'}</p>
-            <p><strong>Marital Status:</strong> ${member.maritalStatus || 'N/A'}</p>
-            <div class="expense-list">
-                <ul id="expense-list-${member.householdMemberId}">
-                    ${populateExpenses(member.expenses)}
-                </ul>
-            </div>
-            <div class="add-expense-buttons">
-                ${generateExpenseButtons(member, members)}
+            <div class="asset-list">
+                ${hasAssets 
+                    ? `<h4>Assets:</h4><ul id="asset-list-${member.householdMemberId}">${assetListHTML}</ul>` 
+                    : '<p class="no-asset-message">No asset records available.</p>'}
             </div>
         `;
 

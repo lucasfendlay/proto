@@ -59,8 +59,8 @@ async function saveClientAndLogCall() {
 }
 
 function generateUniqueId() {
-    const randomSixDigits = Math.floor(100000 + Math.random() * 900000); // Generate a random 6-digit number
-    return `ID${randomSixDigits}`;
+    const randomSevenDigits = Math.floor(1000000 + Math.random() * 9000000); // Generate a random 7-digit number
+    return `CP${randomSevenDigits}`;
 }
 
 async function importClientsFromCSV() {

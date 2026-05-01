@@ -61,7 +61,33 @@
             background-color: #0056b3; color: white; border-color: #003f7f;
         }
         .narrow-body { margin-left: 385px; margin-right: 10px; max-width: calc(100% - 395px); margin: 0 auto; margin-top: 60px; }
-        /* Modal */
+
+        /* ============================================================
+           Shared "card" look for PTRR-related containers
+           ============================================================ */
+        .ptrr-card {
+            width: 100%;
+            max-width: 1100px;
+            margin: 24px auto;
+            padding: 28px 32px;
+            border: 1px solid #d8dde3;
+            border-radius: 12px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+        }
+        .ptrr-card h2 {
+            margin: 0 0 6px 0;
+            font-size: 1.35em;
+            color: #0f172a;
+            letter-spacing: -0.01em;
+        }
+        .ptrr-card .card-subtitle {
+            margin: 0 0 20px 0;
+            color: #64748b;
+            font-size: 0.92em;
+        }
+
+        /* Contact Modal */
         .contactmodal {
             display: none;
             position: fixed;
@@ -76,7 +102,6 @@
             align-items: center;
             overflow: scroll;
         }
-        /* Match applicationedit modal layout */
         .contactmodal-content {
             background-color: transparent;
             border-radius: 0px;
@@ -89,108 +114,339 @@
             transform: translate(-50%, -50%);
             text-align: left;
         }
-
-        /* Inner white card like applicationedit .modal-content */
         .modal-content {
             background-color: transparent;
-border-radius: px;
-width: 90%; /* Adjust width for responsiveness */
-max-width: 500px; /* Limit the modal width */
-padding: 0px;
-position: absolute; /* Position relative to the modal container */
-text-align: left;
+            border-radius: 0px;
+            width: 90%;
+            max-width: 500px;
+            padding: 0px;
+            position: absolute;
+            text-align: left;
         }
 
         .error { border: 2px solid red; background-color: #ffe6e6; }
 
-        /* Multiple Homes side-by-side containers (matching applicationedit address-container) */
+        /* ============================================================
+           Multiple Homes – side-by-side
+           ============================================================ */
+        #multipleHomesAddresses-container {
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
         .homes-row {
-            display: flex;
-            width: 1000px;
-            justify-content: space-between;
-            gap: 20px;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 24px;
+            width: 100%;
             margin-top: 20px;
+        }
+        @media (max-width: 900px) {
+            .homes-row { grid-template-columns: 1fr; }
         }
         .home-card {
-            flex: 1;
-            padding: 20px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            background-color: #f9f9f9;
+            padding: 24px 26px;
+            border: 1px solid #d8dde3;
+            border-radius: 12px;
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+            transition: box-shadow 0.2s ease, transform 0.2s ease;
         }
+        .home-card:hover {
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+        }
+        .home-card h2,
         .home-card h3 {
-            margin-top: 0;
-            margin-bottom: 14px;
-            font-size: 1.1em;
-            color: #333;
-        }
-        .home-card .form-field {
-            margin-bottom: 10px;
-        }
-        .home-card .form-field label {
-            display: block;
-            margin-top: 10px;
-            font-weight: 600;
-        }
-        .home-card .form-field input {
-            width: 100%;
-            padding: 12px;
-            font-size: 1rem;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-sizing: border-box;
-        }
-        .home-card .button-container {
-            margin-bottom: 12px;
-        }
-        .home-card .button-container button {
-            width: 100%;
-            padding: 10px 15px;
-            font-size: 0.9em;
-            background-color: #007bff;
-            border: 1px solid #000000;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-        .home-card .button-container button:hover {
-            background-color: #0056b3;
+            margin: 0 0 18px 0;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e2e8f0;
+            font-size: 1.15em;
+            color: #1e293b;
         }
 
-        /* Previous Year Address card (matching applicationedit address-section) */
+        /* Two-column row inside cards (e.g., City/State, dates) */
+        .field-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+        .field-row.cols-3 { grid-template-columns: 2fr 1fr 1fr; }
+
+        /* Form field polish (scoped to PTRR cards so it doesn't affect modal etc.) */
+        .ptrr-card .form-field,
+        .home-card .form-field,
+        .rented-ptrr-card-inner .form-field {
+            margin-bottom: 14px;
+        }
+        .ptrr-card .form-field label,
+        .home-card .form-field label,
+        .rented-ptrr-card-inner .form-field label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #334155;
+            font-size: 0.92em;
+        }
+        .ptrr-card .form-field input,
+        .ptrr-card .form-field select,
+        .home-card .form-field input,
+        .home-card .form-field select,
+        .rented-ptrr-card-inner .form-field input,
+        .rented-ptrr-card-inner .form-field select {
+            width: 100%;
+            padding: 10px 12px;
+            font-size: 0.98rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            background: #fff;
+            box-sizing: border-box;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .ptrr-card .form-field input:focus,
+        .ptrr-card .form-field select:focus,
+        .home-card .form-field input:focus,
+        .home-card .form-field select:focus,
+        .rented-ptrr-card-inner .form-field input:focus,
+        .rented-ptrr-card-inner .form-field select:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+
+        /* Buttons inside cards */
+        .home-card .button-container,
+        .rented-ptrr-card-inner .button-container {
+            margin-top: 8px;
+            margin-bottom: 8px;
+        }
+        .home-card .button-container button,
+        .rented-ptrr-card-inner .button-container button {
+            width: 100%;
+            padding: 10px 14px;
+            font-size: 0.92em;
+            background-color: #2563eb;
+            color: #fff;
+            border: 1px solid #1d4ed8;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.15s ease, transform 0.05s ease;
+        }
+        .home-card .button-container button:hover,
+        .rented-ptrr-card-inner .button-container button:hover {
+            background-color: #1d4ed8;
+        }
+        .home-card .button-container button:active,
+        .rented-ptrr-card-inner .button-container button:active {
+            transform: translateY(1px);
+        }
+
+        /* ============================================================
+           Rented PTRR – outer container & inner cards
+           ============================================================ */
+           .rented-ptrr-card {
+            width: 100%;
+            max-width: 1100px;
+            margin: 24px auto;
+            padding: 28px 32px;
+            border: 1px solid #d8dde3;
+            border-radius: 12px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+        }
+        .rented-ptrr-card > h2 {
+            margin: 0 0 6px 0;
+            font-size: 1.35em;
+            color: #0f172a;
+        }
+        .rented-ptrr-card-inner {
+            margin-top: 18px;
+            padding: 22px 24px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            background: #ffffff;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+        }
+        .rented-ptrr-card-inner + .rented-ptrr-card-inner {
+            margin-top: 22px;
+        }
+        .rented-ptrr-card-inner h3 {
+            margin: 0 0 16px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e2e8f0;
+            font-size: 1.08em;
+            color: #1e293b;
+        }
+        .rented-ptrr-card-inner h4 {
+            margin: 18px 0 10px 0;
+            font-size: 0.95em;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        /* ============================================================
+           Selection chips — shared across:
+             • .rented-ptrr-card-inner .selection-box > div[data-value]
+             • .rented-ptrr-card-inner .selection-box > div[data-dfc]
+             • .rental-type-grid > div[data-rt]
+             • #multipleHomes-container > div[data-value]
+           ============================================================ */
+
+        .rented-ptrr-card-inner .selection-box { margin: 14px 0 18px 0; }
+        .rented-ptrr-card-inner .selection-box > label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #334155;
+            font-size: 0.92em;
+        }
+
+        /* ---- 1. Base "chip" (unselected) ---- */
+        .rented-ptrr-card-inner .selection-box > div[data-value],
+        .rented-ptrr-card-inner .selection-box > div[data-dfc],
+        .rental-type-grid > div[data-rt],
+        #multipleHomes-container > div[data-value] {
+            display: inline-block;
+            min-width: 90px;
+            padding: 9px 16px;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            background: #ffffff;
+            color: #334155;
+            text-align: center;
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.12s ease, color 0.12s ease,
+                        border-color 0.12s ease, box-shadow 0.12s ease,
+                        transform 0.05s ease;
+        }
+        .rental-type-grid > div[data-rt] { padding: 11px 14px; }
+
+        /* ---- 2. Hover (only when not selected) ---- */
+        .rented-ptrr-card-inner .selection-box > div[data-value]:not(.selected):hover,
+        .rented-ptrr-card-inner .selection-box > div[data-dfc]:not(.selected):hover,
+        .rental-type-grid > div[data-rt]:not(.selected):hover,
+        #multipleHomes-container > div[data-value]:not(.selected):hover {
+            border-color: #2563eb;
+            background: #eff6ff;
+            color: #1e3a8a;
+        }
+
+        /* ---- 3. Selected (declared after base + bumped specificity) ---- */
+        .rented-ptrr-card-inner .selection-box > div[data-value].selected,
+        .rented-ptrr-card-inner .selection-box > div[data-dfc].selected,
+        .rental-type-grid > div[data-rt].selected,
+        #multipleHomes-container > div[data-value].selected {
+            border-color: #1d4ed8;
+            background: #2563eb !important;
+            color: #ffffff;
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+        }
+
+        /* ---- 4. Hover on a selected chip = slightly darker ---- */
+        .rented-ptrr-card-inner .selection-box > div[data-value].selected:hover,
+        .rented-ptrr-card-inner .selection-box > div[data-dfc].selected:hover,
+        .rental-type-grid > div[data-rt].selected:hover,
+        #multipleHomes-container > div[data-value].selected:hover {
+            background: #1d4ed8 !important;
+            border-color: #1e40af;
+        }
+
+        /* ---- 5. Active (press) feedback ---- */
+        .rented-ptrr-card-inner .selection-box > div[data-value]:active,
+        .rented-ptrr-card-inner .selection-box > div[data-dfc]:active,
+        .rental-type-grid > div[data-rt]:active,
+        #multipleHomes-container > div[data-value]:active {
+            transform: translateY(1px);
+        }
+
+        /* ============================================================
+           Rental type grid layout
+           ============================================================ */
+        .rental-type-grid {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 10px !important;
+            max-width: 100% !important;
+        }
+        @media (min-width: 700px) {
+            .rental-type-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+        }
+        @media (min-width: 1000px) {
+            .rental-type-grid { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+        }
+
+        /* ============================================================
+           Building name textbox
+           ============================================================ */
+        .rented-ptrr-card-inner .textbox-container { margin: 14px 0; }
+        .rented-ptrr-card-inner .textbox-container label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #334155;
+            font-size: 0.92em;
+        }
+        .rented-ptrr-card-inner .textbox-container input {
+            width: 100%;
+            padding: 10px 12px;
+            font-size: 0.98rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            box-sizing: border-box;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .rented-ptrr-card-inner .textbox-container input:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+
+        /* ============================================================
+           Multiple Homes Yes/No card
+           ============================================================ */
+        #multipleHomes-container {
+            width: 100%;
+            max-width: 1100px;
+            margin: 24px auto;
+            padding: 22px 28px;
+            border: 1px solid #d8dde3;
+            border-radius: 12px;
+            background: #ffffff;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+        }
+        #multipleHomes-container > label {
+            display: block;
+            margin-bottom: 12px;
+            font-weight: 600;
+            color: #1e293b;
+            font-size: 1em;
+        }
+
+        /* ============================================================
+           Previous Year Address card
+           ============================================================ */
         .previous-year-card {
-            max-width: 600px;
-            width: 600px;
-            margin-top: 20px;
-            padding: 20px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            background-color: #f9f9f9;
+            width: 100%;
+            max-width: 1100px;
+            margin: 24px auto;
+            padding: 28px 32px;
+            border: 1px solid #d8dde3;
+            border-radius: 12px;
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
         }
         .previous-year-card h3 {
-            margin-top: 0;
-            margin-bottom: 14px;
-            font-size: 1.1em;
-            color: #333;
+            margin: 0 0 16px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e2e8f0;
+            font-size: 1.15em;
+            color: #1e293b;
         }
-        .previous-year-card .form-field {
-            margin-bottom: 10px;
-        }
-        .previous-year-card .form-field label {
-            display: block;
-            margin-top: 10px;
-            font-weight: 600;
-        }
-        .previous-year-card .form-field input {
-            width: 100%;
-            padding: 12px;
-            font-size: 1rem;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-sizing: border-box;
-        }
-            </style>
-</head>
+    </style>
+    </head>
 <body class="narrow-body">
     <h1>Additional</h1>
 
@@ -220,331 +476,18 @@ text-align: left;
         </select>
     </div>
 
-    <!-- Container for dynamically added PTRR Questions -->
-    <div class="selection-box" id="subsidizedHousingPrevious-container" style="display: none;">
-        <label id="subsidizedHousingPrevious-label">Did your household receive a housing subsidy, such as Section 8, during the previous year?</label>
-        <div id="subsidizedHousingPrevious-yes" data-value="yes">Yes</div>
-        <div id="subsidizedHousingPrevious-no" data-value="no">No</div>
+    <!-- Container for dynamically added PTRR Questions (Rented) -->
+    <div id="rentedPtrr-container" class="rented-ptrr-card" style="display: none;">
+        <h2>Property Tax and Rent Rebate</h2>
+        <div id="rentedPtrr-cards"></div>
     </div>
 
-    <div class="form-field" id="subsidizedRentAmount-container" style="display: none;">
-        <label for="subsidizedRentAmount">How much of your monthly rent in the previous year was subsidized?</label>
-        <input type="number" id="subsidizedRentAmount" name="subsidizedRentAmount" min="0" step="0.01" placeholder="Enter dollar amount">
+    <!-- Container for dynamically added PTRR Questions (Owned / Property Taxes) -->
+    <div id="ownedPtrr-container" class="rented-ptrr-card" style="display: none;">
+        <h2>Property Tax and Rent Rebate</h2>
+        <div id="ownedPtrr-cards"></div>
     </div>
-
-    <div class="selection-box" id="rentaltype-container" style="display: none;">
-        <label id="rentalType-label">What type of rental housing is the property?</label>
-        <div class="rental-type-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 800px;">
-            <div id="rentalType-apartmentHouse" data-value="apartmentHouse">Apartment in a House</div>
-            <div id="rentalType-apartmentBuilding" data-value="apartmentBuilding">Apartment in a Building</div>
-            <div id="rentalType-boardingHome" data-value="boardingHome">Boarding Home</div>
-            <div id="rentalType-mobileHome" data-value="mobileHome">Mobile Home</div>
-            <div id="rentalType-personalCareHome" data-value="personalCareHome">Personal Care Home</div>
-            <div id="rentalType-mobileHomeLot" data-value="mobileHomeLot">Mobile Home Lot</div>
-            <div id="rentalType-nursingHome" data-value="nursingHome">Nursing Home</div>
-            <div id="rentalType-privateHome" data-value="privateHome">Private Home</div>
-            <div id="rentalType-assistedLiving" data-value="assistedLiving">Assisted Living</div>
-            <div id="rentalType-condiminium" data-value="condominium">Condominium</div>
-        </div>
-    </div>
-
-    <div class="textbox-container" id="buildingName-container" style="display: none;">
-        <label for="buildingNameInput">Building Name:</label>
-        <input type="text" id="buildingNameInput" name="buildingName" placeholder="Enter building name">
-    </div>
-
-    <div class="selection-box" id="domicilliaryFosterCare-container" style="display: none;">
-        <label id="domicilliaryFosterCare-label">Is the property a domiciliary or foster care facility?</label>
-        <div id="domicilliaryFosterCare-yes" data-value="domicillary">Domicilliary Care</div>
-        <div id="domicilliaryFosterCare-no" data-value="foster">Foster Care</div>
-        <div id="domicilliaryFosterCare-none" data-value="no">No</div>
-        </div>
-
-    <!-- Multiple Homes (PTRR + owned/rentedowned) -->
-    <div class="selection-box" id="multipleHomes-container" style="display: none;">
-        <label id="multipleHomes-label">Did you live at more than one residence in the previous year?</label>
-        <div id="multipleHomes-yes" data-value="yes">Yes</div>
-        <div id="multipleHomes-no" data-value="no">No</div>
-    </div>
-
-    <!-- Two-home address fields (shown when multipleHomes = yes) -->
-    <div id="multipleHomesAddresses-container" style="display: none;">
-        <div class="homes-row">
-            <!-- First Home -->
-            <div class="home-card">
-                <h2>First Home</h2>
-                <div class="form-field">
-                    <label for="firstHomeStreetAddress">Street Address:</label>
-                    <input type="text" id="firstHomeStreetAddress" placeholder="Enter Street Address">
-                </div>
-                <div class="form-field">
-                    <label for="firstHomeStreetAddressLine2">Street Address Line 2:</label>
-                    <input type="text" id="firstHomeStreetAddressLine2" placeholder="Enter Street Address Line 2">
-                </div>
-                <div class="form-field">
-                    <label for="firstHomeCity">City:</label>
-                    <input type="text" id="firstHomeCity" placeholder="Enter City">
-                </div>
-                <div class="form-field">
-                    <label for="firstHomeState">State:</label>
-                    <select id="firstHomeState">
-                        <option value="" disabled selected>Select State</option>
-                        <option value="PA">PA</option>
-                        <option value="AL">AL</option>
-                        <option value="AK">AK</option>
-                        <option value="AZ">AZ</option>
-                        <option value="AR">AR</option>
-                        <option value="CA">CA</option>
-                        <option value="CO">CO</option>
-                        <option value="CT">CT</option>
-                        <option value="DE">DE</option>
-                        <option value="FL">FL</option>
-                        <option value="GA">GA</option>
-                        <option value="HI">HI</option>
-                        <option value="ID">ID</option>
-                        <option value="IL">IL</option>
-                        <option value="IN">IN</option>
-                        <option value="IA">IA</option>
-                        <option value="KS">KS</option>
-                        <option value="KY">KY</option>
-                        <option value="LA">LA</option>
-                        <option value="ME">ME</option>
-                        <option value="MD">MD</option>
-                        <option value="MA">MA</option>
-                        <option value="MI">MI</option>
-                        <option value="MN">MN</option>
-                        <option value="MS">MS</option>
-                        <option value="MO">MO</option>
-                        <option value="MT">MT</option>
-                        <option value="NE">NE</option>
-                        <option value="NV">NV</option>
-                        <option value="NH">NH</option>
-                        <option value="NJ">NJ</option>
-                        <option value="NM">NM</option>
-                        <option value="NY">NY</option>
-                        <option value="NC">NC</option>
-                        <option value="ND">ND</option>
-                        <option value="OH">OH</option>
-                        <option value="OK">OK</option>
-                        <option value="OR">OR</option>
-                        <option value="RI">RI</option>
-                        <option value="SC">SC</option>
-                        <option value="SD">SD</option>
-                        <option value="TN">TN</option>
-                        <option value="TX">TX</option>
-                        <option value="UT">UT</option>
-                        <option value="VT">VT</option>
-                        <option value="VA">VA</option>
-                        <option value="WA">WA</option>
-                        <option value="WV">WV</option>
-                        <option value="WI">WI</option>
-                        <option value="WY">WY</option>
-                        <option value="DC">DC</option>
-                    </select>
-                </div>
-                <div class="form-field">
-                    <label for="firstHomeZipCode">ZIP Code:</label>
-                    <input type="text" id="firstHomeZipCode" placeholder="Enter ZIP Code" maxlength="5">
-                </div>
-                <div class="form-field">
-                    <label for="firstHomeMoveInDate">Move-In Date:</label>
-                    <input type="date" id="firstHomeMoveInDate">
-                </div>
-                <div class="form-field">
-                    <label for="firstHomeMoveOutDate">Move-Out Date:</label>
-                    <input type="date" id="firstHomeMoveOutDate">
-                </div>
-                <div class="form-field">
-                    <label for="firstHomePropertyTaxPaid">Property Taxes Paid:</label>
-                    <input type="number" id="firstHomePropertyTaxPaid" min="0" step="0.01" placeholder="Enter dollar amount">
-                </div>
-            </div>
-
-            <!-- Second Home -->
-            <div class="home-card">
-                <h2>Second Home</h2>
-                <div class="form-field">
-                    <label for="secondHomeStreetAddress">Street Address:</label>
-                    <input type="text" id="secondHomeStreetAddress" placeholder="Enter Street Address">
-                </div>
-                <div class="form-field">
-                    <label for="secondHomeStreetAddressLine2">Street Address Line 2:</label>
-                    <input type="text" id="secondHomeStreetAddressLine2" placeholder="Enter Street Address Line 2">
-                </div>
-                <div class="form-field">
-                    <label for="secondHomeCity">City:</label>
-                    <input type="text" id="secondHomeCity" placeholder="Enter City">
-                </div>
-                <div class="form-field">
-                    <label for="secondHomeState">State:</label>
-                    <select id="secondHomeState">
-                        <option value="" disabled selected>Select State</option>
-                        <option value="PA">PA</option>
-                        <option value="AL">AL</option>
-                        <option value="AK">AK</option>
-                        <option value="AZ">AZ</option>
-                        <option value="AR">AR</option>
-                        <option value="CA">CA</option>
-                        <option value="CO">CO</option>
-                        <option value="CT">CT</option>
-                        <option value="DE">DE</option>
-                        <option value="FL">FL</option>
-                        <option value="GA">GA</option>
-                        <option value="HI">HI</option>
-                        <option value="ID">ID</option>
-                        <option value="IL">IL</option>
-                        <option value="IN">IN</option>
-                        <option value="IA">IA</option>
-                        <option value="KS">KS</option>
-                        <option value="KY">KY</option>
-                        <option value="LA">LA</option>
-                        <option value="ME">ME</option>
-                        <option value="MD">MD</option>
-                        <option value="MA">MA</option>
-                        <option value="MI">MI</option>
-                        <option value="MN">MN</option>
-                        <option value="MS">MS</option>
-                        <option value="MO">MO</option>
-                        <option value="MT">MT</option>
-                        <option value="NE">NE</option>
-                        <option value="NV">NV</option>
-                        <option value="NH">NH</option>
-                        <option value="NJ">NJ</option>
-                        <option value="NM">NM</option>
-                        <option value="NY">NY</option>
-                        <option value="NC">NC</option>
-                        <option value="ND">ND</option>
-                        <option value="OH">OH</option>
-                        <option value="OK">OK</option>
-                        <option value="OR">OR</option>
-                        <option value="RI">RI</option>
-                        <option value="SC">SC</option>
-                        <option value="SD">SD</option>
-                        <option value="TN">TN</option>
-                        <option value="TX">TX</option>
-                        <option value="UT">UT</option>
-                        <option value="VT">VT</option>
-                        <option value="VA">VA</option>
-                        <option value="WA">WA</option>
-                        <option value="WV">WV</option>
-                        <option value="WI">WI</option>
-                        <option value="WY">WY</option>
-                        <option value="DC">DC</option>
-                    </select>
-                </div>
-                <div class="form-field">
-                    <label for="secondHomeZipCode">ZIP Code:</label>
-                    <input type="text" id="secondHomeZipCode" placeholder="Enter ZIP Code" maxlength="5">
-                </div>
-                <div class="form-field">
-                    <label for="secondHomeMoveInDate">Move-In Date:</label>
-                    <input type="date" id="secondHomeMoveInDate">
-                </div>
-                <div class="form-field">
-                    <label for="secondHomeMoveOutDate">Move-Out Date:</label>
-                    <input type="date" id="secondHomeMoveOutDate">
-                </div>
-                <div class="form-field">
-                    <label for="secondHomePropertyTaxPaid">Property Taxes Paid:</label>
-                    <input type="number" id="secondHomePropertyTaxPaid" min="0" step="0.01" placeholder="Enter dollar amount">
-                </div>
-                <div class="button-container">
-                    <button type="button" id="sameAsCurrentAddressBtn">Same as Current Residential Address</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Same address question (shown when multipleHomes = no) -->
-    <div class="selection-box" id="sameAddressPreviousYear-container" style="display: none;">
-        <label id="sameAddressPreviousYear-label">Is the home you resided in during the previous year the same address as your current residence?</label>
-        <div id="sameAddressPreviousYear-yes" data-value="yes">Yes</div>
-        <div id="sameAddressPreviousYear-no" data-value="no">No</div>
-    </div>
-
-    <!-- Previous year address (shown when sameAddressPreviousYear = no) -->
-    <div id="previousYearAddress-container" style="display: none;">
-        <div class="previous-year-card">
-            <h2>Previous Year Address</h2>
-            <div class="form-field">
-                <label for="previousYearStreetAddress">Street Address:</label>
-                <input type="text" id="previousYearStreetAddress" placeholder="Enter Street Address">
-            </div>
-                <div class="form-field">
-                    <label for="previousYearStreetAddressLine2">Street Address Line 2:</label>
-                    <input type="text" id="previousYearStreetAddressLine2" placeholder="Enter Street Address Line 2">
-                </div>
-            <div class="form-field">
-                <label for="previousYearCity">City:</label>
-                <input type="text" id="previousYearCity" placeholder="Enter City">
-            </div>
-            <div class="form-field">
-                <label for="previousYearState">State:</label>
-                <select id="previousYearState">
-                    <option value="" disabled selected>Select State</option>
-                    <option value="PA">PA</option>
-                    <option value="AL">AL</option>
-                    <option value="AK">AK</option>
-                    <option value="AZ">AZ</option>
-                    <option value="AR">AR</option>
-                    <option value="CA">CA</option>
-                    <option value="CO">CO</option>
-                    <option value="CT">CT</option>
-                    <option value="DE">DE</option>
-                    <option value="FL">FL</option>
-                    <option value="GA">GA</option>
-                    <option value="HI">HI</option>
-                    <option value="ID">ID</option>
-                    <option value="IL">IL</option>
-                    <option value="IN">IN</option>
-                    <option value="IA">IA</option>
-                    <option value="KS">KS</option>
-                    <option value="KY">KY</option>
-                    <option value="LA">LA</option>
-                    <option value="ME">ME</option>
-                    <option value="MD">MD</option>
-                    <option value="MA">MA</option>
-                    <option value="MI">MI</option>
-                    <option value="MN">MN</option>
-                    <option value="MS">MS</option>
-                    <option value="MO">MO</option>
-                    <option value="MT">MT</option>
-                    <option value="NE">NE</option>
-                    <option value="NV">NV</option>
-                    <option value="NH">NH</option>
-                    <option value="NJ">NJ</option>
-                    <option value="NM">NM</option>
-                    <option value="NY">NY</option>
-                    <option value="NC">NC</option>
-                    <option value="ND">ND</option>
-                    <option value="OH">OH</option>
-                    <option value="OK">OK</option>
-                    <option value="OR">OR</option>
-                    <option value="RI">RI</option>
-                    <option value="SC">SC</option>
-                    <option value="SD">SD</option>
-                    <option value="TN">TN</option>
-                    <option value="TX">TX</option>
-                    <option value="UT">UT</option>
-                    <option value="VT">VT</option>
-                    <option value="VA">VA</option>
-                    <option value="WA">WA</option>
-                    <option value="WV">WV</option>
-                    <option value="WI">WI</option>
-                    <option value="WY">WY</option>
-                    <option value="DC">DC</option>
-                </select>
-            </div>
-            <div class="form-field">
-                <label for="previousYearZipCode">ZIP Code:</label>
-                <input type="text" id="previousYearZipCode" placeholder="Enter ZIP Code" maxlength="5">
-            </div>
-        </div>
-    </div>
-
-
-
-
+    
     <!-- Contact Modal -->
     <div id="contactModal" class="contactmodal" style="display: none;">
         <div class="modal-content">
@@ -672,25 +615,6 @@ text-align: left;
     // Global client
     let client = null;
     let editingContactIndex = null;
-
-    // Load client and init UI
-    document.addEventListener('DOMContentLoaded', async () => {
-        const clientId = getQueryParam('id');
-        if (!clientId) { console.error('Client ID not found in query parameters.'); return; }
-
-        try {
-            const response = await fetch(`/get-client/${clientId}`);
-            if (!response.ok) throw new Error(`Failed to fetch client data: ${response.statusText}`);
-            client = await response.json();
-            renderAuthorizedRepresentative();
-            populateAuthorizedRepresentativeDropdown();
-            checkAndRenderPTRRDeceasedQuestion();
-            initSubsidizedHousingPrevious();
-            initMultipleHomes();
-        } catch (err) {
-            console.error('Error loading client data:', err);
-        }
-    });
 
     // Replace contacts rendering with Authorized Representative rendering
 // Render AR details (Address line uses a break between address2 and city)
@@ -1025,125 +949,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             client = await response.json();
             renderAuthorizedRepresentative();
             populateAuthorizedRepresentativeDropdown();
-            checkAndRenderPTRRDeceasedQuestion();
-            initSubsidizedHousingPrevious();
+            initRentedPtrrCards();
+            initMultipleHomes();
         } catch (err) {
             console.error('Error loading client data:', err);
         }
     });
 
-    // Conditionally render: "Are you filing for PTRR on behalf of someone who is deceased?"
-    function checkAndRenderPTRRDeceasedQuestion() {
-        try {
-            const container = document.getElementById('ptrr-deceased-container');
-            if (!container) return;
-
-            const members = Array.isArray(client?.householdMembers) ? client.householdMembers : [];
-            if (members.length === 0) {
-                container.innerHTML = '';
-                return;
-            }
-
-            // Find a member applying for PTRR
-            const applyingMember = members.find(m => {
-                // Handles array shape like m.PTRR?.application: [{ applying: true }]
-                const ptrrApps = Array.isArray(m?.PTRR?.application) ? m.PTRR.application : [];
-                const hasApplyingInArray = ptrrApps.some(a => a?.applying === true);
-
-                // Also support other possible shapes
-                const applyingFlags = [
-                    m?.applications?.PTRR?.applying,
-                    m?.PTRR?.applying,
-                    m?.application?.PTRR?.applying
-                ];
-                const hasDirectFlag = applyingFlags.some(v => String(v).toLowerCase() === 'true' || v === true);
-
-                return hasApplyingInArray || hasDirectFlag;
-            });
-
-            if (!applyingMember) {
-                container.innerHTML = '';
-                return;
-            }
-
-            // Normalize an identifier to compare leasePersons with the applying member.
-            const applyingId =
-                applyingMember.memberId ??
-                applyingMember.id ??
-                `${applyingMember.firstName || ''} ${applyingMember.lastName || ''}`.trim();
-
-            // Does any member have an expense with type "Previous Year" whose leasePersons EXCLUDES the applying member?
-            const hasPreviousYearExpenseWithDifferentLeasePerson = members.some(member => {
-                const expenses = Array.isArray(member?.expenses) ? member.expenses : [];
-                return expenses.some(exp => {
-                    const isPrevYear = String(exp?.type || '').toLowerCase() === 'previous year';
-                    if (!isPrevYear) return false;
-
-                    const leasePersons = exp?.leasePersons;
-
-                    // Normalize compare by id or "First Last"
-                    const equalsApplying = (val) => {
-                        const v = (val ?? '').toString().trim();
-                        if (!v) return false;
-                        // try id match
-                        if (v === applyingId) return true;
-                        // try name match (case-insensitive)
-                        const applyingName = `${applyingMember.firstName || ''} ${applyingMember.lastName || ''}`.trim();
-                        return applyingName && v.toLowerCase() === applyingName.toLowerCase();
-                    };
-
-                    if (Array.isArray(leasePersons)) {
-                        // Only true if NONE of the leasePersons equals the applying member
-                        const includesApplying = leasePersons.some(equalsApplying);
-                        return !includesApplying && leasePersons.length > 0;
-                    } else {
-                        // Single value: must not equal applying member
-                        return leasePersons != null && !equalsApplying(leasePersons);
-                    }
-                });
-            });
-
-            if (hasPreviousYearExpenseWithDifferentLeasePerson) {
-                // Render the question
-                const existingAnswer = getApplyingMemberPTRRDeceasedAnswer(applyingMember);
-                const existingDate = getApplyingMemberPTRRDeceasedDate(applyingMember);
-
-                container.innerHTML = `
-                    <div class="form-field">
-                        <label for="ptrrDeceasedQuestion">Are you filing for PTRR on behalf of someone who is deceased?</label>
-                        <select id="ptrrDeceasedQuestion" name="ptrrDeceasedQuestion">
-                            <option value="" disabled ${!existingAnswer ? 'selected' : ''}>Select an option</option>
-                            <option value="yes" ${existingAnswer === 'yes' ? 'selected' : ''}>Yes</option>
-                            <option value="no" ${existingAnswer === 'no' ? 'selected' : ''}>No</option>
-                        </select>
-                    </div>
-                    <div id="ptrr-deceased-date-container"></div>
-                `;
-
-                // Render date field if answer is yes (page load)
-                renderPTRRDeceasedDate(existingAnswer === 'yes', existingDate);
-
-                // Listen for changes and persist
-                const selectEl = document.getElementById('ptrrDeceasedQuestion');
-                if (selectEl) {
-                    selectEl.addEventListener('change', async (e) => {
-                        const value = e.target.value; // 'yes' | 'no'
-                        await savePTRRDeceasedAnswer(value);
-                        // re-render date field based on selection
-                        const latestDate = getApplyingMemberPTRRDeceasedDate(applyingMember);
-                        renderPTRRDeceasedDate(value === 'yes', latestDate);
-                    });
-                }
-            } else {
-                container.innerHTML = '';
-            }
-        } catch (e) {
-            console.error('Error rendering PTRR deceased question:', e);
-        }
-    }
-
     // ══════════════════════════════════════════════════════════════
-    // SUBSIDIZED HOUSING PREVIOUS + RENT AMOUNT (PTRR + rented)
+    // RENTED PTRR – dynamic per "previous year" rent expense
+    // Saves into client.householdMembers[applying].PTRR.application[0].previousYearRentals[]
     // ══════════════════════════════════════════════════════════════
 
     function getQueryParamLocal(name) {
@@ -1152,308 +967,718 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     function isPTRRApplyingAndRented() {
         if (!client) return false;
-
-        // Check residenceStatus is rented or rentedowned
         const residence = client.residenceStatus;
         if (residence !== 'rented' && residence !== 'rentedowned') return false;
 
-        // Check if any member has PTRR applying = true
         const members = Array.isArray(client?.householdMembers) ? client.householdMembers : [];
         return members.some(m => {
             const ptrrApps = Array.isArray(m?.PTRR?.application) ? m.PTRR.application : [];
             const hasApplyingInArray = ptrrApps.some(a => a?.applying === true);
-
             const applyingFlags = [
                 m?.applications?.PTRR?.applying,
                 m?.PTRR?.applying,
                 m?.application?.PTRR?.applying
             ];
             const hasDirectFlag = applyingFlags.some(v => String(v).toLowerCase() === 'true' || v === true);
-
             return hasApplyingInArray || hasDirectFlag;
         });
     }
 
-    function highlightSubsidizedSelection(value) {
-        const yesEl = document.getElementById('subsidizedHousingPrevious-yes');
-        const noEl = document.getElementById('subsidizedHousingPrevious-no');
-        if (yesEl) yesEl.classList.toggle('selected', value === 'yes');
-        if (noEl) noEl.classList.toggle('selected', value === 'no');
+    function showRentedPtrrCard(show) {
+        const card = document.getElementById('rentedPtrr-container');
+        if (card) card.style.display = show ? 'block' : 'none';
     }
 
-    function showSubsidizedRentAmount(show) {
-        const container = document.getElementById('subsidizedRentAmount-container');
-        if (container) container.style.display = show ? 'block' : 'none';
+    // Find all "previous year" rent expenses on the applying member,
+    // returning both the expense and its original index in member.expenses
+    function getApplyingMemberPreviousYearRentExpensesIndexed() {
+        const member = getApplyingMember();
+        const expenses = Array.isArray(member?.expenses) ? member.expenses : [];
+        const out = [];
+        expenses.forEach((e, idx) => {
+            const t = String(e?.type || '').toLowerCase().trim();
+            const k = String(e?.kind || e?.expenseType || '').toLowerCase().trim();
+            const isPrev = t === 'previous year' || t === 'previousyear' || t === 'previous';
+            if (isPrev && k.includes('rent')) out.push({ expense: e, index: idx });
+        });
+        return out;
     }
 
-    function showSubsidizedRentAmount(show) {
-        const container = document.getElementById('subsidizedRentAmount-container');
-        if (container) container.style.display = show ? 'block' : 'none';
+    // Backward-compatible: returns just the expenses
+    function getApplyingMemberPreviousYearRentExpenses() {
+        return getApplyingMemberPreviousYearRentExpensesIndexed().map(x => x.expense);
     }
 
-    function showRentalType(show) {
-        const container = document.getElementById('rentaltype-container');
-        if (container) container.style.display = show ? 'block' : 'none';
+    function buildStateOptionsHTML() {
+        const states = ['PA','AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'];
+        return '<option value="" disabled selected>Select State</option>' +
+            states.map(s => `<option value="${s}">${s}</option>`).join('');
     }
 
-    function highlightRentalTypeSelection(value) {
-        const allOptions = document.querySelectorAll('#rentaltype-container [data-value]');
-        allOptions.forEach(el => {
-            el.classList.toggle('selected', el.getAttribute('data-value') === value);
+    function buildRentedPtrrCardHTML(i, label) {
+        const freqOptions = ['One-Time', 'Weekly','Bi-weekly','Monthly','Annually']
+            .map(f => `<option value="${f}">${f.charAt(0).toUpperCase() + f.slice(1)}</option>`)
+            .join('');
+
+        return `
+        <div class="rented-ptrr-card-inner" data-card-index="${i}">
+            <h3>${label}</h3>
+            <div class="field-row">
+                <div class="form-field">
+                    <label for="previousYearRentAmount-${i}">Rent Amount:</label>
+                    <input type="number" id="previousYearRentAmount-${i}" min="0" step="0.01" placeholder="Enter dollar amount">
+                </div>
+                <div class="form-field">
+                    <label for="previousYearRentFrequency-${i}">Frequency:</label>
+                    <select id="previousYearRentFrequency-${i}">
+                        <option value="" disabled selected>Select frequency</option>
+                        ${freqOptions}
+                    </select>
+                </div>
+            </div>
+            <div class="field-row">
+                <div class="form-field">
+                    <label for="previousYearRentStartDate-${i}">Start Date:</label>
+                    <input type="date" id="previousYearRentStartDate-${i}">
+                </div>
+                <div class="form-field">
+                    <label for="previousYearRentEndDate-${i}">End Date:</label>
+                    <input type="date" id="previousYearRentEndDate-${i}">
+                </div>
+            </div>
+
+            <div class="selection-box" id="subsidizedHousingPrevious-container-${i}">
+                <label>Did your household receive a housing subsidy, such as Section 8, during the previous year?</label>
+                <div id="subsidizedHousingPrevious-yes-${i}" data-value="yes">Yes</div>
+                <div id="subsidizedHousingPrevious-no-${i}" data-value="no">No</div>
+            </div>
+
+            <div class="form-field" id="subsidizedRentAmount-container-${i}" style="display:none;">
+                <label for="subsidizedRentAmount-${i}">How much of your monthly rent in the previous year was subsidized?</label>
+                <input type="number" id="subsidizedRentAmount-${i}" min="0" step="0.01" placeholder="Enter dollar amount">
+            </div>
+
+            <div id="rentalPropertyAddress-container-${i}">
+                <h4 style="margin-bottom:8px;">Rental Property Address</h4>
+
+                <div class="form-field">
+                    <label for="rentalPropertyStreetAddress-${i}">Street Address:</label>
+                    <input type="text" id="rentalPropertyStreetAddress-${i}" placeholder="Enter Street Address">
+                </div>
+                <div class="form-field">
+                    <label for="rentalPropertyStreetAddressLine2-${i}">Street Address Line 2:</label>
+                    <input type="text" id="rentalPropertyStreetAddressLine2-${i}" placeholder="Enter Street Address Line 2">
+                </div>
+                <div class="form-field">
+                    <label for="rentalPropertyCity-${i}">City:</label>
+                    <input type="text" id="rentalPropertyCity-${i}" placeholder="Enter City">
+                </div>
+                <div class="form-field">
+                    <label for="rentalPropertyState-${i}">State:</label>
+                    <select id="rentalPropertyState-${i}">${buildStateOptionsHTML()}</select>
+                </div>
+                <div class="form-field">
+                    <label for="rentalPropertyZipCode-${i}">ZIP Code:</label>
+                    <input type="text" id="rentalPropertyZipCode-${i}" placeholder="Enter ZIP Code" maxlength="5">
+                </div>
+
+                <div class="button-container">
+                    <button type="button" id="rentalSameAsCurrentBtn-${i}">Same as Current Residential Address</button>
+                </div>
+            </div>
+
+            <div class="selection-box" id="rentaltype-container-${i}">
+                <label>What type of rental housing is the property?</label>
+                <div class="rental-type-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:800px;">
+                    <div data-rt="apartmentHouse">Apartment in a House</div>
+                    <div data-rt="apartmentBuilding">Apartment in a Building</div>
+                    <div data-rt="boardingHome">Boarding Home</div>
+                    <div data-rt="mobileHome">Mobile Home</div>
+                    <div data-rt="personalCareHome">Personal Care Home</div>
+                    <div data-rt="mobileHomeLot">Mobile Home Lot</div>
+                    <div data-rt="nursingHome">Nursing Home</div>
+                    <div data-rt="privateHome">Private Home</div>
+                    <div data-rt="assistedLiving">Assisted Living</div>
+                    <div data-rt="condominium">Condominium</div>
+                </div>
+            </div>
+
+            <div class="textbox-container" id="buildingName-container-${i}">
+                <label for="buildingNameInput-${i}">Building Name:</label>
+                <input type="text" id="buildingNameInput-${i}" placeholder="Enter building name">
+            </div>
+
+            <div class="selection-box" id="domicilliaryFosterCare-container-${i}">
+                <label>Is the property a domiciliary or foster care facility?</label>
+                <div data-dfc="domicillary">Domicilliary Care</div>
+                <div data-dfc="foster">Foster Care</div>
+                <div data-dfc="no">No</div>
+            </div>
+        </div>`;
+    }
+
+    function readRentalCard(i) {
+        const get = id => document.getElementById(`${id}-${i}`)?.value ?? '';
+        const card = document.querySelector(`.rented-ptrr-card-inner[data-card-index="${i}"]`);
+
+        const rt = card?.querySelector(`#rentaltype-container-${i} [data-rt].selected`)
+            ?.getAttribute('data-rt') || null;
+        const dfc = card?.querySelector(`#domicilliaryFosterCare-container-${i} [data-dfc].selected`)
+            ?.getAttribute('data-dfc') || null;
+
+        const subYes = document.getElementById(`subsidizedHousingPrevious-yes-${i}`);
+        const subNo = document.getElementById(`subsidizedHousingPrevious-no-${i}`);
+        const sub = subYes?.classList.contains('selected') ? 'yes'
+                  : subNo?.classList.contains('selected') ? 'no'
+                  : null;
+
+                  const amt = get('previousYearRentAmount');
+        const subAmt = get('subsidizedRentAmount');
+
+        return {
+            previousYearRentAmount: amt === '' ? null : parseFloat(amt),
+            previousYearRentFrequency: get('previousYearRentFrequency') || null,
+            previousYearRentStartDate: get('previousYearRentStartDate') || null,
+            previousYearRentEndDate: get('previousYearRentEndDate') || null,
+            rentalPropertyAddress: {
+                streetAddress: get('rentalPropertyStreetAddress'),
+                streetAddress2: get('rentalPropertyStreetAddressLine2'),
+                city: get('rentalPropertyCity'),
+                state: get('rentalPropertyState'),
+                zipCode: get('rentalPropertyZipCode'),
+            },
+            subsidizedHousingPrevious: sub,
+            subsidizedRentAmount: subAmt === '' ? null : parseFloat(subAmt),
+            rentalType: rt,
+            buildingName: get('buildingNameInput') || null,
+            domicilliaryFosterCare: dfc,
+        };
+    }
+
+    async function saveAllRentals() {
+        const clientId = getQueryParamLocal('id');
+        if (!clientId) return;
+
+        const idx = findApplyingMemberIndex();
+        if (idx < 0) return;
+
+        const cards = document.querySelectorAll('#rentedPtrr-cards .rented-ptrr-card-inner');
+        const rentals = Array.from(cards).map((_, i) => readRentalCard(i));
+
+        const members = Array.isArray(client?.householdMembers) ? [...client.householdMembers] : [];
+        const member = { ...members[idx] };
+
+        // 1) Update PTRR.application[0].previousYearRentals
+        const appArr = Array.isArray(member?.PTRR?.application) ? [...member.PTRR.application] : [];
+        const firstApp = { ...(appArr[0] || {}) };
+        firstApp.previousYearRentals = rentals;
+        appArr[0] = firstApp;
+        member.PTRR = { ...(member.PTRR || {}), application: appArr };
+
+        // 2) Sync the same four fields back into member.expenses[expenseIndex]
+        const expenses = Array.isArray(member.expenses) ? [...member.expenses] : [];
+        cards.forEach((cardEl, i) => {
+            const expenseIdxAttr = cardEl.getAttribute('data-expense-index');
+            if (expenseIdxAttr == null) return; // no linked expense (extra card)
+            const expIdx = parseInt(expenseIdxAttr, 10);
+            if (Number.isNaN(expIdx) || !expenses[expIdx]) return;
+
+            const r = rentals[i];
+            expenses[expIdx] = {
+                ...expenses[expIdx],
+                amount: r.previousYearRentAmount,
+                frequency: r.previousYearRentFrequency,
+                startDate: r.previousYearRentStartDate,
+                endDate: r.previousYearRentEndDate,
+            };
+        });
+        member.expenses = expenses;
+
+        members[idx] = member;
+
+        try {
+            const resp = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, clientData: { householdMembers: members } })
+            });
+            if (!resp.ok) throw new Error('Failed to save previousYearRentals');
+            client.householdMembers = members;
+            console.log('Saved previousYearRentals + synced expenses:', rentals);
+        } catch (e) {
+            console.error('Error saving previousYearRentals:', e);
+        }
+    }
+
+    function restoreRentalCard(i, data) {
+        const set = (id, v) => {
+            const el = document.getElementById(`${id}-${i}`);
+            if (el) el.value = (v ?? '') === null ? '' : (v ?? '');
+        };
+
+        set('previousYearRentAmount', data.previousYearRentAmount);
+        set('previousYearRentFrequency', data.previousYearRentFrequency);
+        set('previousYearRentStartDate', data.previousYearRentStartDate);
+        set('previousYearRentEndDate', data.previousYearRentEndDate);
+        const addr = data.rentalPropertyAddress || {};
+        set('rentalPropertyStreetAddress', addr.streetAddress);
+        set('rentalPropertyStreetAddressLine2', addr.streetAddress2);
+        set('rentalPropertyCity', addr.city);
+        set('rentalPropertyState', addr.state);
+        set('rentalPropertyZipCode', addr.zipCode);
+        set('subsidizedRentAmount', data.subsidizedRentAmount);
+        set('buildingNameInput', data.buildingName);
+
+        // Subsidized housing yes/no
+        const yes = document.getElementById(`subsidizedHousingPrevious-yes-${i}`);
+        const no = document.getElementById(`subsidizedHousingPrevious-no-${i}`);
+        const subContainer = document.getElementById(`subsidizedRentAmount-container-${i}`);
+        if (yes) yes.classList.toggle('selected', data.subsidizedHousingPrevious === 'yes');
+        if (no)  no.classList.toggle('selected',  data.subsidizedHousingPrevious === 'no');
+        if (subContainer) subContainer.style.display = data.subsidizedHousingPrevious === 'yes' ? 'block' : 'none';
+
+        // Rental type
+        if (data.rentalType) {
+            document.querySelectorAll(`#rentaltype-container-${i} [data-rt]`).forEach(el => {
+                el.classList.toggle('selected', el.getAttribute('data-rt') === data.rentalType);
+            });
+        }
+
+        // Domiciliary/foster
+        if (data.domicilliaryFosterCare) {
+            document.querySelectorAll(`#domicilliaryFosterCare-container-${i} [data-dfc]`).forEach(el => {
+                el.classList.toggle('selected', el.getAttribute('data-dfc') === data.domicilliaryFosterCare);
+            });
+        }
+    }
+
+    function attachRentalCardHandlers(i) {
+        let timer = null;
+        const debounceSave = (ms = 400) => {
+            clearTimeout(timer);
+            timer = setTimeout(saveAllRentals, ms);
+        };
+
+        const inputIds = [
+            'previousYearRentAmount',
+            'previousYearRentFrequency',
+            'previousYearRentStartDate',
+            'previousYearRentEndDate',
+            'subsidizedRentAmount',
+            'rentalPropertyStreetAddress',
+            'rentalPropertyStreetAddressLine2',
+            'rentalPropertyCity',
+            'rentalPropertyState',
+            'rentalPropertyZipCode',
+            'buildingNameInput',
+        ];
+        inputIds.forEach(id => {
+            const el = document.getElementById(`${id}-${i}`);
+            if (!el) return;
+            el.addEventListener('input', () => debounceSave(400));
+            el.addEventListener('change', () => debounceSave(150));
+        });
+
+        // Subsidized housing yes/no
+        const subYes = document.getElementById(`subsidizedHousingPrevious-yes-${i}`);
+        const subNo = document.getElementById(`subsidizedHousingPrevious-no-${i}`);
+        const subContainer = document.getElementById(`subsidizedRentAmount-container-${i}`);
+
+        if (subYes) subYes.addEventListener('click', async () => {
+            subYes.classList.add('selected');
+            subNo?.classList.remove('selected');
+            if (subContainer) subContainer.style.display = 'block';
+            await saveAllRentals();
+        });
+        if (subNo) subNo.addEventListener('click', async () => {
+            subNo.classList.add('selected');
+            subYes?.classList.remove('selected');
+            if (subContainer) subContainer.style.display = 'none';
+            const subInput = document.getElementById(`subsidizedRentAmount-${i}`);
+            if (subInput) subInput.value = '';
+            await saveAllRentals();
+        });
+
+        // Rental type
+        document.querySelectorAll(`#rentaltype-container-${i} [data-rt]`).forEach(el => {
+            el.addEventListener('click', async () => {
+                document.querySelectorAll(`#rentaltype-container-${i} [data-rt]`)
+                    .forEach(x => x.classList.remove('selected'));
+                el.classList.add('selected');
+                await saveAllRentals();
+            });
+        });
+
+        // Domiciliary/foster care
+        document.querySelectorAll(`#domicilliaryFosterCare-container-${i} [data-dfc]`).forEach(el => {
+            el.addEventListener('click', async () => {
+                document.querySelectorAll(`#domicilliaryFosterCare-container-${i} [data-dfc]`)
+                    .forEach(x => x.classList.remove('selected'));
+                el.classList.add('selected');
+                await saveAllRentals();
+            });
+        });
+
+        // Same as current residential
+        const sameBtn = document.getElementById(`rentalSameAsCurrentBtn-${i}`);
+        if (sameBtn) sameBtn.addEventListener('click', async () => {
+            const set = (id, v) => {
+                const el = document.getElementById(`${id}-${i}`);
+                if (el) el.value = v || '';
+            };
+            set('rentalPropertyStreetAddress', client.streetAddress);
+            set('rentalPropertyStreetAddressLine2', client.streetAddress2 || client.streetAddressLine2);
+            set('rentalPropertyCity', client.city);
+            set('rentalPropertyState', (client.state || '').toUpperCase().slice(0, 2));
+            set('rentalPropertyZipCode', client.zipCode);
+            await saveAllRentals();
         });
     }
 
-    function showBuildingName(show) {
-        const container = document.getElementById('buildingName-container');
-        if (container) container.style.display = show ? 'block' : 'none';
-    }
-
-    function showDomicilliaryFosterCare(show) {
-        const container = document.getElementById('domicilliaryFosterCare-container');
-        if (container) container.style.display = show ? 'block' : 'none';
-    }
-
-    function highlightDomicilliaryFosterCareSelection(value) {
-        const options = document.querySelectorAll('#domicilliaryFosterCare-container [data-value]');
-        options.forEach(el => {
-            el.classList.toggle('selected', el.getAttribute('data-value') === value);
-        });
-    }
-
-    async function saveRentalType(value) {
-        const clientId = getQueryParamLocal('id');
-        if (!clientId) return;
-
-        try {
-            const resp = await fetch('/update-client', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clientId, clientData: { rentalType: value } })
-            });
-            if (!resp.ok) throw new Error('Failed to save rentalType');
-
-            client.rentalType = value;
-            console.log('Saved rentalType:', value);
-        } catch (e) {
-            console.error('Error saving rentalType:', e);
-        }
-    }
-
-    async function saveBuildingName(name) {
-        const clientId = getQueryParamLocal('id');
-        if (!clientId) return;
-
-        try {
-            const resp = await fetch('/update-client', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clientId, clientData: { buildingName: name } })
-            });
-            if (!resp.ok) throw new Error('Failed to save buildingName');
-
-            client.buildingName = name;
-            console.log('Saved buildingName:', name);
-        } catch (e) {
-            console.error('Error saving buildingName:', e);
-        }
-    }
-
-    async function saveDomicilliaryFosterCare(value) {
-        const clientId = getQueryParamLocal('id');
-        if (!clientId) return;
-
-        try {
-            const resp = await fetch('/update-client', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clientId, clientData: { domicilliaryFosterCare: value } })
-            });
-            if (!resp.ok) throw new Error('Failed to save domicilliaryFosterCare');
-
-            client.domicilliaryFosterCare = value;
-            console.log('Saved domicilliaryFosterCare:', value);
-        } catch (e) {
-            console.error('Error saving domicilliaryFosterCare:', e);
-        }
-    }
-
-    async function saveSubsidizedHousingPrevious(value) {
-        const clientId = getQueryParamLocal('id');
-        if (!clientId) return;
-
-        try {
-            const resp = await fetch('/update-client', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clientId, clientData: { subsidizedHousingPrevious: value } })
-            });
-            if (!resp.ok) throw new Error('Failed to save subsidizedHousingPrevious');
-
-            // Update local cache
-            client.subsidizedHousingPrevious = value;
-            console.log('Saved subsidizedHousingPrevious:', value);
-        } catch (e) {
-            console.error('Error saving subsidizedHousingPrevious:', e);
-        }
-    }
-
-    async function saveSubsidizedRentAmount(amount) {
-        const clientId = getQueryParamLocal('id');
-        if (!clientId) return;
-
-        try {
-            const resp = await fetch('/update-client', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clientId, clientData: { subsidizedRentAmount: amount } })
-            });
-            if (!resp.ok) throw new Error('Failed to save subsidizedRentAmount');
-
-            // Update local cache
-            client.subsidizedRentAmount = amount;
-            console.log('Saved subsidizedRentAmount:', amount);
-        } catch (e) {
-            console.error('Error saving subsidizedRentAmount:', e);
-        }
-    }
-
-    function initSubsidizedHousingPrevious() {
-        const shContainer = document.getElementById('subsidizedHousingPrevious-container');
-        const rentContainer = document.getElementById('subsidizedRentAmount-container');
-        const rentInput = document.getElementById('subsidizedRentAmount');
-        const rentalTypeContainer = document.getElementById('rentaltype-container');
-
-        // Visibility: only show if PTRR applying AND rented
+    function initRentedPtrrCards() {
         if (!isPTRRApplyingAndRented()) {
-            if (shContainer) shContainer.style.display = 'none';
-            if (rentContainer) rentContainer.style.display = 'none';
-            showRentalType(false);
-            showDomicilliaryFosterCare(false);
+            showRentedPtrrCard(false);
             return;
         }
 
-        // Show the subsidized housing question
-        if (shContainer) shContainer.style.display = 'block';
+        const wrap = document.getElementById('rentedPtrr-cards');
+        if (!wrap) return;
 
-        // Show the rental type question
-        showRentalType(true);
+        const member = getApplyingMember();
+        const app = getApplyingMemberPTRRApplicationObj(member) || {};
+        const savedRentals = Array.isArray(app.previousYearRentals) ? app.previousYearRentals : [];
+        const expensesIndexed = getApplyingMemberPreviousYearRentExpensesIndexed();
 
-        // Show the domiciliary/foster care question
-        showDomicilliaryFosterCare(true);
+        // Card count: max of saved rentals, matching expenses, or 1
+        const count = Math.max(1, expensesIndexed.length, savedRentals.length);
 
-        // Show building name if rental type
-        showBuildingName(true);
+        showRentedPtrrCard(true);
 
-        // Restore saved building name and save on keystrokes (debounced)
-        const buildingNameInput = document.getElementById('buildingNameInput');
-        if (buildingNameInput) {
-            if (client.buildingName) {
-                buildingNameInput.value = client.buildingName;
-            }
-
-            let buildingNameDebounce = null;
-            buildingNameInput.addEventListener('input', () => {
-                clearTimeout(buildingNameDebounce);
-                buildingNameDebounce = setTimeout(async () => {
-                    await saveBuildingName(buildingNameInput.value);
-                }, 400);
-            });
+        // Render N cards
+        let html = '';
+        for (let i = 0; i < count; i++) {
+            const label = count > 1 ? `Rental Property ${i + 1}` : 'Rental Property';
+            html += buildRentedPtrrCardHTML(i, label);
         }
+        wrap.innerHTML = html;
 
-        // Restore saved domiciliary/foster care selection
-        if (client.domicilliaryFosterCare) {
-            highlightDomicilliaryFosterCareSelection(client.domicilliaryFosterCare);
-        }
+        // Restore + attach handlers per card
+        for (let i = 0; i < count; i++) {
+            const data = { ...(savedRentals[i] || {}) };
+            const entry = expensesIndexed[i];
+            const e = entry?.expense;
 
-        // Restore saved rental type selection
-        if (client.rentalType) {
-            highlightRentalTypeSelection(client.rentalType);
-        }
+            // Stamp original expense index on the card so saveAllRentals can sync back
+            const cardEl = document.querySelector(`.rented-ptrr-card-inner[data-card-index="${i}"]`);
+            if (cardEl && entry) cardEl.setAttribute('data-expense-index', String(entry.index));
 
-        // Rental type click handlers
-        const rentalTypeOptions = document.querySelectorAll('#rentaltype-container [data-value]');
-        rentalTypeOptions.forEach(option => {
-            option.addEventListener('click', async () => {
-                const val = option.getAttribute('data-value');
-                highlightRentalTypeSelection(val);
-                await saveRentalType(val);
-            });
-        });
-
-        // Restore saved selection
-        const savedValue = client.subsidizedHousingPrevious || null;
-        if (savedValue) {
-            highlightSubsidizedSelection(savedValue);
-        }
-
-        // Show rent amount if answer is yes, restore saved amount
-        if (savedValue === 'yes') {
-            showSubsidizedRentAmount(true);
-            if (rentInput && client.subsidizedRentAmount != null) {
-                rentInput.value = client.subsidizedRentAmount;
-            }
-        } else {
-            showSubsidizedRentAmount(false);
-        }
-
-        // Click handlers for yes/no options
-        const yesEl = document.getElementById('subsidizedHousingPrevious-yes');
-        const noEl = document.getElementById('subsidizedHousingPrevious-no');
-
-        if (yesEl) {
-            yesEl.addEventListener('click', async () => {
-                highlightSubsidizedSelection('yes');
-                await saveSubsidizedHousingPrevious('yes');
-                showSubsidizedRentAmount(true);
-                // Restore amount if previously saved
-                if (rentInput && client.subsidizedRentAmount != null) {
-                    rentInput.value = client.subsidizedRentAmount;
+            if (e) {
+                if (data.previousYearRentAmount == null || data.previousYearRentAmount === '') {
+                    data.previousYearRentAmount = e.amount ?? e.value ?? '';
                 }
-            });
-        }
+                if (!data.previousYearRentFrequency) {
+                    const rawFreq = (e.frequency || e.freq || '').toString().trim().toLowerCase();
+                    const freqMap = {
+                        'One-Time': 'One-Time',
+                        'Weekly': 'Weekly',
+                        'Bi-weekly': 'Bi-weekly',
+                        'Monthly': 'Monthly',
+                        'Annually': 'Annually',
+                    };
+                    data.previousYearRentFrequency = freqMap[rawFreq] || rawFreq || '';
+                }
+                if (!data.previousYearRentStartDate) {
+                    const sd = e.startDate || e.beginDate || e.fromDate || '';
+                    data.previousYearRentStartDate = sd ? String(sd).slice(0, 10) : '';
+                }
+                if (!data.previousYearRentEndDate) {
+                    const ed = e.endDate || e.toDate || e.throughDate || '';
+                    data.previousYearRentEndDate = ed ? String(ed).slice(0, 10) : '';
+                }
+            }
 
-        if (noEl) {
-            noEl.addEventListener('click', async () => {
-                highlightSubsidizedSelection('no');
-                await saveSubsidizedHousingPrevious('no');
-                showSubsidizedRentAmount(false);
-                // Clear saved amount when answer is no
-                await saveSubsidizedRentAmount(null);
-                if (rentInput) rentInput.value = '';
-            });
-        }
-
-        // Rent amount save on change
-        if (rentInput) {
-            rentInput.addEventListener('change', async () => {
-                const val = rentInput.value ? parseFloat(rentInput.value) : null;
-                await saveSubsidizedRentAmount(val);
-            });
+            restoreRentalCard(i, data);
+            attachRentalCardHandlers(i);
         }
     }
 
-        // Domicilliary foster care handlers
-        const dfcOptions = document.querySelectorAll('#domicilliaryFosterCare-container [data-value]');
-        dfcOptions.forEach(option => {
-            option.addEventListener('click', async () => {
-                const val = option.getAttribute('data-value');
-                highlightDomicilliaryFosterCareSelection(val);
-                await saveDomicilliaryFosterCare(val);
+        // ══════════════════════════════════════════════════════════════
+    // OWNED PTRR – dynamic per "previous year" property tax expense
+    // Saves into client.householdMembers[applying].PTRR.application[0].previousYearProperties[]
+    // Mirrors the Rented/rentals pattern exactly.
+    // ══════════════════════════════════════════════════════════════
+
+    function showOwnedPtrrCard(show) {
+        const card = document.getElementById('ownedPtrr-container');
+        if (card) card.style.display = show ? 'block' : 'none';
+    }
+
+    function getApplyingMemberPreviousYearPropertyTaxExpensesIndexed() {
+        const member = getApplyingMember();
+        const expenses = Array.isArray(member?.expenses) ? member.expenses : [];
+        const out = [];
+        expenses.forEach((e, idx) => {
+            const t = String(e?.type || '').toLowerCase().trim();
+            const k = String(e?.kind || e?.expenseType || '').toLowerCase().trim();
+            const isPrev = t === 'previous year' || t === 'previousyear' || t === 'previous';
+            const isPropTax = k.includes('property tax') || k === 'propertytaxes';
+            if (isPrev && isPropTax) out.push({ expense: e, index: idx });
+        });
+        return out;
+    }
+
+    function buildOwnedPtrrCardHTML(i, label) {
+        const freqOptions = ['One-Time', 'Weekly','Bi-weekly','Monthly','Annually']
+            .map(f => `<option value="${f}">${f}</option>`)
+            .join('');
+
+        return `
+        <div class="rented-ptrr-card-inner" data-card-index="${i}">
+            <h3>${label}</h3>
+            <div class="field-row">
+                <div class="form-field">
+                    <label for="propertyTaxAmount-${i}">Property Tax Amount:</label>
+                    <input type="number" id="propertyTaxAmount-${i}" min="0" step="0.01" placeholder="Enter dollar amount">
+                </div>
+                <div class="form-field">
+                    <label for="propertyTaxFrequency-${i}">Frequency:</label>
+                    <select id="propertyTaxFrequency-${i}">
+                        <option value="" disabled selected>Select frequency</option>
+                        ${freqOptions}
+                    </select>
+                </div>
+            </div>
+            <div class="field-row">
+                <div class="form-field">
+                    <label for="propertyTaxStartDate-${i}">Start Date:</label>
+                    <input type="date" id="propertyTaxStartDate-${i}">
+                </div>
+                <div class="form-field">
+                    <label for="propertyTaxEndDate-${i}">End Date:</label>
+                    <input type="date" id="propertyTaxEndDate-${i}">
+                </div>
+            </div>
+
+            <div id="propertyAddress-container-${i}">
+                <h4 style="margin-bottom:8px;">Property Address</h4>
+
+                <div class="form-field">
+                    <label for="propertyStreetAddress-${i}">Street Address:</label>
+                    <input type="text" id="propertyStreetAddress-${i}" placeholder="Enter Street Address">
+                </div>
+                <div class="form-field">
+                    <label for="propertyStreetAddressLine2-${i}">Street Address Line 2:</label>
+                    <input type="text" id="propertyStreetAddressLine2-${i}" placeholder="Enter Street Address Line 2">
+                </div>
+                <div class="form-field">
+                    <label for="propertyCity-${i}">City:</label>
+                    <input type="text" id="propertyCity-${i}" placeholder="Enter City">
+                </div>
+                <div class="form-field">
+                    <label for="propertyState-${i}">State:</label>
+                    <select id="propertyState-${i}">${buildStateOptionsHTML()}</select>
+                </div>
+                <div class="form-field">
+                    <label for="propertyZipCode-${i}">ZIP Code:</label>
+                    <input type="text" id="propertyZipCode-${i}" placeholder="Enter ZIP Code" maxlength="5">
+                </div>
+
+                <div class="button-container">
+                    <button type="button" id="propertySameAsCurrentBtn-${i}">Same as Current Residential Address</button>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    function readPropertyCard(i) {
+        const get = id => document.getElementById(`${id}-${i}`)?.value ?? '';
+        const amt = get('propertyTaxAmount');
+        return {
+            propertyTaxAmount: amt === '' ? null : parseFloat(amt),
+            propertyTaxFrequency: get('propertyTaxFrequency') || null,
+            propertyTaxStartDate: get('propertyTaxStartDate') || null,
+            propertyTaxEndDate: get('propertyTaxEndDate') || null,
+            propertyAddress: {
+                streetAddress: get('propertyStreetAddress'),
+                streetAddress2: get('propertyStreetAddressLine2'),
+                city: get('propertyCity'),
+                state: get('propertyState'),
+                zipCode: get('propertyZipCode'),
+            },
+        };
+    }
+
+    function restorePropertyCard(i, data) {
+        const set = (id, v) => {
+            const el = document.getElementById(`${id}-${i}`);
+            if (el) el.value = (v ?? '') === null ? '' : (v ?? '');
+        };
+        set('propertyTaxAmount', data.propertyTaxAmount);
+        set('propertyTaxFrequency', data.propertyTaxFrequency);
+        set('propertyTaxStartDate', data.propertyTaxStartDate);
+        set('propertyTaxEndDate', data.propertyTaxEndDate);
+        const addr = data.propertyAddress || {};
+        set('propertyStreetAddress', addr.streetAddress);
+        set('propertyStreetAddressLine2', addr.streetAddress2);
+        set('propertyCity', addr.city);
+        set('propertyState', addr.state);
+        set('propertyZipCode', addr.zipCode);
+    }
+
+    async function saveAllProperties() {
+        const clientId = getQueryParamLocal('id');
+        if (!clientId) return;
+
+        const idx = findApplyingMemberIndex();
+        if (idx < 0) return;
+
+        const cards = document.querySelectorAll('#ownedPtrr-cards .rented-ptrr-card-inner');
+        const properties = Array.from(cards).map((_, i) => readPropertyCard(i));
+
+        const members = Array.isArray(client?.householdMembers) ? [...client.householdMembers] : [];
+        const member = { ...members[idx] };
+
+        // 1) Update PTRR.application[0].previousYearProperties
+        const appArr = Array.isArray(member?.PTRR?.application) ? [...member.PTRR.application] : [];
+        const firstApp = { ...(appArr[0] || {}) };
+        firstApp.previousYearProperties = properties;
+        appArr[0] = firstApp;
+        member.PTRR = { ...(member.PTRR || {}), application: appArr };
+
+        // 2) Sync the four shared fields back into member.expenses[expenseIndex]
+        const expenses = Array.isArray(member.expenses) ? [...member.expenses] : [];
+        cards.forEach((cardEl, i) => {
+            const expenseIdxAttr = cardEl.getAttribute('data-expense-index');
+            if (expenseIdxAttr == null) return;
+            const expIdx = parseInt(expenseIdxAttr, 10);
+            if (Number.isNaN(expIdx) || !expenses[expIdx]) return;
+
+            const p = properties[i];
+            expenses[expIdx] = {
+                ...expenses[expIdx],
+                amount: p.propertyTaxAmount,
+                frequency: p.propertyTaxFrequency,
+                startDate: p.propertyTaxStartDate,
+                endDate: p.propertyTaxEndDate,
+            };
+        });
+        member.expenses = expenses;
+        members[idx] = member;
+
+        try {
+            const resp = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, clientData: { householdMembers: members } })
             });
+            if (!resp.ok) throw new Error('Failed to save previousYearProperties');
+            client.householdMembers = members;
+            console.log('Saved previousYearProperties + synced expenses:', properties);
+        } catch (e) {
+            console.error('Error saving previousYearProperties:', e);
+        }
+    }
+
+    function attachPropertyCardHandlers(i) {
+        let timer = null;
+        const debounceSave = (ms = 400) => {
+            clearTimeout(timer);
+            timer = setTimeout(saveAllProperties, ms);
+        };
+
+        const inputIds = [
+            'propertyTaxAmount',
+            'propertyTaxFrequency',
+            'propertyTaxStartDate',
+            'propertyTaxEndDate',
+            'propertyStreetAddress',
+            'propertyStreetAddressLine2',
+            'propertyCity',
+            'propertyState',
+            'propertyZipCode',
+        ];
+        inputIds.forEach(id => {
+            const el = document.getElementById(`${id}-${i}`);
+            if (!el) return;
+            el.addEventListener('input', () => debounceSave(400));
+            el.addEventListener('change', () => debounceSave(150));
         });
 
-    // Hook into the existing DOMContentLoaded that loads client data
-    // We need to call initSubsidizedHousingPrevious after client is loaded.
-    // Wrap the existing second DOMContentLoaded to also call our init:
-    const _originalDCL = document.addEventListener;
-    document.addEventListener('DOMContentLoaded', async () => {
-        // Wait a tick for the other DOMContentLoaded handlers to finish loading client
-        setTimeout(() => {
-            if (client) {
-                initSubsidizedHousingPrevious();
+        const sameBtn = document.getElementById(`propertySameAsCurrentBtn-${i}`);
+        if (sameBtn) sameBtn.addEventListener('click', async () => {
+            const set = (id, v) => {
+                const el = document.getElementById(`${id}-${i}`);
+                if (el) el.value = v || '';
+            };
+            set('propertyStreetAddress', client.streetAddress);
+            set('propertyStreetAddressLine2', client.streetAddress2 || client.streetAddressLine2);
+            set('propertyCity', client.city);
+            set('propertyState', (client.state || '').toUpperCase().slice(0, 2));
+            set('propertyZipCode', client.zipCode);
+            await saveAllProperties();
+        });
+    }
+
+    function initOwnedPtrrCards() {
+        if (!isPTRRApplyingAndOwned()) {
+            showOwnedPtrrCard(false);
+            return;
+        }
+
+        const wrap = document.getElementById('ownedPtrr-cards');
+        if (!wrap) return;
+
+        const member = getApplyingMember();
+        const app = getApplyingMemberPTRRApplicationObj(member) || {};
+        const savedProperties = Array.isArray(app.previousYearProperties) ? app.previousYearProperties : [];
+        const expensesIndexed = getApplyingMemberPreviousYearPropertyTaxExpensesIndexed();
+
+        // Need at least one property-tax expense to render cards
+        if (expensesIndexed.length === 0 && savedProperties.length === 0) {
+            showOwnedPtrrCard(false);
+            return;
+        }
+
+        const count = Math.max(1, expensesIndexed.length, savedProperties.length);
+        showOwnedPtrrCard(true);
+
+        let html = '';
+        for (let i = 0; i < count; i++) {
+            const label = count > 1 ? `Property ${i + 1}` : 'Property';
+            html += buildOwnedPtrrCardHTML(i, label);
+        }
+        wrap.innerHTML = html;
+
+        for (let i = 0; i < count; i++) {
+            const data = { ...(savedProperties[i] || {}) };
+            const entry = expensesIndexed[i];
+            const e = entry?.expense;
+
+            const cardEl = document.querySelector(`#ownedPtrr-cards .rented-ptrr-card-inner[data-card-index="${i}"]`);
+            if (cardEl && entry) cardEl.setAttribute('data-expense-index', String(entry.index));
+
+            if (e) {
+                if (data.propertyTaxAmount == null || data.propertyTaxAmount === '') {
+                    data.propertyTaxAmount = e.amount ?? e.value ?? '';
+                }
+                if (!data.propertyTaxFrequency) {
+                    const rawFreq = (e.frequency || e.freq || '').toString().trim();
+                    data.propertyTaxFrequency = rawFreq || '';
+                }
+                if (!data.propertyTaxStartDate) {
+                    const sd = e.startDate || e.beginDate || e.fromDate || '';
+                    data.propertyTaxStartDate = sd ? String(sd).slice(0, 10) : '';
+                }
+                if (!data.propertyTaxEndDate) {
+                    const ed = e.endDate || e.toDate || e.throughDate || '';
+                    data.propertyTaxEndDate = ed ? String(ed).slice(0, 10) : '';
+                }
             }
-        }, 100);
-    });    
+
+            restorePropertyCard(i, data);
+            attachPropertyCardHandlers(i);
+        }
+    }
 
         // ══════════════════════════════════════════════════════════════
     // MULTIPLE HOMES / PREVIOUS ADDRESS (PTRR + owned/rentedowned)
@@ -1708,36 +1933,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // --- Init ---
 
     function initMultipleHomes() {
-        const container = document.getElementById('multipleHomes-container');
+        // Owned/rentedowned PTRR: render a card per Previous Year Property Tax expense
+        initOwnedPtrrCards();
 
-        // Multiple homes question: only for PTRR + owned/rentedowned + partial year expense
-        const showMultipleHomesQuestion = isPTRRApplyingAndOwned() && hasPartialYearPropertyTaxExpense();
-
-        if (!showMultipleHomesQuestion) {
-            if (container) container.style.display = 'none';
-            showMultipleHomesAddresses(false);
-        }
-
-        // Same address question: show if EITHER condition is met
-        // Condition A: owned/rentedowned + partial year + multipleHomes = no
-        // Condition B: PTRR applying + rented
+        // Rented PTRR same-address-as-previous-year flow (unchanged)
         const isRentedPTRR = isPTRRApplyingAndRented();
-
-        if (!showMultipleHomesQuestion && !isRentedPTRR) {
-            // Neither condition can be met — hide everything
-            if (container) container.style.display = 'none';
-            showMultipleHomesAddresses(false);
-            showSameAddressQuestion(false);
-            showPreviousYearAddress(false);
-            return;
-        }
-
-        // --- Rented path: skip multipleHomes, go straight to sameAddress ---
-        if (isRentedPTRR && !showMultipleHomesQuestion) {
-            if (container) container.style.display = 'none';
-            showMultipleHomesAddresses(false);
-
-            // Show same address question directly
+        if (isRentedPTRR) {
             showSameAddressQuestion(true);
 
             const savedSameAddress = client.sameAddressPreviousYear || null;
@@ -1753,168 +1954,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showPreviousYearAddress(false);
             }
 
-            // Attach click handlers for same address (only if not already attached by owned path)
             attachSameAddressHandlers();
             attachPreviousYearAddressDebounce();
-            return;
+        } else {
+            showSameAddressQuestion(false);
+            showPreviousYearAddress(false);
         }
-
-        // --- Owned path: show multipleHomes question ---
-        if (container) container.style.display = 'block';
-
-        // Restore saved multipleHomes answer
-        const savedMultipleHomes = client.multipleHomesPreviousYear || null;
-        if (savedMultipleHomes) {
-            highlightMultipleHomesSelection(savedMultipleHomes);
-
-            if (savedMultipleHomes === 'yes') {
-                showMultipleHomesAddresses(true);
-                showSameAddressQuestion(false);
-                showPreviousYearAddress(false);
-                restorePreviousAddresses();
-            } else if (savedMultipleHomes === 'no') {
-                showMultipleHomesAddresses(false);
-                showSameAddressQuestion(true);
-
-                const savedSameAddress = client.sameAddressPreviousYear || null;
-                if (savedSameAddress) {
-                    highlightSameAddressSelection(savedSameAddress);
-                    if (savedSameAddress === 'no') {
-                        showPreviousYearAddress(true);
-                        restorePreviousYearAddress();
-                    } else {
-                        showPreviousYearAddress(false);
-                    }
-                }
-            }
-        }
-
-        // --- Click handlers: Multiple Homes Yes/No ---
-        const yesEl = document.getElementById('multipleHomes-yes');
-        const noEl = document.getElementById('multipleHomes-no');
-
-        if (yesEl) {
-            yesEl.addEventListener('click', async () => {
-                highlightMultipleHomesSelection('yes');
-                await saveClientField('multipleHomesPreviousYear', 'yes');
-                showMultipleHomesAddresses(true);
-                showSameAddressQuestion(false);
-                showPreviousYearAddress(false);
-                restorePreviousAddresses();
-            });
-        }
-
-        if (noEl) {
-            noEl.addEventListener('click', async () => {
-                highlightMultipleHomesSelection('no');
-                await saveClientField('multipleHomesPreviousYear', 'no');
-                showMultipleHomesAddresses(false);
-                showSameAddressQuestion(true);
-
-                const savedSameAddress = client.sameAddressPreviousYear || null;
-                if (savedSameAddress) {
-                    highlightSameAddressSelection(savedSameAddress);
-                    if (savedSameAddress === 'no') {
-                        showPreviousYearAddress(true);
-                        restorePreviousYearAddress();
-                    }
-                } else {
-                    showPreviousYearAddress(false);
-                }
-            });
-        }
-
-        attachSameAddressHandlers();
-
-        // --- "Same as Current Residential Address" button ---
-        const sameAsCurrentBtn = document.getElementById('sameAsCurrentAddressBtn');
-        if (sameAsCurrentBtn) {
-            sameAsCurrentBtn.addEventListener('click', () => {
-                document.getElementById('secondHomeStreetAddress').value = client.streetAddress || '';
-                document.getElementById('secondHomeCity').value = client.city || '';
-                document.getElementById('secondHomeState').value = (client.state || '').toUpperCase().slice(0, 2);
-                document.getElementById('secondHomeZipCode').value = client.zipCode || '';
-                savePreviousAddresses();
-            });
-        }
-
-        // --- Debounced save on input for multiple homes address fields ---
-        let multipleHomesDebounce = null;
-        const multipleHomesInputIds = [
-            'firstHomeStreetAddress', 'firstHomeStreetAddressLine2', 'firstHomeCity', 'firstHomeState', 'firstHomeZipCode',
-            'firstHomeMoveInDate', 'firstHomeMoveOutDate', 'firstHomePropertyTaxPaid',
-            'secondHomeStreetAddress', 'secondHomeStreetAddressLine2', 'secondHomeCity', 'secondHomeState', 'secondHomeZipCode',
-            'secondHomeMoveInDate', 'secondHomeMoveOutDate', 'secondHomePropertyTaxPaid',
-        ];
-
-        multipleHomesInputIds.forEach(id => {
-            const input = document.getElementById(id);
-            if (input) {
-                input.addEventListener('input', () => {
-                    clearTimeout(multipleHomesDebounce);
-                    multipleHomesDebounce = setTimeout(() => savePreviousAddresses(), 500);
-                });
-                input.addEventListener('change', () => {
-                    clearTimeout(multipleHomesDebounce);
-                    multipleHomesDebounce = setTimeout(() => savePreviousAddresses(), 200);
-                });
-            }
-        });
-
-        attachPreviousYearAddressDebounce();
-    }
-
-    // --- Shared handler attachments (prevent duplicate listeners) ---
-
-    let _sameAddressHandlersAttached = false;
-    function attachSameAddressHandlers() {
-        if (_sameAddressHandlersAttached) return;
-        _sameAddressHandlersAttached = true;
-
-        const sameYes = document.getElementById('sameAddressPreviousYear-yes');
-        const sameNo = document.getElementById('sameAddressPreviousYear-no');
-
-        if (sameYes) {
-            sameYes.addEventListener('click', async () => {
-                highlightSameAddressSelection('yes');
-                await saveClientField('sameAddressPreviousYear', 'yes');
-                showPreviousYearAddress(false);
-            });
-        }
-
-        if (sameNo) {
-            sameNo.addEventListener('click', async () => {
-                highlightSameAddressSelection('no');
-                await saveClientField('sameAddressPreviousYear', 'no');
-                showPreviousYearAddress(true);
-                restorePreviousYearAddress();
-            });
-        }
-    }
-
-    let _prevYearDebounceAttached = false;
-    function attachPreviousYearAddressDebounce() {
-        if (_prevYearDebounceAttached) return;
-        _prevYearDebounceAttached = true;
-
-        let prevYearDebounce = null;
-        const prevYearInputIds = [
-            'previousYearStreetAddress', 'previousYearStreetAddressLine2', 'previousYearCity', 'previousYearState', 'previousYearZipCode',
-        ];
-
-        prevYearInputIds.forEach(id => {
-            const input = document.getElementById(id);
-            if (input) {
-                input.addEventListener('input', () => {
-                    clearTimeout(prevYearDebounce);
-                    prevYearDebounce = setTimeout(() => savePreviousYearAddress(), 500);
-                });
-                input.addEventListener('change', () => {
-                    clearTimeout(prevYearDebounce);
-                    prevYearDebounce = setTimeout(() => savePreviousYearAddress(), 200);
-                });
-            }
-        });
     }
 
     // Helpers to read/write PTRR deceased fields on applying member

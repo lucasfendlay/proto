@@ -404,7 +404,10 @@ async function loadClients() {
     const clientList = document.getElementById('clientList');
     clientList.innerHTML = '';
 
-    const validClients = clients.filter(c => c.firstName && c.lastName);
+    const validClients = clients.filter(c => {
+    const household = c.householdMembers || c.HouseholdMembers || [];
+    return Array.isArray(household) && household.length > 0;
+});
 
     if (validClients.length === 0) {
         const li = document.createElement('li');
@@ -449,7 +452,12 @@ function profileIdLineHtml(client) {
         pills.push(`<span class="status-pill terminated">Terminated</span>`);
     }
     if (checkedOutEntry) {
-        const who = checkedOutEntry.user ? ` by ${String(checkedOutEntry.user).trim()}` : '';
+        const activeUser = sessionStorage.getItem('loggedInUser')?.trim();
+        const checkedOutUser = checkedOutEntry.user ? String(checkedOutEntry.user).trim() : '';
+        let who = '';
+        if (checkedOutUser) {
+            who = (activeUser && checkedOutUser === activeUser) ? ' by You' : ` by ${checkedOutUser}`;
+        }
         pills.push(`<span class="status-pill checked-out">Checked Out${who}</span>`);
     }
 
@@ -609,9 +617,9 @@ function renderProfileCard(client, activeUser) {
         }
 
         function generateUniqueId() {
-            const randomSixDigits = Math.floor(100000 + Math.random() * 900000); // Generate a random 6-digit number
-            return `ID${randomSixDigits}`;
-        }
+    const randomSevenDigits = Math.floor(1000000 + Math.random() * 9000000); // Generate a random 7-digit number
+    return `CP${randomSevenDigits}`;
+}
 
         // Load all clients on page load
         window.onload = loadClients;

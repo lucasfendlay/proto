@@ -42,12 +42,176 @@ async function loadPDFAsset(assetPath) {
     return await response.arrayBuffer();
 }
 
+/**
+ * Builds the PA-1000A (Multiple Homes Schedule) PDF and returns the filled bytes
+ * along with the total prorated property tax (Schedule A Line 5).
+ *
+ * Returns null if Schedule A is not required.
+ *
+ * @param {Object} args
+ * @param {Object} args.ptrrApplicant
+ * @param {string} args.sanitizedSSN
+ * @param {string} args.residenceStatus
+ * @returns {Promise<{ pdfBytes: Uint8Array, totalProratedTax: number } | null>}
+ */
+async function buildScheduleA({ ptrrApplicant, sanitizedSSN, residenceStatus }) {
+    const { PDFDocument } = PDFLib;
+
+    const ptrrApp = ptrrApplicant?.PTRR?.application?.[0] || {};
+    const properties = Array.isArray(ptrrApp.previousYearProperties)
+        ? ptrrApp.previousYearProperties
+        : [];
+
+    const required =
+        properties.length >= 2 &&
+        (residenceStatus === 'owned' || residenceStatus === 'rentedowned');
+
+    if (!required) return null;
+
+    const taxYear = new Date().getFullYear() - 1;
+    const totalDaysInYear =
+        ((taxYear % 4 === 0 && taxYear % 100 !== 0) || taxYear % 400 === 0) ? 366 : 365;
+
+    // --- math helpers ---
+    const daysBetween = (s, e) => {
+        if (!s || !e) return 0;
+        const a = new Date(`${String(s).slice(0, 10)}T00:00:00Z`);
+        const b = new Date(`${String(e).slice(0, 10)}T00:00:00Z`);
+        if (isNaN(a) || isNaN(b) || b < a) return 0;
+        return Math.max(0, Math.round((b - a) / 86400000) + 1);
+    };
+
+    const annualizeAmount = (amount, frequency) => {
+        const a = parseFloat(amount) || 0;
+        if (!a) return 0;
+        const f = (frequency || '').toLowerCase();
+        switch (f) {
+            case 'daily':       return a * 365;
+            case 'weekly':      return a * 52;
+            case 'bi-weekly':
+            case 'biweekly':    return a * 26;
+            case 'monthly':     return a * 12;
+            case 'quarterly':   return a * 4;
+            case 'annually':
+            case 'yearly':
+            case 'one-time':
+            case 'onetime':
+            default:            return a;
+        }
+    };
+
+    const buildHome = (p) => {
+        const addr = p?.propertyAddress || {};
+        const start = p?.propertyTaxStartDate || '';
+        const end = p?.propertyTaxEndDate || `${taxYear}-12-31`;
+        const days = daysBetween(start, end);
+        const percentage = totalDaysInYear > 0 ? (days / totalDaysInYear) * 100 : 0;
+        const annualizedTax = annualizeAmount(p?.propertyTaxAmount, p?.propertyTaxFrequency);
+        const proratedTax = annualizedTax * (percentage / 100);
+        return { addr, start, end, days, percentage, annualizedTax, proratedTax };
+    };
+
+    // --- compute totals for ALL properties (not just first 2) ---
+    const homes = properties.map(buildHome);
+    const totalProratedTax = homes.reduce((sum, h) => sum + h.proratedTax, 0);
+
+    // --- load + fill the PDF ---
+    const pa1000aBytes = await loadPDFAsset('2025_pa-1000a.pdf');
+    const pa1000aDoc = await PDFDocument.load(pa1000aBytes);
+    const pa1000aForm = pa1000aDoc.getForm();
+
+    const setField = (name, val) => {
+        try { pa1000aForm.getTextField(name).setText(val); }
+        catch (e) { console.warn(`PA-1000A: ${name}:`, e.message); }
+    };
+
+    const setMonthDay = (monthFieldName, dayFieldName, dateStr) => {
+        if (!dateStr) return;
+        const d = new Date(`${String(dateStr).slice(0, 10)}T00:00:00Z`);
+        if (isNaN(d)) return;
+        setField(monthFieldName, String(d.getUTCMonth() + 1).padStart(2, '0'));
+        setField(dayFieldName, String(d.getUTCDate()).padStart(2, '0'));
+    };
+
+    const fmt = (n) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // Header
+    const aFullName = `${ptrrApplicant?.firstName || ''} ${ptrrApplicant?.middleInitial || ''} ${ptrrApplicant?.lastName || ''}`.trim();
+    setField('Name as shown on PA-1000', aFullName);
+    setField('Social Security Number', sanitizedSSN);
+
+    // First home
+    const home1 = homes[0];
+    setField('Street address - First Home', home1.addr.streetAddress || '');
+    setField('City or Post Office - First Home', home1.addr.city || '');
+    setField('State - First Home', (home1.addr.state || '').toUpperCase().slice(0, 2));
+    setField('Zip Code - First Home', home1.addr.zipCode || '');
+    setMonthDay('1. Month', '1. Day', home1.start);
+    setField('1. Total property taxes paid on first home', fmt(home1.annualizedTax));
+    setMonthDay('2. Month', '2. Day', home1.end);
+    setField('2. Number of days you or the deceased owned and occupied each home', String(home1.days));
+    setField('3. Percentage of the year that you owned and occupied each home', home1.percentage.toFixed(2) + '%');
+    setField('4. Multiply Line 1 by Line 3', fmt(home1.proratedTax));
+
+    // Second home (if present)
+    if (homes[1]) {
+        const home2 = homes[1];
+        setField('Street address - Second Home', home2.addr.streetAddress || '');
+        setField('City or Post Office - Second home', home2.addr.city || '');
+        setField('State - Second home', (home2.addr.state || '').toUpperCase().slice(0, 2));
+        setField('Zip Code - Second home', home2.addr.zipCode || '');
+        setMonthDay('3. Month', '3. Day', home2.start);
+        setMonthDay('4. Month', '4. Day', home2.end);
+        setField('1B. Total property taxes paid on second home', fmt(home2.annualizedTax));
+        setField('2B. Number of months lived in second home', String(home2.days));
+        setField('3B. Percentage of the year that you owned and occupied second home', home2.percentage.toFixed(2) + '%');
+        setField('4B. Multiply Line 1 by Line 3', fmt(home2.proratedTax));
+    }
+
+    // Line 5: total
+    setField('5. Total property taxes paid', fmt(totalProratedTax));
+
+    homes.forEach((h, i) => {
+        console.log(`PA-1000A: Home ${i + 1} - ${h.days} days, ${h.percentage.toFixed(2)}%, annualized: $${h.annualizedTax.toFixed(2)}, prorated: $${h.proratedTax.toFixed(2)}`);
+    });
+    console.log(`PA-1000A: Total prorated (Line 5): $${totalProratedTax.toFixed(2)}`);
+
+    const pdfBytes = await pa1000aDoc.save();
+    return { pdfBytes, totalProratedTax };
+}
+
 async function generatePDF(data) {
     const { PDFDocument } = PDFLib;
 
+    // Force ALL CAPS for every text written to any PDF (form fields + drawn text).
+    // Runs only once per page load.
+    (function enableGlobalUpperCase() {
+        if (PDFLib.__uppercasePatched) return;
+        PDFLib.__uppercasePatched = true;
+
+        const toUpper = (v) => (v == null ? v : String(v).toUpperCase());
+
+        // Form text fields
+        const tfProto = PDFLib.PDFTextField && PDFLib.PDFTextField.prototype;
+        if (tfProto && tfProto.setText) {
+            const origSetText = tfProto.setText;
+            tfProto.setText = function (text) {
+                return origSetText.call(this, toUpper(text));
+            };
+        }
+
+        // Page-drawn text
+        const pageProto = PDFLib.PDFPage && PDFLib.PDFPage.prototype;
+        if (pageProto && pageProto.drawText) {
+            const origDrawText = pageProto.drawText;
+            pageProto.drawText = function (text, options) {
+                return origDrawText.call(this, toUpper(text), options);
+            };
+        }
+    })();
+
     // Load the existing PDF template
-    const pdfBytes = await fetch('/assets/2025_pa-1000.pdf').then((res) => res.arrayBuffer());
-    const pdfDoc = await PDFDocument.load(pdfBytes);
+    const pdfBytes = await fetch('/assets/2025_pa-1000.pdf').then((res) => res.arrayBuffer());    const pdfDoc = await PDFDocument.load(pdfBytes);
 
     // Get the form fields
     const form = pdfDoc.getForm();
@@ -126,19 +290,36 @@ const formattedDob = ptrrApplicant?.dob
     : '';
 
     const rawSSN = ptrrApplicant?.socialSecurityNumber || '';
-const sanitizedSSN = rawSSN.replace(/[-\s]/g, ''); // Remove any existing dashes or spaces
-form.getTextField('Enter your SSN without dashes or spaces').setText(sanitizedSSN);
-
+    const sanitizedSSN = rawSSN.replace(/[-\s]/g, '');
+    form.getTextField('Enter your SSN without dashes or spaces').setText(sanitizedSSN);
+    
+    // === Pre-process schedules BEFORE filling the main PA-1000 ===
+    // Schedules return their filled bytes + any totals the main form needs.
+    const scheduleA = await buildScheduleA({
+        ptrrApplicant,
+        sanitizedSSN,
+        residenceStatus: data.residenceStatus,
+    });
+    // (future schedules can be processed here too — PA-1000B, PA-1000PS, etc.)
 // Set the formatted date in the PDF field
 form.getTextField('Enter claimant\'s birthdate in mm/dd/yy format').setText(formattedDob);
-form.getTextField('Use ALL CAPS to enter first line of address').setText(data.streetAddress || '');
-form.getTextField('Use ALL CAPS to enter second line of address').setText(data.streetAddress2 || '');
-form.getTextField('Use ALL CAPS to enter city or post office').setText(data.city || '');
+
+// Use mailing address if it differs from residential; otherwise use residential.
+const useMailing = (data.mailingAddressSameAsResidential || '').toLowerCase() === 'no';
+const addrLine1 = useMailing ? (data.mailingStreetAddress  || '') : (data.streetAddress  || '');
+const addrLine2 = useMailing ? (data.mailingStreetAddress2 || '') : (data.streetAddress2 || '');
+const addrCity  = useMailing ? (data.mailingCity           || '') : (data.city           || '');
+const addrState = useMailing ? (data.mailingState          || '') : (data.state          || '');
+const addrZip   = useMailing ? (data.mailingZipCode        || '') : (data.zipCode        || '');
+
+form.getTextField('Use ALL CAPS to enter first line of address').setText(addrLine1);
+form.getTextField('Use ALL CAPS to enter second line of address').setText(addrLine2);
+form.getTextField('Use ALL CAPS to enter city or post office').setText(addrCity);
 
 // Ensure the state abbreviation is in uppercase and valid
-const validState = (data.state || '').toUpperCase().slice(0, 2);
+const validState = addrState.toUpperCase().slice(0, 2);
 form.getTextField('Use ALL CAPS to enter two-character state abbreviation').setText(validState);
-form.getTextField('Enter five-digit ZIP Code').setText(data.zipCode || '');
+form.getTextField('Enter five-digit ZIP Code').setText(addrZip);
 
 if (spouse) {
     try {
@@ -824,7 +1005,7 @@ const schoolDistrictCodes = {
 };
 
 // Example: Set the county code in the PDF form
-const selectedCounty = data.county; // e.g., "Northampton"
+const selectedCounty = data.county; //
 const countyCode = countyCodes[selectedCounty] || '';
 form.getTextField('Enter the two-digit county code from the list on page 15').setText(countyCode);
 
@@ -1390,80 +1571,167 @@ const combinedExpenses = [...applicantExpenses, ...spouseExpenses]; // Combine b
 let totalPropertyTax = 0;
 
 if (data.residenceStatus === 'owned' || data.residenceStatus === 'rentedowned') {
-    // Calculate total property tax for 2024
-    totalPropertyTax = combinedExpenses
-        .filter((expense) => {
-            const isPrevious = expense.type?.toLowerCase() === 'previous year';
-            const isPropertyTax = expense.kind?.toLowerCase() === 'property taxes';
-            console.log(`Expense type: ${expense.type}, Kind: ${expense.kind}, Is Previous: ${isPrevious}, Is Property Tax: ${isPropertyTax}`);
-            return isPrevious && isPropertyTax;
-        })
-        .reduce((total, expense) => {
-            const yearlyAmount = calculateYearlyAmount(expense);
-            console.log(`Adding property tax: ${yearlyAmount}, Current total: ${total}`);
-            return total + yearlyAmount;
-        }, 0);
+    if (scheduleA) {
+        // Schedule A drives Line 14 when 2+ owned properties exist.
+        totalPropertyTax = scheduleA.totalProratedTax;
+        console.log(`PA-1000 Line 14 sourced from Schedule A: $${totalPropertyTax.toFixed(2)}`);
+    } else {
+        // Single-property path: sum yearly property tax expenses.
+        totalPropertyTax = combinedExpenses
+            .filter((expense) => {
+                const isPrevious = expense.type?.toLowerCase() === 'previous year';
+                const isPropertyTax = expense.kind?.toLowerCase() === 'property taxes';
+                return isPrevious && isPropertyTax;
+            })
+            .reduce((total, expense) => total + calculateYearlyAmount(expense), 0);
+    }
 
-    // Format total property tax
-    const totalPropertyTaxFormatted = totalPropertyTax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const totalPropertyTaxFormatted = totalPropertyTax.toLocaleString('en-US', {
+        minimumFractionDigits: 2, maximumFractionDigits: 2
+    });
 
-    // Write the total property tax to the PDF
     page2.drawText(totalPropertyTaxFormatted, {
-        x: 473, // Replace with the actual x-coordinate
-        y: 649, // Replace with the actual y-coordinate
+        x: 473,
+        y: 649,
         size: 12,
         font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-        color: PDFLib.rgb(0, 0, 0), // Black color
+        color: PDFLib.rgb(0, 0, 0),
     });
-    console.log(`Total 2024 Property Tax: ${totalPropertyTaxFormatted}`);
+    console.log(`Total Property Tax (Line 14): ${totalPropertyTaxFormatted}`);
 }
 
 // Initialize rentPaid20Percent with a default value
 let rentPaid20Percent = 0;
 
+// Build a normalized rentals array (multi-rental aware).
+// Each entry corresponds to one PA-1000 RC.
+const ptrrAppForRent = ptrrApplicant?.PTRR?.application?.[0] || {};
+const previousYearRentals = Array.isArray(ptrrAppForRent.previousYearRentals)
+    ? ptrrAppForRent.previousYearRentals
+    : [];
+
+let rentals = [];
 if (data.residenceStatus === 'rented' || data.residenceStatus === 'rentedowned') {
-    // Calculate total rent paid for 2024
-    const totalRentPaid = combinedExpenses
-        .filter((expense) => {
-            const isPrevious = expense.type?.toLowerCase() === 'previous year';
-            const isRent = expense.kind?.toLowerCase() === 'rent';
-            console.log(`Expense type: ${expense.type}, Kind: ${expense.kind}, Is Previous: ${isPrevious}, Is Rent: ${isRent}`);
-            return isPrevious && isRent;
-        })
-        .reduce((total, expense) => {
-            const yearlyAmount = calculateYearlyAmount(expense);
-            console.log(`Adding rent paid: ${yearlyAmount}, Current total: ${total}`);
-            return total + yearlyAmount;
-        }, 0);
+    if (previousYearRentals.length > 0) {
+        // Use the per-rental records saved from additionaledit.html
+        rentals = previousYearRentals.map((r) => ({
+            previousYearRentAmount: parseFloat(r?.previousYearRentAmount) || 0,
+            rentalPropertyAddress: r?.rentalPropertyAddress || {},
+            subsidizedHousingPrevious: r?.subsidizedHousingPrevious || null,
+            subsidizedRentAmount: parseFloat(r?.subsidizedRentAmount) || 0,
+            rentalType: r?.rentalType || null,
+            buildingName: r?.buildingName || '',
+            domicilliaryFosterCare: r?.domicilliaryFosterCare || null,
+        }));
+    } else {
+        // Legacy fallback: build a single rental from top-level expenses + top-level fields
+        const legacyRentTotal = combinedExpenses
+            .filter((expense) => {
+                const isPrevious = expense.type?.toLowerCase() === 'previous year';
+                const isRent = expense.kind?.toLowerCase() === 'rent';
+                return isPrevious && isRent;
+            })
+            .reduce((total, expense) => total + calculateYearlyAmount(expense), 0);
 
-    // Format total rent paid
-    const totalRentPaidFormatted = totalRentPaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        rentals = [{
+            previousYearRentAmount: legacyRentTotal,
+            rentalPropertyAddress: {
+                streetAddress: data.streetAddress,
+                streetAddress2: data.streetAddress2,
+                city: data.city,
+                state: data.state,
+                zipCode: data.zipCode,
+            },
+            subsidizedHousingPrevious: null,
+            subsidizedRentAmount: parseFloat(data.subsidizedRentAmount) || 0,
+            rentalType: data.rentalType || null,
+            buildingName: data.buildingName || '',
+            domicilliaryFosterCare: data.domicilliaryFosterCare || null,
+        }];
+    }
+}
 
-    // Write the total rent paid to the PDF
+// Compute per-rental "Line 8" (RC) and sum for PA-1000 Line 16 equivalent.
+// Line 8 = max(0, monthlyRent - monthlySubsidy) * monthsOccupied
+const monthsOccupiedDefault = parseInt(ptrrAppForRent.monthsOccupied) || 12;
+
+// Pre-filter rent expenses (previous year) once, in original order.
+const rentExpenses = combinedExpenses.filter((e) =>
+    e.type?.toLowerCase() === 'previous year' &&
+    e.kind?.toLowerCase() === 'rent'
+);
+
+// Helper: months between two dates, rounded to nearest whole month, clamped 0..12.
+function monthsBetweenRounded(startStr, endStr) {
+    if (!startStr || !endStr) return null;
+    const start = new Date(`${startStr}T00:00:00Z`);
+    const end = new Date(`${endStr}T00:00:00Z`);
+    if (isNaN(start) || isNaN(end) || end < start) return null;
+    const days = (end - start) / (1000 * 60 * 60 * 24) + 1; // inclusive
+    const months = Math.round(days / 30.4375);
+    return Math.max(0, Math.min(12, months));
+}
+
+// Helper: try to find the rent expense associated with a given rental.
+function findRentExpenseForRental(rental, idx) {
+    const addr = rental.rentalPropertyAddress || {};
+    const street = (addr.streetAddress || '').trim().toLowerCase();
+    const zip = (addr.zipCode || '').trim();
+
+    if (street || zip) {
+        const match = rentExpenses.find((e) => {
+            const eStreet = (e.streetAddress || e.address?.streetAddress || '').trim().toLowerCase();
+            const eZip = (e.zipCode || e.address?.zipCode || '').trim();
+            if (street && eStreet && street === eStreet) return true;
+            if (zip && eZip && zip === eZip) return true;
+            return false;
+        });
+        if (match) return match;
+    }
+    return rentExpenses[idx] || null;
+}
+
+const rentalsWithMath = rentals.map((r, idx) => {
+    const monthlyRent = (r.previousYearRentAmount || 0);
+    const netMonthlyRent = Math.max(0, monthlyRent - (r.subsidizedRentAmount || 0));
+
+    const assocExpense = findRentExpenseForRental(r, idx);
+    const derivedMonths = assocExpense
+        ? monthsBetweenRounded(assocExpense.startDate, assocExpense.endDate)
+        : null;
+
+    const monthsOccupied = (derivedMonths != null) ? derivedMonths : monthsOccupiedDefault;
+    const line8 = netMonthlyRent * monthsOccupied;
+
+    console.log(`Rental[${idx}] monthsOccupied=${monthsOccupied} (derived=${derivedMonths}, default=${monthsOccupiedDefault})`);
+    return { ...r, monthlyRent, netMonthlyRent, monthsOccupied, line8 };
+});
+
+const totalLine8 = rentalsWithMath.reduce((sum, r) => sum + r.line8, 0);
+
+if (data.residenceStatus === 'rented' || data.residenceStatus === 'rentedowned') {
+    // PA-1000 Line 16: sum of all RC Line 8s
+    const totalRentPaidFormatted = totalLine8.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     page2.drawText(totalRentPaidFormatted, {
-        x: 473, // Replace with the actual x-coordinate
-        y: 606, // Replace with the actual y-coordinate
+        x: 473,
+        y: 606,
         size: 12,
         font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-        color: PDFLib.rgb(0, 0, 0), // Black color
+        color: PDFLib.rgb(0, 0, 0),
     });
-    console.log(`Total 2024 Rent Paid: ${totalRentPaidFormatted}`);
+    console.log(`PA-1000 Line 16 (sum of RC Line 8s across ${rentalsWithMath.length} rental(s)): ${totalRentPaidFormatted}`);
 
-    // Calculate 20% of the total rent paid
-    rentPaid20Percent = totalRentPaid * 0.2;
-
-    // Format the 20% value
+    // 20% of total rent paid
+    rentPaid20Percent = totalLine8 * 0.2;
     const rentPaid20PercentFormatted = rentPaid20Percent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-    // Write the 20% of total rent paid to the PDF
     page2.drawText(rentPaid20PercentFormatted, {
-        x: 473, // Replace with the actual x-coordinate for the new field
-        y: 584, // Replace with the actual y-coordinate for the new field
+        x: 473,
+        y: 584,
         size: 12,
         font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-        color: PDFLib.rgb(0, 0, 0), // Black color
+        color: PDFLib.rgb(0, 0, 0),
     });
-    console.log(`20% of Total 2024 Rent Paid: ${rentPaid20PercentFormatted}`);
+    console.log(`20% of Total Rent Paid: ${rentPaid20PercentFormatted}`);
 }
 
 // Define Table A mapping (example values, replace with actual data)
@@ -1661,475 +1929,159 @@ if (ovalIndex >= 0 && ovalIndex < ovalPositions.length) {
     // Collect all PDFs to merge (starting with the filled PA-1000)
     const pdfsToMerge = [filledPdfBytes];
 
-    // === ADD CONDITIONAL PDF ATTACHMENTS HERE ===
-    // If residence status is rented or rentedowned, add the PA-1000 RC form
-    if (data.residenceStatus === 'rented' || data.residenceStatus === 'rentedowned') {
+// === PA-1000 RC: one per rental in previousYearRentals (or 1 fallback) ===
+if (data.residenceStatus === 'rented' || data.residenceStatus === 'rentedowned') {
+    for (let rIdx = 0; rIdx < rentalsWithMath.length; rIdx++) {
+        const rental = rentalsWithMath[rIdx];
+
         try {
             const rcPdfBytes = await loadPDFAsset('2025_pa-1000rc.pdf');
             const rcPdfDoc = await PDFDocument.load(rcPdfBytes);
             const rcForm = rcPdfDoc.getForm();
-
-            // --- Fill PA-1000 RC fields ---
 
             // Claimant name
             const rcFullName = `${ptrrApplicant?.firstName || ''} ${ptrrApplicant?.middleInitial || ''} ${ptrrApplicant?.lastName || ''}`.trim();
             try {
                 const rcNameField = rcForm.getTextField('Name as shown on PA-1000');
                 if (rcNameField) rcNameField.setText(rcFullName);
-            } catch (e) {
-                console.warn('PA-1000 RC: Could not set Name field:', e.message);
-            }
+            } catch (e) { console.warn(`RC[${rIdx}]: Name:`, e.message); }
 
             // SSN
             try {
                 const rcSsnField = rcForm.getTextField('Your Social Security Number');
                 if (rcSsnField) rcSsnField.setText(sanitizedSSN);
-            } catch (e) {
-                console.warn('PA-1000 RC: Could not set SSN field:', e.message);
-            }
+            } catch (e) { console.warn(`RC[${rIdx}]: SSN:`, e.message); }
 
-            // Street address of residence
+            // Rental property address (per-rental)
+            const addr = rental.rentalPropertyAddress || {};
+            const rentalStreet = `${addr.streetAddress || ''}${addr.streetAddress2 ? ' ' + addr.streetAddress2 : ''}`.trim();
             try {
                 const rcStreetField = rcForm.getTextField('Street address of the residence');
-                if (rcStreetField) rcStreetField.setText(`${data.streetAddress || ''}${data.streetAddress2 ? ' ' + data.streetAddress2 : ''}`);
-            } catch (e) {
-                console.warn('PA-1000 RC: Could not set Street Address field:', e.message);
-            }
+                if (rcStreetField) rcStreetField.setText(rentalStreet);
+            } catch (e) { console.warn(`RC[${rIdx}]: Street:`, e.message); }
 
-            // City, State, ZIP
             try {
                 const rcCityStateZipField = rcForm.getTextField('Your address - City, State, ZIP Code');
                 if (rcCityStateZipField) {
-                    const cityStateZip = `${data.city || ''}, ${(data.state || '').toUpperCase()} ${data.zipCode || ''}`.trim();
+                    const cityStateZip = `${addr.city || ''}, ${(addr.state || '').toUpperCase()} ${addr.zipCode || ''}`.trim();
                     rcCityStateZipField.setText(cityStateZip);
                 }
-            } catch (e) {
-                console.warn('PA-1000 RC: Could not set City/State/ZIP field:', e.message);
-            }
+            } catch (e) { console.warn(`RC[${rIdx}]: City/State/ZIP:`, e.message); }
 
-            // Landlord information from the PTRR application
+            // Landlord info still pulled from application-level fields (shared)
             const ptrrApp = ptrrApplicant?.PTRR?.application?.[0] || {};
 
             try {
-                const landlordNameField = rcForm.getTextField("Owner's business name or Landlords name");
-                if (landlordNameField) landlordNameField.setText(ptrrApp.landlordName || '');
-            } catch (e) {
-                console.warn('PA-1000 RC: Could not set Landlord Name field:', e.message);
-            }
+                const f = rcForm.getTextField("Owner's business name or Landlords name");
+                if (f) f.setText(ptrrApp.landlordName || '');
+            } catch (e) { console.warn(`RC[${rIdx}]: Landlord Name:`, e.message); }
 
             try {
-                const landlordAddressField = rcForm.getTextField("Landlord's Address");
-                if (landlordAddressField) landlordAddressField.setText(ptrrApp.landlordAddress || '');
-            } catch (e) {
-                console.warn('PA-1000 RC: Could not set Landlord Address field:', e.message);
-            }
+                const f = rcForm.getTextField("Landlord's Address");
+                if (f) f.setText(ptrrApp.landlordAddress || '');
+            } catch (e) { console.warn(`RC[${rIdx}]: Landlord Address:`, e.message); }
 
             try {
-                const landlordCityStateZipField = rcForm.getTextField("Landlord's City, State, ZIP Code");
-                if (landlordCityStateZipField) landlordCityStateZipField.setText(ptrrApp.landlordCityStateZip || '');
-            } catch (e) {
-                console.warn('PA-1000 RC: Could not set Landlord City/State/ZIP field:', e.message);
-            }
+                const f = rcForm.getTextField("Landlord's City, State, ZIP Code");
+                if (f) f.setText(ptrrApp.landlordCityStateZip || '');
+            } catch (e) { console.warn(`RC[${rIdx}]: Landlord City/State/ZIP:`, e.message); }
 
             try {
-                const landlordEinField = rcForm.getTextField("Landlord's EIN");
-                if (landlordEinField) landlordEinField.setText(ptrrApp.landlordEin || '');
-            } catch (e) {
-                console.warn('PA-1000 RC: Could not set Landlord EIN field:', e.message);
-            }
+                const f = rcForm.getTextField("Landlord's EIN");
+                if (f) f.setText(ptrrApp.landlordEin || '');
+            } catch (e) { console.warn(`RC[${rIdx}]: Landlord EIN:`, e.message); }
 
             try {
-                const landlordPhoneField = rcForm.getTextField("Landlord's daytime telephone number");
-                if (landlordPhoneField) {
-                    let landlordPhone = (ptrrApp.landlordPhone || '').replace(/[()\-\s]/g, '').slice(0, 10);
-                    landlordPhoneField.setText(landlordPhone);
+                const f = rcForm.getTextField("Landlord's daytime telephone number");
+                if (f) {
+                    const lp = (ptrrApp.landlordPhone || '').replace(/[()\-\s]/g, '').slice(0, 10);
+                    f.setText(lp);
                 }
-            } catch (e) {
-                console.warn('PA-1000 RC: Could not set Landlord Phone field:', e.message);
-            }
+            } catch (e) { console.warn(`RC[${rIdx}]: Landlord Phone:`, e.message); }
 
-            // Building name
+            // Building name (per-rental)
             try {
-                const buildingNameField = rcForm.getTextField('Building Name');
-                if (buildingNameField) buildingNameField.setText(data.buildingName || '');
-            } catch (e) {
-                console.warn('PA-1000 RC: Could not set Building Name field:', e.message);
-            }
+                const f = rcForm.getTextField('Building Name');
+                if (f) f.setText(rental.buildingName || '');
+            } catch (e) { console.warn(`RC[${rIdx}]: Building Name:`, e.message); }
 
-            // Rental type checkbox — check "3. Rental Unit" and fill specific rental type oval
+            // Rental type oval (per-rental)
             try {
-                const rentalType = data.rentalType;
-                if (rentalType) {
-
-                    // Draw filled oval for the specific rental type
+                if (rental.rentalType) {
                     const rcPage = rcPdfDoc.getPages()[0];
                     const rentalTypeOvals = {
-                        'apartmentHouse':    { x: 388, y: 562 },  // a. Apartment in a House
-                        'apartmentBuilding': { x: 388, y: 550 },  // b. Apartment in a Building
-                        'boardingHome':      { x: 388, y: 538 },  // c. Boarding Home
-                        'mobileHome':        { x: 388, y: 526 },  // d. Mobile Home
-                        'personalCareHome':  { x: 388, y: 514 },  // e. Personal Care Home
-                        'mobileHomeLot':     { x: 492, y: 562 },  // f. Mobile Home Lot
-                        'nursingHome':       { x: 492, y: 550 },  // g. Nursing Home
-                        'privateHome':       { x: 492, y: 538 },  // h. Private Home
-                        'assistedLiving':    { x: 492, y: 526 },  // i. Assisted Living
-                        'condominium':       { x: 492, y: 514 },  // j. Condominium
+                        'apartmentHouse':    { x: 388, y: 562 },
+                        'apartmentBuilding': { x: 388, y: 550 },
+                        'boardingHome':      { x: 388, y: 538 },
+                        'mobileHome':        { x: 388, y: 526 },
+                        'personalCareHome':  { x: 388, y: 514 },
+                        'mobileHomeLot':     { x: 492, y: 562 },
+                        'nursingHome':       { x: 492, y: 550 },
+                        'privateHome':       { x: 492, y: 538 },
+                        'assistedLiving':    { x: 492, y: 526 },
+                        'condominium':       { x: 492, y: 514 },
                     };
-
-                    const ovalCoords = rentalTypeOvals[rentalType];
-                    if (ovalCoords) {
+                    const c = rentalTypeOvals[rental.rentalType];
+                    if (c) {
                         rcPage.drawEllipse({
-                            x: ovalCoords.x,
-                            y: ovalCoords.y,
-                            xScale: 5,
-                            yScale: 5,
+                            x: c.x, y: c.y, xScale: 5, yScale: 5,
                             color: PDFLib.rgb(0, 0, 0),
                         });
-                        console.log(`PA-1000 RC: Filled oval for rental type "${rentalType}" at (${ovalCoords.x}, ${ovalCoords.y})`);
-                    } else {
-                        console.warn(`PA-1000 RC: No oval coordinates for rental type "${rentalType}"`);
                     }
                 }
-            } catch (e) {
-                console.warn('PA-1000 RC: Could not set Rental Type checkbox:', e.message);
-            }
+            } catch (e) { console.warn(`RC[${rIdx}]: Rental Type:`, e.message); }
 
-            // Domiciliary/Foster Care checkbox
+            // Domiciliary/Foster (per-rental)
             try {
-                const domFosterCare = data.domicilliaryFosterCare;
-                if (domFosterCare === 'domicillary' || domFosterCare === 'foster') {
-                    const domFosterCheckbox = rcForm.getCheckBox('3. Domiciliary/Foster Care');
-                    if (domFosterCheckbox) {
-                        domFosterCheckbox.check();
-                        console.log(`PA-1000 RC: Checked "3. Domiciliary/Foster Care" (value: "${domFosterCare}")`);
-                    } else {
-                        console.warn('PA-1000 RC: Checkbox "3. Domiciliary/Foster Care" not found in form.');
-                    }
+                if (rental.domicilliaryFosterCare === 'domicillary' || rental.domicilliaryFosterCare === 'foster') {
+                    const cb = rcForm.getCheckBox('3. Domiciliary/Foster Care');
+                    if (cb) cb.check();
                 }
-            } catch (e) {
-                console.warn('PA-1000 RC: Could not set Domiciliary/Foster Care checkbox:', e.message);
-            }
+            } catch (e) { console.warn(`RC[${rIdx}]: Dom/Foster:`, e.message); }
 
-            // Rent amount calculations
-            const totalRentPaidForRC = combinedExpenses
-                .filter((expense) => {
-                    const isPrevious = expense.type?.toLowerCase() === 'previous year';
-                    const isRent = expense.kind?.toLowerCase() === 'rent';
-                    return isPrevious && isRent;
-                })
-                .reduce((total, expense) => total + calculateYearlyAmount(expense), 0);
-
-            // Monthly rent (Line 4)
-            const monthlyRent = totalRentPaidForRC / 12;
+            // Line 4: monthly rent (per-rental)
             try {
-                const rentPerMonthField = rcForm.getTextField('4. Amount of rent per month');
-                if (rentPerMonthField) {
-                    rentPerMonthField.setText(monthlyRent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-                }
-            } catch (e) {
-                console.warn('PA-1000 RC: Could not set Rent Per Month field:', e.message);
-            }
+                const f = rcForm.getTextField('4. Amount of rent per month');
+                if (f) f.setText(rental.monthlyRent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+            } catch (e) { console.warn(`RC[${rIdx}]: Line 4:`, e.message); }
 
-            // Government subsidy (Line 5) - default to 0 unless data available
+            // Line 5: subsidy (per-rental)
             try {
-                const subsidyField = rcForm.getTextField('5. Amount paid or subsidized by a governmental agency');
-                if (subsidyField) {
-                    const govSubsidy = data.subsidizedRentAmount
-                        ? parseFloat(data.subsidizedRentAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                        : '0.00';
-                    subsidyField.setText(govSubsidy);
-                }
-            } catch (e) {
-                console.warn('PA-1000 RC: Could not set Government Subsidy field:', e.message);
-            }
+                const f = rcForm.getTextField('5. Amount paid or subsidized by a governmental agency');
+                if (f) f.setText((rental.subsidizedRentAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+            } catch (e) { console.warn(`RC[${rIdx}]: Line 5:`, e.message); }
 
-            // Total monthly rent paid (Line 6) = monthly rent minus government subsidy
+            // Line 6: net monthly rent (per-rental)
             try {
-                const totalMonthlyRentField = rcForm.getTextField('6. Total monthly amount of rent paid');
-                if (totalMonthlyRentField) {
-                    const govSubsidyAmount = parseFloat(data.subsidizedRentAmount) || 0;
-                    const netMonthlyRent = Math.max(0, monthlyRent - govSubsidyAmount);
-                    totalMonthlyRentField.setText(netMonthlyRent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-                }
-            } catch (e) {
-                console.warn('PA-1000 RC: Could not set Total Monthly Rent field:', e.message);
-            }
+                const f = rcForm.getTextField('6. Total monthly amount of rent paid');
+                if (f) f.setText(rental.netMonthlyRent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+            } catch (e) { console.warn(`RC[${rIdx}]: Line 6:`, e.message); }
 
-            // Number of months occupied (Line 7)
+            // Line 7: months occupied
             try {
-                const monthsOccupiedField = rcForm.getTextField('7. Number of months occupied');
-                if (monthsOccupiedField) {
-                    const monthsOccupied = ptrrApp.monthsOccupied || '12';
-                    monthsOccupiedField.setText(monthsOccupied);
-                }
-            } catch (e) {
-                console.warn('PA-1000 RC: Could not set Months Occupied field:', e.message);
-            }
+                const f = rcForm.getTextField('7. Number of months occupied');
+                if (f) f.setText(String(rental.monthsOccupied));
+            } catch (e) { console.warn(`RC[${rIdx}]: Line 7:`, e.message); }
 
-            // Total rent paid (Line 8) = Line 6 (net monthly rent) x Line 7 (months occupied)
+            // Line 8: total rent paid for this rental
             try {
-                const totalRentField = rcForm.getTextField('8. Total rent paid');
-                if (totalRentField) {
-                    const govSubsidyAmount = parseFloat(data.subsidizedRentAmount) || 0;
-                    const netMonthlyRent = Math.max(0, monthlyRent - govSubsidyAmount);
-                    const monthsOccupied = parseInt(ptrrApp.monthsOccupied) || 12;
-                    const totalRentPaid = netMonthlyRent * monthsOccupied;
-                    totalRentField.setText(totalRentPaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-                }
-            } catch (e) {
-                console.warn('PA-1000 RC: Could not set Total Rent Paid field:', e.message);
-            }
+                const f = rcForm.getTextField('8. Total rent paid');
+                if (f) f.setText(rental.line8.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+            } catch (e) { console.warn(`RC[${rIdx}]: Line 8:`, e.message); }
 
             const filledRcBytes = await rcPdfDoc.save();
             pdfsToMerge.push(filledRcBytes);
-            console.log('PA-1000 RC form added to merge queue.');
+            console.log(`PA-1000 RC #${rIdx + 1} of ${rentalsWithMath.length} added (Line 8 = ${rental.line8.toFixed(2)}).`);
         } catch (error) {
-            console.error('Error loading or filling PA-1000 RC form:', error);
+            console.error(`Error filling PA-1000 RC #${rIdx + 1}:`, error);
         }
     }
+}
 
-    // === PA-1000A: Multiple Homes Schedule ===
-    // Include PA-1000A if the PTRR applicant has multiple previous addresses (moved during the tax year)
-    const ptrrAppForA = ptrrApplicant?.PTRR?.application?.[0] || {};
-    const previousAddresses = ptrrAppForA.previousAddresses || []; // Array of { streetAddress, city, state, zipCode, moveInDate, moveOutDate, propertyTaxPaid }
-
-    // Include PA-1000A if there are 2+ homes AND residence is owned, rentedowned
-    if (previousAddresses.length >= 2 && (data.residenceStatus === 'owned' || data.residenceStatus === 'rentedowned')) {
-        try {
-            const pa1000aBytes = await loadPDFAsset('2025_pa-1000a.pdf');
-            const pa1000aDoc = await PDFDocument.load(pa1000aBytes);
-            const pa1000aForm = pa1000aDoc.getForm();
-            const helveticaFont = await pa1000aDoc.embedFont(PDFLib.StandardFonts.Helvetica);
-
-            // --- Header fields ---
-            // Claimant name
-            try {
-                const aFullName = `${ptrrApplicant?.firstName || ''} ${ptrrApplicant?.middleInitial || ''} ${ptrrApplicant?.lastName || ''}`.trim();
-                pa1000aForm.getTextField('Name as shown on PA-1000').setText(aFullName);
-            } catch (e) {
-                console.warn('PA-1000A: Could not set Name field:', e.message);
-            }
-
-            // SSN
-            try {
-                pa1000aForm.getTextField('Social Security Number').setText(sanitizedSSN);
-            } catch (e) {
-                console.warn('PA-1000A: Could not set SSN field:', e.message);
-            }
-
-            // --- Helper: calculate days between two dates ---
-            function daysBetween(startStr, endStr) {
-                const start = new Date(`${startStr}T00:00:00Z`);
-                const end = new Date(`${endStr}T00:00:00Z`);
-                return Math.max(0, Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1); // inclusive
-            }
-
-            // Total days in the tax year
-            const taxYear = new Date().getFullYear() - 1;
-            const totalDaysInYear = ((taxYear % 4 === 0 && taxYear % 100 !== 0) || taxYear % 400 === 0) ? 366 : 365;
-
-            // For rented residences, use rent paid instead of property tax
-            const isRentedForA = data.residenceStatus === 'rented';
-
-            // --- FIRST HOME ---
-            const home1 = previousAddresses[0] || {};
-            const home1Days = daysBetween(home1.moveInDate, home1.moveOutDate || `${taxYear}-12-31`);
-            const home1Percentage = (home1Days / totalDaysInYear * 100);
-            const home1PropertyTax = parseFloat(home1.propertyTaxPaid) || 0;
-            const home1ProratedTax = home1PropertyTax * (home1Percentage / 100);
-
-            // First home address
-            try {
-                pa1000aForm.getTextField('Street address - First Home').setText(home1.streetAddress || '');
-            } catch (e) {
-                console.warn('PA-1000A: Could not set First Home Street Address:', e.message);
-            }
-
-            try {
-                pa1000aForm.getTextField('City or Post Office - First Home').setText(home1.city || '');
-            } catch (e) {
-                console.warn('PA-1000A: Could not set First Home City:', e.message);
-            }
-
-            try {
-                pa1000aForm.getTextField('State - First Home').setText((home1.state || '').toUpperCase().slice(0, 2));
-            } catch (e) {
-                console.warn('PA-1000A: Could not set First Home State:', e.message);
-            }
-
-            try {
-                pa1000aForm.getTextField('Zip Code - First Home').setText(home1.zipCode || '');
-            } catch (e) {
-                console.warn('PA-1000A: Could not set First Home Zip:', e.message);
-            }
-
-            // First home move-in date (Line 1: Month/Day)
-            if (home1.moveInDate) {
-                const moveIn1 = new Date(`${home1.moveInDate}T00:00:00Z`);
-                try {
-                    pa1000aForm.getTextField('1. Month').setText(String(moveIn1.getUTCMonth() + 1).padStart(2, '0'));
-                } catch (e) { console.warn('PA-1000A: Could not set 1. Month:', e.message); }
-                try {
-                    pa1000aForm.getTextField('1. Day').setText(String(moveIn1.getUTCDate()).padStart(2, '0'));
-                } catch (e) { console.warn('PA-1000A: Could not set 1. Day:', e.message); }
-            }
-
-            // First home property tax / rent (Line 1)
-            try {
-                const line1Label = isRentedForA ? '1. Total property taxes paid on first home' : '1. Total property taxes paid on first home';
-                pa1000aForm.getTextField(line1Label).setText(
-                    home1PropertyTax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                );
-            } catch (e) {
-                console.warn('PA-1000A: Could not set Line 1 property tax/rent:', e.message);
-            }
-
-            // First home move-out date (Line 2: Month/Day)
-            const home1MoveOut = home1.moveOutDate || `${taxYear}-12-31`;
-            const moveOut1 = new Date(`${home1MoveOut}T00:00:00Z`);
-            try {
-                pa1000aForm.getTextField('2. Month').setText(String(moveOut1.getUTCMonth() + 1).padStart(2, '0'));
-            } catch (e) { console.warn('PA-1000A: Could not set 2. Month:', e.message); }
-            try {
-                pa1000aForm.getTextField('2. Day').setText(String(moveOut1.getUTCDate()).padStart(2, '0'));
-            } catch (e) { console.warn('PA-1000A: Could not set 2. Day:', e.message); }
-
-            // First home days occupied (Line 2)
-            try {
-                pa1000aForm.getTextField('2. Number of days you or the deceased owned and occupied each home').setText(
-                    String(home1Days)
-                );
-            } catch (e) {
-                console.warn('PA-1000A: Could not set Line 2 days:', e.message);
-            }
-
-            // First home percentage (Line 3)
-            try {
-                pa1000aForm.getTextField('3. Percentage of the year that you owned and occupied each home').setText(
-                    home1Percentage.toFixed(2) + '%'
-                );
-            } catch (e) {
-                console.warn('PA-1000A: Could not set Line 3 percentage:', e.message);
-            }
-
-            // Prorated tax for first home (Line 4 = Line 1 × Line 3)
-            try {
-                pa1000aForm.getTextField('4. Multiply Line 1 by Line 3').setText(
-                    home1ProratedTax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                );
-            } catch (e) {
-                console.warn('PA-1000A: Could not set Line 4 prorated tax:', e.message);
-            }
-
-            // --- SECOND HOME ---
-            const home2 = previousAddresses[1] || {};
-            const home2Days = daysBetween(home2.moveInDate, home2.moveOutDate || `${taxYear}-12-31`);
-            const home2Percentage = (home2Days / totalDaysInYear * 100);
-            const home2PropertyTax = parseFloat(home2.propertyTaxPaid) || 0;
-            const home2ProratedTax = home2PropertyTax * (home2Percentage / 100);
-
-            // Second home address
-            try {
-                pa1000aForm.getTextField('Street address - Second Home').setText(home2.streetAddress || '');
-            } catch (e) {
-                console.warn('PA-1000A: Could not set Second Home Street Address:', e.message);
-            }
-
-            try {
-                pa1000aForm.getTextField('City or Post Office - Second home').setText(home2.city || '');
-            } catch (e) {
-                console.warn('PA-1000A: Could not set Second Home City:', e.message);
-            }
-
-            try {
-                pa1000aForm.getTextField('State - Second home').setText((home2.state || '').toUpperCase().slice(0, 2));
-            } catch (e) {
-                console.warn('PA-1000A: Could not set Second Home State:', e.message);
-            }
-
-            try {
-                pa1000aForm.getTextField('Zip Code - Second home').setText(home2.zipCode || '');
-            } catch (e) {
-                console.warn('PA-1000A: Could not set Second Home Zip:', e.message);
-            }
-
-            // Second home move-in date (Line 3B uses Month/Day fields)
-            if (home2.moveInDate) {
-                const moveIn2 = new Date(`${home2.moveInDate}T00:00:00Z`);
-                try {
-                    pa1000aForm.getTextField('3. Month').setText(String(moveIn2.getUTCMonth() + 1).padStart(2, '0'));
-                } catch (e) { console.warn('PA-1000A: Could not set 3. Month:', e.message); }
-                try {
-                    pa1000aForm.getTextField('3. Day').setText(String(moveIn2.getUTCDate()).padStart(2, '0'));
-                } catch (e) { console.warn('PA-1000A: Could not set 3. Day:', e.message); }
-            }
-
-            // Second home move-out date
-            const home2MoveOut = home2.moveOutDate || `${taxYear}-12-31`;
-            const moveOut2 = new Date(`${home2MoveOut}T00:00:00Z`);
-            try {
-                pa1000aForm.getTextField('4. Month').setText(String(moveOut2.getUTCMonth() + 1).padStart(2, '0'));
-            } catch (e) { console.warn('PA-1000A: Could not set 4. Month:', e.message); }
-            try {
-                pa1000aForm.getTextField('4. Day').setText(String(moveOut2.getUTCDate()).padStart(2, '0'));
-            } catch (e) { console.warn('PA-1000A: Could not set 4. Day:', e.message); }
-
-            // Second home property tax / rent (Line 1B)
-            try {
-                pa1000aForm.getTextField('1B. Total property taxes paid on second home').setText(
-                    home2PropertyTax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                );
-            } catch (e) {
-                console.warn('PA-1000A: Could not set Line 1B property tax/rent:', e.message);
-            }
-
-            // Second home days occupied (Line 2B)
-            try {
-                pa1000aForm.getTextField('2B. Number of months lived in second home').setText(
-                    String(home2Days)
-                );
-            } catch (e) {
-                console.warn('PA-1000A: Could not set Line 2B days:', e.message);
-            }
-
-            // Second home percentage (Line 3B)
-            try {
-                pa1000aForm.getTextField('3B. Percentage of the year that you owned and occupied second home').setText(
-                    home2Percentage.toFixed(2) + '%'
-                );
-            } catch (e) {
-                console.warn('PA-1000A: Could not set Line 3B percentage:', e.message);
-            }
-
-            // Prorated tax for second home (Line 4B = Line 1B × Line 3B)
-            try {
-                pa1000aForm.getTextField('4B. Multiply Line 1 by Line 3').setText(
-                    home2ProratedTax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                );
-            } catch (e) {
-                console.warn('PA-1000A: Could not set Line 4B prorated tax:', e.message);
-            }
-
-            // --- LINE 5: Total property taxes (sum of Line 4 + Line 4B) ---
-            const totalProratedTax = home1ProratedTax + home2ProratedTax;
-            try {
-                pa1000aForm.getTextField('5. Total property taxes paid').setText(
-                    totalProratedTax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                );
-            } catch (e) {
-                console.warn('PA-1000A: Could not set Line 5 total:', e.message);
-            }
-
-            console.log(`PA-1000A: Home 1 - ${home1Days} days, ${home1Percentage.toFixed(2)}%, tax/rent: $${home1ProratedTax.toFixed(2)}`);
-            console.log(`PA-1000A: Home 2 - ${home2Days} days, ${home2Percentage.toFixed(2)}%, tax/rent: $${home2ProratedTax.toFixed(2)}`);
-            console.log(`PA-1000A: Total prorated amount: $${totalProratedTax.toFixed(2)}`);
-
-            const filledPa1000aBytes = await pa1000aDoc.save();
-            pdfsToMerge.push(filledPa1000aBytes);
-            console.log('PA-1000A form added to merge queue.');
-        } catch (error) {
-            console.error('Error loading or filling PA-1000A form:', error);
-        }
+    // Append pre-built schedules to the merge queue (PA-1000 stays first).
+    if (scheduleA) {
+        pdfsToMerge.push(scheduleA.pdfBytes);
+        console.log('PA-1000A added to merge queue.');
     }
 
     // Merge all collected PDFs into one

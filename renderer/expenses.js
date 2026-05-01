@@ -271,7 +271,7 @@ function renderLeaseDropdownItems(members) {
     const options = [
         ...members.map(m => {
             const isDeceased = (m.deceased ?? '').toLowerCase() === 'yes';
-            const name = `${m.firstName} ${m.middleInitial || ''} ${m.lastName}`.replace(/\s+/g, ' ').trim();
+            const name = `${m.firstName.toUpperCase()} ${m.middleInitial.toUpperCase() || ''} ${m.lastName.toUpperCase()}`.replace(/\s+/g, ' ').trim();
             return {
                 id: String(m.householdMemberId),
                 label: isDeceased ? `${name} (DECEASED)` : name
@@ -529,9 +529,8 @@ async function displayHouseholdMembers(skipEligibilityChecks = false) {
             const memberDiv = document.createElement('div');
             memberDiv.classList.add('household-member1-box');
             memberDiv.innerHTML = `
-                <h3>${member.firstName} ${member.middleInitial || ''} ${member.lastName}${isDeceased ? ' <br><br><span style="color:rgb(0, 0, 0); font-size: 14px; border: 1px solid #000000; padding: 2px 6px; margin-left: 8px; border-radius: 4px;">DECEASED</span>' : ''}</h3>
+                <h3>${member.firstName.toUpperCase()} ${member.middleInitial.toUpperCase() || ''} ${member.lastName.toUpperCase()}${isDeceased ? ' <br><br><span style="color:rgb(0, 0, 0); font-size: 14px; border: 1px solid #000000; padding: 2px 6px; margin-left: 8px; border-radius: 4px;">DECEASED</span>' : ''}</h3>
                 <p><strong>Date of Birth:</strong> ${member.dob || 'N/A'}</p>
-                <p><strong>Previous Year Marital Status:</strong> ${member.maritalStatus || 'N/A'}</p>
                 <div class="expense-list">
                     <ul id="expense-list-${member.householdMemberId}">
                         ${populateExpenses(member.expenses)}
@@ -691,6 +690,11 @@ async function saveExpense() {
         if (result.success) {
             elements.expenseForm.reset();
             elements.modal.classList.add('hidden');
+
+            if (isPreviousYearRentExpense(newExpense)) {
+                await syncPreviousYearRentalsForMember(currentMemberId);
+            }
+
             invalidateHouseholdCache();
             await displayHouseholdMembers();
         } else {
@@ -771,6 +775,12 @@ async function overwriteExpense() {
             elements.expenseForm.reset();
             elements.modal.classList.add('hidden');
             resetModalState();
+
+            // NEW: sync rentals if the edited expense is/was a Previous Year Rent
+            if (isPreviousYearRentExpense(updatedExpense)) {
+                await syncPreviousYearRentalsForMember(memberId);
+            }
+
             invalidateHouseholdCache();
             await displayHouseholdMembers();
         } else {
@@ -790,6 +800,23 @@ async function deleteExpense(expenseId) {
 
     if (!confirm('Are you sure you want to delete this expense?')) return;
 
+    // NEW: figure out which member owned this expense BEFORE deleting,
+    // and whether it was a Previous Year Rent expense.
+    const memberBox = document.querySelector(`.household-member1-box [data-expense-id="${expenseId}"]`)
+        ?.closest('.household-member1-box');
+    const memberId = memberBox?.querySelector('.add-expense-button')?.dataset.memberId || null;
+
+    let wasPrevRent = false;
+    if (memberId) {
+        try {
+            const exp = await fetch(`/get-expense?householdMemberId=${memberId}&expenseId=${expenseId}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            }).then(r => r.ok ? r.json() : null).catch(() => null);
+            wasPrevRent = isPreviousYearRentExpense(exp || {});
+        } catch (_) { /* noop */ }
+    }
+
     try {
         const response = await fetch('/delete-expense', {
             method: 'DELETE',
@@ -800,6 +827,11 @@ async function deleteExpense(expenseId) {
         const result = await response.json();
 
         if (result.success) {
+            // NEW: re-sync rentals so deleted rent expense is removed from previousYearRentals
+            if (wasPrevRent && memberId) {
+                await syncPreviousYearRentalsForMember(memberId);
+            }
+
             invalidateHouseholdCache();
             await displayHouseholdMembers();
         } else {
@@ -1080,7 +1112,7 @@ async function openEditExpenseModal(memberId, expenseId) {
             const members = await getHouseholdMembersCached();
             modalState.leaseSelectedPersons = expense.leasePersons.map(label => {
                 const match = members.find(m =>
-                    `${m.firstName} ${m.middleInitial || ''} ${m.lastName}`.replace(/\s+/g, ' ').trim() === label
+                    `${m.firstName.toUpperCase()} ${m.middleInitial.toUpperCase() || ''} ${m.lastName.toUpperCase()}`.replace(/\s+/g, ' ').trim() === label
                 );
                 return { id: match ? String(match.householdMemberId) : '__outside__', label };
             });
@@ -1211,6 +1243,72 @@ function setupDelegatedEventListeners() {
 // ══════════════════════════════════════════════════════════════
 // CLIENT API HELPERS
 // ══════════════════════════════════════════════════════════════
+
+function isPreviousYearRentExpense(e) {
+    const t = String(e?.type || '').toLowerCase().trim();
+    const k = String(e?.kind || '').toLowerCase().trim();
+    const isPrev = t === 'previous year' || t === 'previousyear' || t === 'previous';
+    return isPrev && k.includes('rent');
+}
+
+async function syncPreviousYearRentalsForMember(memberId) {
+    const clientId = getQueryParameter('id');
+    if (!clientId || !memberId) return;
+
+    try {
+        const resp = await fetch(`${BACKEND_URL}/get-client/${clientId}`, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        if (!resp.ok) return;
+
+        const client = await resp.json();
+        const members = Array.isArray(client?.householdMembers) ? [...client.householdMembers] : [];
+        const idx = members.findIndex(m => String(m.householdMemberId) === String(memberId));
+        if (idx < 0) return;
+
+        const member = { ...members[idx] };
+        const expenses = Array.isArray(member.expenses) ? member.expenses : [];
+
+        // Collect the "previous year" rent expenses in their original order
+        const prevRentExpenses = expenses.filter(isPreviousYearRentExpense);
+
+        // Existing rentals (preserve non-synced fields like address, subsidies, etc.)
+        const appArr = Array.isArray(member?.PTRR?.application) ? [...member.PTRR.application] : [];
+        const firstApp = { ...(appArr[0] || {}) };
+        const existingRentals = Array.isArray(firstApp.previousYearRentals) ? firstApp.previousYearRentals : [];
+
+        // Build new rentals: one entry per matching expense, preserve other fields if present
+        const newRentals = prevRentExpenses.map((e, i) => {
+            const prior = existingRentals[i] || {};
+            return {
+                ...prior,
+                previousYearRentAmount: (e.amount === '' || e.amount == null) ? null : parseFloat(e.amount),
+                previousYearRentFrequency: e.frequency || null,
+                previousYearRentStartDate: e.startDate || null,
+                previousYearRentEndDate: e.endDate || null,
+            };
+        });
+
+        firstApp.previousYearRentals = newRentals;
+        appArr[0] = firstApp;
+        member.PTRR = { ...(member.PTRR || {}), application: appArr };
+        members[idx] = member;
+
+        const putResp = await fetch(`${BACKEND_URL}/update-client`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, clientData: { householdMembers: members } })
+        });
+        if (!putResp.ok) {
+            console.error('Failed to sync previousYearRentals from expenses.');
+        } else {
+            console.log('Synced previousYearRentals from expenses for member', memberId);
+        }
+    } catch (err) {
+        console.error('Error syncing previousYearRentals:', err);
+    }
+}
 
 async function setCheckedOutStatus(clientId, status) {
     try {

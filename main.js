@@ -323,19 +323,62 @@ cron.schedule('0 0 * * 0', async () => {
     console.log('Running weekly cleanup for invalid documents...');
     try {
         const collection = db.collection('clients');
-        const result = await collection.deleteMany({
-            $or: [
-                { firstName: { $exists: false } },
-                { lastName: { $exists: false } },
-                { firstName: null },
-                { lastName: null },
-                { firstName: '' },
-                { lastName: '' },
-                { firstName: 'id', lastName: 'firstName', phoneNumber: 'lastName' } // Additional invalid criteria
+        // Invalid = no household members AND no contacts
+        // A document is invalid if both arrays are missing/empty (handles
+        // missing field, null, empty array, and case-variant field names).
+        const isEmpty = (fieldA, fieldB) => ({
+            $and: [
+                {
+                    $or: [
+                        { [fieldA]: { $exists: false } },
+                        { [fieldA]: null },
+                        { [fieldA]: { $size: 0 } },
+                    ],
+                },
+                {
+                    $or: [
+                        { [fieldB]: { $exists: false } },
+                        { [fieldB]: null },
+                        { [fieldB]: { $size: 0 } },
+                    ],
+                },
             ],
         });
 
-        console.log(`Weekly cleanup completed. Deleted ${result.deletedCount} invalid documents.`);
+        const result = await collection.deleteMany({
+            $and: [
+                {
+                    $or: [
+                        { householdMembers: { $exists: false } },
+                        { householdMembers: null },
+                        { householdMembers: { $size: 0 } },
+                    ],
+                },
+                {
+                    $or: [
+                        { HouseholdMembers: { $exists: false } },
+                        { HouseholdMembers: null },
+                        { HouseholdMembers: { $size: 0 } },
+                    ],
+                },
+                {
+                    $or: [
+                        { contacts: { $exists: false } },
+                        { contacts: null },
+                        { contacts: { $size: 0 } },
+                    ],
+                },
+                {
+                    $or: [
+                        { Contacts: { $exists: false } },
+                        { Contacts: null },
+                        { Contacts: { $size: 0 } },
+                    ],
+                },
+            ],
+        });
+
+        console.log(`Weekly cleanup completed. Deleted ${result.deletedCount} invalid documents (no household members and no contacts).`);
     } catch (error) {
         console.error('Error during weekly cleanup:', error);
     }

@@ -211,15 +211,14 @@
         }
 
         .contactmodal .modal-content {
-            background-color: #fff;
-            border-radius: 10px;
-            width: 90%;
-            max-width: 500px;
-            text-align: left;
-            position: relative;
-            z-index: 10000;
-            padding: 20px;
-        }
+    background-color: transparent;          /* match asset modal */
+    width: 90%;
+    max-width: 500px;
+    text-align: left;
+    position: relative;
+    z-index: 10000;
+    animation: fadeIn 0.3s ease-in-out;  /* ← THE missing fade */
+}
 
         .contactmodal .modal-content label {
             display: block;

@@ -374,9 +374,8 @@ async function displayHouseholdMembers() {
         const isDeceased = (member.deceased ?? '').toLowerCase() === 'yes';
 
         memberDiv.innerHTML = `
-            <h3>${member.firstName} ${member.middleInitial || ''} ${member.lastName}${isDeceased ? ' <br><br><span style="color:rgb(0, 0, 0); font-size: 14px; border: 1px solid #000000; padding: 2px 6px; margin-left: 8px; border-radius: 4px;">DECEASED</span>' : ''}</h3>
+            <h3>${member.firstName.toUpperCase()} ${member.middleInitial.toUpperCase() || ''} ${member.lastName.toUpperCase()}${isDeceased ? ' <br><br><span style="color:rgb(0, 0, 0); font-size: 14px; border: 1px solid #000000; padding: 2px 6px; margin-left: 8px; border-radius: 4px;">DECEASED</span>' : ''}</h3>
             <p><strong>Date of Birth:</strong> ${member.dob || 'N/A'}</p>
-            <p><strong>Marital Status:</strong> ${member.maritalStatus || 'N/A'}</p>
             <div class="income-list">${incomeHTML}</div>
         `;
 

@@ -2356,7 +2356,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     <h3>SNAP HOUSEHOLD</h3>
                     <hr class="separator-bar">
                     <p><em>${benefitAmount <= 24 
-                        ? `Your household looks likely eligible for the Supplemental Nutrition Assistance Program (SNAP) benefits. If approved, you would receive an EBT card loaded with your benefit amount each month, which you can use at any participating grocery stores and farmers markets to buy eligible food items.`
+                        ? `Your household looks likely eligible for the Supplemental Nutrition Assistance Program (SNAP) benefits. If approved, you'll receive an EBT card loaded with your benefit amount each month, which you can use at any participating grocery stores and farmers markets to buy eligible food items.`
                         : `Your household looks likely eligible for up to $${benefitAmount.toFixed(2)} per month in Supplemental Nutrition Assistance Program (SNAP) benefits. If approved, you would receive an EBT card loaded with your benefit amount each month, which you can use at any participating grocery stores and farmers markets to buy eligible food items.`
                     }</em></p>
                     ${expeditedEligibility?.toLowerCase().startsWith('yes') 
