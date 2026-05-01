@@ -10,39 +10,39 @@
     <link rel="stylesheet" href="notes.css">
     <script src="userInfo.js"></script>
     <style>
-    .hidden { visibility: hidden; }
-
-    .narrow-body {
-        margin-left: 385px;
-        margin-right: 10px;
-        max-width: calc(100% - 395px);
-        margin: 0 auto;
-        margin-top: 60px;
-    }
-
-    body {
-        margin-left: 400px;
-        margin-right: 20px;
-        padding: 10px;
-        box-sizing: border-box;
-        max-width: calc(100% - 800px);
-        margin-top: 60px;
-    }
-
-    #household-member-container {
-        min-width: 1250px;
-        width: 100%;
-        max-width: 1400px;
-        padding: 10px;
-        box-sizing: border-box;
-    }
-
+        .hidden { display: none; }
+    
+        .narrow-body {
+            margin-left: 385px;
+            margin-right: 10px;
+            max-width: calc(100% - 395px);
+            margin: 0 auto;
+            margin-top: 60px;
+        }
+    
+        body {
+            margin-left: 400px;
+            margin-right: 20px;
+            padding: 10px;
+            box-sizing: border-box;
+            max-width: calc(100% - 800px);
+            margin-top: 60px;
+        }
+    
+        #household-member-container {
+            min-width: 1250px;
+            width: 100%;
+            max-width: 1400px;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+    
         .multi-select-container {
             position: relative;
             width: 100%;
             max-width: 800px;
         }
-
+    
         .multi-select-search {
             width: 100%;
             padding: 10px;
@@ -51,7 +51,7 @@
             font-size: 1rem;
             box-sizing: border-box;
         }
-
+    
         .multi-select-dropdown {
             position: absolute;
             top: 100%;
@@ -65,28 +65,28 @@
             z-index: 1000;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-
+    
         .multi-select-dropdown.hidden {
             display: none;
         }
-
+    
         .dropdown-item {
             padding: 10px;
             cursor: pointer;
         }
-
+    
         .dropdown-item:hover {
             background-color: #007bff;
             color: white;
         }
-
+    
         .selected-items {
             display: flex;
             flex-wrap: wrap;
             gap: 5px;
             margin-top: 10px;
         }
-
+    
         .selected-item {
             display: flex;
             align-items: center;
@@ -96,7 +96,7 @@
             padding: 5px 10px;
             font-size: 1.2rem;
         }
-
+    
         .selected-item .remove-item {
             margin-left: 5px;
             cursor: pointer;
@@ -106,7 +106,7 @@
             border-radius: 50%;
             padding: 0 5px;
         }
-
+    
         .selection-box div.selected {
             background-color: #007bff;
             color: white;
@@ -114,7 +114,7 @@
             border-radius: 5px;
             padding: 5px;
         }
-
+    
         .modal {
             position: fixed;
             top: 0;
@@ -124,47 +124,106 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            background-color: rgba(0, 0, 0, 0.5);
             z-index: 1000;
+            overflow-y: auto;
         }
-
-        .household-member1-box {
-        min-width: 1250px;
-        width: 100%;
-        max-width: 1350px;
-        margin: 0;
-        padding: 20px;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-        flex: none;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
+    
         .modal.hidden {
             display: none;
         }
-
-        .modal-content {
-            background: white;
+    
+        .household-member1-box {
+            min-width: 1250px;
+            width: 100%;
+            max-width: 1350px;
+            margin: 0;
+            padding: 20px;
+            border: 1px solid #ccc;
             border-radius: 8px;
-            width: 400px;
-            padding: 30px;
+            flex: none;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
+    
+        #shelter-modal.modal .modal-content,
+#utility-modal.modal .modal-content {
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    padding: 30px;
+    width: 100%;
+    max-width: 500px;
+    margin: 0;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    animation: fadeIn 0.3s ease-in-out;
+    box-sizing: border-box;
+    max-height: 90vh;
+    overflow-y: auto;
+}
 
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            position: relative;
-        }
+#shelter-modal #shelter-form {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+}
 
+#utility-modal .modal-body {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin-bottom: 15px;
+}
+
+/* Title sits in its own WHITE BANNER on top of the gray modal */
+#shelter-modal .modal-header,
+#utility-modal .modal-header {
+    background-color: #ffffff;
+    border-radius: 8px;
+    padding: 18px 50px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+#shelter-modal .modal-header h2,
+#utility-modal .modal-header h2 {
+    margin: 0;
+    font-size: 1.75rem;          /* bigger */
+    font-weight: 700;
+    color: #222;
+    text-align: center;
+    width: 100%;
+}
+
+#shelter-modal .modal-header .close,
+#utility-modal .modal-header .close {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    font-size: 28px;
+    line-height: 1;
+    cursor: pointer;
+    color: #aaa;
+}
+
+#shelter-modal .modal-header .close:hover,
+#utility-modal .modal-header .close:hover {
+    color: #000;
+}
+    
         .selection-box-container {
             display: flex;
             flex-direction: column;
             gap: 10px;
         }
-
+    
         .selection-box {
             padding: 10px 15px;
             border: 1px solid #ccc;
@@ -172,13 +231,13 @@
             cursor: pointer;
             user-select: none;
         }
-
+    
         .selection-box.selected {
             background-color: #007bff;
             color: white;
             border-color: #007bff;
         }
-
+    
         .save-button {
             background-color: #28a745;
             color: white;
@@ -187,31 +246,11 @@
             border-radius: 4px;
             cursor: pointer;
         }
-
+    
         .save-button:hover {
             background-color: #218838;
         }
-
-        #utility-modal {
-            position: fixed;
-    z-index: 1000;
-    margin:auto;
-    left: 0;
-    right: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow-y: auto;
-    scrollbar-width: none; /* For Firefox */
-    -ms-overflow-style: none; /* For Internet Explorer and Edge */
-        transform: scale(0.9); /* Scale down to 75% */
-    transform-origin: center; /* Ensure scaling happens from the center */
-    background-color: rgba(0, 0, 0, 0.5);
-    transform: none;
-    transform-origin: unset;        }
-
-    
-
+        
         .expense-list {
             list-style-type: none;
             justify-self: center;
@@ -220,34 +259,42 @@
             width: 100%;
             flex: none;
         }
-
+    
         .expense-list li {
-        display: grid;
-        grid-template-columns: repeat(6, 1fr);
-        grid-auto-rows: minmax(40px);
-        gap: 10px;
-        align-self: center;
-        padding: 10px;
-        margin-bottom: 10px;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-        background-color: #f9f9f9;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        width: 100%;
-        max-width: 1200px;
-        justify-self: center;
-    }
-
-    .expense-list li.has-lease {
-        grid-template-columns: repeat(7, 1fr);
-    }
-
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            grid-auto-rows: minmax(40px, auto);
+            gap: 10px;
+            align-self: center;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 1200px;
+            justify-self: center;
+        }
+    
+        .expense-list li.has-lease {
+            grid-template-columns: repeat(7, 1fr);
+        }
+    
+        .expense-list li.has-subsidy {
+            grid-template-columns: repeat(8, 1fr);
+        }
+    
+        .expense-list li.has-subsidy-amount {
+            grid-template-columns: repeat(9, 1fr);
+        }
+    
         .expense-list li p {
             margin: 0;
             font-size: 0.9rem;
             line-height: 1.4;
         }
-
+    
         .expense-list li .button-container {
             display: flex;
             justify-content: center;
@@ -255,7 +302,7 @@
             gap: 10px;
             grid-column: 1 / -1;
         }
-
+    
         .expense-list li .button-container button {
             padding: 8px 16px;
             border: 1px solid #000000;
@@ -263,11 +310,11 @@
             cursor: pointer;
             transition: background-color 0.3s;
         }
-
+    
         .expense-list li .button-container button:hover {
             background-color: #0056b3;
         }
-
+    
         .expense-list li .button-container .delete-expense-button {
             padding: 8px 16px;
             border: 1px solid #000000;
@@ -276,11 +323,11 @@
             cursor: pointer;
             transition: background-color 0.3s;
         }
-
+    
         .expense-list li .button-container .delete-expense-button:hover {
             background-color: darkred;
         }
-
+    
         #save-exit, #save-continue {
             border: 1px solid #000000;
             border-radius: 5px;
@@ -289,16 +336,16 @@
             color: white;
             transition: background-color 0.3s, color 0.3s;
         }
-
+    
         #save-exit:hover, #save-continue:hover {
             background-color: #0056b3;
             color: white;
         }
-
+    
         details > summary {
             cursor: pointer;
         }
-
+    
         /* Sidebar toggle buttons */
         .sidebar-toggle {
             display: flex;
@@ -309,7 +356,7 @@
             border: 1px solid #007bff;
             width: 100%;
         }
-
+    
         .toggle-btn {
             flex: 1;
             padding: 8px 16px;
@@ -321,16 +368,16 @@
             font-weight: 600;
             transition: background-color 0.2s ease, color 0.2s ease;
         }
-
+    
         .toggle-btn.active {
             background-color: #007bff;
             color: #fff;
         }
-
+    
         .toggle-btn:hover:not(.active) {
             background-color: #e6f0ff;
         }
-
+    
         #contacts-list {
             display: flex;
             flex-direction: column;
@@ -342,7 +389,7 @@
             background-color: #f4f4f4;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-
+    
         .contact-card {
             background-color: #fff;
             border: 1px solid #ccc;
@@ -352,16 +399,16 @@
             width: 100%;
             box-sizing: border-box;
         }
-
+    
         .contact-card p {
             margin: 4px 0;
             text-align: center;
         }
-
+    
         .contact-card strong {
             font-weight: bold;
         }
-
+    
         /* Contact modal styling */
         .contactmodal {
             display: none;
@@ -376,11 +423,11 @@
             align-items: center;
             overflow: hidden;
         }
-
+    
         .contactmodal.show {
             display: flex;
         }
-
+    
         .contactmodal .modal-content {
             background-color: #fff;
             border-radius: 10px;
@@ -391,13 +438,13 @@
             z-index: 10000;
             padding: 20px;
         }
-
+    
         .contactmodal .modal-content label {
             display: block;
             margin-top: 10px;
             font-weight: 600;
         }
-
+    
         .contactmodal .modal-content input,
         .contactmodal .modal-content select {
             width: 100%;
@@ -407,31 +454,17 @@
             border: 1px solid #ccc;
             border-radius: 5px;
         }
-
+    
         .contactmodal .button-container {
             margin-top: 15px;
         }
-
-        /* Scope the expense modals to a reasonable width */
-        #shelter-modal.modal .modal-content {
-            background-color: #f9f9f9;
-            border-radius: 10px;
-            padding: 30px;
-            width: 90%;
-            max-width: 600px;
-            margin: 100px auto;
-        }
-
-        #utility-modal.modal .modal-content {
-            background-color: #f9f9f9;
-            border-radius: 10px;
-            padding: 30px;
-            width: 90%;
-            max-width: 600px;
-            margin: 100px auto;
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to   { opacity: 1; transform: scale(1); }
         }
     </style>
-</head>
+    </head>
 
 <body class="narrow-body hidden">
     <h1>Expenses</h1>
@@ -494,21 +527,13 @@
     <div id="shelter-modal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
-            <button id="close-modal" class="close">&times;</button>
-            <form id="shelter-form">
                 <h2 id="modal-title"></h2>
+                <button id="close-modal" class="close">&times;</button>
             </div>
-                
-
+            <form id="shelter-form">
                 <label for="expense-kind">Kind of Expense:</label>
                 <select id="expense-kind" required>
                     <option value="" disabled selected>Select Kind of Expense</option>
-                    <option value="Shelter">Shelter</option>
-                    <option value="Medical">Medical</option>
-                    <option value="Utilities">Utilities</option>
-                    <option value="Transportation">Transportation</option>
-                    <option value="Food">Food</option>
-                    <option value="Other">Other</option>
                 </select>
 
                 <div id="ss-pension-deduction-container" class="hidden" style="margin-top: 10px;">
@@ -541,13 +566,26 @@
 
                 <label for="expense-start-date">Start Date:</label>
                 <input type="date" id="expense-start-date" class="large-input" required>
-
+    
                 <label for="expense-end-date">End Date:</label>
                 <input type="date" id="expense-end-date" class="large-input" required>
-
+    
                 <label for="expense-amount">Amount:</label>
                 <input type="text" id="expense-amount" class="text-input" required>
-
+    
+                <div class="form-field hidden" id="subsidized-housing-container">
+                    <label>Did your household receive a housing subsidy, such as Section 8, during the previous year?</label>
+                    <div class="selection-box" id="subsidized-housing-box">
+                        <div data-value="yes">Yes</div>
+                        <div data-value="no">No</div>
+                    </div>
+                </div>
+    
+                <div class="form-field hidden" id="subsidized-rent-amount-container">
+                    <label for="subsidized-rent-amount">How much of your monthly rent in the previous year was subsidized?</label>
+                    <input type="number" id="subsidized-rent-amount" min="0" step="0.01" placeholder="Enter dollar amount">
+                </div>
+    
                 <button type="button" id="add-expense-button" class="submit-button">Add Expense</button>
             </form>
         </div>
@@ -556,9 +594,11 @@
     <!-- Utility Modal -->
     <div id="utility-modal" class="modal hidden">
         <div class="modal-content">
-                <h2 id="utility-modal-title" style="text-align: center;">Add Utility Expense</h2>
+            <div class="modal-header">
+                <h2 id="utility-modal-title">Add Utility Expense</h2>
+            </div>
             <div class="modal-body">
-                <p>Which utility expenses is this person responsible for?</p>
+            <p>Which utility expenses is this person responsible for?</p>
                 <div id="utility-expense-list" class="selection-box-container">
                     <div class="selection-box" data-utility-type="Heating and/or Cooling">Heating and/or Cooling</div>
                     <div class="selection-box" data-utility-type="Gas">Gas</div>

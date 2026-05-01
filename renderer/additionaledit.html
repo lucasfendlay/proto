@@ -1190,6 +1190,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 frequency: r.previousYearRentFrequency,
                 startDate: r.previousYearRentStartDate,
                 endDate: r.previousYearRentEndDate,
+                subsidizedHousingPrevious: r.subsidizedHousingPrevious,
+                subsidizedRentAmount: r.subsidizedRentAmount,
             };
         });
         member.expenses = expenses;
@@ -1394,6 +1396,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (!data.previousYearRentEndDate) {
                     const ed = e.endDate || e.toDate || e.throughDate || '';
                     data.previousYearRentEndDate = ed ? String(ed).slice(0, 10) : '';
+                }
+                if (data.subsidizedHousingPrevious == null) {
+                    data.subsidizedHousingPrevious = e.subsidizedHousingPrevious ?? null;
+                }
+                if (data.subsidizedRentAmount == null || data.subsidizedRentAmount === '') {
+                    data.subsidizedRentAmount = e.subsidizedRentAmount ?? '';
                 }
             }
 

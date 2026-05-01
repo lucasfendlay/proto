@@ -179,7 +179,11 @@ function getModalElements() {
         leaseContainer: document.getElementById('lease-persons-container'),
         leaseSearch: document.getElementById('lease-search'),
         leaseDropdown: document.getElementById('lease-dropdown'),
-        selectedLeaseList: document.getElementById('selected-lease-list')
+        selectedLeaseList: document.getElementById('selected-lease-list'),
+        subsidyContainer: document.getElementById('subsidized-housing-container'),
+        subsidyBox: document.getElementById('subsidized-housing-box'),
+        subsidyAmountContainer: document.getElementById('subsidized-rent-amount-container'),
+        subsidyAmountInput: document.getElementById('subsidized-rent-amount')
     };
 }
 
@@ -336,6 +340,45 @@ function renderLeaseSelectedTags() {
     });
 }
 
+function shouldShowSubsidyFields(expenseType, kind) {
+    return expenseType === 'Previous Year' && kind === 'Rent';
+}
+
+function getSelectedSubsidyAnswer() {
+    const { subsidyBox } = getModalElements();
+    if (!subsidyBox) return null;
+    const selected = subsidyBox.querySelector('[data-value].selected');
+    return selected ? selected.getAttribute('data-value') : null;
+}
+
+function setSelectedSubsidyAnswer(value) {
+    const { subsidyBox, subsidyAmountContainer, subsidyAmountInput } = getModalElements();
+    if (!subsidyBox) return;
+    subsidyBox.querySelectorAll('[data-value]').forEach(el => {
+        el.classList.toggle('selected', el.getAttribute('data-value') === value);
+    });
+    if (value === 'yes') {
+        subsidyAmountContainer.classList.remove('hidden');
+    } else {
+        subsidyAmountContainer.classList.add('hidden');
+        if (subsidyAmountInput) subsidyAmountInput.value = '';
+    }
+}
+
+function ensureSubsidyVisibility(expenseType, kind) {
+    const { subsidyContainer, subsidyAmountContainer, subsidyAmountInput, subsidyBox } = getModalElements();
+    if (!subsidyContainer) return;
+
+    if (shouldShowSubsidyFields(expenseType, kind)) {
+        subsidyContainer.classList.remove('hidden');
+    } else {
+        subsidyContainer.classList.add('hidden');
+        subsidyAmountContainer.classList.add('hidden');
+        if (subsidyAmountInput) subsidyAmountInput.value = '';
+        subsidyBox?.querySelectorAll('[data-value]').forEach(el => el.classList.remove('selected'));
+    }
+}
+
 async function ensureLeaseDropdownVisibility() {
     const { modalTitle, leaseContainer } = getModalElements();
     const expenseType = modalTitle.textContent.includes('Previous Year') ? 'Previous Year' : modalTitle.textContent.split(' ')[1];
@@ -422,22 +465,41 @@ function generateExpenseButtons(member, allMembers) {
 
 function renderExpenseList(expenses, title) {
     if (expenses.length === 0) return '';
-    
+
     return `
         <div class="${title.toLowerCase().replace(/\s+/g, '-')}-expenses-container" style="margin: 20px 0;">
             <h4>${title} Expenses</h4>
             <ul>
-            ${expenses.map(expense => `
-                <li data-expense-id="${expense.id}" class="${Array.isArray(expense.leasePersons) && expense.leasePersons.length > 0 ? 'has-lease' : ''}">
+            ${expenses.map(expense => {
+                const hasLease = Array.isArray(expense.leasePersons) && expense.leasePersons.length > 0;
+                const isPrevRent = isPreviousYearRentExpense(expense);
+                const hasSubsidy = isPrevRent && !!expense.subsidizedHousingPrevious;
+                const hasSubsidyAmount = isPrevRent
+                    && expense.subsidizedHousingPrevious === 'yes'
+                    && expense.subsidizedRentAmount != null;
+
+                let liClass = '';
+                if (hasSubsidyAmount) liClass = 'has-subsidy-amount';
+                else if (hasSubsidy)  liClass = 'has-subsidy';
+                else if (hasLease)    liClass = 'has-lease';
+
+                return `
+                <li data-expense-id="${expense.id}" class="${liClass}">
                     <p><strong>Type:</strong><br> ${expense.type}</p>
                     <p><strong>Kind:</strong><br> ${expense.kind}</p>
-                    ${Array.isArray(expense.leasePersons) && expense.leasePersons.length > 0 ? `
+                    ${hasLease ? `
                         <p><strong>Person(s) on Lease/Deed:</strong><br> ${expense.leasePersons.join(', ')}</p>
                     ` : ''}
-                    <p><strong>Amount:</strong><br> $${formatAmount(expense.amount)}</p>
                     <p><strong>Frequency:</strong><br> ${expense.frequency}</p>
+                    <p><strong>Amount:</strong><br> $${formatAmount(expense.amount)}</p>
                     ${expense.deductedFromSSOrPension ? `
                         <p><strong>Deducted from SS/Pension:</strong><br> ${expense.deductedFromSSOrPension}</p>
+                    ` : ''}
+                    ${hasSubsidy ? `
+                        <p><strong>Subsidized Housing:</strong><br> ${expense.subsidizedHousingPrevious === 'yes' ? 'Yes' : 'No'}</p>
+                    ` : ''}
+                    ${hasSubsidyAmount ? `
+                        <p><strong>Subsidized Rent Amount:</strong><br> $${formatAmount(parseFloat(expense.subsidizedRentAmount))}</p>
                     ` : ''}
                     <p><strong>Start Date:</strong><br> ${expense.startDate}</p>
                     <p><strong>End Date:</strong><br> ${expense.endDate}</p>
@@ -446,7 +508,8 @@ function renderExpenseList(expenses, title) {
                         <button class="delete-expense-button" data-expense-id="${expense.id}" style="color: white; background-color: red;">Delete</button>
                     </div>
                 </li>
-            `).join('')}
+                `;
+            }).join('')}
             </ul>
         </div>
     `;
@@ -660,7 +723,26 @@ async function saveExpense() {
 
     if (!validateExpenseDates(expenseType, expenseStartDate, expenseEndDate)) return;
 
-    const newExpense = {
+    const subsidyAnswer = shouldShowSubsidyFields(expenseType, expenseKind)
+    ? getSelectedSubsidyAnswer()
+    : undefined;
+const subsidyAmountRaw = elements.subsidyAmountInput?.value;
+const subsidizedRentAmount = (subsidyAnswer === 'yes' && subsidyAmountRaw !== '' && subsidyAmountRaw != null)
+    ? parseFloat(subsidyAmountRaw)
+    : undefined;
+
+if (shouldShowSubsidyFields(expenseType, expenseKind)) {
+    if (!subsidyAnswer) {
+        alert('Please indicate whether your household received a housing subsidy.');
+        return;
+    }
+    if (subsidyAnswer === 'yes' && (subsidizedRentAmount == null || isNaN(subsidizedRentAmount))) {
+        alert('Please enter the subsidized rent amount.');
+        return;
+    }
+}
+
+const newExpense = {
         id: `expense-${Date.now()}`,
         type: expenseType,
         amount: parseFloat(expenseAmount),
@@ -671,7 +753,10 @@ async function saveExpense() {
         leasePersons: shouldShowLeaseDropdown(expenseType, expenseKind)
             ? modalState.leaseSelectedPersons.map(p => p.label)
             : undefined,
-        deductedFromSSOrPension: ssPensionDeduction || undefined
+        deductedFromSSOrPension: ssPensionDeduction || undefined,
+        subsidizedHousingPrevious: subsidyAnswer || undefined,
+        subsidizedRentAmount: subsidizedRentAmount
+    
     };
 
     try {
@@ -745,6 +830,25 @@ async function overwriteExpense() {
 
     if (!validateExpenseDates(expenseType, expenseStartDate, expenseEndDate)) return;
 
+
+    const subsidyAnswer = shouldShowSubsidyFields(expenseType, expenseKind)
+    ? getSelectedSubsidyAnswer()
+    : undefined;
+const subsidyAmountRaw = elements.subsidyAmountInput?.value;
+const subsidizedRentAmount = (subsidyAnswer === 'yes' && subsidyAmountRaw !== '' && subsidyAmountRaw != null)
+    ? parseFloat(subsidyAmountRaw)
+    : undefined;
+
+if (shouldShowSubsidyFields(expenseType, expenseKind)) {
+    if (!subsidyAnswer) {
+        alert('Please indicate whether your household received a housing subsidy.');
+        return;
+    }
+    if (subsidyAnswer === 'yes' && (subsidizedRentAmount == null || isNaN(subsidizedRentAmount))) {
+        alert('Please enter the subsidized rent amount.');
+        return;
+    }
+}
     const updatedExpense = {
         id: modalState.currentExpenseId,
         type: expenseType,
@@ -756,7 +860,10 @@ async function overwriteExpense() {
         leasePersons: shouldShowLeaseDropdown(expenseType, expenseKind)
             ? modalState.leaseSelectedPersons.map(p => p.label)
             : undefined,
-        deductedFromSSOrPension: ssPensionDeduction || undefined
+        deductedFromSSOrPension: ssPensionDeduction || undefined,
+        subsidizedHousingPrevious: subsidyAnswer || undefined,
+        subsidizedRentAmount: subsidizedRentAmount
+    
     };
 
     try {
@@ -1120,6 +1227,34 @@ async function openEditExpenseModal(memberId, expenseId) {
             renderLeaseSelectedTags();
         }
 
+        // Subsidy fields
+ensureSubsidyVisibility(expense.type, expense.kind);
+if (shouldShowSubsidyFields(expense.type, expense.kind)) {
+    let subsidyAns = expense.subsidizedHousingPrevious || null;
+    let subsidyAmt = expense.subsidizedRentAmount;
+
+    // Fallback: read from previousYearRentals if not on the expense yet
+    if (subsidyAns == null || subsidyAmt == null) {
+        try {
+            const allMembers = await getHouseholdMembersCached();
+            const member = allMembers.find(m => String(m.householdMemberId) === String(memberId));
+            const rentals = member?.PTRR?.application?.[0]?.previousYearRentals || [];
+            const prevRentExpenses = (member?.expenses || []).filter(isPreviousYearRentExpense);
+            const idx = prevRentExpenses.findIndex(e => e.id === expense.id);
+            const matched = idx >= 0 ? rentals[idx] : null;
+            if (matched) {
+                subsidyAns = subsidyAns || matched.subsidizedHousingPrevious || null;
+                if (subsidyAmt == null) subsidyAmt = matched.subsidizedRentAmount ?? null;
+            }
+        } catch (_) { /* noop */ }
+    }
+
+    if (subsidyAns) setSelectedSubsidyAnswer(subsidyAns);
+    if (subsidyAns === 'yes' && subsidyAmt != null) {
+        elements.subsidyAmountInput.value = subsidyAmt;
+    }
+}
+
         elements.addExpenseButton.textContent = 'Save and Update';
     } catch (error) {
         console.error('Error fetching expense:', error);
@@ -1133,6 +1268,7 @@ function closeExpenseModal() {
     elements.expenseForm.reset();
     resetModalState();
     elements.addExpenseButton.textContent = 'Add Expense';
+    ensureSubsidyVisibility('', '');
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1281,12 +1417,19 @@ async function syncPreviousYearRentalsForMember(memberId) {
         // Build new rentals: one entry per matching expense, preserve other fields if present
         const newRentals = prevRentExpenses.map((e, i) => {
             const prior = existingRentals[i] || {};
+            const subsidyAns = e.subsidizedHousingPrevious ?? prior.subsidizedHousingPrevious ?? null;
+            const subsidyAmt = (e.subsidizedRentAmount === '' || e.subsidizedRentAmount == null)
+                ? (prior.subsidizedRentAmount ?? null)
+                : parseFloat(e.subsidizedRentAmount);
+        
             return {
                 ...prior,
                 previousYearRentAmount: (e.amount === '' || e.amount == null) ? null : parseFloat(e.amount),
                 previousYearRentFrequency: e.frequency || null,
                 previousYearRentStartDate: e.startDate || null,
                 previousYearRentEndDate: e.endDate || null,
+                subsidizedHousingPrevious: subsidyAns,
+                subsidizedRentAmount: subsidyAns === 'yes' ? subsidyAmt : null
             };
         });
 
@@ -1462,6 +1605,19 @@ function setupEventListeners() {
             dropdown.classList.add('hidden');
         }
     });
+
+    // Subsidy yes/no toggle
+document.addEventListener('click', (e) => {
+    const target = e.target.closest('#subsidized-housing-box [data-value]');
+    if (!target) return;
+    setSelectedSubsidyAnswer(target.getAttribute('data-value'));
+});
+
+// Trigger subsidy visibility on kind change
+elements.expenseKind.addEventListener('change', () => {
+    const expenseType = getExpenseTypeFromModalTitle(elements.modalTitle.textContent);
+    ensureSubsidyVisibility(expenseType, elements.expenseKind.value);
+});
 
     // Utility modal selection boxes
     utilityElements.expenseList.addEventListener('click', (e) => {
