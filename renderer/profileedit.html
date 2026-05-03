@@ -953,6 +953,14 @@
                 return;
             }
 
+            // Determine first-member status & program statuses (mirrors householdedit.js)
+            const isFirstMember = !client.householdMembers.length;
+            const programStatus = client.programStatus || {};
+            // PTRR is only open for the head of household (i.e., the first member)
+            const ptrrOpen = isFirstMember
+                ? (programStatus.PTRR?.screeningInProgress ?? true)
+                : false;
+
             // Build new household member with N/A for fields not captured by the contact modal.
             // householdMemberId is intentionally set to the contactId so name edits stay in sync.
             const newMember = {
@@ -964,7 +972,7 @@
                 suffix: '',
                 dob: 'N/A',
                 legalSex: '',
-                deceased: '',
+                deceased: 'no',
                 dateOfDeath: '',
                 maritalStatus: '',
                 previousMaritalStatus: '',
@@ -976,7 +984,8 @@
                 nonCitizenStatus: '',
                 student: '',
                 studentStatus: '',
-                meals: ''
+                meals: '',
+                headOfHousehold: isFirstMember,
             };
 
             client.householdMembers.push(newMember);

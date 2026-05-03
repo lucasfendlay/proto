@@ -292,40 +292,6 @@ async function handleRelationshipChange(clientId, memberId, relatedMemberId, rel
     }
 }
 
-async function handlePreviousSpouseChange(clientId, memberId, previousSpouseId) {
-    try {
-        // Update both members' previousSpouseId
-        await updateHouseholdMember(clientId, memberId, { previousSpouseId });
-        await updateHouseholdMember(clientId, previousSpouseId, { previousSpouseId: memberId });
-
-        // Update local cache
-        const members = getHouseholdMembers();
-        const member = members.find(m => m.householdMemberId === memberId);
-        const spouse = members.find(m => m.householdMemberId === previousSpouseId);
-        
-        if (member) member.previousSpouseId = previousSpouseId;
-        if (spouse) spouse.previousSpouseId = memberId;
-
-        // Update both dropdowns in UI
-        updateSpouseDropdowns(memberId, previousSpouseId);
-
-        // Run eligibility checks
-        await runAllEligibilityChecks();
-
-        console.log(`Previous spouse saved: ${memberId} <-> ${previousSpouseId}`);
-    } catch (error) {
-        console.error('Error saving previousSpouseId:', error);
-    }
-}
-
-function updateSpouseDropdowns(memberId, previousSpouseId) {
-    const memberDropdown = document.getElementById(`spouse-dropdown-${memberId}`);
-    const spouseDropdown = document.getElementById(`spouse-dropdown-${previousSpouseId}`);
-
-    if (memberDropdown) memberDropdown.value = previousSpouseId;
-    if (spouseDropdown) spouseDropdown.value = memberId;
-}
-
 // ══════════════════════════════════════════════════════════════
 // RENDER FUNCTIONS
 // ══════════════════════════════════════════════════════════════
@@ -342,26 +308,6 @@ function buildRelationshipDropdownHTML(memberId, relatedMemberId) {
             ${options}
         </select>
     `;
-}
-
-function wireSpouseDropdowns(clientId) {
-    document.querySelectorAll('.spouse-dropdown').forEach(dropdown => {
-        const memberId = dropdown.id.replace('spouse-dropdown-', '');
-        const members = getHouseholdMembers();
-        const member = members.find(m => m.householdMemberId === memberId);
-
-        // Prepopulate saved value
-        if (member?.previousSpouseId) {
-            dropdown.value = member.previousSpouseId;
-        }
-
-        // Add change listener
-        dropdown.addEventListener('change', async function() {
-            if (this.value) {
-                await handlePreviousSpouseChange(clientId, memberId, this.value);
-            }
-        });
-    });
 }
 
 function wireRelationshipDropdowns(clientId, livingMembers) {
@@ -387,38 +333,6 @@ function wireRelationshipDropdowns(clientId, livingMembers) {
     });
 }
 
-function buildSpouseDropdownHTML(member, allMembers) {
-    // Include living members AND deceased members who died in the previous year
-    const previousYear = new Date().getFullYear() - 1;
-    const otherMembers = allMembers.filter(m => {
-        if (m.householdMemberId === member.householdMemberId) return false;
-        if (m.deceased !== 'yes') return true;
-        // Include deceased if they died during the previous year
-        if (m.dateOfDeath) {
-            // Parse date parts directly to avoid UTC timezone shifting
-            const [year, month, day] = m.dateOfDeath.split('-').map(Number);
-            return year === previousYear;
-        }
-        return false;
-    });
-    const options = otherMembers.map(m => {
-        const deceasedLabel = m.deceased === 'yes' ? ' (Deceased)' : '';
-        return `<option value="${m.householdMemberId}">${m.firstName.toUpperCase()} ${m.middleInitial.toUpperCase() || ''} ${m.lastName.toUpperCase()}${deceasedLabel}</option>`;
-    }).join('');
-
-    return `
-        <div class="spouse-dropdown-container">
-            <label for="spouse-dropdown-${member.householdMemberId}">
-                <strong>Select Previous Year Spouse:</strong>
-            </label>
-            <select id="spouse-dropdown-${member.householdMemberId}" class="spouse-dropdown">
-                <option value="">Select a household member</option>
-                ${options}
-            </select>
-        </div>
-    `;
-}
-
 function buildMemberHTML(member, allMembers) {
     // Exclude deceased from relationship dropdowns
     const otherMembers = allMembers.filter(m => 
@@ -432,13 +346,10 @@ function buildMemberHTML(member, allMembers) {
         </div>
     `).join('');
 
-    const showSpouseDropdown = member.previousMaritalStatus === 'Married (Living Together)';
-
     return `
         <p><strong>Name:</strong> ${member.firstName.toUpperCase()} ${member.middleInitial.toUpperCase() || ''} ${member.lastName.toUpperCase()}</p>
         <p><strong>Date of Birth:</strong> ${member.dob}</p>
         <p><strong>Marital Status:</strong><br>${member.maritalStatus.toUpperCase() || 'N/A'}</p>
-        ${showSpouseDropdown ? buildSpouseDropdownHTML(member, allMembers) : ''}
         <div class="relationships-container">
             <p><strong>Relationships:</strong></p>
             ${relationshipsHTML}
@@ -466,37 +377,15 @@ function renderHouseholdMembers(clientId, members) {
     sorted.forEach(member => {
         const memberDiv = document.createElement('div');
         memberDiv.classList.add('household-member');
-        // Pass ALL members so spouse dropdown can include eligible deceased
-        memberDiv.innerHTML = buildMemberHTML(member, members);
+        memberDiv.innerHTML = buildMemberHTML(member, livingMembers);
         container.appendChild(memberDiv);
     });
 
-    // Wire up event listeners with living members for relationship dropdowns
+    // Wire up event listeners
     wireRelationshipDropdowns(clientId, livingMembers);
-    wireSpouseDropdowns(clientId);
 
     // Show action buttons
     document.getElementById('actionButtons').style.display = 'block';
-}
-
-function wireSpouseDropdowns(clientId) {
-    document.querySelectorAll('.spouse-dropdown').forEach(dropdown => {
-        const memberId = dropdown.id.replace('spouse-dropdown-', '');
-        const members = getHouseholdMembers();
-        const member = members.find(m => m.householdMemberId === memberId);
-
-        // Prepopulate saved value
-        if (member?.previousSpouseId) {
-            dropdown.value = member.previousSpouseId;
-        }
-
-        // Add change listener
-        dropdown.addEventListener('change', async function() {
-            if (this.value) {
-                await handlePreviousSpouseChange(clientId, memberId, this.value);
-            }
-        });
-    });
 }
 
 // ══════════════════════════════════════════════════════════════

@@ -1125,13 +1125,32 @@ if (hispanicOriginSelect) {
         studentStatusContainer.style.display = 'none';
     }
 
-    // Show or hide the date of passing field based on previousMaritalStatus
-if (member.previousMaritalStatus === 'Widowed') {
-    dateOfSpousePassingContainer.style.display = 'block';
-    document.getElementById('dateOfSpousePassing').value = member.dateOfSpousePassing || ''; // Autofill if available
-} else {
-    dateOfSpousePassingContainer.style.display = 'none';
-}
+    const isWidowed = (member.previousMaritalStatus || '').toLowerCase() === 'widowed';
+
+    let inAgeWindow = false;
+    if (member.dob) {
+        const lastYear = new Date().getFullYear() - 1;
+        const dob = new Date(`${String(member.dob).slice(0, 10)}T00:00:00Z`);
+        if (!isNaN(dob)) {
+            const yearEnd = new Date(Date.UTC(lastYear, 11, 31));
+            let ageAtYearEnd = yearEnd.getUTCFullYear() - dob.getUTCFullYear();
+            const beforeBday =
+                yearEnd.getUTCMonth() < dob.getUTCMonth() ||
+                (yearEnd.getUTCMonth() === dob.getUTCMonth() && yearEnd.getUTCDate() < dob.getUTCDate());
+            if (beforeBday) ageAtYearEnd--;
+            inAgeWindow = ageAtYearEnd >= 50 && ageAtYearEnd <= 64;
+        }
+    }
+
+    const isDisabled = (member.disability || '').toLowerCase() === 'yes';
+
+    if (isWidowed && inAgeWindow && !isDisabled) {
+        dateOfSpousePassingContainer.style.display = 'block';
+        document.getElementById('dateOfSpousePassing').value = member.dateOfSpousePassing || ''; // Autofill if available
+    } else {
+        dateOfSpousePassingContainer.style.display = 'none';
+        document.getElementById('dateOfSpousePassing').value = ''; // Clear stale value
+    }
 
     const clientId = getQueryParam('id'); // Retrieve the client ID from the URL
     const response = await fetch(`/get-client/${clientId}`);

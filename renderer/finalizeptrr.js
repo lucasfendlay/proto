@@ -13,26 +13,20 @@ async function fetchApplicantData(clientId) {
 
 /**
  * Merges multiple PDF byte arrays into a single PDF document.
- * @param {ArrayBuffer[]} pdfByteArrays - Array of PDF ArrayBuffers to merge
- * @returns {Promise<PDFLib.PDFDocument>} - The merged PDF document
  */
 async function mergePDFs(pdfByteArrays) {
     const { PDFDocument } = PDFLib;
     const mergedPdf = await PDFDocument.create();
-
     for (const pdfBytes of pdfByteArrays) {
         const pdf = await PDFDocument.load(pdfBytes);
         const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
         copiedPages.forEach((page) => mergedPdf.addPage(page));
     }
-
     return mergedPdf;
 }
 
 /**
- * Loads a PDF asset from the /assets/ folder and returns its ArrayBuffer.
- * @param {string} assetPath - Path relative to /assets/ (e.g., '2025_pa-1000.pdf')
- * @returns {Promise<ArrayBuffer>} - The PDF as an ArrayBuffer
+ * Loads a PDF asset from /assets/ and returns its ArrayBuffer.
  */
 async function loadPDFAsset(assetPath) {
     const response = await fetch(`/assets/${assetPath}`);
@@ -42,37 +36,136 @@ async function loadPDFAsset(assetPath) {
     return await response.arrayBuffer();
 }
 
+/* ============================================================
+ *  HELPERS — shared math
+ * ============================================================ */
+
+function calculateYearlyAmountFromExpense(expense) {
+    const amount = parseFloat(expense.amount) || 0;
+    switch ((expense.frequency || '').toLowerCase()) {
+        case 'monthly':  return amount * 12;
+        case 'weekly':   return amount * 52;
+        case 'biweekly': return amount * 26;
+        case 'daily':    return amount * 365;
+        case 'yearly':
+        case 'annual':   return amount;
+        default:         return 0;
+    }
+}
+
+function monthsBetweenRounded(startStr, endStr) {
+    if (!startStr || !endStr) return null;
+    const start = new Date(`${String(startStr).slice(0, 10)}T00:00:00Z`);
+    const end   = new Date(`${String(endStr).slice(0, 10)}T00:00:00Z`);
+    if (isNaN(start) || isNaN(end) || end < start) return null;
+    const days = (end - start) / 86400000 + 1;
+    return Math.max(0, Math.min(12, Math.round(days / 30.4375)));
+}
+
+function fullMonthsBetween(startStr, endStr) {
+    if (!startStr || !endStr) return 0;
+    const start = new Date(`${String(startStr).slice(0, 10)}T00:00:00Z`);
+    const end   = new Date(`${String(endStr).slice(0, 10)}T00:00:00Z`);
+    if (isNaN(start) || isNaN(end) || end < start) return 0;
+    const days = (end - start) / 86400000 + 1;
+    return Math.max(0, Math.floor(days / 30.4375));
+}
+
+const fmtMoney = (n) => (n || 0).toLocaleString('en-US', {
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+});
+
 /**
- * Builds the PA-1000A (Multiple Homes Schedule) PDF and returns the filled bytes
- * along with the total prorated property tax (Schedule A Line 5).
- *
- * Returns null if Schedule A is not required.
- *
- * @param {Object} args
- * @param {Object} args.ptrrApplicant
- * @param {string} args.sanitizedSSN
- * @param {string} args.residenceStatus
- * @returns {Promise<{ pdfBytes: Uint8Array, totalProratedTax: number } | null>}
+ * Computes per-rental Lines 4-8 (PA-1000 RC) and the Line 8 total.
  */
+function computeRentals({ ptrrApplicant, spouse, data }) {
+    const ptrrApp = ptrrApplicant?.PTRR?.application?.[0] || {};
+    const previousYearRentals = Array.isArray(ptrrApp.previousYearRentals) ? ptrrApp.previousYearRentals : [];
+    const isRented = data.residenceStatus === 'rented' || data.residenceStatus === 'rentedowned';
+
+    if (!isRented) return { rentalsWithMath: [], totalLine8: 0 };
+
+    const combinedExpenses = [...(ptrrApplicant?.expenses || []), ...(spouse?.expenses || [])];
+    const rentExpenses = combinedExpenses.filter(
+        (e) => e.type?.toLowerCase() === 'previous year' && e.kind?.toLowerCase() === 'rent'
+    );
+
+    let rentals;
+    if (previousYearRentals.length > 0) {
+        rentals = previousYearRentals.map((r) => ({
+            previousYearRentAmount: parseFloat(r?.previousYearRentAmount) || 0,
+            rentalPropertyAddress:  r?.rentalPropertyAddress || {},
+            subsidizedHousingPrevious: r?.subsidizedHousingPrevious || null,
+            subsidizedRentAmount:   parseFloat(r?.subsidizedRentAmount) || 0,
+            rentalType:             r?.rentalType || null,
+            buildingName:           r?.buildingName || '',
+            domicilliaryFosterCare: r?.domicilliaryFosterCare || null,
+        }));
+    } else {
+        const legacyRentTotal = rentExpenses.reduce((s, e) => s + calculateYearlyAmountFromExpense(e), 0);
+        rentals = [{
+            previousYearRentAmount: legacyRentTotal,
+            rentalPropertyAddress: {
+                streetAddress: data.streetAddress, streetAddress2: data.streetAddress2,
+                city: data.city, state: data.state, zipCode: data.zipCode,
+            },
+            subsidizedHousingPrevious: null,
+            subsidizedRentAmount: parseFloat(data.subsidizedRentAmount) || 0,
+            rentalType: data.rentalType || null,
+            buildingName: data.buildingName || '',
+            domicilliaryFosterCare: data.domicilliaryFosterCare || null,
+        }];
+    }
+
+    const monthsOccupiedDefault = parseInt(ptrrApp.monthsOccupied) || 12;
+
+    const findRentExpenseForRental = (rental, idx) => {
+        const addr = rental.rentalPropertyAddress || {};
+        const street = (addr.streetAddress || '').trim().toLowerCase();
+        const zip = (addr.zipCode || '').trim();
+        if (street || zip) {
+            const m = rentExpenses.find((e) => {
+                const es = (e.streetAddress || e.address?.streetAddress || '').trim().toLowerCase();
+                const ez = (e.zipCode || e.address?.zipCode || '').trim();
+                return (street && es && street === es) || (zip && ez && zip === ez);
+            });
+            if (m) return m;
+        }
+        return rentExpenses[idx] || null;
+    };
+
+    const rentalsWithMath = rentals.map((r, idx) => {
+        const monthlyRent    = r.previousYearRentAmount || 0;
+        const netMonthlyRent = Math.max(0, monthlyRent - (r.subsidizedRentAmount || 0));
+        const assoc = findRentExpenseForRental(r, idx);
+        const derived = assoc ? monthsBetweenRounded(assoc.startDate, assoc.endDate) : null;
+        const monthsOccupied = (derived != null) ? derived : monthsOccupiedDefault;
+        const line8 = netMonthlyRent * monthsOccupied;
+        console.log(`Rental[${idx}] monthsOccupied=${monthsOccupied} (derived=${derived}, default=${monthsOccupiedDefault}), Line8=${line8.toFixed(2)}`);
+        return { ...r, monthlyRent, netMonthlyRent, monthsOccupied, line8 };
+    });
+
+    const totalLine8 = rentalsWithMath.reduce((s, r) => s + r.line8, 0);
+    return { rentalsWithMath, totalLine8 };
+}
+
+/* ============================================================
+ *  SCHEDULE A — PA-1000A (Multiple Homes)
+ * ============================================================ */
+
 async function buildScheduleA({ ptrrApplicant, sanitizedSSN, residenceStatus }) {
     const { PDFDocument } = PDFLib;
-
     const ptrrApp = ptrrApplicant?.PTRR?.application?.[0] || {};
-    const properties = Array.isArray(ptrrApp.previousYearProperties)
-        ? ptrrApp.previousYearProperties
-        : [];
+    const properties = Array.isArray(ptrrApp.previousYearProperties) ? ptrrApp.previousYearProperties : [];
 
     const required =
         properties.length >= 2 &&
         (residenceStatus === 'owned' || residenceStatus === 'rentedowned');
-
     if (!required) return null;
 
     const taxYear = new Date().getFullYear() - 1;
-    const totalDaysInYear =
-        ((taxYear % 4 === 0 && taxYear % 100 !== 0) || taxYear % 400 === 0) ? 366 : 365;
+    const totalDaysInYear = ((taxYear % 4 === 0 && taxYear % 100 !== 0) || taxYear % 400 === 0) ? 366 : 365;
 
-    // --- math helpers ---
     const daysBetween = (s, e) => {
         if (!s || !e) return 0;
         const a = new Date(`${String(s).slice(0, 10)}T00:00:00Z`);
@@ -84,18 +177,13 @@ async function buildScheduleA({ ptrrApplicant, sanitizedSSN, residenceStatus }) 
     const annualizeAmount = (amount, frequency) => {
         const a = parseFloat(amount) || 0;
         if (!a) return 0;
-        const f = (frequency || '').toLowerCase();
-        switch (f) {
+        switch ((frequency || '').toLowerCase()) {
             case 'daily':       return a * 365;
             case 'weekly':      return a * 52;
             case 'bi-weekly':
             case 'biweekly':    return a * 26;
             case 'monthly':     return a * 12;
             case 'quarterly':   return a * 4;
-            case 'annually':
-            case 'yearly':
-            case 'one-time':
-            case 'onetime':
             default:            return a;
         }
     };
@@ -103,7 +191,7 @@ async function buildScheduleA({ ptrrApplicant, sanitizedSSN, residenceStatus }) 
     const buildHome = (p) => {
         const addr = p?.propertyAddress || {};
         const start = p?.propertyTaxStartDate || '';
-        const end = p?.propertyTaxEndDate || `${taxYear}-12-31`;
+        const end   = p?.propertyTaxEndDate || `${taxYear}-12-31`;
         const days = daysBetween(start, end);
         const percentage = totalDaysInYear > 0 ? (days / totalDaysInYear) * 100 : 0;
         const annualizedTax = annualizeAmount(p?.propertyTaxAmount, p?.propertyTaxFrequency);
@@ -111,49 +199,41 @@ async function buildScheduleA({ ptrrApplicant, sanitizedSSN, residenceStatus }) 
         return { addr, start, end, days, percentage, annualizedTax, proratedTax };
     };
 
-    // --- compute totals for ALL properties (not just first 2) ---
     const homes = properties.map(buildHome);
     const totalProratedTax = homes.reduce((sum, h) => sum + h.proratedTax, 0);
 
-    // --- load + fill the PDF ---
     const pa1000aBytes = await loadPDFAsset('2025_pa-1000a.pdf');
-    const pa1000aDoc = await PDFDocument.load(pa1000aBytes);
-    const pa1000aForm = pa1000aDoc.getForm();
+    const pa1000aDoc   = await PDFDocument.load(pa1000aBytes);
+    const pa1000aForm  = pa1000aDoc.getForm();
 
     const setField = (name, val) => {
         try { pa1000aForm.getTextField(name).setText(val); }
         catch (e) { console.warn(`PA-1000A: ${name}:`, e.message); }
     };
-
-    const setMonthDay = (monthFieldName, dayFieldName, dateStr) => {
+    const setMonthDay = (mName, dName, dateStr) => {
         if (!dateStr) return;
         const d = new Date(`${String(dateStr).slice(0, 10)}T00:00:00Z`);
         if (isNaN(d)) return;
-        setField(monthFieldName, String(d.getUTCMonth() + 1).padStart(2, '0'));
-        setField(dayFieldName, String(d.getUTCDate()).padStart(2, '0'));
+        setField(mName, String(d.getUTCMonth() + 1).padStart(2, '0'));
+        setField(dName, String(d.getUTCDate()).padStart(2, '0'));
     };
 
-    const fmt = (n) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-    // Header
     const aFullName = `${ptrrApplicant?.firstName || ''} ${ptrrApplicant?.middleInitial || ''} ${ptrrApplicant?.lastName || ''}`.trim();
     setField('Name as shown on PA-1000', aFullName);
     setField('Social Security Number', sanitizedSSN);
 
-    // First home
     const home1 = homes[0];
     setField('Street address - First Home', home1.addr.streetAddress || '');
     setField('City or Post Office - First Home', home1.addr.city || '');
     setField('State - First Home', (home1.addr.state || '').toUpperCase().slice(0, 2));
     setField('Zip Code - First Home', home1.addr.zipCode || '');
     setMonthDay('1. Month', '1. Day', home1.start);
-    setField('1. Total property taxes paid on first home', fmt(home1.annualizedTax));
+    setField('1. Total property taxes paid on first home', fmtMoney(home1.annualizedTax));
     setMonthDay('2. Month', '2. Day', home1.end);
     setField('2. Number of days you or the deceased owned and occupied each home', String(home1.days));
     setField('3. Percentage of the year that you owned and occupied each home', home1.percentage.toFixed(2) + '%');
-    setField('4. Multiply Line 1 by Line 3', fmt(home1.proratedTax));
+    setField('4. Multiply Line 1 by Line 3', fmtMoney(home1.proratedTax));
 
-    // Second home (if present)
     if (homes[1]) {
         const home2 = homes[1];
         setField('Street address - Second Home', home2.addr.streetAddress || '');
@@ -162,17 +242,16 @@ async function buildScheduleA({ ptrrApplicant, sanitizedSSN, residenceStatus }) 
         setField('Zip Code - Second home', home2.addr.zipCode || '');
         setMonthDay('3. Month', '3. Day', home2.start);
         setMonthDay('4. Month', '4. Day', home2.end);
-        setField('1B. Total property taxes paid on second home', fmt(home2.annualizedTax));
+        setField('1B. Total property taxes paid on second home', fmtMoney(home2.annualizedTax));
         setField('2B. Number of months lived in second home', String(home2.days));
         setField('3B. Percentage of the year that you owned and occupied second home', home2.percentage.toFixed(2) + '%');
-        setField('4B. Multiply Line 1 by Line 3', fmt(home2.proratedTax));
+        setField('4B. Multiply Line 1 by Line 3', fmtMoney(home2.proratedTax));
     }
 
-    // Line 5: total
-    setField('5. Total property taxes paid', fmt(totalProratedTax));
+    setField('5. Total property taxes paid', fmtMoney(totalProratedTax));
 
     homes.forEach((h, i) => {
-        console.log(`PA-1000A: Home ${i + 1} - ${h.days} days, ${h.percentage.toFixed(2)}%, annualized: $${h.annualizedTax.toFixed(2)}, prorated: $${h.proratedTax.toFixed(2)}`);
+        console.log(`PA-1000A: Home ${i + 1} - ${h.days} days, ${h.percentage.toFixed(2)}%, prorated $${h.proratedTax.toFixed(2)}`);
     });
     console.log(`PA-1000A: Total prorated (Line 5): $${totalProratedTax.toFixed(2)}`);
 
@@ -180,1833 +259,1654 @@ async function buildScheduleA({ ptrrApplicant, sanitizedSSN, residenceStatus }) 
     return { pdfBytes, totalProratedTax };
 }
 
+/* ============================================================
+ *  SCHEDULE F — PA-1000 F/G (lessees / deed-holders)
+ * ============================================================ */
+
+function mapRelationshipForScheduleF(raw) {
+    if (!raw) return '';
+    const r = String(raw).toLowerCase().trim();
+    if (['parent','mother','father','mom','dad','stepparent','stepmother','stepfather'].includes(r)) return 'Parent';
+    if (['child','son','daughter','stepchild'].includes(r)) return 'Child';
+    if (['sibling','brother','sister','stepbrother','stepsister','half-brother','half-sister'].includes(r)) return 'Sibling';
+    if (['grandparent','grandmother','grandfather'].includes(r)) return 'Grandparent';
+    if (['grandchild','grandson','granddaughter'].includes(r)) return 'Grandchild';
+    if (['aunt','uncle','aunt/uncle'].includes(r)) return 'Aunt/Uncle';
+    if (['niece','nephew','niece/nephew'].includes(r)) return 'Niece/Nephew';
+    if (r === 'cousin') return 'Cousin';
+    if (r === 'friend') return 'Friend';
+    return 'Other';
+}
+
+function resolveRelationshipForEntry(entry, ptrrApplicant) {
+    if (!entry?.householdMemberId) return entry?.relationship || '';
+    const rels = ptrrApplicant?.relationships || [];
+    const rel = rels.find(r => r?.relatedMemberId === entry.householdMemberId);
+    return mapRelationshipForScheduleF(rel?.relationship);
+}
+
+async function buildScheduleF({
+    ptrrApplicant,
+    spouse,
+    sanitizedSSN,
+    data,
+    residenceStatus,
+    propertyTaxBeforeF,
+    rentBeforeF,
+}) {
+    const { PDFDocument } = PDFLib;
+    const ptrrApp = ptrrApplicant?.PTRR?.application?.[0] || {};
+    const rawOthers = Array.isArray(ptrrApp.scheduleF_othersOnLeaseOrDeed)
+        ? ptrrApp.scheduleF_othersOnLeaseOrDeed
+        : [];
+
+    /* ---------- Build exclusion set: spouse + minor children ---------- */
+    const hhMembersAll = Array.isArray(ptrrApplicant?.householdMembers)
+        ? ptrrApplicant.householdMembers
+        : (Array.isArray(data?.householdMembers) ? data.householdMembers : []);
+
+    // Helper: age at Dec 31 of the tax year (from DOB; falls back to age string)
+    const _taxYearForExcl = new Date().getFullYear() - 1;
+    const _yearEndExcl = new Date(Date.UTC(_taxYearForExcl, 11, 31));
+    const ageAtYearEndFromDob = (dobStr) => {
+        if (!dobStr) return null;
+        const dob = new Date(`${String(dobStr).slice(0, 10)}T00:00:00Z`);
+        if (isNaN(dob)) return null;
+        let a = _yearEndExcl.getUTCFullYear() - dob.getUTCFullYear();
+        const beforeBday =
+            _yearEndExcl.getUTCMonth() < dob.getUTCMonth() ||
+            (_yearEndExcl.getUTCMonth() === dob.getUTCMonth() && _yearEndExcl.getUTCDate() < dob.getUTCDate());
+        if (beforeBday) a--;
+        return a;
+    };
+    const memberAgeAtYearEnd = (m) => {
+        if (!m) return null;
+        const fromDob = ageAtYearEndFromDob(m.dob);
+        if (fromDob != null) return fromDob;
+        const match = String(m.age || '').match(/(\d+)/);
+        return match ? parseInt(match[1], 10) : null;
+    };
+
+// ...existing code...
+const excludedIds = new Set();
+
+// Spouse (any way it's recorded — symmetric, so direction doesn't matter)
+const spouseIdsRaw = [
+    ptrrApplicant?.previousSpouseId,
+    ptrrApplicant?.spouseId,
+    spouse?.householdMemberId,
+    ...((ptrrApplicant?.relationships || [])
+        .filter(r => String(r?.relationship || '').toLowerCase() === 'spouse')
+        .map(r => r.relatedMemberId)),
+].filter(Boolean);
+spouseIdsRaw.forEach(id => excludedIds.add(id));
+
+// Also pick up spouse via reverse direction (other member -> applicant as "spouse")
+hhMembersAll.forEach(m => {
+    if (!m || m.householdMemberId === ptrrApplicant?.householdMemberId) return;
+    (m.relationships || []).forEach(r => {
+        if (r?.relatedMemberId === ptrrApplicant?.householdMemberId &&
+            String(r?.relationship || '').toLowerCase() === 'spouse') {
+            excludedIds.add(m.householdMemberId);
+        }
+    });
+});
+
+// ── Minor children of the applicant ──
+// Convention: applicant.relationships[i].relationship = applicant's role
+//   toward relatedMemberId.
+//   "parent"   → applicant is parent of relatedMemberId → that ID is a CHILD.
+//   "child"    → applicant labeled the related member as a child directly.
+const APPLICANT_PARENT_LABELS = new Set([
+    'parent','mother','father','mom','dad','stepparent','stepmother','stepfather'
+]);
+const CHILD_LABELS = new Set(['child','son','daughter','stepchild']);
+
+const addIfMinor = (hhId) => {
+    const child = hhMembersAll.find(m => m.householdMemberId === hhId);
+    const a = memberAgeAtYearEnd(child);
+    if (a != null && a < 18) excludedIds.add(hhId);
+};
+
+// Direction 1: applicant.relationships
+(ptrrApplicant?.relationships || []).forEach(r => {
+    const role = String(r?.relationship || '').toLowerCase();
+    if (APPLICANT_PARENT_LABELS.has(role) || CHILD_LABELS.has(role)) {
+        addIfMinor(r.relatedMemberId);
+    }
+});
+
+// Direction 2 (defensive): another member's relationships pointing at applicant.
+// If they say "child" toward applicant (their role toward applicant is child)
+// → applicant is the child's something else; that's not us.
+// If they say "parent" toward applicant → that other member is the applicant's parent.
+// The case we want here is: other member's role toward applicant is "child"
+//   meaning the OTHER is the child → applicant's child. Add if minor.
+hhMembersAll.forEach(m => {
+    if (!m || m.householdMemberId === ptrrApplicant?.householdMemberId) return;
+    (m.relationships || []).forEach(r => {
+        if (r?.relatedMemberId !== ptrrApplicant?.householdMemberId) return;
+        const role = String(r?.relationship || '').toLowerCase();
+        if (CHILD_LABELS.has(role)) addIfMinor(m.householdMemberId);
+    });
+});
+
+const others = rawOthers.filter(e => !(e?.householdMemberId && excludedIds.has(e.householdMemberId)));
+
+if (rawOthers.length !== others.length) {
+    console.log(`Schedule F: filtered out ${rawOthers.length - others.length} spouse/minor-child entr${rawOthers.length - others.length === 1 ? 'y' : 'ies'}.`);
+}
+
+    const eligible = (residenceStatus === 'owned' ||
+                      residenceStatus === 'rented' ||
+                      residenceStatus === 'rentedowned');
+
+    // No-op pass-through when F isn't required.
+    if (!eligible || others.length === 0) {
+        return {
+            pdfs: [],
+            totalPeople: 0,
+            copies: 0,
+            adjustedPropertyTax: propertyTaxBeforeF || 0,
+            adjustedTotalRent:   rentBeforeF       || 0,
+        };
+    }
+
+    /* ---------- Line 2: eligible-claimant fraction ---------- */
+    const isMarriedTogether =
+        (ptrrApplicant?.previousMaritalStatus || '').toLowerCase().includes('married (living together)');
+
+    // Helper: compute a person's age at Dec 31 of the tax year.
+    const _taxYearForF = new Date().getFullYear() - 1;
+    const _yearEndF = new Date(Date.UTC(_taxYearForF, 11, 31));
+    const ageAtTaxYearEnd = (dobStr) => {
+        if (!dobStr) return null;
+        const dob = new Date(`${String(dobStr).slice(0, 10)}T00:00:00Z`);
+        if (isNaN(dob)) return null;
+        let a = _yearEndF.getUTCFullYear() - dob.getUTCFullYear();
+        const beforeBday =
+            _yearEndF.getUTCMonth() < dob.getUTCMonth() ||
+            (_yearEndF.getUTCMonth() === dob.getUTCMonth() && _yearEndF.getUTCDate() < dob.getUTCDate());
+        if (beforeBday) a--;
+        return a;
+    };
+
+    const hhMembersF = Array.isArray(ptrrApplicant?.householdMembers)
+        ? ptrrApplicant.householdMembers
+        : (Array.isArray(data?.householdMembers) ? data.householdMembers : []);
+
+    const resolveEntryAge = (entry) => {
+        // Prefer DOB from the linked household member (most accurate)
+        if (entry?.householdMemberId) {
+            const hh = hhMembersF.find(m => m?.householdMemberId === entry.householdMemberId);
+            if (hh) {
+                const fromDob = ageAtTaxYearEnd(hh.dob);
+                if (fromDob != null) return fromDob;
+                const m = String(hh.age || '').match(/(\d+)/);
+                if (m) return parseInt(m[1], 10);
+            }
+        }
+        // Manual entry: try DOB then numeric age
+        const fromDob = ageAtTaxYearEnd(entry?.dob);
+        if (fromDob != null) return fromDob;
+        const n = parseInt(entry?.age, 10);
+        return Number.isNaN(n) ? null : n;
+    };
+
+    // Members 65+ at year end on the lease/deed do NOT count toward the
+    // "other people" denominator (they're effectively eligible claimants too).
+    const countableOthers = others.filter(e => {
+        const a = resolveEntryAge(e);
+        return a == null ? true : a < 65;
+    });
+
+    // Spouse and minor children are excluded entirely from Schedule F math —
+    // they're already filtered out of `others`. The numerator is just the
+    // claimant (1). Anyone else on the lease/deed goes in the denominator.
+    const qualifyingClaimants =
+        Number.isFinite(parseInt(ptrrApp.scheduleF_qualifyingClaimants))
+            ? parseInt(ptrrApp.scheduleF_qualifyingClaimants)
+            : 1;
+
+    const totalPersons =
+        Number.isFinite(parseInt(ptrrApp.scheduleF_totalPersons))
+            ? parseInt(ptrrApp.scheduleF_totalPersons)
+            : qualifyingClaimants + countableOthers.length;
+
+    const eligiblePct = totalPersons > 0
+        ? Math.max(0, Math.min(1, qualifyingClaimants / totalPersons))
+        : 1;
+
+    console.log('Schedule F age filter →', {
+        totalOthers: others.length,
+        excluded65Plus: others.length - countableOthers.length,
+        countableOthers: countableOthers.length,
+        qualifyingClaimants, totalPersons,
+        eligiblePct: eligiblePct.toFixed(4),
+    });
+
+    /* ---------- Line 1 / Line 3 cascade ---------- */
+    const startTax  = propertyTaxBeforeF || 0;
+    const startRent = rentBeforeF        || 0;
+
+    let fLine1 = 0;
+    let adjustedTax  = startTax;
+    let adjustedRent = startRent;
+
+    if (residenceStatus === 'owned') {
+        fLine1 = startTax;
+        adjustedTax = fLine1 * eligiblePct;       // → PA-1000 Line 14
+    } else if (residenceStatus === 'rented') {
+        fLine1 = startRent;
+        adjustedRent = fLine1 * eligiblePct;      // → PA-1000 Line 16
+    } else { // rentedowned: print tax on form, but apply % to BOTH internally
+        fLine1 = startTax;
+        adjustedTax  = startTax  * eligiblePct;   // → PA-1000 Line 14
+        adjustedRent = startRent * eligiblePct;   // → PA-1000 Line 16
+    }
+    const fLine3 = fLine1 * eligiblePct;
+
+    console.log('Schedule F cascade →', {
+        residenceStatus,
+        qualifyingClaimants, totalPersons,
+        eligiblePct: eligiblePct.toFixed(4),
+        startTax, startRent,
+        fLine1, fLine3,
+        adjustedTax, adjustedRent,
+    });
+
+    /* ---------- Build PDFs ---------- */
+    const claimantFullName = `${ptrrApplicant?.firstName || ''} ${ptrrApplicant?.middleInitial || ''} ${ptrrApplicant?.lastName || ''}`
+        .replace(/\s+/g, ' ').trim();
+
+    const taxYear = new Date().getFullYear() - 1;
+    const computeAgeAtYearEnd = (dobStr) => {
+        if (!dobStr) return '';
+        const dob = new Date(`${String(dobStr).slice(0, 10)}T00:00:00Z`);
+        if (isNaN(dob)) return '';
+        const yearEnd = new Date(Date.UTC(taxYear, 11, 31));
+        let age = yearEnd.getUTCFullYear() - dob.getUTCFullYear();
+        const beforeBday =
+            yearEnd.getUTCMonth() < dob.getUTCMonth() ||
+            (yearEnd.getUTCMonth() === dob.getUTCMonth() && yearEnd.getUTCDate() < dob.getUTCDate());
+        if (beforeBday) age--;
+        return String(Math.max(0, age));
+    };
+    const claimantAge = computeAgeAtYearEnd(ptrrApplicant?.dob);
+
+    const useMailing = (data.mailingAddressSameAsResidential || '').toLowerCase() === 'no';
+    const claimAddr = {
+        streetAddress:  useMailing ? (data.mailingStreetAddress  || '') : (data.streetAddress  || ''),
+        streetAddress2: useMailing ? (data.mailingStreetAddress2 || '') : (data.streetAddress2 || ''),
+        city:           useMailing ? (data.mailingCity           || '') : (data.city           || ''),
+        state:          useMailing ? (data.mailingState          || '') : (data.state          || ''),
+        zipCode:        useMailing ? (data.mailingZipCode        || '') : (data.zipCode        || ''),
+    };
+    const formatAddrOneLine = (a = {}) => [
+        [a.streetAddress, a.streetAddress2].filter(Boolean).join(' '),
+        [a.city, (a.state || '').toUpperCase().slice(0, 2)].filter(Boolean).join(', '),
+        a.zipCode || ''
+    ].filter(Boolean).join(', ').trim();
+    const sameAsClaim = (a = {}) =>
+        (a.streetAddress || '').trim().toLowerCase() === (claimAddr.streetAddress || '').trim().toLowerCase() &&
+        (a.zipCode || '').trim() === (claimAddr.zipCode || '').trim();
+
+    const fmtNoCommas = (n) => (Number(n) || 0).toFixed(2);
+
+    const chunks = [];
+    for (let i = 0; i < others.length; i += 2) chunks.push(others.slice(i, i + 2));
+
+    const ROW_PREFIXES = ['2', '3'];
+    const filledPdfs = [];
+
+    for (let c = 0; c < chunks.length; c++) {
+        const chunk = chunks[c];
+        const fgBytes = await loadPDFAsset('2025_pa-1000f-g.pdf');
+        const fgDoc   = await PDFDocument.load(fgBytes);
+        const fgForm  = fgDoc.getForm();
+
+        // Embed a font once so we can measure text width for auto-sizing.
+        const helv = await fgDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+
+        const setField = (name, val) => {
+            try {
+                const tf = fgForm.getTextField(name);
+                const text = val == null ? '' : String(val).toUpperCase(); // global UC patch hits later, but measure on UC
+                if (!text) { tf.setText(''); return; }
+
+                // Drop maxLength so long values still write.
+                const max = tf.getMaxLength?.();
+                if (typeof max === 'number' && text.length > max) {
+                    tf.removeMaxLength?.();
+                }
+
+                // Find the widget rect to compute available width/height.
+                let availW = 0, availH = 0;
+                const widgets = tf.acroField?.getWidgets?.() || [];
+                if (widgets.length) {
+                    const r = widgets[0].getRectangle(); // { x, y, width, height }
+                    availW = Math.max(0, r.width  - 4);  // small padding
+                    availH = Math.max(0, r.height - 2);
+                }
+
+                // Pick the largest size that fits both width AND height.
+                const DEFAULT = 10;
+                const MIN     = 4;
+                let chosen   = DEFAULT;
+                if (availW > 0) {
+                    for (let size = DEFAULT; size >= MIN; size -= 0.5) {
+                        const w = helv.widthOfTextAtSize(text, size);
+                        const h = helv.heightAtSize(size);
+                        if (w <= availW && h <= (availH || h)) { chosen = size; break; }
+                        chosen = size; // keep shrinking
+                    }
+                }
+
+                tf.setFontSize(chosen);
+                tf.setText(text);
+            } catch (e) {
+                console.warn(`PA-1000 F/G[${c + 1}]: ${name}:`, e.message);
+            }
+        };
+
+        // Header
+        setField('Name as shown on PA-1000', claimantFullName);
+        setField('Social Security Number',  sanitizedSSN);
+
+        // Row 1 — claimant
+        setField("1. Claimant's name", claimantFullName);
+        setField('1. Age', claimantAge);
+        setField('1. Address if different than claim form', '');
+
+        // Rows 2–3 — other people on deed/lease
+        chunk.forEach((entry, i) => {
+            const prefix = ROW_PREFIXES[i];
+
+            // Resolve identity from the linked household member when applicable.
+            let firstName = entry.firstName || '';
+            let lastName  = entry.lastName  || '';
+            let ageVal    = entry.age;
+
+            if (entry.householdMemberId) {
+                const hhMembers = Array.isArray(ptrrApplicant?.householdMembers)
+                    ? ptrrApplicant.householdMembers
+                    : (Array.isArray(data?.householdMembers) ? data.householdMembers : []);
+                const hh = hhMembers.find(m => m?.householdMemberId === entry.householdMemberId);
+                if (hh) {
+                    firstName = hh.firstName || firstName;
+                    lastName  = hh.lastName  || lastName;
+                    // hh.age may be "52 Years, 3 Months" — extract leading int
+                    const m = String(hh.age || '').match(/(\d+)/);
+                    if (m) ageVal = parseInt(m[1], 10);
+                }
+            }
+
+            const fullName = [firstName, lastName]
+                .map(s => String(s || '').trim()).filter(Boolean).join(' ').trim();
+            const ssn = String(entry.socialSecurityNumber || '').replace(/\D/g, '').slice(0, 9);
+            const ageStr = ageVal == null || ageVal === '' ? '' : String(ageVal);
+            const relationship = resolveRelationshipForEntry(entry, ptrrApplicant);
+
+            let addrLine = '';
+            if (entry.sameAddressAsClaimant === 'no') {
+                addrLine = formatAddrOneLine(entry.address || {});
+            } else if (entry.sameAddressAsClaimant == null && entry.address && !sameAsClaim(entry.address)) {
+                addrLine = formatAddrOneLine(entry.address || {});
+            }
+
+            setField(`${prefix}. Name`, fullName);
+            setField(`${prefix}. Age`, ageStr);
+            setField(`${prefix}. Relationship`, relationship);
+            setField(`${prefix}. Social Security Number`, ssn);
+            setField(`${prefix}. Address if different than claim form`, addrLine);
+        });
+
+        // Lines 1 / 2 / 3 — only on the FIRST copy
+        if (c === 0) {
+            // 2A is decimal form (the form pre-prints ".") — two digits after the decimal: 0.50 → "50"
+            // 2B is percentage form: 50% → "50"
+            const eligiblePctInt   = Math.round(eligiblePct * 100);              // 0..100
+            const eligibleDecimal2 = String(eligiblePctInt).padStart(2, '0');    // always 2 chars
+
+            setField('1. Total property taxes or rent paid in 2021', fmtNoCommas(fLine1));
+            setField('2A. Eligible claimant percentage', eligibleDecimal2);          // e.g. "50" → reads as .50
+            setField('2B. Eligible claimant percentage', String(eligiblePctInt));    // e.g. "50" → reads as 50%
+            setField(
+                '3. Eligible property taxes or rent paid multiply the amount on line 1 by the percentage on line 2',
+                fmtNoCommas(fLine3)
+            );
+        }
+
+        const pdfBytes = await fgDoc.save();
+        filledPdfs.push(pdfBytes);
+        console.log(`Schedule F copy ${c + 1}/${chunks.length}: ${chunk.length} other(s); L1=${fLine1.toFixed(2)} × ${qualifyingClaimants}/${totalPersons} = L3=${fLine3.toFixed(2)}${c === 0 ? '' : ' (overflow only)'}.`);
+    }
+
+    return {
+        pdfs: filledPdfs,
+        totalPeople: others.length,
+        copies: chunks.length,
+        adjustedPropertyTax: adjustedTax,
+        adjustedTotalRent:   adjustedRent,
+    };
+}
+
+/* ============================================================
+ *  SCHEDULE B / D / E — PA-1000 B/D/E (single shared PDF)
+ *
+ *  Pipeline order: B → D → E   (D and E both cascade off B)
+ *
+ *  - B: Widow/widower remarried during claim year. Reduces tax
+ *       (owners/rentedowned) or rent (renters) by widow %.
+ *  - D: TANF / cash public assistance. Reduces RENT only.
+ *       Uses post-B rent if B triggered for a renter.
+ *  - E: Mixed-use homestead. Scales by residence %.
+ *         • rented        → Line 1 = post-B/D rent      → PA-1000 Line 16
+ *         • owned         → Line 1 = post-B tax         → PA-1000 Line 14
+ *         • rentedowned   → Line 1 = post-B tax only    → PA-1000 Line 14
+ *           (rent for rentedowned does NOT pass through E)
+ * ============================================================ */
+
+async function buildScheduleBDE({
+    ptrrApplicant,
+    spouse,
+    sanitizedSSN,
+    residenceStatus,        // 'owned' | 'rented' | 'rentedowned'
+    propertyTaxBeforeE,     // from Schedule A or raw PA-1000 calc
+    totalRentBeforeE,       // sum of Line 8 across all PA-1000 RCs
+}) {
+    const { PDFDocument } = PDFLib;
+    const ptrrApp = ptrrApplicant?.PTRR?.application?.[0] || {};
+    const taxYear = new Date().getFullYear() - 1;
+    const totalDaysInYear =
+        ((taxYear % 4 === 0 && taxYear % 100 !== 0) || taxYear % 400 === 0) ? 366 : 365;
+
+    const fmtNoCommas = (n) => (Number(n) || 0).toFixed(2);
+
+    const isOwner  = residenceStatus === 'owned' || residenceStatus === 'rentedowned';
+    const isRenter = residenceStatus === 'rented' || residenceStatus === 'rentedowned';
+
+    /* ---------- Schedule B eligibility ---------- */
+    const maritalRaw = (ptrrApplicant?.previousMaritalStatus || '').toLowerCase().trim();
+    const wasWidowed = maritalRaw === 'widowed' || maritalRaw.includes('widow');
+    const isDisabled = (ptrrApplicant?.disability || '').toLowerCase() === 'yes';
+
+    const remarriageDate =
+        ptrrApp.remarriageDate ||
+        ptrrApp.ptrrRemarriageDate ||
+        ptrrApp.dateOfRemarriage ||
+        ptrrApplicant?.remarriageDate ||
+        '';
+
+    let remarry = null;
+    let remarriageInTaxYear = false;
+    if (remarriageDate) {
+        remarry = new Date(`${String(remarriageDate).slice(0, 10)}T00:00:00Z`);
+        if (!isNaN(remarry) && remarry.getUTCFullYear() === taxYear) remarriageInTaxYear = true;
+    }
+
+    let applicantAgeAtYearEnd = null;
+    if (ptrrApplicant?.dob) {
+        const dob = new Date(`${String(ptrrApplicant.dob).slice(0, 10)}T00:00:00Z`);
+        if (!isNaN(dob)) {
+            const yearEnd = new Date(Date.UTC(taxYear, 11, 31));
+            applicantAgeAtYearEnd = yearEnd.getUTCFullYear() - dob.getUTCFullYear();
+            const beforeBday =
+                yearEnd.getUTCMonth() < dob.getUTCMonth() ||
+                (yearEnd.getUTCMonth() === dob.getUTCMonth() && yearEnd.getUTCDate() < dob.getUTCDate());
+            if (beforeBday) applicantAgeAtYearEnd--;
+        }
+    }
+    const qualifiesAsWidow5064 =
+        wasWidowed && !isDisabled &&
+        applicantAgeAtYearEnd != null &&
+        applicantAgeAtYearEnd >= 50 && applicantAgeAtYearEnd <= 64;
+
+        const currentMaritalRaw = (ptrrApplicant?.maritalStatus || ptrrApplicant?.currentMaritalStatus || '').toLowerCase().trim();
+    const stillWidowed = currentMaritalRaw === 'widowed' || currentMaritalRaw.includes('widow');
+
+    const scheduleBNeeded = qualifiesAsWidow5064 && remarriageInTaxYear && !stillWidowed;
+
+    /* ---------- Schedule D eligibility (rent only) ---------- */
+    const allIncome = [...(ptrrApplicant?.income || []), ...(spouse?.income || [])];
+    const tanfEntries = allIncome.filter(
+        (inc) => inc?.type?.toLowerCase() === 'previous' && inc?.kind?.toLowerCase() === 'tanf'
+    );
+    let monthsOnAssistance = tanfEntries.reduce(
+        (sum, inc) => sum + fullMonthsBetween(inc.startDate, inc.endDate),
+        0
+    );
+    monthsOnAssistance = Math.min(12, monthsOnAssistance);
+    const scheduleDNeeded = isRenter && tanfEntries.length > 0 && monthsOnAssistance > 0;
+
+    /* ---------- Schedule E eligibility ---------- */
+    const mixedUse = (ptrrApp.scheduleE_mixedUse || '').toLowerCase() === 'yes';
+    const rawPct   = parseFloat(ptrrApp.scheduleE_residencePercent);
+    const residencePct = (mixedUse && !isNaN(rawPct)) ? Math.max(0, Math.min(100, rawPct)) : 100;
+    const scheduleENeeded = mixedUse && residencePct < 100;
+
+    /* ============================================================
+     *  CASCADE: B → D (rent) → E
+     * ============================================================ */
+    const startTax  = propertyTaxBeforeE || 0;
+    const startRent = totalRentBeforeE   || 0;
+
+    let curTax  = startTax;
+    let curRent = startRent;
+
+    // ----- Schedule B math -----
+    // Line 4 = Line 1 × Line 3 (displayed rounded percentage)
+    let widowDays = 0;
+    let widowDisplayedPct = 0;     // integer % printed on Line 3
+    let widowFactor = 1;           // = displayed % / 100  (used for Line 4 + cascade)
+    let bLine1 = 0, bLine4 = 0;
+
+    if (scheduleBNeeded) {
+        const yearStart = new Date(Date.UTC(taxYear, 0, 1));
+        const yearEnd   = new Date(Date.UTC(taxYear, 11, 31));
+        let windowEnd = new Date(remarry.getTime() - 86400000);
+        if (windowEnd > yearEnd)   windowEnd = yearEnd;
+        if (windowEnd < yearStart) windowEnd = yearStart;
+        widowDays = Math.max(0, Math.min(totalDaysInYear,
+            Math.round((windowEnd - yearStart) / 86400000) + 1));
+        widowDisplayedPct = Math.round((widowDays / totalDaysInYear) * 100);
+        widowFactor = widowDisplayedPct / 100;
+
+        // Line 1 source per your spec
+        if (residenceStatus === 'rented') {
+            bLine1 = startRent;
+        } else {
+            // owned or rentedowned → property tax only
+            bLine1 = startTax;
+        }
+        bLine4 = bLine1 * widowFactor;
+
+        // Cascade: apply widow factor to BOTH tax and rent so D/E see post-B values.
+        curTax  = startTax  * widowFactor;
+        curRent = startRent * widowFactor;
+    }
+
+    // ----- Schedule D math (rent only) -----
+    let dLine2 = 0, dLine3 = 0, dLine4 = 0;
+    if (scheduleDNeeded) {
+        // If B was needed and renter, use B Line 4. Otherwise use raw rent total.
+        dLine2 = (scheduleBNeeded && residenceStatus === 'rented') ? bLine4 : startRent;
+        // For rentedowned with B, post-B rent = curRent (= startRent * widowFactor)
+        if (scheduleBNeeded && residenceStatus === 'rentedowned') {
+            dLine2 = curRent;
+        }
+        dLine3 = (dLine2 / 12) * monthsOnAssistance;   // (Line 2 / 12) × Line 1
+        dLine4 = Math.max(0, dLine2 - dLine3);
+        curRent = dLine4;
+    }
+
+    // ----- Schedule E math -----
+    // Line 1 source:
+    //   rented      → curRent (post-B/D rent)
+    //   owned       → curTax  (post-B tax)
+    //   rentedowned → curTax  (post-B tax) ONLY — rent does not enter E
+    const eFactor = scheduleENeeded ? (residencePct / 100) : 1;
+    let eLine1 = 0, eLine3 = 0;
+    if (scheduleENeeded) {
+        if (residenceStatus === 'rented') {
+            eLine1 = curRent;
+            eLine3 = eLine1 * eFactor;
+            curRent = eLine3;            // → PA-1000 Line 16
+        } else if (residenceStatus === 'owned') {
+            eLine1 = curTax;
+            eLine3 = eLine1 * eFactor;
+            curTax = eLine3;             // → PA-1000 Line 14
+        } else { // rentedowned
+            eLine1 = curTax;             // tax only on Schedule E
+            eLine3 = eLine1 * eFactor;
+            curTax = eLine3;             // → PA-1000 Line 14
+            // curRent unchanged (no E adjustment for rent in rentedowned)
+        }
+    }
+
+    console.log('Schedule B/D/E cascade →', {
+        residenceStatus,
+        scheduleBNeeded, scheduleDNeeded, scheduleENeeded,
+        startTax, startRent,
+        afterB:  { tax: curTax, rent: scheduleDNeeded ? dLine2 : curRent },
+        afterD:  { rent: scheduleDNeeded ? dLine4 : '(n/a)' },
+        finalTax: curTax, finalRent: curRent,
+        widowDisplayedPct, monthsOnAssistance, residencePct,
+    });
+
+    if (!scheduleBNeeded && !scheduleDNeeded && !scheduleENeeded) {
+        return {
+            pdfBytes: null,
+            adjustedPropertyTax: startTax,
+            adjustedTotalRent:   startRent,
+        };
+    }
+
+    /* ============================================================
+     *  LOAD + FILL THE PDF
+     * ============================================================ */
+    const bdeBytes = await loadPDFAsset('2025_pa-1000b-d-e.pdf');
+    const bdeDoc   = await PDFDocument.load(bdeBytes);
+    const bdeForm  = bdeDoc.getForm();
+
+    const setField = (name, val) => {
+        try { bdeForm.getTextField(name).setText(val == null ? '' : String(val)); }
+        catch (e) { console.warn(`PA-1000 B/D/E: ${name}:`, e.message); }
+    };
+
+    const fullName = `${ptrrApplicant?.firstName || ''} ${ptrrApplicant?.middleInitial || ''} ${ptrrApplicant?.lastName || ''}`.trim();
+    setField('Name as shown on PA-1000', fullName);
+    setField('Social Security Number', sanitizedSSN);
+
+    /* ---------- SCHEDULE B ---------- */
+    if (scheduleBNeeded) {
+        console.log('🔍 Sched B values about to write:', {
+            bLine1, widowDays, widowDisplayedPct, bLine4,
+            startRent, startTax, residenceStatus,
+        });
+        // List actual field names once for sanity:
+        bdeForm.getFields().forEach(f => console.log('FIELD:', f.getName()));
+
+        setField('1. Total property tax or rent', fmtNoCommas(bLine1));
+        setField('2. Number of days you were a widow or widower', String(widowDays));
+        setField('3. Percentage of the year you were a widow or widower', String(widowDisplayedPct));
+        setField('4. Eligible property taxes or rent paid', fmtNoCommas(bLine4));
+        setField('5. Month', String(remarry.getUTCMonth() + 1).padStart(2, '0'));
+        setField('5. Day',   String(remarry.getUTCDate()).padStart(2, '0'));
+        console.log(`Schedule B: L1=${bLine1.toFixed(2)} × ${widowDisplayedPct}% → L4=${bLine4.toFixed(2)}`);
+    }
+
+    /* ---------- SCHEDULE D (rent only) ---------- */
+    if (scheduleDNeeded) {
+        setField('1. Total Number of months received cash public assistance', String(monthsOnAssistance));
+        setField('2. Total rent that you paid in 2021', fmtNoCommas(dLine2));
+        setField('3. Total rent you paid during the months that you received cash public assistance', fmtNoCommas(dLine3));
+        setField('4. Eligible rent paid', fmtNoCommas(dLine4));
+        console.log(`Schedule D: months=${monthsOnAssistance}, L2=${dLine2.toFixed(2)}, L3=${dLine3.toFixed(2)}, L4=${dLine4.toFixed(2)}`);
+    }
+
+    /* ---------- SCHEDULE E ---------- */
+    if (scheduleENeeded) {
+        setField('1. Total property taxes or rent paid', fmtNoCommas(eLine1));
+
+        const pctInt = Math.floor(residencePct);
+        const pctDec = Math.round((residencePct - pctInt) * 100);
+        setField('2. Percentage', String(pctInt));
+        setField('Percentage of home used as residence', String(pctInt));
+        setField('3. Eligible property taxes or rent paid', fmtNoCommas(eLine3));
+        console.log(`Schedule E @ ${residencePct}% (${residenceStatus}): L1=${eLine1.toFixed(2)} → L3=${eLine3.toFixed(2)}`);
+    }
+
+    const pdfBytes = await bdeDoc.save();
+    return {
+        pdfBytes,
+        adjustedPropertyTax: curTax,   // → PA-1000 Line 14 (owners / rentedowned)
+        adjustedTotalRent:   curRent,  // → PA-1000 Line 16 (renters / rentedowned)
+    };
+}
+
+/* ============================================================
+ *  MAIN — generatePDF
+ * ============================================================ */
+
 async function generatePDF(data) {
     const { PDFDocument } = PDFLib;
 
-    // Force ALL CAPS for every text written to any PDF (form fields + drawn text).
-    // Runs only once per page load.
+    // Force ALL CAPS for every text written to any PDF.
     (function enableGlobalUpperCase() {
         if (PDFLib.__uppercasePatched) return;
         PDFLib.__uppercasePatched = true;
-
         const toUpper = (v) => (v == null ? v : String(v).toUpperCase());
-
-        // Form text fields
         const tfProto = PDFLib.PDFTextField && PDFLib.PDFTextField.prototype;
         if (tfProto && tfProto.setText) {
-            const origSetText = tfProto.setText;
-            tfProto.setText = function (text) {
-                return origSetText.call(this, toUpper(text));
-            };
+            const orig = tfProto.setText;
+            tfProto.setText = function (text) { return orig.call(this, toUpper(text)); };
         }
-
-        // Page-drawn text
         const pageProto = PDFLib.PDFPage && PDFLib.PDFPage.prototype;
         if (pageProto && pageProto.drawText) {
-            const origDrawText = pageProto.drawText;
-            pageProto.drawText = function (text, options) {
-                return origDrawText.call(this, toUpper(text), options);
-            };
+            const orig = pageProto.drawText;
+            pageProto.drawText = function (text, options) { return orig.call(this, toUpper(text), options); };
         }
     })();
 
-    // Load the existing PDF template
-    const pdfBytes = await fetch('/assets/2025_pa-1000.pdf').then((res) => res.arrayBuffer());    const pdfDoc = await PDFDocument.load(pdfBytes);
-
-    // Get the form fields
+    // Load main PA-1000 template
+    const pdfBytes = await fetch('/assets/2025_pa-1000.pdf').then((res) => res.arrayBuffer());
+    const pdfDoc = await PDFDocument.load(pdfBytes);
     const form = pdfDoc.getForm();
 
-// Find the household member with a PTRR application where applying is true
-const ptrrApplicant = data.householdMembers?.find(
-    (member) => member.PTRR?.application?.some((app) => app.applying === true)
-);
+    const ptrrApplicant = data.householdMembers?.find(
+        (member) => member.PTRR?.application?.some((app) => app.applying === true)
+    );
 
-// Claimant deceased: checkbox and date from PTRR.application[0]
-try {
-    const applicantPTRRApp = ptrrApplicant?.PTRR?.application?.[0] || null;
-    const claimantDeceasedAnswer = applicantPTRRApp?.ptrrDeceasedAnswer; // 'yes' | 'no'
-    const claimantDeceasedDateRaw = applicantPTRRApp?.ptrrDeceasedDate;  // 'yyyy-mm-dd'
+    // Claimant deceased
+    try {
+        const applicantPTRRApp = ptrrApplicant?.PTRR?.application?.[0] || null;
+        const claimantDeceasedAnswer  = applicantPTRRApp?.ptrrDeceasedAnswer;
+        const claimantDeceasedDateRaw = applicantPTRRApp?.ptrrDeceasedDate;
 
-    const claimantDeceasedCheck = form.getCheckBox('Click on oval if claimant is deceased');
-    // We will draw text directly instead of using the text field API
-    const page = pdfDoc.getPages()[0]; // Assuming date field is on page 1
-    const deathDateCoords = { x: 519, y: 482 }; // Update to the exact coordinates for the date field
+        const claimantDeceasedCheck = form.getCheckBox('Click on oval if claimant is deceased');
+        const page = pdfDoc.getPages()[0];
+        const deathDateCoords = { x: 519, y: 482 };
 
-    if (claimantDeceasedAnswer === 'yes') {
-        if (claimantDeceasedCheck) claimantDeceasedCheck.check();
-
-        // Format yyyy-mm-dd -> mm/dd/yy and add one day
-        const formattedClaimantDeath = claimantDeceasedDateRaw
-            ? new Date(new Date(`${claimantDeceasedDateRaw}T00:00:00Z`).getTime() + 24 * 60 * 60 * 1000)
-                  .toLocaleDateString('en-US', { year: '2-digit', month: '2-digit', day: '2-digit' })
-            : '';
-
-        page.drawText(formattedClaimantDeath, {
-            x: deathDateCoords.x,
-            y: deathDateCoords.y,
-            size: 8,
-            font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-            color: PDFLib.rgb(0, 0, 0),
-        });
-    } else {
-        if (claimantDeceasedCheck) claimantDeceasedCheck.uncheck();
-        page.drawText('', {
-            x: deathDateCoords.x,
-            y: deathDateCoords.y,
-            size: 8,
-            font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-            color: PDFLib.rgb(0, 0, 0),
-        });
+        if (claimantDeceasedAnswer === 'yes') {
+            if (claimantDeceasedCheck) claimantDeceasedCheck.check();
+            const formattedClaimantDeath = claimantDeceasedDateRaw
+                ? new Date(new Date(`${claimantDeceasedDateRaw}T00:00:00Z`).getTime() + 86400000)
+                      .toLocaleDateString('en-US', { year: '2-digit', month: '2-digit', day: '2-digit' })
+                : '';
+            page.drawText(formattedClaimantDeath, {
+                x: deathDateCoords.x, y: deathDateCoords.y, size: 8,
+                font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
+                color: PDFLib.rgb(0, 0, 0),
+            });
+        } else if (claimantDeceasedCheck) {
+            claimantDeceasedCheck.uncheck();
+        }
+    } catch (error) {
+        console.error('Error processing claimant deceased:', error.message);
     }
-} catch (error) {
-    console.error('Error processing claimant deceased information:', error.message, error.stack);
-}
 
-// Find the household member with the `previousSpouseId` matching the applicant's `householdMemberId`
-const spouse = data.householdMembers?.find((member) => {
-    const isSpouse = member.householdMemberId === ptrrApplicant?.previousSpouseId;
+    const spouse = data.householdMembers?.find((m) => m.householdMemberId === ptrrApplicant?.previousSpouseId);
+    if (spouse) console.log('Spouse found:', spouse);
+    else console.warn('No spouse found in household members.');
 
-    console.log('Checking household member:', member);
-    console.log('Is Spouse:', isSpouse);
+    // Basic identity
+    form.getTextField('Use ALL CAPS to enter first name (10 spaces limit)').setText(ptrrApplicant?.firstName || '');
+    form.getTextField('Your Middle Initial').setText(ptrrApplicant?.middleInitial || '');
+    form.getTextField('Use ALL CAPS to enter last name (13 spaces limit)').setText(ptrrApplicant?.lastName || '');
 
-    return isSpouse;
-});
-
-if (!spouse) {
-    console.warn('No spouse found in household members.');
-} else {
-    console.log('Spouse found:', spouse);
-}
-
-// Map database fields to PDF fields
-form.getTextField('Use ALL CAPS to enter first name (10 spaces limit)').setText(ptrrApplicant?.firstName || '');
-form.getTextField('Your Middle Initial').setText(ptrrApplicant?.middleInitial || '');
-form.getTextField('Use ALL CAPS to enter last name (13 spaces limit)').setText(ptrrApplicant?.lastName || '');
-
-// Format the date to mm/dd/yy and add one day
-const formattedDob = ptrrApplicant?.dob
-    ? new Date(new Date(`${ptrrApplicant.dob}T00:00:00Z`).getTime() + 24 * 60 * 60 * 1000)
-          .toLocaleDateString('en-US', { year: '2-digit', month: '2-digit', day: '2-digit' })
-    : '';
+    const formattedDob = ptrrApplicant?.dob
+        ? new Date(new Date(`${ptrrApplicant.dob}T00:00:00Z`).getTime() + 86400000)
+              .toLocaleDateString('en-US', { year: '2-digit', month: '2-digit', day: '2-digit' })
+        : '';
 
     const rawSSN = ptrrApplicant?.socialSecurityNumber || '';
     const sanitizedSSN = rawSSN.replace(/[-\s]/g, '');
     form.getTextField('Enter your SSN without dashes or spaces').setText(sanitizedSSN);
+    form.getTextField('Enter claimant\'s birthdate in mm/dd/yy format').setText(formattedDob);
+
+    // Address
+    const useMailing = (data.mailingAddressSameAsResidential || '').toLowerCase() === 'no';
+    const addrLine1 = useMailing ? (data.mailingStreetAddress  || '') : (data.streetAddress  || '');
+    const addrLine2 = useMailing ? (data.mailingStreetAddress2 || '') : (data.streetAddress2 || '');
+    const addrCity  = useMailing ? (data.mailingCity           || '') : (data.city           || '');
+    const addrState = useMailing ? (data.mailingState          || '') : (data.state          || '');
+    const addrZip   = useMailing ? (data.mailingZipCode        || '') : (data.zipCode        || '');
+
+    form.getTextField('Use ALL CAPS to enter first line of address').setText(addrLine1);
+    form.getTextField('Use ALL CAPS to enter second line of address').setText(addrLine2);
+    form.getTextField('Use ALL CAPS to enter city or post office').setText(addrCity);
+    form.getTextField('Use ALL CAPS to enter two-character state abbreviation').setText(addrState.toUpperCase().slice(0, 2));
+    form.getTextField('Enter five-digit ZIP Code').setText(addrZip);
+
+    // Spouse info
+    if (spouse) {
+        try {
+            form.getTextField('Use ALL CAPS to enter spouse\'s first name (10 spaces limit)').setText(spouse.firstName || '');
+            const formattedSpouseDob = spouse.dob
+                ? new Date(new Date(`${spouse.dob}T00:00:00Z`).getTime() + 86400000)
+                      .toLocaleDateString('en-US', { year: '2-digit', month: '2-digit', day: '2-digit' })
+                : '';
+            form.getTextField('Enter spouse\'s birthdate in mm/dd/yy format').setText(formattedSpouseDob);
+
+            const rawSp = (spouse.socialSecurityNumber || '').replace(/[-\s]/g, '');
+            if (rawSp.length === 9) form.getTextField('Enter spouse\'s SSN without dashes or spaces').setText(rawSp);
+            form.getTextField('Spouse - Middle Initial').setText(spouse.middleInitial || '');
+        } catch (error) {
+            console.error('Error adding spouse info:', error.message);
+        }
+    }
+
+    // Spouse deceased + DOD
+    const spouseDeceasedField = form.getCheckBox('Click on oval if spouse is deceased');
+    if (spouseDeceasedField) {
+        const maritalStatus = ptrrApplicant?.previousMaritalStatus?.toLowerCase().trim();
+
+        // Only mark spouse deceased if claimant qualifies for oval C
+        // (widowed AND age 50–64 at end of prior tax year)
+        let qualifiesForOvalC = false;
+        if (maritalStatus === 'widowed' && ptrrApplicant?.dob) {
+            const lastYear = new Date().getFullYear() - 1;
+            const ageAtYearEnd = lastYear - new Date(ptrrApplicant.dob).getFullYear();
+            const isDisabled = (ptrrApplicant?.disability || '').toLowerCase() === 'yes';
+            if (ageAtYearEnd >= 50 && ageAtYearEnd <= 64 && !isDisabled) {
+                qualifiesForOvalC = true;
+            }
+        }
+
+        if (qualifiesForOvalC) {
+            spouseDeceasedField.check();
+            if (ptrrApplicant?.dateOfSpousePassing) {
+                const formattedDateOfDeath = new Date(new Date(`${ptrrApplicant.dateOfSpousePassing}T00:00:00Z`).getTime() + 86400000)
+                    .toLocaleDateString('en-US', { year: '2-digit', month: '2-digit', day: '2-digit' });
+                pdfDoc.getPages()[0].drawText(formattedDateOfDeath, {
+                    x: 519, y: 463, size: 8,
+                    font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
+                    color: PDFLib.rgb(0, 0, 0),
+                });
+            }
+        } else {
+            spouseDeceasedField.uncheck();
+        }
+    }
+
+    const page = pdfDoc.getPages()[0];
+
+    // Residence ovals
+    const ownerOval       = { x: 461, y: 656 };
+    const renterOval      = { x: 461, y: 638 };
+    const renterownerOval = { x: 461, y: 627 };
+    const drawOval = (c) => page.drawEllipse({ x: c.x, y: c.y, xScale: 5, yScale: 5, color: PDFLib.rgb(0, 0, 0) });
+    if (data.residenceStatus === 'owned')        drawOval(ownerOval);
+    else if (data.residenceStatus === 'rented')  drawOval(renterOval);
+    else if (data.residenceStatus === 'rentedowned') drawOval(renterownerOval);
+
+    // Claimant status ovals (A/B/C/D)
+    const claimantStatusOvals = {
+        A: { x: 461, y: 587 }, B: { x: 461, y: 576 },
+        C: { x: 461, y: 541 }, D: { x: 461, y: 522 },
+    };
+    const lastYear = new Date().getFullYear() - 1;
+    let applicantAge65OrOlder = false;
+    if (ptrrApplicant?.dob) {
+        const applicantAge = lastYear - new Date(ptrrApplicant.dob).getFullYear();
+        if (applicantAge >= 65) {
+            applicantAge65OrOlder = true;
+            drawOval(claimantStatusOvals.A);
+        }
+    }
+    if (!applicantAge65OrOlder && spouse?.dob) {
+        const spouseAge = lastYear - new Date(spouse.dob).getFullYear();
+        if (spouseAge >= 65) drawOval(claimantStatusOvals.B);
+    }
+    if (ptrrApplicant?.previousMaritalStatus?.toLowerCase().trim() === 'widowed' && ptrrApplicant?.dob) {
+        const a = lastYear - new Date(ptrrApplicant.dob).getFullYear();
+        const isDisabled = (ptrrApplicant?.disability || '').toLowerCase() === 'yes';
+        if (a >= 50 && a <= 64 && !isDisabled) drawOval(claimantStatusOvals.C);
+    }
+    if (ptrrApplicant?.disability?.toLowerCase() === 'yes' && ptrrApplicant?.dob) {
+        const a = lastYear - new Date(ptrrApplicant.dob).getFullYear();
+        if (a >= 18 && a <= 64) drawOval(claimantStatusOvals.D);
+    }
+
+    const countyCodes = {
+        "Adams": "01",
+        "Allegheny": "02",
+        "Armstrong": "03",
+        "Beaver": "04",
+        "Bedford": "05",
+        "Berks": "06",
+        "Blair": "07",
+        "Bradford": "08",
+        "Bucks": "09",
+        "Butler": "10",
+        "Cambria": "11",
+        "Cameron": "12",
+        "Carbon": "13",
+        "Centre": "14",
+        "Chester": "15",
+        "Clarion": "16",
+        "Clearfield": "17",
+        "Clinton": "18",
+        "Columbia": "19",
+        "Crawford": "20",
+        "Cumberland": "21",
+        "Dauphin": "22",
+        "Delaware": "23",
+        "Elk": "24",
+        "Erie": "25",
+        "Fayette": "26",
+        "Forest": "27",
+        "Franklin": "28",
+        "Fulton": "29",
+        "Greene": "30",
+        "Huntingdon": "31",
+        "Indiana": "32",
+        "Jefferson": "33",
+        "Juniata": "34",
+        "Lackawanna": "35",
+        "Lancaster": "36",
+        "Lawrence": "37",
+        "Lebanon": "38",
+        "Lehigh": "39",
+        "Luzerne": "40",
+        "Lycoming": "41",
+        "McKean": "42",
+        "Monroe": "43",
+        "Montgomery": "44",
+        "Montour": "45",
+        "Northampton": "46",
+        "Northumberland": "47",
+        "Perry": "48",
+        "Philadelphia": "49",
+        "Pike": "50",
+        "Potter": "51",
+        "Schuylkill": "52",
+        "Snyder": "53",
+        "Somerset": "54",
+        "Sullivan": "55",
+        "Susquehanna": "56",
+        "Tioga": "57",
+        "Union": "58",
+        "Venango": "59",
+        "Warren": "60",
+        "Washington": "61",
+        "Wayne": "62",
+        "Westmoreland": "63",
+        "Wyoming": "64",
+        "York": "65"
+    };
     
-    // === Pre-process schedules BEFORE filling the main PA-1000 ===
-    // Schedules return their filled bytes + any totals the main form needs.
-    const scheduleA = await buildScheduleA({
-        ptrrApplicant,
-        sanitizedSSN,
-        residenceStatus: data.residenceStatus,
-    });
-    // (future schedules can be processed here too — PA-1000B, PA-1000PS, etc.)
-// Set the formatted date in the PDF field
-form.getTextField('Enter claimant\'s birthdate in mm/dd/yy format').setText(formattedDob);
+    const schoolDistrictCodes = {
+        "Adams": {
+            "Bermudian Springs School District": "01110",
+            "Conewago Valley School District": "01160",
+            "Fairfield Area School District": "01305",
+            "Gettysburg Area School District": "01375",
+            "Littlestown Area School District": "01520",
+            "Upper Adams School District": "01852"
+        },
+        "Allegheny": {
+            "Allegheny Valley School District": "02060",
+            "Avonworth School District": "02075",
+            "Baldwin-Whitehall School District": "02110",
+            "Bethel Park School District": "02125",
+            "Brentwood Borough School District": "02145"
+        },
+        "Armstrong": {
+            "Apollo-Ridge School District": "03010",
+            "Armstrong School District": "03020",
+            "Bradys Bend Area School District": "03100",
+            "Kittanning Area School District": "03420",
+            "Leechburg Area School District": "03450"
+        },
+        "Beaver": {
+            "Aliquippa School District": "04010",
+            "Ambridge Area School District": "04020",
+            "Beaver Area School District": "04050",
+            "Blackhawk School District": "04100",
+            "Center Area School District": "04130"
+        },
+        "Bedford": {
+            "Bedford Area School District": "05010",
+            "Everett Area School District": "05100",
+            "Fulton County School District": "05200",
+            "Northern Bedford County School District": "05400",
+            "Southern Bedford County School District": "05500"
+        },
+        "Berks": {
+            "Antietam School District": "06010",
+            "Boyertown Area School District": "06030",
+            "Brandywine Heights Area School District": "06040",
+            "Daniel Boone Area School District": "06060",
+            "East Penn School District": "06110"
+        },
+        "Blair": {
+            "Altoona Area School District": "07010",
+            "Bellwood-Antis School District": "07020",
+            "Claysburg-Kimmel School District": "07100",
+            "Hollidaysburg Area School District": "07300",
+            "Juniata Valley School District": "07400"
+        },
+        "Bradford": {
+            "Athens Area School District": "08010",
+            "Bradford Area School District": "08020",
+            "Canton Area School District": "08100",
+            "Sayre Area School District": "08500",
+            "Troy Area School District": "08700"
+        },
+        "Bucks": {
+            "Bensalem Township School District": "09010",
+            "Bristol Borough School District": "09020",
+            "Bristol Township School District": "09030",
+            "Buckingham Township School District": "09040",
+            "Central Bucks School District": "09100"
+        },
+        "Butler": {
+            "Butler Area School District": "10010",
+            "Cabot School District": "10020",
+            "Connoquenessing Area School District": "10100",
+            "Hampton Township School District": "10300",
+            "Mars Area School District": "10400"
+        },
+        "Cambria": {
+            "Cambria Heights School District": "11010",
+            "Conemaugh Valley School District": "11100",
+            "Ferndale Area School District": "11200",
+            "Greater Johnstown School District": "11300",
+            "Northern Cambria School District": "11400"
+        },
+        "Cameron": {
+            "Cameron County School District": "12010"
+        },
+        "Carbon": {
+            "Lehighton Area School District": "13060",
+            "Palmerton Area School District": "13120",
+            "Souderton Area School District": "13180",
+            "Weatherly Area School District": "13260"
+        },
+        "Centre": {
+            "Bellefonte Area School District": "14010",
+            "State College Area School District": "14400",
+            "Philipsburg-Osceola Area School District": "14300"
+        },
+        "Chester": {
+            "Avon Grove School District": "15010",
+            "Coatesville Area School District": "15100",
+            "Downingtown Area School District": "15200",
+            "Great Valley School District": "15300",
+            "Kennett Consolidated School District": "15400"
+        },
+        "Clarion": {
+            "Clarion Area School District": "16010",
+            "Eldred School District": "16100",
+            "Forest Area School District": "16200",
+            "Keystone School District": "16300",
+            "Redbank Valley School District": "16500"
+        },
+        "Clearfield": {
+            "Curwensville Area School District": "17010",
+            "DuBois Area School District": "17100",
+            "Graffius School District": "17200",
+            "Moshannon Valley School District": "17400",
+            "West Branch Area School District": "17500"
+        },
+        "Clinton": {
+            "Clinton County School District": "18010",
+            "Muncy School District": "18200"
+        },
+        "Columbia": {
+            "Berwick Area School District": "19010",
+            "Bloomsburg Area School District": "19100",
+            "Central Columbia School District": "19200",
+            "Danville Area School District": "19300",
+            "Millville Area School District": "19400"
+        },
+        "Crawford": {
+            "Cranberry Area School District": "20010",
+            "Conneaut Area School District": "20100",
+            "Linesville Area School District": "20300",
+            "Meadville Area School District": "20400",
+            "Northwestern School District": "20500"
+        },
+        "Cumberland": {
+            "Cumberland Valley School District": "21010",
+            "East Pennsboro Area School District": "21100",
+            "Shippensburg Area School District": "21300",
+            "South Middleton School District": "21400",
+            "West Shore School District": "21500"
+        },
+        "Dauphin": {
+            "Central Dauphin School District": "22020",
+            "Dauphin County Technical School": "22100",
+            "Halifax Area School District": "22300",
+            "Harrisburg School District": "22400",
+            "Lower Dauphin School District": "22500"
+        },
+        "Delaware": {
+            "Chichester School District": "23010",
+            "Concord School District": "23100",
+            "Delaware County Technical School": "23200",
+            "Garnet Valley School District": "23300",
+            "Haverford Township School District": "23400"
+        },
+        "Elk": {
+            "Elk County School District": "24010"
+        },
+        "Erie": {
+            "Corry Area School District": "25010",
+            "Erie City School District": "25100",
+            "Fairview School District": "25200",
+            "Fort LeBoeuf School District": "25300",
+            "Girard School District": "25400"
+        },
+        "Fayette": {
+            "Albert Gallatin Area School District": "26010",
+            "Brownsville Area School District": "26100",
+            "Connellsville Area School District": "26200",
+            "Fayette County Area School District": "26300",
+            "Uniontown Area School District": "26500"
+        },
+        'Forest': {
+            'Forest Area School District': '27010'
+        },
+        "Franklin": {
+            "Chambersburg Area School District": "28010",
+            "Fannett-Metal School District": "28100",
+            "Greencastle-Antrim School District": "28200",
+            "Shippensburg Area School District": "28300"
+        },
+        "Fulton": {
+            "Fulton County School District": "29010"
+        },
+        "Greene": {
+            "Greene County School District": "30010",
+            "Jefferson-Morgan School District": "30100"
+        },
+        "Huntingdon": {
+            "Huntingdon Area School District": "31010",
+            "Mount Union Area School District": "31200",
+            "Southern Huntingdon County School District": "31400"
+        },
+        "Indiana": {
+            "Indiana Area School District": "32010",
+            "Penns Manor Area School District": "32100",
+            "Purchase Line School District": "32300"
+        },
+        "Jefferson": {
+            "Brookville Area School District": "33010",
+            "DuBois Area School District": "33100",
+            "Punxsutawney Area School District": "33300"
+        },
+        "Juniata": {
+            "Juniata County School District": "34010"
+        },
+        "Lackawanna": {
+            "Carbondale Area School District": "35010",
+            "Lakeland School District": "35100",
+            "Mid Valley School District": "35200",
+            "North Pocono School District": "35300",
+            "Scranton School District": "35400"
+        },
+        "Lancaster": {
+            "Conestoga Valley School District": "36020",
+            "Cocalico School District": "36100",
+            "Columbia Borough School District": "36150",
+            "Donegal School District": "36200",
+            "Ephrata Area School District": "36300"
+        },
+        "Lawrence": {
+            "Ellwood City Area School District": "37010",
+            "Lawrence County School District": "37100",
+            "Neshannock Township School District": "37200"
+        },
+        "Lebanon": {
+            "Annville-Cleona School District": "38010",
+            "Cornwall-Lebanon School District": "38100",
+            "Eastern Lebanon County School District": "38200",
+            "Lebanon School District": "38300",
+            "Northern Lebanon School District": "38400"
+        },
+        "Lehigh": {
+            "Allentown School District": "39010",
+            "Catasauqua Area School District": "39100",
+            "East Penn School District": "39150",
+            "Northern Lehigh School District": "39300",
+            "Parkland School District": "39400"
+        },
+        "Luzerne": {
+            "Dallas School District": "40010",
+            "Hazleton Area School District": "40100",
+            "Kingston Area School District": "40200",
+            "Lake-Lehman School District": "40300",
+            "Nanticoke Area School District": "40500"
+        },
+        "Lycoming": {
+            "Canton Area School District": "41010",
+            "Muncy School District": "41100",
+            "South Williamsport Area School District": "41400",
+            "Wellsboro Area School District": "41500"
+        },
+        "McKean": {
+            "Bradford Area School District": "42010",
+            "Cameron County School District": "42100",
+            "Port Allegany School District": "42300"
+        },
+        "Monroe": {
+            "East Stroudsburg Area School District": "43010",
+            "Pleasant Valley School District": "43100",
+            "Stroudsburg Area School District": "43200"
+        },
+        "Montgomery": {
+            "Abington School District": "44010",
+            "Cheltenham Township School District": "44100",
+            "Hatboro-Horsham School District": "44300",
+            "Lower Merion School District": "44400",
+            "Methacton School District": "44500"
+        },
+        "Montour": {
+            "Montour School District": "45010"
+        },
+        "Northampton": {
+            "Bethlehem Area School District": "46010",
+            "Easton Area School District": "46100",
+            "Nazareth Area School District": "46200",
+            "Northampton Area School District": "46300",
+            "Pen Argyl Area School District": "46400"
+        },
+        "Northumberland": {
+            "Danville Area School District": "47010",
+            "Line Mountain School District": "47100",
+            "Milton Area School District": "47200",
+            "Shamokin Area School District": "47400",
+            "Warrior Run School District": "47500"
+        },
+        "Perry": {
+            "Duncannon Borough School District": "48010",
+            "Newport School District": "48100",
+            "Susquenita School District": "48300"
+        },
+        "Philadelphia": {
+            "Philadelphia City School District": "49010"
+        },
+        "Pike": {
+            "Delaware Valley School District": "50010",
+            "Wallenpaupack Area School District": "50200"
+        },
+        "Potter": {
+            "Coudersport Area School District": "51010",
+            "Oswayo Valley School District": "51200"
+        },
+        "Schuylkill": {
+            "Blue Mountain School District": "52010",  
+            "Mahanoy Area School District": "52100",
+            "Minersville Area School District": "52200",
+            "North Schuylkill School District": "52400",
+            "Pottsville Area School District": "52500"
+        },
+        "Snyder": {
+            "Middleburg Area School District": "53010",
+            "Selinsgrove Area School District": "53100",
+            "Shamokin Dam Area School District": "53200"
+        },
+        "Somerset": {
+            "Conemaugh Township Area School District": "54010",
+            "North Star School District": "54100",
+            "Rockwood Area School District": "54300",
+            "Somerset Area School District": "54400"
+        },
+        "Sullivan": {
+            "Sullivan County School District": "55010"
+        },
+        "Susquehanna": {
+            "Forest City Regional School District": "56010",
+            "Montrose Area School District": "56100"
+        },
+        "Tioga": {
+            "Elkland Area School District": "57010",
+            "Wellsboro Area School District": "57100"
+        },
+        "Union": {
+            "Lewisburg Area School District": "58010",
+            "Mifflinburg Area School District": "58100"
+        },
+        "Venango": {
+            "Cranberry Area School District": "59010",
+            "Franklin Area School District": "59100",
+            "Oil City Area School District": "59300"
+        },
+        "Warren": {
+            "Warren County School District": "60010"
+        },
+        "Washington": {
+            "Bentleyville School District": "61010",
+            "California Area School District": "61100",
+            "Charleroi Area School District": "61200",
+            "Fort Cherry School District": "61300",
+            "McGuffey School District": "61500"
+        },
+        "Wayne": {
+            "Honesdale School District": "62010",
+            "Wallenpaupack Area School District": "62100"
+        },
+        "Westmoreland": {
+            "Derry Area School District": "63010",
+            "Greensburg-Salem School District": "63100",
+            "Hempfield Area School District": "63200",
+            "Jeannette City School District": "63300",
+            "Latrobe Area School District": "63400"
+        },
+        "Wyoming": {
+            "Tunkhannock Area School District": "64010"
+        },
+        "York": {
+            "Central York School District": "65010",
+            "Dallastown Area School District": "65100",
+            "Eastern York School District": "65200",
+            "Hanover Public School District": "65300",
+            "Red Lion Area School District": "65500"
+        }
+    };
+    
+    const selectedCounty = data.county;
+    const countyCode = countyCodes[selectedCounty] || '';
+    form.getTextField('Enter the two-digit county code from the list on page 15').setText(countyCode);
 
-// Use mailing address if it differs from residential; otherwise use residential.
-const useMailing = (data.mailingAddressSameAsResidential || '').toLowerCase() === 'no';
-const addrLine1 = useMailing ? (data.mailingStreetAddress  || '') : (data.streetAddress  || '');
-const addrLine2 = useMailing ? (data.mailingStreetAddress2 || '') : (data.streetAddress2 || '');
-const addrCity  = useMailing ? (data.mailingCity           || '') : (data.city           || '');
-const addrState = useMailing ? (data.mailingState          || '') : (data.state          || '');
-const addrZip   = useMailing ? (data.mailingZipCode        || '') : (data.zipCode        || '');
+    const selectedSchoolDistrict = data.schoolDistrict;
+    const schoolDistrictCode = schoolDistrictCodes[selectedCounty]?.[selectedSchoolDistrict] || '';
+    form.getTextField('Enter the five-digit school district code from the list on pages 16 and 17').setText(schoolDistrictCode);
 
-form.getTextField('Use ALL CAPS to enter first line of address').setText(addrLine1);
-form.getTextField('Use ALL CAPS to enter second line of address').setText(addrLine2);
-form.getTextField('Use ALL CAPS to enter city or post office').setText(addrCity);
+    const countryCodeField = form.getTextField('Enter the two-character country code');
+    if (countryCodeField) countryCodeField.setText('US');
 
-// Ensure the state abbreviation is in uppercase and valid
-const validState = addrState.toUpperCase().slice(0, 2);
-form.getTextField('Use ALL CAPS to enter two-character state abbreviation').setText(validState);
-form.getTextField('Enter five-digit ZIP Code').setText(addrZip);
-
-if (spouse) {
-    try {
-
-// Add spouse's first name
-const spouseFirstNameField = form.getTextField('Use ALL CAPS to enter spouse\'s first name (10 spaces limit)');
-if (spouseFirstNameField) {
-    const spouseFirstName = spouse.firstName || ''; // Use the spouse object
-    spouseFirstNameField.setText(spouseFirstName);
-    console.log(`Spouse's first name set to: ${spouseFirstName}`);
-} else {
-    console.error('Field "Use ALL CAPS to enter spouse\'s first name (10 spaces limit)" not found in the form.');
-}
-
-// Add spouse's date of birth
-const spouseDobField = form.getTextField('Enter spouse\'s birthdate in mm/dd/yy format');
-if (spouseDobField) {
-    const formattedSpouseDob = spouse.dob
-        ? new Date(new Date(`${spouse.dob}T00:00:00Z`).getTime() + 24 * 60 * 60 * 1000)
-              .toLocaleDateString('en-US', { year: '2-digit', month: '2-digit', day: '2-digit' })
-        : '';
-    spouseDobField.setText(formattedSpouseDob);
-    console.log(`Spouse's DOB set to: ${formattedSpouseDob}`);
-} else {
-    console.error('Field "Enter spouse\'s birthdate in mm/dd/yy format" not found in the form.');
-}
-
-        // Add spouse's SSN (already handled earlier in the code)
-        console.log('Spouse\'s SSN already added to the form.');
-    } catch (error) {
-        console.error('Error adding spouse\'s information to the form:', error.message, error.stack);
+    // Phone
+    const phoneNumberField = form.getTextField('Enter claimant’s daytime telephone number');
+    if (phoneNumberField) {
+        const phoneNumber = (data.phoneNumber || '').replace(/[()\-\s]/g, '').slice(0, 10);
+        phoneNumberField.setText(phoneNumber);
     }
 
-// Add spouse's SSN
-const spouseSsnField = form.getTextField('Enter spouse\'s SSN without dashes or spaces');
-if (spouseSsnField) {
-    const rawSpouseSsn = spouse.socialSecurityNumber || '';
-    const sanitizedSpouseSsn = rawSpouseSsn.replace(/[-\s]/g, ''); // Remove existing dashes and spaces
+    // ============================================================
+    //  INCOME CALCULATIONS  (unchanged)
+    // ============================================================
+    function calculateYearlyIncome(income) {
+        const amount = parseFloat(income.amount) || 0;
+        if (!amount) return 0;
 
-    // Ensure the SSN is exactly 9 characters long
-    if (sanitizedSpouseSsn.length === 9) {
-        // Format the SSN with dashes for visual display
-        const formattedSpouseSsn = `${sanitizedSpouseSsn.slice(0, 3)}-${sanitizedSpouseSsn.slice(3, 5)}-${sanitizedSpouseSsn.slice(5)}`;
-        console.log(`Spouse's SSN (formatted): ${formattedSpouseSsn}`);
-        
-        // Set the raw SSN (without dashes) to avoid maxLength errors
-        spouseSsnField.setText(sanitizedSpouseSsn);
-    } else {
-        console.error('Invalid SSN length. SSN must be 9 digits.');
-    }
-} else {
-    console.error('Field "Enter spouse\'s SSN without dashes or spaces" not found in the form.');
-}
+        const taxYear = new Date().getFullYear() - 1;
+        const yearStart = new Date(Date.UTC(taxYear, 0, 1));
+        const yearEnd   = new Date(Date.UTC(taxYear, 11, 31));
+        const totalDaysInYear =
+            ((taxYear % 4 === 0 && taxYear % 100 !== 0) || taxYear % 400 === 0) ? 366 : 365;
 
-    //Add spouse's middle initial
-    const spouseMiddleInitialField = form.getTextField('Spouse - Middle Initial');
-    if (spouseMiddleInitialField) {
-        const spouseMiddleInitial = spouse.middleInitial || '';
-        spouseMiddleInitialField.setText(spouseMiddleInitial);
-        console.log(`Spouse's middle initial set to: ${spouseMiddleInitial}`);
-    } else {
-        console.error('Field "Spouse Middle Initial" not found in the form.');
-    }
-} else {
-    console.warn('No spouse found in household members. Skipping spouse information.');
-}
+        // Clamp the income window to the tax year
+        const rawStart = income.startDate ? new Date(`${String(income.startDate).slice(0, 10)}T00:00:00Z`) : yearStart;
+        const rawEnd   = income.endDate   ? new Date(`${String(income.endDate).slice(0, 10)}T00:00:00Z`)   : yearEnd;
+        const start = rawStart < yearStart ? yearStart : rawStart;
+        const end   = rawEnd   > yearEnd   ? yearEnd   : rawEnd;
+        if (isNaN(start) || isNaN(end) || end < start) return 0;
 
-// Check the "Spouse Deceased" checkbox only if the previousMaritalStatus is "Widowed"
-const spouseDeceasedField = form.getCheckBox('Click on oval if spouse is deceased');
-if (spouseDeceasedField) {
-    // Debugging: Log the ptrrApplicant and its previousMaritalStatus
-    console.log('PTRR Applicant:', ptrrApplicant);
-    console.log('PTRR Applicant Previous Marital Status (raw):', ptrrApplicant?.previousMaritalStatus);
+        const daysActive = Math.max(0, Math.round((end - start) / 86400000) + 1);
+        const yearFraction = Math.min(1, daysActive / totalDaysInYear);
 
-// Populate the "Enter spouse's date of death in mm/dd/yy format" field if previousMaritalStatus is "Widowed"
-const spouseDateOfDeathField = form.getTextField("Enter spouse's date of death in mm/dd/yy format");
-if (spouseDateOfDeathField) {
-    const maritalStatus = ptrrApplicant?.previousMaritalStatus?.toLowerCase().trim();
-    if (maritalStatus === 'widowed' && ptrrApplicant?.dateOfSpousePassing) {
-        const formattedDateOfDeath = new Date(new Date(`${ptrrApplicant.dateOfSpousePassing}T00:00:00Z`).getTime() + 24 * 60 * 60 * 1000)
-            .toLocaleDateString('en-US', { year: '2-digit', month: '2-digit', day: '2-digit' });
+        const freq = (income.frequency || '').toLowerCase();
+        let annualized;
+        switch (freq) {
+            case 'daily':       annualized = amount * 365; break;
+            case 'weekly':      annualized = amount * 52;  break;
+            case 'bi-weekly':
+            case 'biweekly':    annualized = amount * 26;  break;
+            case 'semi-monthly':
+            case 'semimonthly': annualized = amount * 24;  break;
+            case 'monthly':     annualized = amount * 12;  break;
+            case 'quarterly':   annualized = amount * 4;   break;
+            case 'semi-annually':
+            case 'semiannually':annualized = amount * 2;   break;
+            case 'yearly':
+            case 'annual':
+            case 'annually':    annualized = amount;       break;
+            // One-time / lump payments aren't annualized
+            case 'one-time':
+            case 'onetime':
+            case 'lump sum':
+            case 'lumpsum':     return amount;
+            default:            annualized = amount * 12;  break; // safe default
+        }
 
-        // Use drawText to write the formatted date
-        const page = pdfDoc.getPages()[0]; // Assuming the field is on the first page
-        page.drawText(formattedDateOfDeath, {
-            x: 519, // Replace with the actual x-coordinate of the field
-            y: 463, // Replace with the actual y-coordinate of the field
-            size: 8, // Adjust the font size as needed
-            font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-            color: PDFLib.rgb(0, 0, 0), // Black color
-        });
-
-        console.log(`Spouse's date of death set to: ${formattedDateOfDeath}`);
-    } else {
-        // Clear the field if conditions are not met
-        const page = pdfDoc.getPages()[0]; // Assuming the field is on the first page
-        page.drawText('', {
-            x: 100, // Replace with the actual x-coordinate of the field
-            y: 200, // Replace with the actual y-coordinate of the field
-            size: 12, // Adjust the font size as needed
-            font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-            color: PDFLib.rgb(0, 0, 0), // Black color
-        });
-
-        console.log('Spouse\'s date of death not set because conditions are not met.');
-    }
-} else {
-    console.error('Field "Enter spouse\'s date of death in mm/dd/yy format" not found in the form.');
-}
-
-    // Normalize the marital status for comparison
-    const maritalStatus = ptrrApplicant?.previousMaritalStatus?.toLowerCase().trim();
-    console.log('Normalized Marital Status:', maritalStatus);
-
-    if (maritalStatus === 'widowed') {
-        spouseDeceasedField.check(); // Check the box
-        console.log('Checkbox "Spouse Deceased" has been checked because marital status is "Widowed".');
-    } else {
-        spouseDeceasedField.uncheck(); // Uncheck the box
-        console.log('Checkbox "Spouse Deceased" has been unchecked because marital status is not "Widowed".');
-    }
-} else {
-    console.error('Checkbox "Spouse Deceased" not found in the form.');
-}
-
-const page = pdfDoc.getPages()[0]; // Get the first page of the PDF
-
-// Coordinates for the "owner" and "renter" ovals (replace with actual values)
-const ownerOval = { x: 461, y: 656, xRadius: 5, yRadius: 5 }; // Example coordinates for "owner"
-const renterOval = { x: 461, y: 638, xRadius: 5, yRadius: 5 }; // Example coordinates for "renter"
-const renterownerOval = { x: 461, y: 627, xRadius: 5, yRadius: 5 }; // Example coordinates for "renterowner"
-
-// Fill the appropriate oval based on residenceStatus
-if (data.residenceStatus === 'owned') {
-    // Draw a filled oval for the "owner"
-    page.drawEllipse({
-        x: ownerOval.x,
-        y: ownerOval.y,
-        xScale: ownerOval.xRadius,
-        yScale: ownerOval.yRadius,
-        color: PDFLib.rgb(0, 0, 0), // Black color
-    });
-    console.log('Filled the "owner" oval.');
-} else if (data.residenceStatus === 'rented') {
-    // Draw a filled oval for the "renter"
-    page.drawEllipse({
-        x: renterOval.x,
-        y: renterOval.y,
-        xScale: renterOval.xRadius,
-        yScale: renterOval.yRadius,
-        color: PDFLib.rgb(0, 0, 0), // Black color
-    });
-    console.log('Filled the "renter" oval.');
-} else if (data.residenceStatus === 'rentedowned') {
-    // Draw a filled oval for the "renterowner"
-    page.drawEllipse({
-        x: renterownerOval.x,
-        y: renterownerOval.y,
-        xScale: renterownerOval.xRadius,
-        yScale: renterownerOval.yRadius,
-        color: PDFLib.rgb(0, 0, 0), // Black color
-    });
-    console.log('Filled the "renterowner" oval.');
-} else {
-    console.log('No oval filled because residenceStatus is neither "owned" nor "rented".');
-}
-
-// Coordinates for the claimant status ovals
-const claimantStatusOvals = {
-    A: { x: 461, y: 587, xRadius: 5, yRadius: 5 }, // Claimant age 65 or older
-    B: { x: 461, y: 576, xRadius: 5, yRadius: 5 }, // Claimant under age 65, with a spouse age 65 or older
-    C: { x: 461, y: 541, xRadius: 5, yRadius: 5 }, // Widow or widower, age 50 to 64
-    D: { x: 461, y: 522, xRadius: 5, yRadius: 5 }, // Permanently disabled
-};
-
-// Determine which oval to fill based on the conditions
-const currentYear = new Date().getFullYear();
-const lastYear = currentYear - 1;
-
-// Check if PTRR applicant was 65 years or older by the end of last year
-let applicantAge65OrOlder = false;
-if (ptrrApplicant?.dob) {
-    const applicantAge = lastYear - new Date(ptrrApplicant.dob).getFullYear();
-    if (applicantAge >= 65) {
-        applicantAge65OrOlder = true;
-        page.drawEllipse({
-            x: claimantStatusOvals.A.x,
-            y: claimantStatusOvals.A.y,
-            xScale: claimantStatusOvals.A.xRadius,
-            yScale: claimantStatusOvals.A.yRadius,
-            color: PDFLib.rgb(0, 0, 0), // Black color
-        });
-        console.log('Filled oval A: Claimant age 65 or older.');
-    }
-}
-
-// Check if spouse of PTRR applicant was 65 years or older by the end of last year
-// Only fill oval B if the applicant is UNDER 65
-if (!applicantAge65OrOlder && spouse?.dob) {
-    const spouseAge = lastYear - new Date(spouse.dob).getFullYear();
-    if (spouseAge >= 65) {
-        page.drawEllipse({
-            x: claimantStatusOvals.B.x,
-            y: claimantStatusOvals.B.y,
-            xScale: claimantStatusOvals.B.xRadius,
-            yScale: claimantStatusOvals.B.yRadius,
-            color: PDFLib.rgb(0, 0, 0), // Black color
-        });
-        console.log('Filled oval B: Claimant under age 65, with a spouse age 65 or older.');
-    }
-}
-
-// Check if previousMaritalStatus is widowed AND applicant was age 50-64 at end of last year
-if (ptrrApplicant?.previousMaritalStatus?.toLowerCase().trim() === 'widowed' && ptrrApplicant?.dob) {
-    const applicantAge = lastYear - new Date(ptrrApplicant.dob).getFullYear();
-    if (applicantAge >= 50 && applicantAge <= 64) {
-        page.drawEllipse({
-            x: claimantStatusOvals.C.x,
-            y: claimantStatusOvals.C.y,
-            xScale: claimantStatusOvals.C.xRadius,
-            yScale: claimantStatusOvals.C.yRadius,
-            color: PDFLib.rgb(0, 0, 0), // Black color
-        });
-        console.log('Filled oval C: Widow or widower, age 50 to 64.');
-    }
-}
-
-// Check if PTRR applicant has a disability, is age 18-64, and is NOT a widow/widower age 50-64
-if (ptrrApplicant?.disability?.toLowerCase() === 'yes' && ptrrApplicant?.dob) {
-    const applicantAge = lastYear - new Date(ptrrApplicant.dob).getFullYear();
-    const isWidowed5064 = ptrrApplicant?.previousMaritalStatus?.toLowerCase().trim() === 'widowed' &&
-        applicantAge >= 50 && applicantAge <= 64;
-
-    if (applicantAge >= 18 && applicantAge <= 64 && !isWidowed5064) {
-        page.drawEllipse({
-            x: claimantStatusOvals.D.x,
-            y: claimantStatusOvals.D.y,
-            xScale: claimantStatusOvals.D.xRadius,
-            yScale: claimantStatusOvals.D.yRadius,
-            color: PDFLib.rgb(0, 0, 0), // Black color
-        });
-        console.log('Filled oval D: Permanently disabled, age 18-64.');
-    }
-}
-
-const countyCodes = {
-    "Adams": "01",
-    "Allegheny": "02",
-    "Armstrong": "03",
-    "Beaver": "04",
-    "Bedford": "05",
-    "Berks": "06",
-    "Blair": "07",
-    "Bradford": "08",
-    "Bucks": "09",
-    "Butler": "10",
-    "Cambria": "11",
-    "Cameron": "12",
-    "Carbon": "13",
-    "Centre": "14",
-    "Chester": "15",
-    "Clarion": "16",
-    "Clearfield": "17",
-    "Clinton": "18",
-    "Columbia": "19",
-    "Crawford": "20",
-    "Cumberland": "21",
-    "Dauphin": "22",
-    "Delaware": "23",
-    "Elk": "24",
-    "Erie": "25",
-    "Fayette": "26",
-    "Forest": "27",
-    "Franklin": "28",
-    "Fulton": "29",
-    "Greene": "30",
-    "Huntingdon": "31",
-    "Indiana": "32",
-    "Jefferson": "33",
-    "Juniata": "34",
-    "Lackawanna": "35",
-    "Lancaster": "36",
-    "Lawrence": "37",
-    "Lebanon": "38",
-    "Lehigh": "39",
-    "Luzerne": "40",
-    "Lycoming": "41",
-    "McKean": "42",
-    "Monroe": "43",
-    "Montgomery": "44",
-    "Montour": "45",
-    "Northampton": "46",
-    "Northumberland": "47",
-    "Perry": "48",
-    "Philadelphia": "49",
-    "Pike": "50",
-    "Potter": "51",
-    "Schuylkill": "52",
-    "Snyder": "53",
-    "Somerset": "54",
-    "Sullivan": "55",
-    "Susquehanna": "56",
-    "Tioga": "57",
-    "Union": "58",
-    "Venango": "59",
-    "Warren": "60",
-    "Washington": "61",
-    "Wayne": "62",
-    "Westmoreland": "63",
-    "Wyoming": "64",
-    "York": "65"
-};
-
-const schoolDistrictCodes = {
-    "Adams": {
-        "Bermudian Springs School District": "01110",
-        "Conewago Valley School District": "01160",
-        "Fairfield Area School District": "01305",
-        "Gettysburg Area School District": "01375",
-        "Littlestown Area School District": "01520",
-        "Upper Adams School District": "01852"
-    },
-    "Allegheny": {
-        "Allegheny Valley School District": "02060",
-        "Avonworth School District": "02075",
-        "Baldwin-Whitehall School District": "02110",
-        "Bethel Park School District": "02125",
-        "Brentwood Borough School District": "02145"
-    },
-    "Armstrong": {
-        "Apollo-Ridge School District": "03010",
-        "Armstrong School District": "03020",
-        "Bradys Bend Area School District": "03100",
-        "Kittanning Area School District": "03420",
-        "Leechburg Area School District": "03450"
-    },
-    "Beaver": {
-        "Aliquippa School District": "04010",
-        "Ambridge Area School District": "04020",
-        "Beaver Area School District": "04050",
-        "Blackhawk School District": "04100",
-        "Center Area School District": "04130"
-    },
-    "Bedford": {
-        "Bedford Area School District": "05010",
-        "Everett Area School District": "05100",
-        "Fulton County School District": "05200",
-        "Northern Bedford County School District": "05400",
-        "Southern Bedford County School District": "05500"
-    },
-    "Berks": {
-        "Antietam School District": "06010",
-        "Boyertown Area School District": "06030",
-        "Brandywine Heights Area School District": "06040",
-        "Daniel Boone Area School District": "06060",
-        "East Penn School District": "06110"
-    },
-    "Blair": {
-        "Altoona Area School District": "07010",
-        "Bellwood-Antis School District": "07020",
-        "Claysburg-Kimmel School District": "07100",
-        "Hollidaysburg Area School District": "07300",
-        "Juniata Valley School District": "07400"
-    },
-    "Bradford": {
-        "Athens Area School District": "08010",
-        "Bradford Area School District": "08020",
-        "Canton Area School District": "08100",
-        "Sayre Area School District": "08500",
-        "Troy Area School District": "08700"
-    },
-    "Bucks": {
-        "Bensalem Township School District": "09010",
-        "Bristol Borough School District": "09020",
-        "Bristol Township School District": "09030",
-        "Buckingham Township School District": "09040",
-        "Central Bucks School District": "09100"
-    },
-    "Butler": {
-        "Butler Area School District": "10010",
-        "Cabot School District": "10020",
-        "Connoquenessing Area School District": "10100",
-        "Hampton Township School District": "10300",
-        "Mars Area School District": "10400"
-    },
-    "Cambria": {
-        "Cambria Heights School District": "11010",
-        "Conemaugh Valley School District": "11100",
-        "Ferndale Area School District": "11200",
-        "Greater Johnstown School District": "11300",
-        "Northern Cambria School District": "11400"
-    },
-    "Cameron": {
-        "Cameron County School District": "12010"
-    },
-    "Carbon": {
-        "Lehighton Area School District": "13060",
-        "Palmerton Area School District": "13120",
-        "Souderton Area School District": "13180",
-        "Weatherly Area School District": "13260"
-    },
-    "Centre": {
-        "Bellefonte Area School District": "14010",
-        "State College Area School District": "14400",
-        "Philipsburg-Osceola Area School District": "14300"
-    },
-    "Chester": {
-        "Avon Grove School District": "15010",
-        "Coatesville Area School District": "15100",
-        "Downingtown Area School District": "15200",
-        "Great Valley School District": "15300",
-        "Kennett Consolidated School District": "15400"
-    },
-    "Clarion": {
-        "Clarion Area School District": "16010",
-        "Eldred School District": "16100",
-        "Forest Area School District": "16200",
-        "Keystone School District": "16300",
-        "Redbank Valley School District": "16500"
-    },
-    "Clearfield": {
-        "Curwensville Area School District": "17010",
-        "DuBois Area School District": "17100",
-        "Graffius School District": "17200",
-        "Moshannon Valley School District": "17400",
-        "West Branch Area School District": "17500"
-    },
-    "Clinton": {
-        "Clinton County School District": "18010",
-        "Muncy School District": "18200"
-    },
-    "Columbia": {
-        "Berwick Area School District": "19010",
-        "Bloomsburg Area School District": "19100",
-        "Central Columbia School District": "19200",
-        "Danville Area School District": "19300",
-        "Millville Area School District": "19400"
-    },
-    "Crawford": {
-        "Cranberry Area School District": "20010",
-        "Conneaut Area School District": "20100",
-        "Linesville Area School District": "20300",
-        "Meadville Area School District": "20400",
-        "Northwestern School District": "20500"
-    },
-    "Cumberland": {
-        "Cumberland Valley School District": "21010",
-        "East Pennsboro Area School District": "21100",
-        "Shippensburg Area School District": "21300",
-        "South Middleton School District": "21400",
-        "West Shore School District": "21500"
-    },
-    "Dauphin": {
-        "Central Dauphin School District": "22020",
-        "Dauphin County Technical School": "22100",
-        "Halifax Area School District": "22300",
-        "Harrisburg School District": "22400",
-        "Lower Dauphin School District": "22500"
-    },
-    "Delaware": {
-        "Chichester School District": "23010",
-        "Concord School District": "23100",
-        "Delaware County Technical School": "23200",
-        "Garnet Valley School District": "23300",
-        "Haverford Township School District": "23400"
-    },
-    "Elk": {
-        "Elk County School District": "24010"
-    },
-    "Erie": {
-        "Corry Area School District": "25010",
-        "Erie City School District": "25100",
-        "Fairview School District": "25200",
-        "Fort LeBoeuf School District": "25300",
-        "Girard School District": "25400"
-    },
-    "Fayette": {
-        "Albert Gallatin Area School District": "26010",
-        "Brownsville Area School District": "26100",
-        "Connellsville Area School District": "26200",
-        "Fayette County Area School District": "26300",
-        "Uniontown Area School District": "26500"
-    },
-    'Forest': {
-        'Forest Area School District': '27010'
-    },
-    "Franklin": {
-        "Chambersburg Area School District": "28010",
-        "Fannett-Metal School District": "28100",
-        "Greencastle-Antrim School District": "28200",
-        "Shippensburg Area School District": "28300"
-    },
-    "Fulton": {
-        "Fulton County School District": "29010"
-    },
-    "Greene": {
-        "Greene County School District": "30010",
-        "Jefferson-Morgan School District": "30100"
-    },
-    "Huntingdon": {
-        "Huntingdon Area School District": "31010",
-        "Mount Union Area School District": "31200",
-        "Southern Huntingdon County School District": "31400"
-    },
-    "Indiana": {
-        "Indiana Area School District": "32010",
-        "Penns Manor Area School District": "32100",
-        "Purchase Line School District": "32300"
-    },
-    "Jefferson": {
-        "Brookville Area School District": "33010",
-        "DuBois Area School District": "33100",
-        "Punxsutawney Area School District": "33300"
-    },
-    "Juniata": {
-        "Juniata County School District": "34010"
-    },
-    "Lackawanna": {
-        "Carbondale Area School District": "35010",
-        "Lakeland School District": "35100",
-        "Mid Valley School District": "35200",
-        "North Pocono School District": "35300",
-        "Scranton School District": "35400"
-    },
-    "Lancaster": {
-        "Conestoga Valley School District": "36020",
-        "Cocalico School District": "36100",
-        "Columbia Borough School District": "36150",
-        "Donegal School District": "36200",
-        "Ephrata Area School District": "36300"
-    },
-    "Lawrence": {
-        "Ellwood City Area School District": "37010",
-        "Lawrence County School District": "37100",
-        "Neshannock Township School District": "37200"
-    },
-    "Lebanon": {
-        "Annville-Cleona School District": "38010",
-        "Cornwall-Lebanon School District": "38100",
-        "Eastern Lebanon County School District": "38200",
-        "Lebanon School District": "38300",
-        "Northern Lebanon School District": "38400"
-    },
-    "Lehigh": {
-        "Allentown School District": "39010",
-        "Catasauqua Area School District": "39100",
-        "East Penn School District": "39150",
-        "Northern Lehigh School District": "39300",
-        "Parkland School District": "39400"
-    },
-    "Luzerne": {
-        "Dallas School District": "40010",
-        "Hazleton Area School District": "40100",
-        "Kingston Area School District": "40200",
-        "Lake-Lehman School District": "40300",
-        "Nanticoke Area School District": "40500"
-    },
-    "Lycoming": {
-        "Canton Area School District": "41010",
-        "Muncy School District": "41100",
-        "South Williamsport Area School District": "41400",
-        "Wellsboro Area School District": "41500"
-    },
-    "McKean": {
-        "Bradford Area School District": "42010",
-        "Cameron County School District": "42100",
-        "Port Allegany School District": "42300"
-    },
-    "Monroe": {
-        "East Stroudsburg Area School District": "43010",
-        "Pleasant Valley School District": "43100",
-        "Stroudsburg Area School District": "43200"
-    },
-    "Montgomery": {
-        "Abington School District": "44010",
-        "Cheltenham Township School District": "44100",
-        "Hatboro-Horsham School District": "44300",
-        "Lower Merion School District": "44400",
-        "Methacton School District": "44500"
-    },
-    "Montour": {
-        "Montour School District": "45010"
-    },
-    "Northampton": {
-        "Bethlehem Area School District": "46010",
-        "Easton Area School District": "46100",
-        "Nazareth Area School District": "46200",
-        "Northampton Area School District": "46300",
-        "Pen Argyl Area School District": "46400"
-    },
-    "Northumberland": {
-        "Danville Area School District": "47010",
-        "Line Mountain School District": "47100",
-        "Milton Area School District": "47200",
-        "Shamokin Area School District": "47400",
-        "Warrior Run School District": "47500"
-    },
-    "Perry": {
-        "Duncannon Borough School District": "48010",
-        "Newport School District": "48100",
-        "Susquenita School District": "48300"
-    },
-    "Philadelphia": {
-        "Philadelphia City School District": "49010"
-    },
-    "Pike": {
-        "Delaware Valley School District": "50010",
-        "Wallenpaupack Area School District": "50200"
-    },
-    "Potter": {
-        "Coudersport Area School District": "51010",
-        "Oswayo Valley School District": "51200"
-    },
-    "Schuylkill": {
-        "Blue Mountain School District": "52010",  
-        "Mahanoy Area School District": "52100",
-        "Minersville Area School District": "52200",
-        "North Schuylkill School District": "52400",
-        "Pottsville Area School District": "52500"
-    },
-    "Snyder": {
-        "Middleburg Area School District": "53010",
-        "Selinsgrove Area School District": "53100",
-        "Shamokin Dam Area School District": "53200"
-    },
-    "Somerset": {
-        "Conemaugh Township Area School District": "54010",
-        "North Star School District": "54100",
-        "Rockwood Area School District": "54300",
-        "Somerset Area School District": "54400"
-    },
-    "Sullivan": {
-        "Sullivan County School District": "55010"
-    },
-    "Susquehanna": {
-        "Forest City Regional School District": "56010",
-        "Montrose Area School District": "56100"
-    },
-    "Tioga": {
-        "Elkland Area School District": "57010",
-        "Wellsboro Area School District": "57100"
-    },
-    "Union": {
-        "Lewisburg Area School District": "58010",
-        "Mifflinburg Area School District": "58100"
-    },
-    "Venango": {
-        "Cranberry Area School District": "59010",
-        "Franklin Area School District": "59100",
-        "Oil City Area School District": "59300"
-    },
-    "Warren": {
-        "Warren County School District": "60010"
-    },
-    "Washington": {
-        "Bentleyville School District": "61010",
-        "California Area School District": "61100",
-        "Charleroi Area School District": "61200",
-        "Fort Cherry School District": "61300",
-        "McGuffey School District": "61500"
-    },
-    "Wayne": {
-        "Honesdale School District": "62010",
-        "Wallenpaupack Area School District": "62100"
-    },
-    "Westmoreland": {
-        "Derry Area School District": "63010",
-        "Greensburg-Salem School District": "63100",
-        "Hempfield Area School District": "63200",
-        "Jeannette City School District": "63300",
-        "Latrobe Area School District": "63400"
-    },
-    "Wyoming": {
-        "Tunkhannock Area School District": "64010"
-    },
-    "York": {
-        "Central York School District": "65010",
-        "Dallastown Area School District": "65100",
-        "Eastern York School District": "65200",
-        "Hanover Public School District": "65300",
-        "Red Lion Area School District": "65500"
-    }
-};
-
-// Example: Set the county code in the PDF form
-const selectedCounty = data.county; //
-const countyCode = countyCodes[selectedCounty] || '';
-form.getTextField('Enter the two-digit county code from the list on page 15').setText(countyCode);
-
-// Example: Set the school district code in the PDF form
-const selectedSchoolDistrict = data.schoolDistrict; // e.g., "Bethlehem Area School District"
-const schoolDistrictCode = schoolDistrictCodes[selectedCounty]?.[selectedSchoolDistrict] || '';
-form.getTextField('Enter the five-digit school district code from the list on pages 16 and 17').setText(schoolDistrictCode);
-
-// Add the country code to the PDF form
-const countryCodeField = form.getTextField('Enter the two-character country code');
-if (countryCodeField) {
-    countryCodeField.setText('US');
-    console.log('Country code set to: US');
-} else {
-    console.error('Field "Enter the two-character country code" not found in the form.');
-}
-
-console.log(`County Code: ${countyCode}`);
-console.log(`School District Code: ${schoolDistrictCode}`);
-
-// Add claimant's daytime telephone number
-const phoneNumberField = form.getTextField('Enter claimant’s daytime telephone number');
-if (phoneNumberField) {
-    let phoneNumber = data.phoneNumber || ''; // Use the phone number from the data object
-
-    // Remove parentheses, dashes, and spaces from the phone number
-    phoneNumber = phoneNumber.replace(/[()\-\s]/g, '');
-
-    // Ensure the phone number fits within the 10-character limit
-    phoneNumber = phoneNumber.slice(0, 10);
-
-    phoneNumberField.setText(phoneNumber);
-    console.log(`Claimant's daytime telephone number set to: ${phoneNumber}`);
-} else {
-    console.error('Field "Enter claimant’s daytime telephone number" not found in the form.');
-}
-
-// Calculate yearly income based on prorating, start and end dates
-function calculateYearlyIncome(income) {
-    const startDate = new Date(income.startDate);
-    const endDate = income.endDate ? new Date(income.endDate) : new Date();
-    const daysInYear = 365;
-
-    // If the income is monthly, calculate yearly income directly
-    if (income.frequency?.toLowerCase() === 'monthly') {
-        return (parseFloat(income.amount) || 0) * 12;
+        return annualized * yearFraction;
     }
 
-    // Calculate the number of days the income applies to
-    const applicableDays = Math.max(0, (endDate - startDate) / (1000 * 60 * 60 * 24));
-    const yearlyIncome = (parseFloat(income.amount) || 0) * (applicableDays / daysInYear);
+    const applicantIncome = ptrrApplicant?.income || [];
+    const spouseIncome    = spouse?.income || [];
+    const sumIncome = (kinds, allowNegativeKinds = []) => {
+        return [...applicantIncome, ...spouseIncome]
+            .filter((inc) => inc.type?.toLowerCase() === 'previous' && kinds.includes(inc.kind?.toLowerCase()))
+            .reduce((total, inc) => {
+                const yi = calculateYearlyIncome(inc);
+                return total + (allowNegativeKinds.includes(inc.kind?.toLowerCase()) ? -yi : yi);
+            }, 0);
+    };
 
-    return yearlyIncome;
-}
-
-// Extract and sum relevant income types for "Social Security, SSI, and SSP Income"
-const applicantIncome = ptrrApplicant?.income || [];
-const spouseIncome = spouse?.income || [];
-const totalRailroadRetirementIncome = [...applicantIncome, ...spouseIncome]
-    .filter((income) =>
-        income.type?.toLowerCase() === 'previous' &&
-        ['railroad retirement tier 1'].includes(income.kind?.toLowerCase())
-    )
-    .reduce((total, income) => total + calculateYearlyIncome(income), 0);
-
-const totalYearlyIncome = [...applicantIncome, ...spouseIncome]
-    .filter((income) =>
-        income.type?.toLowerCase() === 'previous' &&
-        ['ssa retirement', 'ssi', 'ssp', 'ssdi', 'social security survivor benefits'].includes(income.kind?.toLowerCase())
-    )
-    .reduce((total, income) => total + calculateYearlyIncome(income), 0);
-
-    const totalRailroadRetirementIncome2 = [...applicantIncome, ...spouseIncome]
-    .filter((income) => {
-        const isPrevious = income.type?.toLowerCase() === 'previous';
-        const isValidKind = ['railroad retirement tier 2', 'pension', 'annuity', 'ira distributions'].includes(income.kind?.toLowerCase());
-        console.log(`Income type: ${income.type}, Kind: ${income.kind}, Is Previous: ${isPrevious}, Is Valid Kind: ${isValidKind}`);
-        return isPrevious && isValidKind;
-    })
-    .reduce((total, income) => {
-        const yearlyIncome = calculateYearlyIncome(income);
-        console.log(`Adding income: ${yearlyIncome}, Current total: ${total}`);
-        return total + yearlyIncome;
-    }, 0);
-
-    const interestanddividends = [...applicantIncome, ...spouseIncome]
-    .filter((income) => {
-        const isPrevious = income.type?.toLowerCase() === 'previous';
-        const isValidKind = ['interest', 'dividends'].includes(income.kind?.toLowerCase());
-        console.log(`Income type: ${income.type}, Kind: ${income.kind}, Is Previous: ${isPrevious}, Is Valid Kind: ${isValidKind}`);
-        return isPrevious && isValidKind;
-    })
-    .reduce((total, income) => {
-        const yearlyIncome = calculateYearlyIncome(income);
-        console.log(`Adding income: ${yearlyIncome}, Current total: ${total}`);
-        return total + yearlyIncome;
-    }, 0);
-
-    const propertysale = [...applicantIncome, ...spouseIncome]
-    .filter((income) => {
-        const isPrevious = income.type?.toLowerCase() === 'previous';
-        const isValidKind = ['property sale', 'property sale loss'].includes(income.kind?.toLowerCase());
-        console.log(`Income type: ${income.type}, Kind: ${income.kind}, Is Previous: ${isPrevious}, Is Valid Kind: ${isValidKind}`);
-        return isPrevious && isValidKind;
-    })
-    .reduce((total, income) => {
-        const yearlyIncome = calculateYearlyIncome(income);
-        const adjustedIncome = income.kind?.toLowerCase() === 'property sale loss' ? -yearlyIncome : yearlyIncome;
-        console.log(`Adding income: ${adjustedIncome}, Current total: ${total}`);
-        return total + adjustedIncome;
-    }, 0);
-
-    const rentalIncome = [...applicantIncome, ...spouseIncome]
-    .filter((income) => {
-        const isPrevious = income.type?.toLowerCase() === 'previous';
-        const isValidKind = ['rental income', 'rental loss'].includes(income.kind?.toLowerCase());
-        console.log(`Income type: ${income.type}, Kind: ${income.kind}, Is Previous: ${isPrevious}, Is Valid Kind: ${isValidKind}`);
-        return isPrevious && isValidKind;
-    })
-    .reduce((total, income) => {
-        const yearlyIncome = calculateYearlyIncome(income);
-        const adjustedIncome = income.kind?.toLowerCase() === 'rental loss' ? -yearlyIncome : yearlyIncome;
-        console.log(`Adding income: ${adjustedIncome}, Current total: ${total}`);
-        return total + adjustedIncome;
-    }, 0);
-
-    const selfEmploymentIncome = [...applicantIncome, ...spouseIncome]
-    .filter((income) => {
-        const isPrevious = income.type?.toLowerCase() === 'previous';
-        const isValidKind = ['self-employment', 'business loss'].includes(income.kind?.toLowerCase());
-        console.log(`Income type: ${income.type}, Kind: ${income.kind}, Is Previous: ${isPrevious}, Is Valid Kind: ${isValidKind}`);
-        return isPrevious && isValidKind;
-    })
-    .reduce((total, income) => {
-        const yearlyIncome = calculateYearlyIncome(income);
-        const adjustedIncome = income.kind?.toLowerCase() === 'business loss' ? -yearlyIncome : yearlyIncome;
-        console.log(`Adding income: ${adjustedIncome}, Current total: ${total}`);
-        return total + adjustedIncome;
-    }, 0);
-
-    const employmentIncome = [...applicantIncome, ...spouseIncome]
-    .filter((income) => {
-        const isPrevious = income.type?.toLowerCase() === 'previous';
-        const isValidKind = income.kind?.toLowerCase() === 'employment';
-        console.log(`Income type: ${income.type}, Kind: ${income.kind}, Is Previous: ${isPrevious}, Is Valid Kind: ${isValidKind}`);
-        return isPrevious && isValidKind;
-    })
-    .reduce((total, income) => {
-        const yearlyIncome = calculateYearlyIncome(income);
-        console.log(`Adding income: ${yearlyIncome}, Current total: ${total}`);
-        return total + yearlyIncome;
-    }, 0);
-
-    const gamblingAndLotteryWinnings = [...applicantIncome, ...spouseIncome]
-    .filter((income) => {
-        const isPrevious = income.type?.toLowerCase() === 'previous';
-        const isValidKind = ['gambling winnings', 'lottery winnings'].includes(income.kind?.toLowerCase());
-        console.log(`Income type: ${income.type}, Kind: ${income.kind}, Is Previous: ${isPrevious}, Is Valid Kind: ${isValidKind}`);
-        return isPrevious && isValidKind;
-    })
-    .reduce((total, income) => {
-        const yearlyIncome = calculateYearlyIncome(income);
-        console.log(`Adding income: ${yearlyIncome}, Current total: ${total}`);
-        return total + yearlyIncome;
-    }, 0);
-
-    const inheritanceAlimonyChildSupport = [...applicantIncome, ...spouseIncome]
-    .filter((income) => {
-        const isPrevious = income.type?.toLowerCase() === 'previous';
-        const isValidKind = ['inheritance', 'alimony', 'child support'].includes(income.kind?.toLowerCase());
-        console.log(`Income type: ${income.type}, Kind: ${income.kind}, Is Previous: ${isPrevious}, Is Valid Kind: ${isValidKind}`);
-        return isPrevious && isValidKind;
-    })
-    .reduce((total, income) => {
-        const yearlyIncome = calculateYearlyIncome(income);
-        console.log(`Adding income: ${yearlyIncome}, Current total: ${total}`);
-        return total + yearlyIncome;
-    }, 0);
-
-    const workersCompCashAssistanceUnemployment = [...applicantIncome, ...spouseIncome]
-    .filter((income) => {
-        const isPrevious = income.type?.toLowerCase() === 'previous';
-        const isValidKind = ['workers compensation', 'cash assistance', 'unemployment'].includes(income.kind?.toLowerCase());
-        console.log(`Income type: ${income.type}, Kind: ${income.kind}, Is Previous: ${isPrevious}, Is Valid Kind: ${isValidKind}`);
-        return isPrevious && isValidKind;
-    })
-    .reduce((total, income) => {
-        const yearlyIncome = calculateYearlyIncome(income);
-        console.log(`Adding income: ${yearlyIncome}, Current total: ${total}`);
-        return total + yearlyIncome;
-    }, 0);
+    const totalRailroadRetirementIncome  = sumIncome(['railroad retirement tier 1']);
+    const totalYearlyIncome              = sumIncome(['ssa retirement', 'ssi', 'ssp', 'ssdi', 'social security survivor benefits']);
+    const totalRailroadRetirementIncome2 = sumIncome(['railroad retirement tier 2', 'pension', 'annuity', 'ira distributions']);
+    const interestanddividends           = sumIncome(['interest', 'dividends']);
+    const propertysale                   = sumIncome(['property sale', 'property sale loss'], ['property sale loss']);
+    const rentalIncome                   = sumIncome(['rental income', 'rental loss'], ['rental loss']);
+    const selfEmploymentIncome           = sumIncome(['self-employment', 'business loss'], ['business loss']);
+    const employmentIncome               = sumIncome(['employment']);
+    const gamblingAndLotteryWinnings     = sumIncome(['gambling winnings', 'lottery winnings']);
+    const inheritanceAlimonyChildSupport = sumIncome(['inheritance', 'alimony', 'child support']);
+    const workersCompCashAssistanceUnemployment = sumIncome(['workers compensation', 'tanf', 'unemployment']);
 
     const insuranceBenefits = [...applicantIncome, ...spouseIncome]
-    .filter((income) => {
-        const isPrevious = income.type?.toLowerCase() === 'previous';
-        const isValidKind = ['disability insurance', 'life insurance', 'death benefits'].includes(income.kind?.toLowerCase());
-        console.log(`Income type: ${income.type}, Kind: ${income.kind}, Is Previous: ${isPrevious}, Is Valid Kind: ${isValidKind}`);
-        return isPrevious && isValidKind;
-    })
-    .reduce((total, income) => {
-        const yearlyIncome = calculateYearlyIncome(income);
-        if (income.kind?.toLowerCase() === 'death benefits') {
-            const adjustedIncome = Math.max(0, yearlyIncome - 5000); // Ensure no negative values
-            console.log(`Subtracting $5,000 from death benefits: ${yearlyIncome}, Adjusted: ${adjustedIncome}`);
-            return total + adjustedIncome;
-        }
-        console.log(`Adding income: ${yearlyIncome}, Current total: ${total}`);
-        return total + yearlyIncome;
-    }, 0);
+        .filter((i) => i.type?.toLowerCase() === 'previous' && ['disability insurance', 'life insurance', 'death benefits'].includes(i.kind?.toLowerCase()))
+        .reduce((t, i) => {
+            const yi = calculateYearlyIncome(i);
+            return t + (i.kind?.toLowerCase() === 'death benefits' ? Math.max(0, yi - 5000) : yi);
+        }, 0);
 
-    const inKindIncome = [...applicantIncome, ...spouseIncome]
-    .filter((income) => {
-        const isPrevious = income.type?.toLowerCase() === 'previous';
-        const isValidKind = income.kind?.toLowerCase() === 'inkind income';
-        console.log(`Income type: ${income.type}, Kind: ${income.kind}, Is Previous: ${isPrevious}, Is Valid Kind: ${isValidKind}`);
-        return isPrevious && isValidKind;
-    })
-    .reduce((total, income) => {
-        const yearlyIncome = calculateYearlyIncome(income);
-        console.log(`Adding income: ${yearlyIncome}, Current total: ${total}`);
-        return total + yearlyIncome;
-    }, 0);
+    const inKindIncome = sumIncome(['inkind income']);
+    const adjustedInKindIncome = Math.max(0, inKindIncome - 300);
 
-// Subtract 300 from inKindIncome and ensure it is not negative
-const adjustedInKindIncome = Math.max(0, inKindIncome - 300);
+    const processedKinds = [
+        'ssa retirement','ssi','ssp','ssdi','social security survivor benefits',
+        'railroad retirement tier 1','railroad retirement tier 2','pension','annuity','ira distributions',
+        'interest','dividends','property sale','property sale loss','rental income','rental loss',
+        'self-employment','business loss','employment','gambling winnings','lottery winnings',
+        'inheritance','alimony','child support','workers compensation','tanf','unemployment',
+        'disability insurance','life insurance','death benefits','inkind income',
+    ];
+    const miscellaneousIncome = [...applicantIncome, ...spouseIncome]
+        .filter((i) => i.type?.toLowerCase() === 'previous' && !processedKinds.includes(i.kind?.toLowerCase()))
+        .reduce((t, i) => t + calculateYearlyIncome(i), 0);
 
-const processedKinds = [
-    'ssa retirement', 'ssi', 'ssp', 'ssdi', 'social security survivor benefits',
-    'railroad retirement tier 1', 'railroad retirement tier 2', 'pension', 'annuity', 'ira distributions',
-    'interest', 'dividends', 'property sale', 'property sale loss', 'rental income', 'rental loss',
-    'self-employment', 'business loss', 'employment', 'gambling winnings', 'lottery winnings',
-    'inheritance', 'alimony', 'child support', 'workers compensation', 'cash assistance', 'unemployment',
-    'disability insurance', 'life insurance', 'death benefits', 'in-kind income'
-];
+    const federalCSRSEntries = [...applicantIncome, ...spouseIncome]
+        .filter((i) => i.type?.toLowerCase() === 'previous' && i.kind?.toLowerCase() === 'federal csrs');
+    const isMarriedTogether = ptrrApplicant?.previousMaritalStatus?.toLowerCase().includes('married (living together)');
+    const federalCSRSAmount = federalCSRSEntries.length > 0 ? (isMarriedTogether ? 21902 : 10951) : 0;
 
-const miscellaneousIncome = [...applicantIncome, ...spouseIncome]
-    .filter((income) => {
-        const isPrevious = income.type?.toLowerCase() === 'previous';
-        const isMiscellaneous = !processedKinds.includes(income.kind?.toLowerCase());
-        console.log(`Income type: ${income.type}, Kind: ${income.kind}, Is Previous: ${isPrevious}, Is Miscellaneous: ${isMiscellaneous}`);
-        return isPrevious && isMiscellaneous;
-    })
-    .reduce((total, income) => {
-        const yearlyIncome = calculateYearlyIncome(income);
-        console.log(`Adding miscellaneous income: ${yearlyIncome}, Current total: ${total}`);
-        return total + yearlyIncome;
-    }, 0);
+    const totalIncome = Math.max(0,
+        (totalYearlyIncome / 2) +
+        (totalRailroadRetirementIncome / 2) +
+        totalRailroadRetirementIncome2 +
+        interestanddividends +
+        Math.max(0, propertysale) +
+        Math.max(0, rentalIncome) +
+        Math.max(0, selfEmploymentIncome) +
+        employmentIncome +
+        gamblingAndLotteryWinnings +
+        inheritanceAlimonyChildSupport +
+        workersCompCashAssistanceUnemployment +
+        insuranceBenefits +
+        adjustedInKindIncome +
+        miscellaneousIncome -
+        federalCSRSAmount
+    );
 
-    const federalCSRS = [...applicantIncome, ...spouseIncome]
-    .filter((income) => {
-        const isPrevious = income.type?.toLowerCase() === 'previous';
-        const isValidKind = income.kind?.toLowerCase() === 'federal csrs';
-        console.log(`Income type: ${income.type}, Kind: ${income.kind}, Is Previous: ${isPrevious}, Is Valid Kind: ${isValidKind}`);
-        return isPrevious && isValidKind;
+    const totalIncomeFormatted = fmtMoney(totalIncome);
+
+    // Income → page 1
+    const helv = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+    const drawAt = (txt, x, y, size = 12) => page.drawText(txt, { x, y, size, font: helv, color: PDFLib.rgb(0, 0, 0) });
+
+    drawAt(totalIncomeFormatted, 473, 101);
+    drawAt(fmtMoney(totalYearlyIncome), 277, 423);
+    drawAt(fmtMoney(totalYearlyIncome / 2), 473, 421);
+    drawAt(fmtMoney(totalRailroadRetirementIncome), 267, 398);
+    drawAt(fmtMoney(totalRailroadRetirementIncome / 2), 473, 399);
+    drawAt(fmtMoney(totalRailroadRetirementIncome2), 473, 377);
+    drawAt(fmtMoney(interestanddividends), 473, 355);
+    drawAt(fmtMoney(Math.abs(propertysale)), 473, 334);
+    if (propertysale < 0) drawOval({ x: 421, y: 340 });
+    drawAt(fmtMoney(Math.abs(rentalIncome)), 473, 313);
+    if (rentalIncome < 0) drawOval({ x: 421, y: 319 });
+    drawAt(fmtMoney(Math.abs(selfEmploymentIncome)), 473, 292);
+    if (selfEmploymentIncome < 0) drawOval({ x: 421, y: 298 });
+    drawAt(fmtMoney(employmentIncome), 473, 271);
+    drawAt(fmtMoney(gamblingAndLotteryWinnings), 473, 250);
+    drawAt(fmtMoney(inheritanceAlimonyChildSupport), 473, 229);
+    drawAt(fmtMoney(workersCompCashAssistanceUnemployment), 473, 207);
+    drawAt(fmtMoney(insuranceBenefits), 473, 186);
+    drawAt(fmtMoney(adjustedInKindIncome), 473, 165);
+    drawAt(fmtMoney(miscellaneousIncome), 473, 143);
+    drawAt(fmtMoney(federalCSRSAmount), 473, 122);
+
+    const fullName = `${ptrrApplicant?.firstName || ''} ${ptrrApplicant?.middleInitial || ''} ${ptrrApplicant?.lastName || ''}`.trim();
+    const yourNameField = form.getTextField('Your Name:');
+    if (yourNameField) yourNameField.setText(fullName);
+
+    // ============================================================
+    //  SCHEDULE PRE-PROCESSING — order matters!
+    //  A → rentals → E (cascade) → D (uses adjusted rent) → B
+    // ============================================================
+    const scheduleA = await buildScheduleA({
+        ptrrApplicant, sanitizedSSN, residenceStatus: data.residenceStatus,
     });
 
-// Determine the CSRS amount based on marital status or set to 0 if no federal CSRS income exists
-const maritalStatus = ptrrApplicant?.previousMaritalStatus?.toLowerCase().includes('married (living together)');
-const federalCSRSAmount = federalCSRS.length > 0 ? (maritalStatus ? 21902 : 10951) : 0;
+    const { rentalsWithMath, totalLine8 } = computeRentals({ ptrrApplicant, spouse, data });
 
-console.log(`Federal CSRS Amount: ${federalCSRSAmount}`);
-
-// Calculate TOTAL INCOME
-const totalIncome = Math.max(0,
-    (totalYearlyIncome / 2) + // Line 4
-    (totalRailroadRetirementIncome / 2) + // Line 5
-    totalRailroadRetirementIncome2 + // Line 6
-    interestanddividends + // Line 7
-    Math.max(0, propertysale) + // Line 8 (only positive values)
-    Math.max(0, rentalIncome) + // Line 9 (only positive values)
-    Math.max(0, selfEmploymentIncome) + // Line 10 (only positive values)
-    employmentIncome + // Line 11a
-    gamblingAndLotteryWinnings + // Line 11b
-    inheritanceAlimonyChildSupport + // Line 11c
-    workersCompCashAssistanceUnemployment + // Line 11d
-    insuranceBenefits + // Line 11e
-    adjustedInKindIncome + // Line 11f
-    miscellaneousIncome // Line 11g
-    - federalCSRSAmount // Subtract Federal CSRS amount
-);
-
-// Ensure totalIncome is converted to a string
-const totalIncomeFormatted = totalIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); // Format as positive
-
-// Log the TOTAL INCOME for debugging
-console.log(`TOTAL INCOME: ${totalIncomeFormatted}`);
-
-// Write TOTAL INCOME to the PDF
-page.drawText(totalIncomeFormatted, { // Format with commas and 2 decimal places
-    x: 473, // Replace with the actual x-coordinate
-    y: 101, // Replace with the actual y-coordinate
-    size: 12,
-    font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-    color: PDFLib.rgb(0, 0, 0), // Black color
-});
-
-// Log the extracted income for debugging
-console.log('Total Yearly SSA (Applicant + Spouse):', totalYearlyIncome);
-console.log('Total Yearly Railroad Tier 1 (Applicant + Spouse):', totalRailroadRetirementIncome);
-console.log('Total Yearly Railroad Tier 2 (Applicant + Spouse):', totalRailroadRetirementIncome2);
-console.log('Total Yearly Interest and Dividends (Applicant + Spouse):', interestanddividends);
-console.log('Total Yearly Property Sale (Applicant + Spouse):', propertysale);
-console.log('Total Yearly Rental Income (Applicant + Spouse):', rentalIncome);
-console.log('Total Yearly Self-Employment Income (Applicant + Spouse):', selfEmploymentIncome);
-console.log('Total Yearly Employment Income (Applicant + Spouse):', employmentIncome);
-console.log('Total Yearly Gambling and Lottery Winnings (Applicant + Spouse):', gamblingAndLotteryWinnings);
-console.log('Total Yearly Inheritance, Alimony, Child Support (Applicant + Spouse):', inheritanceAlimonyChildSupport);
-console.log('Total Yearly Workers Comp, Cash Assistance, Unemployment (Applicant + Spouse):', workersCompCashAssistanceUnemployment);
-console.log('Total Yearly Insurance Benefits (Applicant + Spouse):', insuranceBenefits);
-console.log('Total Yearly In-Kind Income (Applicant + Spouse):', adjustedInKindIncome);
-console.log('Total Yearly Miscellaneous Income (Applicant + Spouse):', miscellaneousIncome);
-console.log(`Federal CSRS amount based on marital status: ${federalCSRSAmount}`);
-
-// Fill the PDF fields with the calculated income values
-
-// Fill "Social Security, SSI, and SSP Income" field
-page.drawText(totalYearlyIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), { // Format with commas and 2 decimal places
-    x: 277, // Replace with the actual x-coordinate
-    y: 423, // Replace with the actual y-coordinate
-    size: 12,
-    font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-    color: PDFLib.rgb(0, 0, 0), // Black color
-});
-
-// Example: Fill "Social Security, SSI, and SSP Income / 2" field
-page.drawText((totalYearlyIncome / 2).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), { // Format with commas and 2 decimal places
-    x: 473, // Replace with the actual x-coordinate
-    y: 421, // Replace with the actual y-coordinate
-    size: 12,
-    font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-    color: PDFLib.rgb(0, 0, 0), // Black color
-});
-
-// Ensure totalRailroadRetirementIncome is converted to a string
-page.drawText(totalRailroadRetirementIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), { // Format with commas and 2 decimal places
-    x: 267, // Replace with the actual x-coordinate
-    y: 398, // Replace with the actual y-coordinate
-    size: 12,
-    font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-    color: PDFLib.rgb(0, 0, 0), // Black color
-});
-
-// Ensure totalRailroadRetirementIncome is converted to a string
-page.drawText((totalRailroadRetirementIncome / 2).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), { // Format with commas and 2 decimal places
-    x: 473, // Replace with the actual x-coordinate
-    y: 399, // Replace with the actual y-coordinate
-    size: 12,
-    font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-    color: PDFLib.rgb(0, 0, 0), // Black color
-});
-
-// Ensure totalRailroadRetirementIncome2 is converted to a string
-page.drawText(totalRailroadRetirementIncome2.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), { // Format with commas and 2 decimal places
-    x: 473, // Replace with the actual x-coordinate
-    y: 377, // Replace with the actual y-coordinate
-    size: 12,
-    font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-    color: PDFLib.rgb(0, 0, 0), // Black color
-});
-
-// Ensure interestanddividends is converted to a string
-page.drawText(interestanddividends.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), { // Format with commas and 2 decimal places
-    x: 473, // Replace with the actual x-coordinate
-    y: 355, // Replace with the actual y-coordinate
-    size: 12,
-    font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-    color: PDFLib.rgb(0, 0, 0), // Black color
-});
-
-// Ensure propertysale is converted to a string
-const propertysaleFormatted = Math.abs(propertysale).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); // Format as positive
-page.drawText(propertysaleFormatted, { // Format with commas and 2 decimal places
-    x: 473, // Replace with the actual x-coordinate
-    y: 334, // Replace with the actual y-coordinate
-    size: 12,
-    font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-    color: PDFLib.rgb(0, 0, 0), // Black color
-});
-
-// Check if propertysale is negative and draw an oval if it is
-if (propertysale < 0) {
-    const negativeOval = { x: 421, y: 340, xRadius: 5, yRadius: 5 }; // Replace with actual coordinates for the oval
-    page.drawEllipse({
-        x: negativeOval.x,
-        y: negativeOval.y,
-        xScale: negativeOval.xRadius,
-        yScale: negativeOval.yRadius,
-        color: PDFLib.rgb(0, 0, 0), // Black color
-    });
-    console.log('Drew an oval to indicate a negative property sale value.');
-}
-
-// Ensure rentalIncome is converted to a string
-const rentalIncomeFormatted = Math.abs(rentalIncome).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); // Format as positive
-page.drawText(rentalIncomeFormatted, { // Format with commas and 2 decimal places
-    x: 473, // Replace with the actual x-coordinate
-    y: 313, // Replace with the actual y-coordinate
-    size: 12,
-    font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-    color: PDFLib.rgb(0, 0, 0), // Black color
-});
-
-// Check if rentalIncome is negative and draw an oval if it is
-if (rentalIncome < 0) {
-    const negativeOval = { x: 421, y: 319, xRadius: 5, yRadius: 5 }; // Replace with actual coordinates for the oval
-    page.drawEllipse({
-        x: negativeOval.x,
-        y: negativeOval.y,
-        xScale: negativeOval.xRadius,
-        yScale: negativeOval.yRadius,
-        color: PDFLib.rgb(0, 0, 0), // Black color
-    });
-    console.log('Drew an oval to indicate a negative rental income value.');
-}
-
-// Ensure selfEmploymentIncome is converted to a string
-const selfEmploymentIncomeFormatted = Math.abs(selfEmploymentIncome).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); // Format as positive
-page.drawText(selfEmploymentIncomeFormatted, { // Format with commas and 2 decimal places
-    x: 473, // Replace with the actual x-coordinate
-    y: 292, // Replace with the actual y-coordinate
-    size: 12,
-    font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-    color: PDFLib.rgb(0, 0, 0), // Black color
-});
-
-// Check if selfEmploymentIncome is negative and draw an oval if it is
-if (selfEmploymentIncome < 0) {
-    const negativeOval = { x: 421, y: 298, xRadius: 5, yRadius: 5 }; // Replace with actual coordinates for the oval
-    page.drawEllipse({
-        x: negativeOval.x,
-        y: negativeOval.y,
-        xScale: negativeOval.xRadius,
-        yScale: negativeOval.yRadius,
-        color: PDFLib.rgb(0, 0, 0), // Black color
-    });
-    console.log('Drew an oval to indicate a negative self-employment income value.');
-}
-
-// Ensure employmentIncome is converted to a string
-const employmentIncomeFormatted = employmentIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); // Format as positive
-page.drawText(employmentIncomeFormatted, { // Format with commas and 2 decimal places
-    x: 473, // Replace with the actual x-coordinate
-    y: 271, // Replace with the actual y-coordinate
-    size: 12,
-    font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-    color: PDFLib.rgb(0, 0, 0), // Black color
-});
-
-// Ensure gamblingAndLotteryWinnings is converted to a string
-const gamblingAndLotteryWinningsFormatted = gamblingAndLotteryWinnings.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); // Format as positive
-page.drawText(gamblingAndLotteryWinningsFormatted, { // Format with commas and 2 decimal places
-    x: 473, // Replace with the actual x-coordinate
-    y: 250, // Replace with the actual y-coordinate
-    size: 12,
-    font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-    color: PDFLib.rgb(0, 0, 0), // Black color
-});
-
-// Ensure inheritanceAlimonyChildSupport is converted to a string
-const inheritanceAlimonyChildSupportFormatted = inheritanceAlimonyChildSupport.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); // Format as positive
-page.drawText(inheritanceAlimonyChildSupportFormatted, { // Format with commas and 2 decimal places
-    x: 473, // Replace with the actual x-coordinate
-    y: 229, // Replace with the actual y-coordinate
-    size: 12,
-    font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-    color: PDFLib.rgb(0, 0, 0), // Black color
-});
-
-// Ensure workersCompCashAssistanceUnemployment is converted to a string
-const workersCompCashAssistanceUnemploymentFormatted = workersCompCashAssistanceUnemployment.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); // Format as positive
-page.drawText(workersCompCashAssistanceUnemploymentFormatted, { // Format with commas and 2 decimal places
-    x: 473, // Replace with the actual x-coordinate
-    y: 207, // Replace with the actual y-coordinate
-    size: 12,
-    font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-    color: PDFLib.rgb(0, 0, 0), // Black color
-});
-
-// Ensure insuranceBenefits is converted to a string
-const insuranceBenefitsFormatted = insuranceBenefits.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); // Format as positive
-page.drawText(insuranceBenefitsFormatted, { // Format with commas and 2 decimal places
-    x: 473, // Replace with the actual x-coordinate
-    y: 186, // Replace with the actual y-coordinate
-    size: 12,
-    font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-    color: PDFLib.rgb(0, 0, 0), // Black color
-});
-
-// Ensure inKindIncome is converted to a string
-const inKindIncomeFormatted = adjustedInKindIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); // Format as positive
-page.drawText(inKindIncomeFormatted, { // Format with commas and 2 decimal places
-    x: 473, // Replace with the actual x-coordinate
-    y: 165, // Replace with the actual y-coordinate
-    size: 12,
-    font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-    color: PDFLib.rgb(0, 0, 0), // Black color
-});
-
-// Ensure miscellaneousIncome is converted to a string
-const miscellaneousIncomeFormatted = miscellaneousIncome.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); // Format as positive
-page.drawText(miscellaneousIncomeFormatted, { // Format with commas and 2 decimal places
-    x: 473, // Replace with the actual x-coordinate
-    y: 143, // Replace with the actual y-coordinate
-    size: 12,
-    font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-    color: PDFLib.rgb(0, 0, 0), // Black color
-});
-
-// Ensure federalCSRSAmount is converted to a string
-const federalCSRSFormatted = federalCSRSAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); // Format as positive
-page.drawText(federalCSRSFormatted, { // Format with commas and 2 decimal places
-    x: 473, // Replace with the actual x-coordinate
-    y: 122, // Replace with the actual y-coordinate
-    size: 12,
-    font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-    color: PDFLib.rgb(0, 0, 0), // Black color
-});
-
-// Combine PTRR Applicant's first name, middle initial, and last name
-const fullName = `${ptrrApplicant?.firstName || ''} ${ptrrApplicant?.middleInitial || ''} ${ptrrApplicant?.lastName || ''}`.trim();
-
-// Set the combined name in the "Your Name:" field
-const yourNameField = form.getTextField('Your Name:');
-if (yourNameField) {
-    yourNameField.setText(fullName);
-    console.log(`Set "Your Name:" field to: ${fullName}`);
-} else {
-    console.error('Field "Your Name:" not found in the form.');
-}
-
-// Get the second page of the PDF
-const page2 = pdfDoc.getPages()[1]; // Assuming page 2 is the second page
-
-// Helper function to calculate yearly amounts based on frequency
-function calculateYearlyAmount(expense) {
-    const amount = parseFloat(expense.amount) || 0;
-    const frequency = expense.frequency?.toLowerCase();
-
-    switch (frequency) {
-        case 'monthly':
-            return amount * 12; // Multiply by 12 for monthly frequency
-        case 'weekly':
-            return amount * 52; // Multiply by 52 for weekly frequency
-        case 'biweekly':
-            return amount * 26; // Multiply by 26 for biweekly frequency
-        case 'daily':
-            return amount * 365; // Multiply by 365 for daily frequency
-        case 'yearly':
-        case 'annual':
-            return amount; // Already a yearly amount
-        default:
-            console.warn(`Unknown frequency "${frequency}" for expense. Defaulting to 0.`);
-            return 0; // Default to 0 if frequency is unknown
-    }
-}
-
-// Extract expenses for the PTRR applicant and their spouse
-const applicantExpenses = ptrrApplicant?.expenses || [];
-const spouseExpenses = spouse?.expenses || [];
-const combinedExpenses = [...applicantExpenses, ...spouseExpenses]; // Combine both arrays
-
-// Initialize totalPropertyTax with a default value
-let totalPropertyTax = 0;
-
-if (data.residenceStatus === 'owned' || data.residenceStatus === 'rentedowned') {
-    if (scheduleA) {
-        // Schedule A drives Line 14 when 2+ owned properties exist.
-        totalPropertyTax = scheduleA.totalProratedTax;
-        console.log(`PA-1000 Line 14 sourced from Schedule A: $${totalPropertyTax.toFixed(2)}`);
-    } else {
-        // Single-property path: sum yearly property tax expenses.
-        totalPropertyTax = combinedExpenses
-            .filter((expense) => {
-                const isPrevious = expense.type?.toLowerCase() === 'previous year';
-                const isPropertyTax = expense.kind?.toLowerCase() === 'property taxes';
-                return isPrevious && isPropertyTax;
-            })
-            .reduce((total, expense) => total + calculateYearlyAmount(expense), 0);
+    // Property tax BEFORE Schedule E adjustment
+    const combinedExpenses = [...(ptrrApplicant?.expenses || []), ...(spouse?.expenses || [])];
+    let propertyTaxBeforeE = 0;
+    if (data.residenceStatus === 'owned' || data.residenceStatus === 'rentedowned') {
+        propertyTaxBeforeE = scheduleA
+            ? scheduleA.totalProratedTax
+            : combinedExpenses
+                .filter((ex) => ex.type?.toLowerCase() === 'previous year' && ex.kind?.toLowerCase() === 'property taxes')
+                .reduce((s, ex) => s + calculateYearlyAmountFromExpense(ex), 0);
     }
 
-    const totalPropertyTaxFormatted = totalPropertyTax.toLocaleString('en-US', {
-        minimumFractionDigits: 2, maximumFractionDigits: 2
+    // B / D / E (cascades into Line 14 / Line 16)
+    const scheduleBDE = await buildScheduleBDE({
+        ptrrApplicant, spouse, sanitizedSSN,
+        residenceStatus: data.residenceStatus,
+        propertyTaxBeforeE,
+        totalRentBeforeE: totalLine8,
     });
 
-    page2.drawText(totalPropertyTaxFormatted, {
-        x: 473,
-        y: 649,
-        size: 12,
-        font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-        color: PDFLib.rgb(0, 0, 0),
+    // Schedule F is the FINAL cascade step — feed it the post-B/D/E values.
+    const scheduleF = await buildScheduleF({
+        ptrrApplicant,
+        spouse,
+        sanitizedSSN,
+        data,
+        residenceStatus: data.residenceStatus,
+        propertyTaxBeforeF: scheduleBDE.adjustedPropertyTax,
+        rentBeforeF:        scheduleBDE.adjustedTotalRent,
     });
-    console.log(`Total Property Tax (Line 14): ${totalPropertyTaxFormatted}`);
-}
 
-// Initialize rentPaid20Percent with a default value
-let rentPaid20Percent = 0;
+    const finalPropertyTax = scheduleF.adjustedPropertyTax;
+    const finalTotalRent   = scheduleF.adjustedTotalRent;
 
-// Build a normalized rentals array (multi-rental aware).
-// Each entry corresponds to one PA-1000 RC.
-const ptrrAppForRent = ptrrApplicant?.PTRR?.application?.[0] || {};
-const previousYearRentals = Array.isArray(ptrrAppForRent.previousYearRentals)
-    ? ptrrAppForRent.previousYearRentals
-    : [];
+    // ============================================================
+    //  PAGE 2 — Lines 14, 16, 20%-rent, rebate calcs
+    // ============================================================
+    const page2 = pdfDoc.getPages()[1];
+    const drawAt2 = (txt, x, y, size = 12) => page2.drawText(txt, { x, y, size, font: helv, color: PDFLib.rgb(0, 0, 0) });
 
-let rentals = [];
-if (data.residenceStatus === 'rented' || data.residenceStatus === 'rentedowned') {
-    if (previousYearRentals.length > 0) {
-        // Use the per-rental records saved from additionaledit.html
-        rentals = previousYearRentals.map((r) => ({
-            previousYearRentAmount: parseFloat(r?.previousYearRentAmount) || 0,
-            rentalPropertyAddress: r?.rentalPropertyAddress || {},
-            subsidizedHousingPrevious: r?.subsidizedHousingPrevious || null,
-            subsidizedRentAmount: parseFloat(r?.subsidizedRentAmount) || 0,
-            rentalType: r?.rentalType || null,
-            buildingName: r?.buildingName || '',
-            domicilliaryFosterCare: r?.domicilliaryFosterCare || null,
-        }));
-    } else {
-        // Legacy fallback: build a single rental from top-level expenses + top-level fields
-        const legacyRentTotal = combinedExpenses
-            .filter((expense) => {
-                const isPrevious = expense.type?.toLowerCase() === 'previous year';
-                const isRent = expense.kind?.toLowerCase() === 'rent';
-                return isPrevious && isRent;
-            })
-            .reduce((total, expense) => total + calculateYearlyAmount(expense), 0);
-
-        rentals = [{
-            previousYearRentAmount: legacyRentTotal,
-            rentalPropertyAddress: {
-                streetAddress: data.streetAddress,
-                streetAddress2: data.streetAddress2,
-                city: data.city,
-                state: data.state,
-                zipCode: data.zipCode,
-            },
-            subsidizedHousingPrevious: null,
-            subsidizedRentAmount: parseFloat(data.subsidizedRentAmount) || 0,
-            rentalType: data.rentalType || null,
-            buildingName: data.buildingName || '',
-            domicilliaryFosterCare: data.domicilliaryFosterCare || null,
-        }];
+    let totalPropertyTax = 0;
+    if (data.residenceStatus === 'owned' || data.residenceStatus === 'rentedowned') {
+        totalPropertyTax = finalPropertyTax;
+        drawAt2(fmtMoney(totalPropertyTax), 473, 649);
+        console.log(`PA-1000 Line 14 (post-Schedule-E): $${totalPropertyTax.toFixed(2)}`);
     }
-}
 
-// Compute per-rental "Line 8" (RC) and sum for PA-1000 Line 16 equivalent.
-// Line 8 = max(0, monthlyRent - monthlySubsidy) * monthsOccupied
-const monthsOccupiedDefault = parseInt(ptrrAppForRent.monthsOccupied) || 12;
+    let rentPaid20Percent = 0;
+    if (data.residenceStatus === 'rented' || data.residenceStatus === 'rentedowned') {
+        drawAt2(fmtMoney(finalTotalRent), 473, 606);
+        console.log(`PA-1000 Line 16 (post-Schedule-E): $${finalTotalRent.toFixed(2)}`);
+        rentPaid20Percent = finalTotalRent * 0.2;
+        drawAt2(fmtMoney(rentPaid20Percent), 473, 584);
+    }
 
-// Pre-filter rent expenses (previous year) once, in original order.
-const rentExpenses = combinedExpenses.filter((e) =>
-    e.type?.toLowerCase() === 'previous year' &&
-    e.kind?.toLowerCase() === 'rent'
-);
+    // Rebate Table A
+    const rebateTableA = [
+        { maxIncome: 8270,  rebate: 1000 },
+        { maxIncome: 15510, rebate: 770 },
+        { maxIncome: 18610, rebate: 460 },
+        { maxIncome: 46520, rebate: 380 },
+    ];
+    const calculateRebate = (ti) => {
+        for (const b of rebateTableA) if (ti <= b.maxIncome) return b.rebate;
+        return 0;
+    };
+    const rebateAmount = calculateRebate(totalIncome);
+    const rebateAmountFormatted = fmtMoney(rebateAmount);
 
-// Helper: months between two dates, rounded to nearest whole month, clamped 0..12.
-function monthsBetweenRounded(startStr, endStr) {
-    if (!startStr || !endStr) return null;
-    const start = new Date(`${startStr}T00:00:00Z`);
-    const end = new Date(`${endStr}T00:00:00Z`);
-    if (isNaN(start) || isNaN(end) || end < start) return null;
-    const days = (end - start) / (1000 * 60 * 60 * 24) + 1; // inclusive
-    const months = Math.round(days / 30.4375);
-    return Math.max(0, Math.min(12, months));
-}
+    if (data.residenceStatus === 'owned' || data.residenceStatus === 'rentedowned') {
+        drawAt2(rebateAmountFormatted, 264, 629, 6);
+    }
 
-// Helper: try to find the rent expense associated with a given rental.
-function findRentExpenseForRental(rental, idx) {
-    const addr = rental.rentalPropertyAddress || {};
-    const street = (addr.streetAddress || '').trim().toLowerCase();
-    const zip = (addr.zipCode || '').trim();
+    const rebateAmountValue = rebateAmount;
+    const lesserAmount = Math.min(totalPropertyTax, rebateAmountValue);
+    const lesserAmountFormatted = fmtMoney(lesserAmount);
+    if (data.residenceStatus === 'owned' || data.residenceStatus === 'rentedowned') {
+        drawAt2(lesserAmountFormatted, 473, 628);
+    }
 
-    if (street || zip) {
-        const match = rentExpenses.find((e) => {
-            const eStreet = (e.streetAddress || e.address?.streetAddress || '').trim().toLowerCase();
-            const eZip = (e.zipCode || e.address?.zipCode || '').trim();
-            if (street && eStreet && street === eStreet) return true;
-            if (zip && eZip && zip === eZip) return true;
-            return false;
+    if (data.residenceStatus === 'rented' || data.residenceStatus === 'rentedowned') {
+        drawAt2(rebateAmountFormatted, 232, 567, 6);
+    }
+    if (data.residenceStatus === 'rentedowned') {
+        drawAt2(rebateAmountFormatted, 126, 527, 6);
+    }
+
+    const rentRebateAmount = Math.min(rentPaid20Percent, rebateAmount);
+    const rentRebateAmountFormatted = fmtMoney(rentRebateAmount);
+    if (data.residenceStatus === 'rented' || data.residenceStatus === 'rentedowned') {
+        drawAt2(rentRebateAmountFormatted, 473, 563);
+    }
+
+    const sumOfRentAndLesser = rentRebateAmount + lesserAmount;
+    const finalLesserAmount = Math.min(rebateAmountValue, sumOfRentAndLesser);
+    if (data.residenceStatus === 'rentedowned') {
+        drawAt2(fmtMoney(finalLesserAmount), 473, 543);
+    }
+
+    drawAt2(totalIncomeFormatted, 126, 361);
+
+    // Income-bracket oval
+    const ovalPositions = [
+        { x: 528, y: 341 }, { x: 528, y: 331 }, { x: 528, y: 320 }, { x: 528, y: 310 },
+        { x: 528, y: 341 }, { x: 528, y: 331 }, { x: 528, y: 320 }, { x: 528, y: 310 },
+    ];
+    let ovalIndex = -1;
+    if (data.residenceStatus === 'owned' || data.residenceStatus === 'rentedowned') {
+        if (totalIncome <= 8270)       ovalIndex = 0;
+        else if (totalIncome <= 15510) ovalIndex = 1;
+        else if (totalIncome <= 18610) ovalIndex = 2;
+        else                            ovalIndex = 3;
+    } else if (data.residenceStatus === 'rented') {
+        if (totalIncome <= 8270)       ovalIndex = 4;
+        else if (totalIncome <= 15510) ovalIndex = 5;
+        else if (totalIncome <= 18610) ovalIndex = 6;
+        else                            ovalIndex = 7;
+    }
+    if (ovalIndex >= 0 && ovalIndex < ovalPositions.length) {
+        const { x, y } = ovalPositions[ovalIndex];
+        page2.drawEllipse({
+            x, y, xScale: 20, yScale: 5,
+            borderColor: PDFLib.rgb(0, 0, 0), borderWidth: 1,
         });
-        if (match) return match;
     }
-    return rentExpenses[idx] || null;
-}
 
-const rentalsWithMath = rentals.map((r, idx) => {
-    const monthlyRent = (r.previousYearRentAmount || 0);
-    const netMonthlyRent = Math.max(0, monthlyRent - (r.subsidizedRentAmount || 0));
-
-    const assocExpense = findRentExpenseForRental(r, idx);
-    const derivedMonths = assocExpense
-        ? monthsBetweenRounded(assocExpense.startDate, assocExpense.endDate)
-        : null;
-
-    const monthsOccupied = (derivedMonths != null) ? derivedMonths : monthsOccupiedDefault;
-    const line8 = netMonthlyRent * monthsOccupied;
-
-    console.log(`Rental[${idx}] monthsOccupied=${monthsOccupied} (derived=${derivedMonths}, default=${monthsOccupiedDefault})`);
-    return { ...r, monthlyRent, netMonthlyRent, monthsOccupied, line8 };
-});
-
-const totalLine8 = rentalsWithMath.reduce((sum, r) => sum + r.line8, 0);
-
-if (data.residenceStatus === 'rented' || data.residenceStatus === 'rentedowned') {
-    // PA-1000 Line 16: sum of all RC Line 8s
-    const totalRentPaidFormatted = totalLine8.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    page2.drawText(totalRentPaidFormatted, {
-        x: 473,
-        y: 606,
-        size: 12,
-        font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-        color: PDFLib.rgb(0, 0, 0),
-    });
-    console.log(`PA-1000 Line 16 (sum of RC Line 8s across ${rentalsWithMath.length} rental(s)): ${totalRentPaidFormatted}`);
-
-    // 20% of total rent paid
-    rentPaid20Percent = totalLine8 * 0.2;
-    const rentPaid20PercentFormatted = rentPaid20Percent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    page2.drawText(rentPaid20PercentFormatted, {
-        x: 473,
-        y: 584,
-        size: 12,
-        font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-        color: PDFLib.rgb(0, 0, 0),
-    });
-    console.log(`20% of Total Rent Paid: ${rentPaid20PercentFormatted}`);
-}
-
-// Define Table A mapping (example values, replace with actual data)
-const rebateTableA = [
-    { maxIncome: 8270, rebate: 1000 },
-    { maxIncome: 15510, rebate: 770 },
-    { maxIncome: 18610, rebate: 460 },
-    { maxIncome: 46520, rebate: 380 },
-];
-
-// Calculate the rebate amount based on total income
-function calculateRebate(totalIncome) {
-    for (const bracket of rebateTableA) {
-        if (totalIncome <= bracket.maxIncome) {
-            return bracket.rebate;
-        }
-    }
-    return 0; // No rebate if income exceeds all brackets
-}
-
-// Calculate the rebate amount
-const rebateAmount = calculateRebate(totalIncome);
-
-// Format the rebate amount
-const rebateAmountFormatted = rebateAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-// Write the rebate amount to the PDF
-if (data.residenceStatus === 'owned' || data.residenceStatus === 'rentedowned') {
-    // Write the rebate amount to the PDF
-    page2.drawText(rebateAmountFormatted, {
-        x: 264, // Replace with the actual x-coordinate for the rebate field
-        y: 629, // Replace with the actual y-coordinate for the rebate field
-        size: 6,
-        font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-        color: PDFLib.rgb(0, 0, 0), // Black color
-    });
-    console.log(`Property Tax Rebate Amount: ${rebateAmountFormatted}`);
-}
-
-// Parse totalPropertyTaxFormatted and rebateAmount to numbers for comparison
-const rebateAmountValue = parseFloat(rebateAmountFormatted.replace(/,/g, '')); // Convert formatted string to a number
-
-// Compare the two values and determine the lesser amount
-const lesserAmount = Math.min(totalPropertyTax, rebateAmountValue);
-
-// Format the lesser amount for display
-const lesserAmountFormatted = lesserAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-if (data.residenceStatus === 'owned' || data.residenceStatus === 'rentedowned') {
-    // Write the lesser amount to the PDF at the specified coordinates
-    page2.drawText(lesserAmountFormatted, {
-        x: 473,
-        y: 628, 
-        size: 12,
-        font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-        color: PDFLib.rgb(0, 0, 0),
-    });
-    console.log(`Lesser Amount (Total Property Tax vs Rebate): ${lesserAmountFormatted}`);
-}
-
-if (data.residenceStatus === 'rented' || data.residenceStatus === 'rentedowned') {
-    // Write the rebate amount to the PDF
-    page2.drawText(rebateAmountFormatted, {
-        x: 232,
-        y: 567,
-        size: 6,
-        font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-        color: PDFLib.rgb(0, 0, 0), // Black color
-    });
-    console.log(`Rent Rebate Amount: ${rebateAmountFormatted}`);
-}
-
-if (data.residenceStatus === 'rentedowned') {
-    // Write the rebate amount to the PDF
-    page2.drawText(rebateAmountFormatted, {
-        x: 126, // Replace with the actual x-coordinate for the rebate field
-        y: 527, // Replace with the actual y-coordinate for the rebate field
-        size: 6,
-        font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-        color: PDFLib.rgb(0, 0, 0), // Black color
-    });
-    console.log(`Property Tax/Rental Rebate Amount: ${rebateAmountFormatted}`);
-}
-
-// Compare rentPaid20PercentFormatted and rebateAmountFormatted
-const rentRebateAmount = Math.min(rentPaid20Percent, rebateAmount);
-
-// Format the lesser amount for display
-const rentRebateAmountFormatted = rentRebateAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-if (data.residenceStatus === 'rented' || data.residenceStatus === 'rentedowned') {
-    // Write the lesser amount to the PDF below the 20% rent section
-    page2.drawText(rentRebateAmountFormatted, {
-        x: 473, // Replace with the actual x-coordinate for the field
-        y: 563, // Replace with the actual y-coordinate for the field
-        size: 12,
-        font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-        color: PDFLib.rgb(0, 0, 0), // Black color
-    });
-    console.log(`Lesser Amount (20% Rent vs Rebate): ${rentRebateAmountFormatted}`);
-}
-
-// Parse the formatted strings to numbers for comparison
-const rentRebateAmountValue = parseFloat(rentRebateAmountFormatted.replace(/,/g, ''));
-const lesserAmountValue = parseFloat(lesserAmountFormatted.replace(/,/g, ''));
-
-// Calculate the sum of rentRebateAmount and lesserAmount
-const sumOfRentAndLesser = rentRebateAmountValue + lesserAmountValue;
-
-// Determine the lesser value between rebateAmount and the sum
-const finalLesserAmount = Math.min(rebateAmountValue, sumOfRentAndLesser);
-
-// Format the final lesser amount for display
-const finalLesserAmountFormatted = finalLesserAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-if (data.residenceStatus === 'rentedowned') {
-    // Write the final lesser amount to the PDF
-    page2.drawText(finalLesserAmountFormatted, {
-        x: 473, // Replace with the actual x-coordinate for the field
-        y: 543, // Replace with the actual y-coordinate for the field
-        size: 12,
-        font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-        color: PDFLib.rgb(0, 0, 0), // Black color
-    });
-    console.log(`Final Lesser Amount (Rebate vs Sum of Rent and Lesser): ${finalLesserAmountFormatted}`);
-}
-
-// Write TOTAL INCOME to page 2
-page2.drawText(totalIncomeFormatted, { // Format with commas and 2 decimal places
-    x: 126, // Replace with the actual x-coordinate for page 2
-    y: 361, // Replace with the actual y-coordinate for page 2
-    size: 12,
-    font: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
-    color: PDFLib.rgb(0, 0, 0), // Black color
-});
-console.log(`TOTAL INCOME written to page 2: ${totalIncomeFormatted}`);
-
-
-// Define the coordinates for the 8 possible ovals
-const ovalPositions = [
-    { x: 528, y: 341 }, // Position 1 (Owned Bracket 1)
-    { x: 528, y: 331 }, // Position 2 (Owned Bracket 2)
-    { x: 528, y: 320 }, // Position 3 (Owned Bracket 3)
-    { x: 528, y: 310 }, // Position 4 (Owned Bracket 4)
-    { x: 528, y: 341 }, // Position 5 (Rented Bracket 1)
-    { x: 528, y: 331 }, // Position 6 (Rented Bracket 2)
-    { x: 528, y: 320 }, // Position 7 (Rented Bracket 3)
-    { x: 528, y: 310 }, // Position 8 (Rented Bracket 4)
-];
-
-// Determine which oval to draw based on residenceStatus and income brackets
-let ovalIndex = -1;
-
-if (data.residenceStatus === 'owned' || data.residenceStatus === 'rentedowned') {
-    if (totalIncome <= 8270) {
-        ovalIndex = 0; // Bracket 1
-    } else if (totalIncome <= 15510) {
-        ovalIndex = 1; // Bracket 2
-    } else if (totalIncome <= 18610) {
-        ovalIndex = 2; // Bracket 3
-    } else {
-        ovalIndex = 3; // Bracket 4
-    }
-} else if (data.residenceStatus === 'rented') {
-    if (totalIncome <= 8270) {
-        ovalIndex = 4; // Bracket 1
-    } else if (totalIncome <= 15510) {
-        ovalIndex = 5; // Bracket 2
-    } else if (totalIncome <= 18610) {
-        ovalIndex = 6; // Bracket 3
-    } else {
-        ovalIndex = 7; // Bracket 4
-    }
-}
-
-// Draw the oval if a valid index is determined
-if (ovalIndex >= 0 && ovalIndex < ovalPositions.length) {
-    const { x, y } = ovalPositions[ovalIndex];
-    page2.drawEllipse({
-        x,
-        y,
-        xScale: 20, // Radius in the x-direction
-        yScale: 5, // Radius in the y-direction
-        borderColor: PDFLib.rgb(0, 0, 0), // Black border
-        borderWidth: 1, // Border width
-    });
-    console.log(`Drew an unfilled oval at position ${ovalIndex + 1} (x: ${x}, y: ${y}).`);
-} else {
-    console.warn('No valid oval position determined.');
-}
-
-    // Save the filled PA-1000 form
+    // Save filled main PA-1000
     const filledPdfBytes = await pdfDoc.save();
-
-    // Collect all PDFs to merge (starting with the filled PA-1000)
     const pdfsToMerge = [filledPdfBytes];
 
-// === PA-1000 RC: one per rental in previousYearRentals (or 1 fallback) ===
-if (data.residenceStatus === 'rented' || data.residenceStatus === 'rentedowned') {
-    for (let rIdx = 0; rIdx < rentalsWithMath.length; rIdx++) {
-        const rental = rentalsWithMath[rIdx];
-
-        try {
-            const rcPdfBytes = await loadPDFAsset('2025_pa-1000rc.pdf');
-            const rcPdfDoc = await PDFDocument.load(rcPdfBytes);
-            const rcForm = rcPdfDoc.getForm();
-
-            // Claimant name
-            const rcFullName = `${ptrrApplicant?.firstName || ''} ${ptrrApplicant?.middleInitial || ''} ${ptrrApplicant?.lastName || ''}`.trim();
+    // ============================================================
+    //  PA-1000 RC — one per rental
+    // ============================================================
+    if (data.residenceStatus === 'rented' || data.residenceStatus === 'rentedowned') {
+        for (let rIdx = 0; rIdx < rentalsWithMath.length; rIdx++) {
+            const rental = rentalsWithMath[rIdx];
             try {
-                const rcNameField = rcForm.getTextField('Name as shown on PA-1000');
-                if (rcNameField) rcNameField.setText(rcFullName);
-            } catch (e) { console.warn(`RC[${rIdx}]: Name:`, e.message); }
+                const rcPdfBytes = await loadPDFAsset('2025_pa-1000rc.pdf');
+                const rcPdfDoc   = await PDFDocument.load(rcPdfBytes);
+                const rcForm     = rcPdfDoc.getForm();
+                const rcSet = (name, val) => {
+                    try { rcForm.getTextField(name).setText(val == null ? '' : String(val)); }
+                    catch (e) { console.warn(`RC[${rIdx}]: ${name}:`, e.message); }
+                };
 
-            // SSN
-            try {
-                const rcSsnField = rcForm.getTextField('Your Social Security Number');
-                if (rcSsnField) rcSsnField.setText(sanitizedSSN);
-            } catch (e) { console.warn(`RC[${rIdx}]: SSN:`, e.message); }
+                const rcFullName = `${ptrrApplicant?.firstName || ''} ${ptrrApplicant?.middleInitial || ''} ${ptrrApplicant?.lastName || ''}`.trim();
+                rcSet('Name as shown on PA-1000', rcFullName);
+                rcSet('Your Social Security Number', sanitizedSSN);
 
-            // Rental property address (per-rental)
-            const addr = rental.rentalPropertyAddress || {};
-            const rentalStreet = `${addr.streetAddress || ''}${addr.streetAddress2 ? ' ' + addr.streetAddress2 : ''}`.trim();
-            try {
-                const rcStreetField = rcForm.getTextField('Street address of the residence');
-                if (rcStreetField) rcStreetField.setText(rentalStreet);
-            } catch (e) { console.warn(`RC[${rIdx}]: Street:`, e.message); }
+                const addr = rental.rentalPropertyAddress || {};
+                const rentalStreet = `${addr.streetAddress || ''}${addr.streetAddress2 ? ' ' + addr.streetAddress2 : ''}`.trim();
+                rcSet('Street address of the residence', rentalStreet);
+                rcSet('Your address - City, State, ZIP Code', `${addr.city || ''}, ${(addr.state || '').toUpperCase()} ${addr.zipCode || ''}`.trim());
 
-            try {
-                const rcCityStateZipField = rcForm.getTextField('Your address - City, State, ZIP Code');
-                if (rcCityStateZipField) {
-                    const cityStateZip = `${addr.city || ''}, ${(addr.state || '').toUpperCase()} ${addr.zipCode || ''}`.trim();
-                    rcCityStateZipField.setText(cityStateZip);
-                }
-            } catch (e) { console.warn(`RC[${rIdx}]: City/State/ZIP:`, e.message); }
+                const ptrrApp = ptrrApplicant?.PTRR?.application?.[0] || {};
+                rcSet("Owner's business name or Landlords name", ptrrApp.landlordName || '');
+                rcSet("Landlord's Address", ptrrApp.landlordAddress || '');
+                rcSet("Landlord's City, State, ZIP Code", ptrrApp.landlordCityStateZip || '');
+                rcSet("Landlord's EIN", ptrrApp.landlordEin || '');
+                rcSet("Landlord's daytime telephone number", (ptrrApp.landlordPhone || '').replace(/[()\-\s]/g, '').slice(0, 10));
+                rcSet('Building Name', rental.buildingName || '');
 
-            // Landlord info still pulled from application-level fields (shared)
-            const ptrrApp = ptrrApplicant?.PTRR?.application?.[0] || {};
-
-            try {
-                const f = rcForm.getTextField("Owner's business name or Landlords name");
-                if (f) f.setText(ptrrApp.landlordName || '');
-            } catch (e) { console.warn(`RC[${rIdx}]: Landlord Name:`, e.message); }
-
-            try {
-                const f = rcForm.getTextField("Landlord's Address");
-                if (f) f.setText(ptrrApp.landlordAddress || '');
-            } catch (e) { console.warn(`RC[${rIdx}]: Landlord Address:`, e.message); }
-
-            try {
-                const f = rcForm.getTextField("Landlord's City, State, ZIP Code");
-                if (f) f.setText(ptrrApp.landlordCityStateZip || '');
-            } catch (e) { console.warn(`RC[${rIdx}]: Landlord City/State/ZIP:`, e.message); }
-
-            try {
-                const f = rcForm.getTextField("Landlord's EIN");
-                if (f) f.setText(ptrrApp.landlordEin || '');
-            } catch (e) { console.warn(`RC[${rIdx}]: Landlord EIN:`, e.message); }
-
-            try {
-                const f = rcForm.getTextField("Landlord's daytime telephone number");
-                if (f) {
-                    const lp = (ptrrApp.landlordPhone || '').replace(/[()\-\s]/g, '').slice(0, 10);
-                    f.setText(lp);
-                }
-            } catch (e) { console.warn(`RC[${rIdx}]: Landlord Phone:`, e.message); }
-
-            // Building name (per-rental)
-            try {
-                const f = rcForm.getTextField('Building Name');
-                if (f) f.setText(rental.buildingName || '');
-            } catch (e) { console.warn(`RC[${rIdx}]: Building Name:`, e.message); }
-
-            // Rental type oval (per-rental)
-            try {
                 if (rental.rentalType) {
                     const rcPage = rcPdfDoc.getPages()[0];
                     const rentalTypeOvals = {
@@ -2022,69 +1922,45 @@ if (data.residenceStatus === 'rented' || data.residenceStatus === 'rentedowned')
                         'condominium':       { x: 492, y: 514 },
                     };
                     const c = rentalTypeOvals[rental.rentalType];
-                    if (c) {
-                        rcPage.drawEllipse({
-                            x: c.x, y: c.y, xScale: 5, yScale: 5,
-                            color: PDFLib.rgb(0, 0, 0),
-                        });
-                    }
+                    if (c) rcPage.drawEllipse({ x: c.x, y: c.y, xScale: 5, yScale: 5, color: PDFLib.rgb(0, 0, 0) });
                 }
-            } catch (e) { console.warn(`RC[${rIdx}]: Rental Type:`, e.message); }
 
-            // Domiciliary/Foster (per-rental)
-            try {
                 if (rental.domicilliaryFosterCare === 'domicillary' || rental.domicilliaryFosterCare === 'foster') {
-                    const cb = rcForm.getCheckBox('3. Domiciliary/Foster Care');
-                    if (cb) cb.check();
+                    try { rcForm.getCheckBox('3. Domiciliary/Foster Care').check(); }
+                    catch (e) { console.warn(`RC[${rIdx}]: Dom/Foster:`, e.message); }
                 }
-            } catch (e) { console.warn(`RC[${rIdx}]: Dom/Foster:`, e.message); }
 
-            // Line 4: monthly rent (per-rental)
-            try {
-                const f = rcForm.getTextField('4. Amount of rent per month');
-                if (f) f.setText(rental.monthlyRent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-            } catch (e) { console.warn(`RC[${rIdx}]: Line 4:`, e.message); }
+                rcSet('4. Amount of rent per month', fmtMoney(rental.monthlyRent));
+                rcSet('5. Amount paid or subsidized by a governmental agency', fmtMoney(rental.subsidizedRentAmount || 0));
+                rcSet('6. Total monthly amount of rent paid', fmtMoney(rental.netMonthlyRent));
+                rcSet('7. Number of months occupied', String(rental.monthsOccupied));
+                rcSet('8. Total rent paid', fmtMoney(rental.line8));
 
-            // Line 5: subsidy (per-rental)
-            try {
-                const f = rcForm.getTextField('5. Amount paid or subsidized by a governmental agency');
-                if (f) f.setText((rental.subsidizedRentAmount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-            } catch (e) { console.warn(`RC[${rIdx}]: Line 5:`, e.message); }
-
-            // Line 6: net monthly rent (per-rental)
-            try {
-                const f = rcForm.getTextField('6. Total monthly amount of rent paid');
-                if (f) f.setText(rental.netMonthlyRent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-            } catch (e) { console.warn(`RC[${rIdx}]: Line 6:`, e.message); }
-
-            // Line 7: months occupied
-            try {
-                const f = rcForm.getTextField('7. Number of months occupied');
-                if (f) f.setText(String(rental.monthsOccupied));
-            } catch (e) { console.warn(`RC[${rIdx}]: Line 7:`, e.message); }
-
-            // Line 8: total rent paid for this rental
-            try {
-                const f = rcForm.getTextField('8. Total rent paid');
-                if (f) f.setText(rental.line8.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-            } catch (e) { console.warn(`RC[${rIdx}]: Line 8:`, e.message); }
-
-            const filledRcBytes = await rcPdfDoc.save();
-            pdfsToMerge.push(filledRcBytes);
-            console.log(`PA-1000 RC #${rIdx + 1} of ${rentalsWithMath.length} added (Line 8 = ${rental.line8.toFixed(2)}).`);
-        } catch (error) {
-            console.error(`Error filling PA-1000 RC #${rIdx + 1}:`, error);
+                pdfsToMerge.push(await rcPdfDoc.save());
+                console.log(`PA-1000 RC #${rIdx + 1} of ${rentalsWithMath.length} added (Line 8 = ${rental.line8.toFixed(2)}).`);
+            } catch (error) {
+                console.error(`Error filling PA-1000 RC #${rIdx + 1}:`, error);
+            }
         }
     }
-}
+        // Append schedules in order: A → B/D/E → F (one PDF per 2 extra people)
+        if (scheduleA) {
+            pdfsToMerge.push(scheduleA.pdfBytes);
+            console.log('PA-1000A added to merge queue.');
+        }
+        if (scheduleBDE && scheduleBDE.pdfBytes) {
+            pdfsToMerge.push(scheduleBDE.pdfBytes);
+            console.log('PA-1000 B/D/E added to merge queue.');
+        }
+        if (scheduleF && Array.isArray(scheduleF.pdfs)) {
+            scheduleF.pdfs.forEach((bytes, i) => {
+                pdfsToMerge.push(bytes);
+                console.log(`PA-1000 F copy ${i + 1}/${scheduleF.copies} added to merge queue.`);
+            });
+            console.log(`Schedule F: ${scheduleF.totalPeople} other person(s) across ${scheduleF.copies} copy(ies).`);
+        }
 
-    // Append pre-built schedules to the merge queue (PA-1000 stays first).
-    if (scheduleA) {
-        pdfsToMerge.push(scheduleA.pdfBytes);
-        console.log('PA-1000A added to merge queue.');
-    }
-
-    // Merge all collected PDFs into one
+    // Merge
     let finalPdfBytes;
     if (pdfsToMerge.length > 1) {
         const mergedDoc = await mergePDFs(pdfsToMerge);
@@ -2093,88 +1969,60 @@ if (data.residenceStatus === 'rented' || data.residenceStatus === 'rentedowned')
         finalPdfBytes = filledPdfBytes;
     }
 
-// Trigger download
-const blob = new Blob([finalPdfBytes], { type: 'application/pdf' });
+    // Upload + note
+    const blob = new Blob([finalPdfBytes], { type: 'application/pdf' });
+    const fileName = `PA-1000_${ptrrApplicant?.firstName || 'Unknown'}_${ptrrApplicant?.lastName || 'Unknown'}_${new Date().toISOString().slice(0, 10)}.pdf`;
+    try {
+        const clientId = new URLSearchParams(window.location.search).get('id');
+        const activeUser = sessionStorage.getItem('loggedInUser') || 'Unknown User';
 
-// Generate file name
-const fileName = `PA-1000_${ptrrApplicant?.firstName || 'Unknown'}_${ptrrApplicant?.lastName || 'Unknown'}_${new Date().toISOString().slice(0, 10)}.pdf`;
+        const formData = new FormData();
+        formData.append('file', blob, fileName);
+        formData.append('clientId', clientId);
+        formData.append('title', fileName.replace('.pdf', ''));
+        formData.append('generatedBy', activeUser);
 
-// Upload the PDF to the client's Letters
-try {
-    const clientId = new URLSearchParams(window.location.search).get('id');
-    const activeUser = sessionStorage.getItem('loggedInUser') || 'Unknown User';
-
-    const formData = new FormData();
-    formData.append('file', blob, fileName);
-    formData.append('clientId', clientId);
-    formData.append('title', fileName.replace('.pdf', ''));
-    formData.append('generatedBy', activeUser);
-
-    const uploadResponse = await fetch('/upload-letter', {
-        method: 'POST',
-        body: formData,
-    });
-
-    const uploadResult = await uploadResponse.json();
-    if (uploadResponse.ok && uploadResult.success) {
-        console.log('Letter uploaded successfully:', uploadResult.message);
-    } else {
-        console.error('Failed to upload letter:', uploadResult.message);
-        alert('Failed to upload the letter to the client profile.');
-    }
-
-    // Log a note after the upload and re-render notes
-    const noteText = 'PTRR Application completed.';
-    const timestamp = new Date().toLocaleString();
-
-    const note = {
-        id: crypto.randomUUID(),
-        text: noteText,
-        timestamp: timestamp,
-        username: activeUser,
-    };
-
-    const noteResponse = await fetch('/add-note-to-client', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ clientId, note }),
-    });
-
-    const noteResult = await noteResponse.json();
-    if (noteResponse.ok && noteResult.success) {
-        console.log('Note logged successfully:', noteResult.message);
-
-        if (typeof window.renderNotes === 'function') {
-            window.renderNotes(clientId);
+        const uploadResponse = await fetch('/upload-letter', { method: 'POST', body: formData });
+        const uploadResult = await uploadResponse.json();
+        if (uploadResponse.ok && uploadResult.success) {
+            console.log('Letter uploaded successfully:', uploadResult.message);
         } else {
-            console.warn('renderNotes function is not available.');
+            console.error('Failed to upload letter:', uploadResult.message);
+            alert('Failed to upload the letter to the client profile.');
         }
-    } else {
-        console.error('Failed to log note:', noteResult.message);
+
+        const note = {
+            id: crypto.randomUUID(),
+            text: 'PTRR Application completed.',
+            timestamp: new Date().toLocaleString(),
+            username: activeUser,
+        };
+        const noteResponse = await fetch('/add-note-to-client', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId, note }),
+        });
+        const noteResult = await noteResponse.json();
+        if (noteResponse.ok && noteResult.success) {
+            if (typeof window.renderNotes === 'function') window.renderNotes(clientId);
+        } else {
+            console.error('Failed to log note:', noteResult.message);
+        }
+    } catch (error) {
+        console.error('Error uploading letter or logging note:', error);
     }
-} catch (error) {
-    console.error('Error uploading letter or logging note:', error);
-}}
+}
 
 async function listFormFields() {
     const { PDFDocument } = PDFLib;
-
     try {
-        // Load the existing PDF template
-        const pdfBytes = await fetch('/assets/2025_pa-1000a.pdf').then((res) => res.arrayBuffer());
+        const pdfBytes = await fetch('/assets/2025_pa-1000f-g.pdf').then((res) => res.arrayBuffer());
         const pdfDoc = await PDFDocument.load(pdfBytes);
-
-        // Get the form fields
         const form = pdfDoc.getForm();
-        const fields = form.getFields();
-
-        // Log detailed information about each field
         console.log('Listing all form fields:');
-        fields.forEach((field) => {
-            console.log(`Field name: ${field.getName()}`);
-            console.log(`Field type: ${field.constructor.name}`);
+        form.getFields().forEach((f) => {
+            console.log(`Field name: ${f.getName()}`);
+            console.log(`Field type: ${f.constructor.name}`);
         });
     } catch (error) {
         console.error('Error listing form fields:', error);

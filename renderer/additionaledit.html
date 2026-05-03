@@ -478,14 +478,54 @@
 
     <!-- Container for dynamically added PTRR Questions (Rented) -->
     <div id="rentedPtrr-container" class="rented-ptrr-card" style="display: none;">
-        <h2>Property Tax and Rent Rebate</h2>
+        <h2>Rent Rebate</h2>
         <div id="rentedPtrr-cards"></div>
     </div>
 
     <!-- Container for dynamically added PTRR Questions (Owned / Property Taxes) -->
     <div id="ownedPtrr-container" class="rented-ptrr-card" style="display: none;">
-        <h2>Property Tax and Rent Rebate</h2>
+        <h2>Property Tax Rebate</h2>
         <div id="ownedPtrr-cards"></div>
+    </div>
+
+    <div id="ptrr-remarriage-container" class="ptrr-card" style="display: none;">
+        <h2>Schedule B</h2>
+        <p class="card-subtitle">
+            You indicated that you were a widow or widower during <span id="ptrr-remarriage-tax-year"></span>
+            and are now married and living with your spouse. Please provide the date you remarried.
+        </p>
+        <div class="form-field" style="max-width: 320px;">
+            <label for="ptrrRemarriageDate">Date of Remarriage</label>
+            <input type="date" id="ptrrRemarriageDate" name="ptrrRemarriageDate">
+        </div>
+    </div>
+
+        <!-- Schedule E – Mixed-use homestead -->
+        <div id="ptrr-scheduleE-container" class="ptrr-card" style="display: none;">
+            <h2>Schedule E</h2>    
+            <div class="selection-box rented-ptrr-card-inner" id="scheduleE-mixedUse-container" style="border:none; box-shadow:none; padding:0; margin:0;">
+                <label>Did you also use part of your homestead for a purpose other than your personal residence?</label>
+                <div id="scheduleE-mixedUse-yes" data-value="yes">Yes</div>
+                <div id="scheduleE-mixedUse-no" data-value="no">No</div>
+            </div>
+    
+            <div class="form-field" id="scheduleE-residencePercent-container" style="display:none; max-width: 320px; margin-top: 14px;">
+                <label for="scheduleE-residencePercent">What percentage of your home did you use as your personal residence?</label>
+                <input type="number" id="scheduleE-residencePercent" min="0" max="100" step="1" placeholder="e.g. 75">
+            </div>
+        </div>
+
+            <!-- Schedule F – Other people on lease/deed -->
+    <div id="ptrr-scheduleF-container" class="ptrr-card" style="display: none;">
+        <h2>Schedule F</h2>
+        <p class="card-subtitle">
+            You indicated that there are people on the lease or deed other than your spouse or minor children.
+            Please provide their information below.
+        </p>
+        <div id="scheduleF-cards"></div>
+        <div class="button-container" id="scheduleF-add-container" style="display:none; margin-top: 14px;">
+            <button type="button" id="scheduleF-addMemberBtn">+ Add Another Person</button>
+        </div>
     </div>
     
     <!-- Contact Modal -->
@@ -599,8 +639,6 @@
             </form>
         </div>
     </div>
-
-    <div id="ptrr-deceased-container"></div>
 
     <script src="editnavigation.js"></script>
     <script src="notes.js"></script>
@@ -951,6 +989,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             populateAuthorizedRepresentativeDropdown();
             initRentedPtrrCards();
             initMultipleHomes();
+            initRemarriageCard();
+            initScheduleECard();
+            initScheduleFCard();
         } catch (err) {
             console.error('Error loading client data:', err);
         }
@@ -1168,14 +1209,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const members = Array.isArray(client?.householdMembers) ? [...client.householdMembers] : [];
         const member = { ...members[idx] };
 
-        // 1) Update PTRR.application[0].previousYearRentals
-        const appArr = Array.isArray(member?.PTRR?.application) ? [...member.PTRR.application] : [];
-        const firstApp = { ...(appArr[0] || {}) };
-        firstApp.previousYearRentals = rentals;
-        appArr[0] = firstApp;
-        member.PTRR = { ...(member.PTRR || {}), application: appArr };
+        // 1) Update PTRR.application[0].previousYearRentals (single merged object)
+        const mergedApp = buildSingleApplicationObject(member, { previousYearRentals: rentals });
+        member.PTRR = { ...(member.PTRR || {}), application: [mergedApp] };
 
-        // 2) Sync the same four fields back into member.expenses[expenseIndex]
+        // 2) Sync the same fields back into member.expenses[expenseIndex]
         const expenses = Array.isArray(member.expenses) ? [...member.expenses] : [];
         cards.forEach((cardEl, i) => {
             const expenseIdxAttr = cardEl.getAttribute('data-expense-index');
@@ -1546,14 +1584,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         const members = Array.isArray(client?.householdMembers) ? [...client.householdMembers] : [];
         const member = { ...members[idx] };
 
-        // 1) Update PTRR.application[0].previousYearProperties
-        const appArr = Array.isArray(member?.PTRR?.application) ? [...member.PTRR.application] : [];
-        const firstApp = { ...(appArr[0] || {}) };
-        firstApp.previousYearProperties = properties;
-        appArr[0] = firstApp;
-        member.PTRR = { ...(member.PTRR || {}), application: appArr };
+        // 1) Update PTRR.application[0].previousYearProperties (single merged object)
+        const mergedApp = buildSingleApplicationObject(member, { previousYearProperties: properties });
+        member.PTRR = { ...(member.PTRR || {}), application: [mergedApp] };
 
-        // 2) Sync the four shared fields back into member.expenses[expenseIndex]
+        // 2) Sync fields back into member.expenses[expenseIndex]
         const expenses = Array.isArray(member.expenses) ? [...member.expenses] : [];
         cards.forEach((cardEl, i) => {
             const expenseIdxAttr = cardEl.getAttribute('data-expense-index');
@@ -1817,10 +1852,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const members = Array.isArray(client?.householdMembers) ? [...client.householdMembers] : [];
         const member = { ...members[idx] };
-        const appArr = Array.isArray(member?.PTRR?.application) ? [...member.PTRR.application] : [];
-        const firstApp = { ...(appArr[0] || {}) };
 
-        firstApp.previousAddresses = [
+        const previousAddresses = [
             {
                 streetAddress: document.getElementById('firstHomeStreetAddress')?.value || '',
                 streetAddress2: document.getElementById('firstHomeStreetAddressLine2')?.value || '',
@@ -1843,8 +1876,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         ];
 
-        appArr[0] = firstApp;
-        member.PTRR = { ...(member.PTRR || {}), application: appArr };
+        const mergedApp = buildSingleApplicationObject(member, { previousAddresses });
+        member.PTRR = { ...(member.PTRR || {}), application: [mergedApp] };
         members[idx] = member;
 
         try {
@@ -1870,18 +1903,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const members = Array.isArray(client?.householdMembers) ? [...client.householdMembers] : [];
         const member = { ...members[idx] };
-        const appArr = Array.isArray(member?.PTRR?.application) ? [...member.PTRR.application] : [];
-        const firstApp = { ...(appArr[0] || {}) };
 
-        firstApp.previousYearAddress = {
+        const previousYearAddress = {
             streetAddress: document.getElementById('previousYearStreetAddress')?.value || '',
             city: document.getElementById('previousYearCity')?.value || '',
             state: document.getElementById('previousYearState')?.value || '',
             zipCode: document.getElementById('previousYearZipCode')?.value || '',
         };
 
-        appArr[0] = firstApp;
-        member.PTRR = { ...(member.PTRR || {}), application: appArr };
+        const mergedApp = buildSingleApplicationObject(member, { previousYearAddress });
+        member.PTRR = { ...(member.PTRR || {}), application: [mergedApp] };
         members[idx] = member;
 
         try {
@@ -1961,13 +1992,111 @@ document.addEventListener('DOMContentLoaded', async () => {
             } else {
                 showPreviousYearAddress(false);
             }
-
-            attachSameAddressHandlers();
-            attachPreviousYearAddressDebounce();
         } else {
             showSameAddressQuestion(false);
             showPreviousYearAddress(false);
         }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+
+    function getPTRRTaxYear() {
+        // Tax year = previous calendar year (e.g., in 2026 we process TY 2025)
+        return new Date().getFullYear() - 1;
+    }
+
+    function parseAgeYears(ageStr) {
+        // Examples: "52 Years, 10 Months, 15 Days", "82 Years", "64"
+        if (ageStr == null) return NaN;
+        const s = String(ageStr).trim();
+        const m = s.match(/(\d+)\s*Year/i);
+        if (m) return parseInt(m[1], 10);
+        const n = parseInt(s, 10);
+        return Number.isNaN(n) ? NaN : n;
+    }
+
+    function wasWidowedAge50to64(member) {
+        if (!member) return false;
+
+        const prev = String(member.previousMaritalStatus || '').toLowerCase().trim();
+        // Accept "Widow", "Widower", "Widowed"
+        const wasWidowed = prev === 'widow' || prev === 'widower' || prev === 'widowed';
+        if (!wasWidowed) return false;
+
+        const years = parseAgeYears(member.age);
+        if (Number.isNaN(years)) return false;
+
+        return years >= 50 && years <= 64;
+    }
+
+    function isCurrentlyMarriedLivingTogether(member) {
+        if (!member) return false;
+        const status = String(member.maritalStatus || '').toLowerCase().trim();
+        // Matches "Married (Living Together)", "Married - Living Together", etc.
+        return status.includes('married') && status.includes('living together');
+    }
+
+    function shouldShowRemarriageCard(member) {
+        return wasWidowedAge50to64(member) && isCurrentlyMarriedLivingTogether(member);
+    }
+
+    async function savePTRRRemarriageDate(dateStr) {
+        const clientId = getQueryParam('id');
+        if (!clientId) return;
+
+        const idx = findApplyingMemberIndex();
+        if (idx < 0) return;
+
+        const members = Array.isArray(client?.householdMembers) ? [...client.householdMembers] : [];
+        const member = { ...members[idx] };
+
+        const mergedApp = buildSingleApplicationObject(member, { remarriageDate: dateStr || '' });
+        member.PTRR = { ...(member.PTRR || {}), application: [mergedApp] };
+        members[idx] = member;
+
+        try {
+            const resp = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, clientData: { householdMembers: members } })
+            });
+            if (!resp.ok) throw new Error('Failed to save remarriage date');
+            client.householdMembers = members;
+            console.log('Saved remarriageDate:', dateStr);
+        } catch (e) {
+            console.error('Error saving remarriageDate:', e);
+            alert('Could not save the remarriage date. Please try again.');
+        }
+    }
+
+    function initRemarriageCard() {
+        const card = document.getElementById('ptrr-remarriage-container');
+        const input = document.getElementById('ptrrRemarriageDate');
+        const yearSpan = document.getElementById('ptrr-remarriage-tax-year');
+        if (!card || !input) return;
+
+        const member = getApplyingMember();
+        if (!shouldShowRemarriageCard(member)) {
+            card.style.display = 'none';
+            return;
+        }
+
+        if (yearSpan) yearSpan.textContent = String(getPTRRTaxYear());
+
+        // Restore saved value
+        const app = getApplyingMemberPTRRApplicationObj(member) || {};
+        input.value = app.remarriageDate || '';
+
+        card.style.display = 'block';
+
+        // Persist on change
+        let t = null;
+        const handler = () => {
+            clearTimeout(t);
+            t = setTimeout(() => savePTRRRemarriageDate(input.value || ''), 150);
+        };
+        input.addEventListener('change', handler);
+        input.addEventListener('input', handler);
     }
 
     // Helpers to read/write PTRR deceased fields on applying member
@@ -1986,123 +2115,752 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+        // ══════════════════════════════════════════════════════════════
+    // SCHEDULE E – Mixed-use homestead
+    // ══════════════════════════════════════════════════════════════
+
+    function shouldShowScheduleE() {
+        // Show whenever the household is applying for PTRR (owner or renter)
+        return isPTRRApplyingAndOwned() || isPTRRApplyingAndRented();
+    }
+
+    async function saveScheduleE(updates) {
+        const clientId = getQueryParam('id');
+        if (!clientId) return;
+
+        const idx = findApplyingMemberIndex();
+        if (idx < 0) return;
+
+        const members = Array.isArray(client?.householdMembers) ? [...client.householdMembers] : [];
+        const member = { ...members[idx] };
+
+        const mergedApp = buildSingleApplicationObject(member, updates);
+        member.PTRR = { ...(member.PTRR || {}), application: [mergedApp] };
+        members[idx] = member;
+
+        try {
+            const resp = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, clientData: { householdMembers: members } })
+            });
+            if (!resp.ok) throw new Error('Failed to save Schedule E');
+            client.householdMembers = members;
+            console.log('Saved Schedule E:', updates);
+        } catch (e) {
+            console.error('Error saving Schedule E:', e);
+        }
+    }
+
+    function initScheduleECard() {
+        const card = document.getElementById('ptrr-scheduleE-container');
+        if (!card) return;
+
+        if (!shouldShowScheduleE()) {
+            card.style.display = 'none';
+            return;
+        }
+        card.style.display = 'block';
+
+        const yesEl = document.getElementById('scheduleE-mixedUse-yes');
+        const noEl  = document.getElementById('scheduleE-mixedUse-no');
+        const pctContainer = document.getElementById('scheduleE-residencePercent-container');
+        const pctInput = document.getElementById('scheduleE-residencePercent');
+
+        // Restore saved values
+        const member = getApplyingMember();
+        const app = getApplyingMemberPTRRApplicationObj(member) || {};
+        const savedMixedUse = app.scheduleE_mixedUse || null;          // 'yes' | 'no' | null
+        const savedPct = app.scheduleE_residencePercent ?? '';
+
+        if (savedMixedUse === 'yes') {
+            yesEl.classList.add('selected');
+            pctContainer.style.display = 'block';
+            pctInput.value = savedPct === null ? '' : savedPct;
+        } else if (savedMixedUse === 'no') {
+            noEl.classList.add('selected');
+            pctContainer.style.display = 'none';
+        }
+
+        // Yes / No handlers
+        yesEl.addEventListener('click', async () => {
+            yesEl.classList.add('selected');
+            noEl.classList.remove('selected');
+            pctContainer.style.display = 'block';
+            await saveScheduleE({ scheduleE_mixedUse: 'yes' });
+        });
+
+        noEl.addEventListener('click', async () => {
+            noEl.classList.add('selected');
+            yesEl.classList.remove('selected');
+            pctContainer.style.display = 'none';
+            pctInput.value = '';
+            await saveScheduleE({
+                scheduleE_mixedUse: 'no',
+                scheduleE_residencePercent: null
+            });
+        });
+
+        // Percentage input
+        let t = null;
+        const handlePct = () => {
+            clearTimeout(t);
+            t = setTimeout(() => {
+                let val = parseInt(pctInput.value, 10);
+                if (Number.isNaN(val)) {
+                    saveScheduleE({ scheduleE_residencePercent: null });
+                    return;
+                }
+                val = Math.max(0, Math.min(100, val));
+                pctInput.value = val;
+                saveScheduleE({ scheduleE_residencePercent: val });
+            }, 250);
+        };
+        pctInput.addEventListener('input', handlePct);
+        pctInput.addEventListener('change', handlePct);
+    }
+
+        // ══════════════════════════════════════════════════════════════
+    // SCHEDULE F – Other people on lease/deed
+    // ══════════════════════════════════════════════════════════════
+
+    const SCHEDULE_F_RELATIONSHIPS = [
+        'Parent', 'Child', 'Sibling', 'Grandparent', 'Grandchild',
+        'Aunt/Uncle', 'Niece/Nephew', 'Cousin', 'Friend', 'Other'
+    ];
+
+    function buildFullName(m) {
+        return [m?.firstName, m?.middleInitial, m?.lastName]
+            .map(s => String(s || '').trim())
+            .filter(Boolean)
+            .join(' ')
+            .toUpperCase();
+    }
+
+    function getSpouseId(member) {
+        if (!member) return null;
+        if (member.previousSpouseId) return member.previousSpouseId;
+        if (member.spouseId) return member.spouseId;
+
+        // Spouse is symmetric — either side records "spouse"
+        const direct = (member.relationships || []).find(
+            r => String(r?.relationship || '').toLowerCase() === 'spouse'
+        );
+        if (direct?.relatedMemberId) return direct.relatedMemberId;
+
+        const members = Array.isArray(client?.householdMembers) ? client.householdMembers : [];
+        const reverse = members.find(m =>
+            m && m.householdMemberId !== member.householdMemberId &&
+            (m.relationships || []).some(r =>
+                r?.relatedMemberId === member.householdMemberId &&
+                String(r?.relationship || '').toLowerCase() === 'spouse'
+            )
+        );
+        return reverse?.householdMemberId || null;
+    }
+
+    function getMinorChildIds(member) {
+        const ids = new Set();
+        if (!member) return ids;
+        const members = Array.isArray(client?.householdMembers) ? client.householdMembers : [];
+
+        // Convention: applicant.relationships[i].relationship describes the
+        // applicant's role toward relatedMemberId.
+        // So relationship === "parent" means: applicant is parent of relatedMemberId
+        //  → relatedMemberId is the applicant's CHILD.
+        const applicantIsParentLabel = r => [
+            'parent','mother','father','mom','dad',
+            'stepparent','stepmother','stepfather'
+        ].includes(String(r || '').toLowerCase());
+
+        (member.relationships || []).forEach(r => {
+            if (!applicantIsParentLabel(r?.relationship)) return;
+            const child = members.find(m => m.householdMemberId === r.relatedMemberId);
+            if (!child) return;
+            const yrs = parseAgeYears(child.age);
+            if (!Number.isNaN(yrs) && yrs < 18) ids.add(child.householdMemberId);
+        });
+
+        // Defensive: also accept the inverse direction in case any record uses
+        // the other convention ("child" said FROM the parent's side).
+        (member.relationships || []).forEach(r => {
+            const role = String(r?.relationship || '').toLowerCase();
+            if (!['child','son','daughter','stepchild'].includes(role)) return;
+            // Here applicant labeled the related member as "child" → still a child.
+            const child = members.find(m => m.householdMemberId === r.relatedMemberId);
+            if (!child) return;
+            const yrs = parseAgeYears(child.age);
+            if (!Number.isNaN(yrs) && yrs < 18) ids.add(child.householdMemberId);
+        });
+
+        return ids;
+    }
+
+    // Map raw relationship strings (e.g. "parent", "aunt", "niece")
+    // to a value present in the SCHEDULE_F_RELATIONSHIPS dropdown.
+    function mapRelationshipToScheduleFOption(raw) {
+        if (!raw) return '';
+        const r = String(raw).toLowerCase().trim();
+        if (['parent','mother','father','mom','dad','stepparent','stepmother','stepfather'].includes(r)) return 'Parent';
+        if (['child','son','daughter','stepchild'].includes(r)) return 'Child';
+        if (['sibling','brother','sister','stepbrother','stepsister','half-brother','half-sister'].includes(r)) return 'Sibling';
+        if (['grandparent','grandmother','grandfather'].includes(r)) return 'Grandparent';
+        if (['grandchild','grandson','granddaughter'].includes(r)) return 'Grandchild';
+        if (['aunt','uncle','aunt/uncle'].includes(r)) return 'Aunt/Uncle';
+        if (['niece','nephew','niece/nephew'].includes(r)) return 'Niece/Nephew';
+        if (r === 'cousin') return 'Cousin';
+        if (r === 'friend') return 'Friend';
+        return 'Other';
+    }
+
+    // Look up the applicant's relationship to a specific household member id.
+    function getApplicantRelationshipTo(relatedMemberId) {
+        const applying = getApplyingMember();
+        if (!applying || !relatedMemberId) return '';
+
+        // 1. Check applicant's own relationships first (related person → applicant role)
+        const direct = (applying.relationships || []).find(
+            r => r?.relatedMemberId === relatedMemberId
+        );
+        if (direct?.relationship) return mapRelationshipToScheduleFOption(direct.relationship);
+
+        // 2. Inverse: the other member describes applicant's role
+        const members = Array.isArray(client?.householdMembers) ? client.householdMembers : [];
+        const other = members.find(m => m?.householdMemberId === relatedMemberId);
+        const reverse = (other?.relationships || []).find(
+            r => r?.relatedMemberId === applying.householdMemberId
+        );
+        if (!reverse?.relationship) return '';
+
+        // Invert: if other says "parent" (applicant is their parent) → applicant's view = "Child"
+        const inverseMap = {
+            parent: 'Child', mother: 'Child', father: 'Child',
+            stepparent: 'Child', stepmother: 'Child', stepfather: 'Child',
+            child: 'Parent', son: 'Parent', daughter: 'Parent', stepchild: 'Parent',
+            grandparent: 'Grandchild', grandmother: 'Grandchild', grandfather: 'Grandchild',
+            grandchild: 'Grandparent', grandson: 'Grandparent', granddaughter: 'Grandparent',
+            sibling: 'Sibling', brother: 'Sibling', sister: 'Sibling',
+            spouse: 'Other', // spouse shouldn't appear on Schedule F anyway
+            aunt: 'Niece/Nephew', uncle: 'Niece/Nephew', 'aunt/uncle': 'Niece/Nephew',
+            niece: 'Aunt/Uncle', nephew: 'Aunt/Uncle', 'niece/nephew': 'Aunt/Uncle',
+            cousin: 'Cousin', friend: 'Friend',
+        };
+        const key = String(reverse.relationship).toLowerCase().trim();
+        return inverseMap[key] || 'Other';
+    }    
+
+    function findHouseholdMemberByName(name) {
+        const target = String(name || '').trim().toUpperCase();
+        if (!target) return null;
+        const members = Array.isArray(client?.householdMembers) ? client.householdMembers : [];
+        // Try full "First MI Last", then "First Last"
+        return members.find(m => {
+            const full = buildFullName(m);
+            const noMI = `${(m.firstName || '').trim()} ${(m.lastName || '').trim()}`.trim().toUpperCase();
+            return full === target || noMI === target;
+        }) || null;
+    }
+
+    /**
+     * Read lease/deed co-occupants from rent OR property-tax "previous year" expenses.
+     * Returns { matchedMembers: HHMember[], hasOutsideOfHousehold: boolean, unmatchedNames: string[] }
+     */
+    function getOthersFromExpenses() {
+        const result = { matchedMembers: [], hasOutsideOfHousehold: false, unmatchedNames: [] };
+        const member = getApplyingMember();
+        if (!member) return result;
+
+        const expenses = Array.isArray(member.expenses) ? member.expenses : [];
+        const seenIds = new Set();
+        const seenUnmatched = new Set();
+
+        expenses.forEach(e => {
+            const t = String(e?.type || '').toLowerCase().trim();
+            const k = String(e?.kind || e?.expenseType || '').toLowerCase().trim();
+            const isPrev = t === 'previous year' || t === 'previousyear' || t === 'previous';
+            const isRelevant = k.includes('rent') || k.includes('property tax') || k === 'propertytaxes';
+            if (!isPrev || !isRelevant) return;
+
+            const persons = []
+                .concat(e.leasePersons || [])
+                .concat(e.peopleOnLeaseOrDeed || [])
+                .concat(e.deedPersons || []);
+
+            persons.forEach(entry => {
+                if (entry == null) return;
+                if (typeof entry === 'string') {
+                    const s = entry.trim();
+                    if (!s) return;
+                    if (s.toLowerCase().includes('outside')) {
+                        result.hasOutsideOfHousehold = true;
+                        return;
+                    }
+                    const hh = findHouseholdMemberByName(s);
+                    if (hh) {
+                        if (!seenIds.has(hh.householdMemberId)) {
+                            seenIds.add(hh.householdMemberId);
+                            result.matchedMembers.push(hh);
+                        }
+                    } else if (!seenUnmatched.has(s.toUpperCase())) {
+                        seenUnmatched.add(s.toUpperCase());
+                        result.unmatchedNames.push(s);
+                    }
+                } else if (typeof entry === 'object') {
+                    if (entry.outsideOfHousehold === true ||
+                        String(entry.type || '').toLowerCase().includes('outside')) {
+                        result.hasOutsideOfHousehold = true;
+                    } else if (entry.householdMemberId) {
+                        const members = Array.isArray(client?.householdMembers) ? client.householdMembers : [];
+                        const hh = members.find(m => m.householdMemberId === entry.householdMemberId);
+                        if (hh && !seenIds.has(hh.householdMemberId)) {
+                            seenIds.add(hh.householdMemberId);
+                            result.matchedMembers.push(hh);
+                        }
+                    }
+                }
+            });
+        });
+        return result;
+    }
+
+    /** Members who must appear on Schedule F: matched, but not applicant/spouse/minor child. */
+    function getScheduleFAutofillMembers() {
+        const applying = getApplyingMember();
+        if (!applying) return [];
+        const exclude = new Set([applying.householdMemberId]);
+        const spouseId = getSpouseId(applying);
+        if (spouseId) exclude.add(spouseId);
+        getMinorChildIds(applying).forEach(id => exclude.add(id));
+
+        const { matchedMembers } = getOthersFromExpenses();
+        return matchedMembers.filter(m => !exclude.has(m.householdMemberId));
+    }
+
+    function shouldShowScheduleF() {
+        if (!(isPTRRApplyingAndOwned() || isPTRRApplyingAndRented())) return false;
+        const { hasOutsideOfHousehold, unmatchedNames } = getOthersFromExpenses();
+        return getScheduleFAutofillMembers().length > 0
+            || hasOutsideOfHousehold
+            || unmatchedNames.length > 0;
+    }
+
+    function getApplyingClaimantAddress() {
+        return {
+            streetAddress: client?.streetAddress || '',
+            streetAddress2: client?.streetAddress2 || client?.streetAddressLine2 || '',
+            city: client?.city || '',
+            state: (client?.state || '').toUpperCase().slice(0, 2),
+            zipCode: client?.zipCode || '',
+        };
+    }
+
+    function buildScheduleFCardHTML(i) {
+        const relOpts = SCHEDULE_F_RELATIONSHIPS
+            .map(r => `<option value="${r}">${r}</option>`).join('');
+        return `
+        <div class="rented-ptrr-card-inner" data-sf-index="${i}">
+            <h3>Person ${i + 1}</h3>
+            <div class="field-row">
+                <div class="form-field">
+                    <label for="sf-firstName-${i}">First Name:</label>
+                    <input type="text" id="sf-firstName-${i}">
+                </div>
+                <div class="form-field">
+                    <label for="sf-lastName-${i}">Last Name:</label>
+                    <input type="text" id="sf-lastName-${i}">
+                </div>
+            </div>
+            <div class="field-row">
+                <div class="form-field">
+                    <label for="sf-age-${i}">Age:</label>
+                    <input type="number" id="sf-age-${i}" min="0" step="1">
+                </div>
+                <div class="form-field">
+                    <label for="sf-relationship-${i}">Relationship:</label>
+                    <select id="sf-relationship-${i}">
+                        <option value="" disabled selected>Select Relationship</option>
+                        ${relOpts}
+                    </select>
+                </div>
+            </div>
+            <div class="form-field">
+                <label for="sf-ssn-${i}">Social Security Number:</label>
+                <input type="text" id="sf-ssn-${i}" placeholder="XXX-XX-XXXX" maxlength="11">
+            </div>
+
+            <div class="selection-box" id="sf-sameAddress-container-${i}">
+                <label>Is this person's address the same as the claimant's?</label>
+                <div data-value="yes" id="sf-sameAddress-yes-${i}">Yes</div>
+                <div data-value="no"  id="sf-sameAddress-no-${i}">No</div>
+            </div>
+
+            <div id="sf-address-container-${i}" style="display:none;">
+                <h4 style="margin-bottom:8px;">Address</h4>
+                <div class="form-field">
+                    <label for="sf-streetAddress-${i}">Street Address:</label>
+                    <input type="text" id="sf-streetAddress-${i}">
+                </div>
+                <div class="form-field">
+                    <label for="sf-streetAddress2-${i}">Street Address Line 2:</label>
+                    <input type="text" id="sf-streetAddress2-${i}">
+                </div>
+                <div class="field-row">
+                    <div class="form-field">
+                        <label for="sf-city-${i}">City:</label>
+                        <input type="text" id="sf-city-${i}">
+                    </div>
+                    <div class="form-field">
+                        <label for="sf-state-${i}">State:</label>
+                        <select id="sf-state-${i}">${buildStateOptionsHTML()}</select>
+                    </div>
+                </div>
+                <div class="form-field" style="max-width:240px;">
+                    <label for="sf-zipCode-${i}">ZIP Code:</label>
+                    <input type="text" id="sf-zipCode-${i}" maxlength="5">
+                </div>
+            </div>
+
+            <div class="button-container" style="margin-top:8px;">
+                <button type="button" id="sf-removeBtn-${i}" style="background:#dc2626;border-color:#b91c1c;">Remove</button>
+            </div>
+        </div>`;
+    }
+
+    function readScheduleFCard(i) {
+        const get = id => document.getElementById(`${id}-${i}`)?.value ?? '';
+        const cardEl = document.querySelector(`.rented-ptrr-card-inner[data-sf-index="${i}"]`);
+        const yes = document.getElementById(`sf-sameAddress-yes-${i}`);
+        const no  = document.getElementById(`sf-sameAddress-no-${i}`);
+        const sameAddress = yes?.classList.contains('selected') ? 'yes'
+                          : no?.classList.contains('selected')  ? 'no'  : null;
+        const householdMemberId = cardEl?.getAttribute('data-hh-id') || null;
+
+        const entry = {
+            householdMemberId,
+            socialSecurityNumber: get('sf-ssn'),
+            sameAddressAsClaimant: sameAddress,
+            address: sameAddress === 'yes' ? getApplyingClaimantAddress() : {
+                streetAddress: get('sf-streetAddress'),
+                streetAddress2: get('sf-streetAddress2'),
+                city: get('sf-city'),
+                state: get('sf-state'),
+                zipCode: get('sf-zipCode'),
+            },
+        };
+
+        // Only persist identity + relationship for manually-entered people.
+        // For linked household members, name/age/relationship live on
+        // client.householdMembers and applying.relationships (source of truth).
+        if (!householdMemberId) {
+            const ageStr = get('sf-age');
+            entry.firstName = get('sf-firstName');
+            entry.lastName  = get('sf-lastName');
+            entry.age = ageStr === '' ? null : parseInt(ageStr, 10);
+            const relSelect = document.getElementById(`sf-relationship-${i}`);
+            entry.relationship = (relSelect?.value || '') || null;
+        }
+
+        return entry;
+    }
+
+    function restoreScheduleFCard(i, data) {
+        const set = (id, v) => {
+            const el = document.getElementById(`${id}-${i}`);
+            if (el) el.value = v ?? '';
+        };
+        const cardEl = document.querySelector(`.rented-ptrr-card-inner[data-sf-index="${i}"]`);
+        if (cardEl && data.householdMemberId) cardEl.setAttribute('data-hh-id', data.householdMemberId);
+
+        // For linked household members, ALWAYS pull identity from the database.
+        const isLinkedToMember = !!data.householdMemberId;
+        let displayFirst = data.firstName || '';
+        let displayLast  = data.lastName  || '';
+        let displayAge   = data.age ?? '';
+
+        if (isLinkedToMember) {
+            const members = Array.isArray(client?.householdMembers) ? client.householdMembers : [];
+            const hh = members.find(m => m.householdMemberId === data.householdMemberId);
+            if (hh) {
+                displayFirst = hh.firstName || '';
+                displayLast  = hh.lastName  || '';
+                const yrs = parseAgeYears(hh.age);
+                displayAge = Number.isNaN(yrs) ? '' : yrs;
+            }
+        }
+
+        set('sf-firstName', displayFirst);
+        set('sf-lastName',  displayLast);
+        set('sf-age',       displayAge);
+
+        // Relationship: derive from applying.relationships for linked members
+        const displayRelationship = isLinkedToMember
+            ? getApplicantRelationshipTo(data.householdMemberId)
+            : (data.relationship || '');
+        set('sf-relationship', displayRelationship);
+
+        set('sf-ssn', data.socialSecurityNumber);
+
+        // Lock identity fields for linked members (read-only)
+        const lockInput = (id) => {
+            const el = document.getElementById(`${id}-${i}`);
+            if (!el) return;
+            if (isLinkedToMember) {
+                el.readOnly = true;
+                el.tabIndex = -1;
+                el.style.backgroundColor = '#f1f5f9';
+                el.style.color = '#475569';
+                el.style.cursor = 'not-allowed';
+            } else {
+                el.readOnly = false;
+                el.removeAttribute('tabindex');
+                el.style.backgroundColor = '';
+                el.style.color = '';
+                el.style.cursor = '';
+            }
+        };
+        const lockSelect = (id) => {
+            const el = document.getElementById(`${id}-${i}`);
+            if (!el) return;
+            if (isLinkedToMember) {
+                el.disabled = true;
+                el.style.backgroundColor = '#f1f5f9';
+                el.style.color = '#475569';
+                el.style.cursor = 'not-allowed';
+            } else {
+                el.disabled = false;
+                el.style.backgroundColor = '';
+                el.style.color = '';
+                el.style.cursor = '';
+            }
+        };
+
+        lockInput('sf-firstName');
+        lockInput('sf-lastName');
+        lockInput('sf-age');
+        lockSelect('sf-relationship');
+
+        // Hide Remove for linked household members
+        const removeBtn = document.getElementById(`sf-removeBtn-${i}`);
+        if (removeBtn) removeBtn.style.display = isLinkedToMember ? 'none' : '';
+
+        const yes = document.getElementById(`sf-sameAddress-yes-${i}`);
+        const no  = document.getElementById(`sf-sameAddress-no-${i}`);
+        const addrContainer = document.getElementById(`sf-address-container-${i}`);
+        if (yes) yes.classList.toggle('selected', data.sameAddressAsClaimant === 'yes');
+        if (no)  no.classList.toggle('selected',  data.sameAddressAsClaimant === 'no');
+        if (addrContainer) addrContainer.style.display = data.sameAddressAsClaimant === 'no' ? 'block' : 'none';
+
+        const addr = data.address || {};
+        set('sf-streetAddress',  addr.streetAddress);
+        set('sf-streetAddress2', addr.streetAddress2);
+        set('sf-city',           addr.city);
+        set('sf-state',          addr.state);
+        set('sf-zipCode',        addr.zipCode);
+    }
+
+    async function saveScheduleF() {
+        const clientId = getQueryParam('id');
+        if (!clientId) return;
+        const idx = findApplyingMemberIndex();
+        if (idx < 0) return;
+
+        const cards = document.querySelectorAll('#scheduleF-cards .rented-ptrr-card-inner');
+        const others = Array.from(cards).map((_, i) => readScheduleFCard(i));
+
+        const members = [...client.householdMembers];
+        const member  = { ...members[idx] };
+        const mergedApp = buildSingleApplicationObject(member, { scheduleF_othersOnLeaseOrDeed: others });
+        member.PTRR = { ...(member.PTRR || {}), application: [mergedApp] };
+        members[idx] = member;
+
+        try {
+            const resp = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, clientData: { householdMembers: members } })
+            });
+            if (!resp.ok) throw new Error('Failed to save Schedule F');
+            client.householdMembers = members;
+            console.log('Saved Schedule F:', others);
+        } catch (e) {
+            console.error('Error saving Schedule F:', e);
+        }
+    }
+
+    function attachScheduleFHandlers(i) {
+        let timer = null;
+        const debounceSave = (ms = 400) => { clearTimeout(timer); timer = setTimeout(saveScheduleF, ms); };
+
+        [
+            'sf-firstName','sf-lastName','sf-age','sf-relationship','sf-ssn',
+            'sf-streetAddress','sf-streetAddress2','sf-city','sf-state','sf-zipCode'
+        ].forEach(id => {
+            const el = document.getElementById(`${id}-${i}`);
+            if (!el) return;
+            el.addEventListener('input',  () => debounceSave(400));
+            el.addEventListener('change', () => debounceSave(150));
+        });
+
+        const yes = document.getElementById(`sf-sameAddress-yes-${i}`);
+        const no  = document.getElementById(`sf-sameAddress-no-${i}`);
+        const addrContainer = document.getElementById(`sf-address-container-${i}`);
+
+        if (yes) yes.addEventListener('click', async () => {
+            yes.classList.add('selected'); no?.classList.remove('selected');
+            if (addrContainer) addrContainer.style.display = 'none';
+            await saveScheduleF();
+        });
+        if (no) no.addEventListener('click', async () => {
+            no.classList.add('selected'); yes?.classList.remove('selected');
+            if (addrContainer) addrContainer.style.display = 'block';
+            // Clear address fields so user enters fresh data
+            ['sf-streetAddress','sf-streetAddress2','sf-city','sf-state','sf-zipCode']
+                .forEach(id => {
+                    const el = document.getElementById(`${id}-${i}`);
+                    if (el) el.value = '';
+                });
+            await saveScheduleF();
+        });
+
+        const removeBtn = document.getElementById(`sf-removeBtn-${i}`);
+        if (removeBtn) removeBtn.addEventListener('click', async () => {
+            document.querySelector(`.rented-ptrr-card-inner[data-sf-index="${i}"]`)?.remove();
+            await saveScheduleF();
+        });
+    }
+
+    function buildScheduleFEntryFromMember(m) {
+        return {
+            householdMemberId: m.householdMemberId,
+            firstName: m.firstName || '',
+            lastName:  m.lastName  || '',
+            age: parseAgeYears(m.age) || null,
+            relationship: getApplicantRelationshipTo(m.householdMemberId),
+            socialSecurityNumber: m.socialSecurityNumber || '',
+            sameAddressAsClaimant: 'yes',
+            address: getApplyingClaimantAddress(),
+        };
+    }
+
+    function buildScheduleFEntryFromUnmatchedName(name) {
+        const parts = String(name || '').trim().split(/\s+/);
+        const firstName = parts[0] || '';
+        const lastName  = parts.length > 1 ? parts[parts.length - 1] : '';
+        return {
+            householdMemberId: null,
+            firstName, lastName,
+            age: null, relationship: '', socialSecurityNumber: '',
+            sameAddressAsClaimant: null,
+            address: {},
+        };
+    }
+
+    function initScheduleFCard() {
+        const card = document.getElementById('ptrr-scheduleF-container');
+        const wrap = document.getElementById('scheduleF-cards');
+        const addContainer = document.getElementById('scheduleF-add-container');
+        const addBtn = document.getElementById('scheduleF-addMemberBtn');
+        if (!card || !wrap) return;
+
+        if (!shouldShowScheduleF()) { card.style.display = 'none'; return; }
+        card.style.display = 'block';
+
+        const member = getApplyingMember();
+        const app = getApplyingMemberPTRRApplicationObj(member) || {};
+        const savedRaw = Array.isArray(app.scheduleF_othersOnLeaseOrDeed) ? app.scheduleF_othersOnLeaseOrDeed : [];
+        const autofillMembers = getScheduleFAutofillMembers();
+        const { hasOutsideOfHousehold, unmatchedNames } = getOthersFromExpenses();
+
+        // ── Build the set of household IDs that must NOT appear on Schedule F:
+        //    applicant + spouse + minor children of the applicant.
+        const excludeIds = new Set();
+        if (member) {
+            excludeIds.add(member.householdMemberId);
+            const sId = getSpouseId(member);
+            if (sId) excludeIds.add(sId);
+            getMinorChildIds(member).forEach(id => excludeIds.add(id));
+        }
+
+        // Strip out any saved entry that links to an excluded member.
+        const saved = savedRaw.filter(e => !(e?.householdMemberId && excludeIds.has(e.householdMemberId)));
+        const savedHadExcluded = saved.length !== savedRaw.length;
+
+        // Always merge in any autofill household members that aren't already
+        // represented in `saved`. This handles cases where someone aged out of
+        // the minor-child exclusion (or was newly added to the lease/deed)
+        // after Schedule F was first saved.
+        const savedLinkedIds = new Set(
+            saved.map(e => e?.householdMemberId).filter(Boolean)
+        );
+        const newAutofill = autofillMembers
+            .filter(m => !savedLinkedIds.has(m.householdMemberId))
+            .map(buildScheduleFEntryFromMember);
+
+        let entries;
+        if (saved.length > 0 || newAutofill.length > 0) {
+            entries = [...saved, ...newAutofill];
+        } else {
+            entries = [
+                ...autofillMembers.map(buildScheduleFEntryFromMember),
+                ...unmatchedNames.map(buildScheduleFEntryFromUnmatchedName),
+            ];
+            if (entries.length === 0 && hasOutsideOfHousehold) {
+                entries = [{ sameAddressAsClaimant: null, address: {} }];
+            }
+        }
+
+        wrap.innerHTML = entries.map((_, i) => buildScheduleFCardHTML(i)).join('');
+        entries.forEach((data, i) => {
+            restoreScheduleFCard(i, data);
+            attachScheduleFHandlers(i);
+        });
+
+        // Persist if we just rebuilt from autofill, dropped a stale entry,
+        // added a newly-eligible autofill member, or need to migrate stale
+        // identity fields off linked entries.
+        const needsResave =
+            (savedRaw.length === 0 && entries.length > 0) ||
+            savedHadExcluded ||
+            newAutofill.length > 0 ||
+            saved.some(e => e.householdMemberId &&
+                ('relationship' in e || 'firstName' in e || 'lastName' in e || 'age' in e));
+        if (needsResave) saveScheduleF();
+
+        if (addContainer) addContainer.style.display = hasOutsideOfHousehold ? 'flex' : 'none';
+        if (addBtn) {
+            addBtn.onclick = async () => {
+                const i = wrap.querySelectorAll('.rented-ptrr-card-inner').length;
+                wrap.insertAdjacentHTML('beforeend', buildScheduleFCardHTML(i));
+                restoreScheduleFCard(i, { sameAddressAsClaimant: null, address: {} });
+                attachScheduleFHandlers(i);
+                await saveScheduleF();
+            };
+        }
+    }
+
     function getApplyingMember() {
         const idx = findApplyingMemberIndex();
         if (idx < 0) return null;
         return client.householdMembers[idx];
     }
 
+    // Merge all entries in member.PTRR.application[] into a single object.
+    // Later entries override earlier ones (except `applying: true` is preserved).
+    // Use this for ALL reads — guarantees consistent view regardless of stored shape.
     function getApplyingMemberPTRRApplicationObj(member) {
         if (!member) return null;
         const arr = Array.isArray(member?.PTRR?.application) ? member.PTRR.application : [];
-        return arr[0] || null; // assume index 0
+        if (arr.length === 0) return null;
+        const merged = arr.reduce((acc, cur) => ({ ...acc, ...(cur || {}) }), {});
+        if (arr.some(a => a?.applying === true)) merged.applying = true;
+        return merged;
     }
 
-    function getApplyingMemberPTRRDeceasedAnswer(member) {
-        const app = getApplyingMemberPTRRApplicationObj(member);
-        // stored as 'yes'/'no'
-        return app?.ptrrDeceasedAnswer || null;
-    }
-
-    function getApplyingMemberPTRRDeceasedDate(member) {
-        const app = getApplyingMemberPTRRApplicationObj(member);
-        return app?.ptrrDeceasedDate || '';
-    }
-
-    async function savePTRRDeceasedAnswer(answer) {
-        const clientId = getQueryParam('id');
-        if (!clientId) return;
-
-        const idx = findApplyingMemberIndex();
-        if (idx < 0) return;
-
-        // Clone client data to mutate safely
-        const members = Array.isArray(client?.householdMembers) ? [...client.householdMembers] : [];
-        const member = { ...members[idx] };
-
-        // Ensure PTRR.application[0] exists
-        const appArr = Array.isArray(member?.PTRR?.application) ? [...member.PTRR.application] : [];
-        const firstApp = { ...(appArr[0] || {}) };
-
-        firstApp.ptrrDeceasedAnswer = answer; // 'yes' or 'no'
-        if (answer !== 'yes') {
-            // clear date if answer is not yes
-            delete firstApp.ptrrDeceasedDate;
-        }
-
-        appArr[0] = firstApp;
-        member.PTRR = { ...(member.PTRR || {}), application: appArr };
-        members[idx] = member;
-
-        try {
-            const resp = await fetch('/update-client', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clientId, clientData: { householdMembers: members } })
-            });
-            if (!resp.ok) throw new Error((await resp.json())?.message || 'Failed to save PTRR deceased answer');
-            // Update local client cache
-            client.householdMembers = members;
-        } catch (e) {
-            console.error('Error saving PTRR deceased answer:', e);
-            alert('Could not save your selection. Please try again.');
-        }
-    }
-
-    async function savePTRRDeceasedDate(dateStr) {
-        const clientId = getQueryParam('id');
-        if (!clientId) return;
-
-        const idx = findApplyingMemberIndex();
-        if (idx < 0) return;
-
-        const members = Array.isArray(client?.householdMembers) ? [...client.householdMembers] : [];
-        const member = { ...members[idx] };
-        const appArr = Array.isArray(member?.PTRR?.application) ? [...member.PTRR.application] : [];
-        const firstApp = { ...(appArr[0] || {}) };
-
-        firstApp.ptrrDeceasedDate = dateStr; // ISO or yyyy-mm-dd from input
-        appArr[0] = firstApp;
-        member.PTRR = { ...(member.PTRR || {}), application: appArr };
-        members[idx] = member;
-
-        try {
-            const resp = await fetch('/update-client', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ clientId, clientData: { householdMembers: members } })
-            });
-            if (!resp.ok) throw new Error((await resp.json())?.message || 'Failed to save deceased date');
-            client.householdMembers = members;
-        } catch (e) {
-            console.error('Error saving PTRR deceased date:', e);
-            alert('Could not save the date. Please try again.');
-        }
-    }
-
-    function renderPTRRDeceasedDate(show, existingDate) {
-        const dateContainer = document.getElementById('ptrr-deceased-date-container');
-        if (!dateContainer) return;
-
-        if (!show) {
-            dateContainer.innerHTML = '';
-            return;
-        }
-
-        dateContainer.innerHTML = `
-            <div class="form-field">
-                <label for="ptrrDeceasedDate">Claimant Deceased Date</label>
-                <input type="date" id="ptrrDeceasedDate" name="ptrrDeceasedDate" value="${existingDate || ''}">
-            </div>
-        `;
-
-        // Attach change handler to persist date
-        const dateInput = document.getElementById('ptrrDeceasedDate');
-        if (dateInput) {
-            dateInput.addEventListener('change', async (e) => {
-                await savePTRRDeceasedDate(e.target.value || '');
-            });
-        }
+    // Build a single merged application object with `updates` applied on top.
+    // Use this for ALL writes — guarantees we always save application: [oneObject].
+    function buildSingleApplicationObject(member, updates = {}) {
+        const base = getApplyingMemberPTRRApplicationObj(member) || {};
+        return { ...base, ...updates };
     }
     </script>
 </body>

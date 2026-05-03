@@ -1159,6 +1159,71 @@ document.addEventListener('DOMContentLoaded', async function () {
              eligibility.push("Needs Current Enrollment Status");
             } else if (applicationStatus === "notinterested") {
                 eligibility.push("Not Interested");
+            } else if (
+                applicationStatus.toLowerCase().trim() === "no" &&
+                (() => {
+                    const rs = freshClient.residenceStatus?.toLowerCase();
+                    if (rs !== "rented" && rs !== "rentedowned") return false;
+    
+                    // Collect all "Previous" TANF incomes for this member
+                    const tanfIncomes = previousYearIncomes.filter(
+                        inc => (inc.kind || '').toLowerCase() === 'tanf'
+                    );
+                    if (tanfIncomes.length === 0) return false;
+    
+                    // Build clamped intervals within the previous year
+                    const intervals = tanfIncomes.map(inc => {
+                        const sParts = (inc.startDate || '').split('-');
+                        const start = new Date(
+                            parseInt(sParts[0]),
+                            parseInt(sParts[1]) - 1,
+                            parseInt(sParts[2])
+                        );
+                        let end;
+                        if (inc.endDate) {
+                            const eParts = inc.endDate.split('-');
+                            end = new Date(
+                                parseInt(eParts[0]),
+                                parseInt(eParts[1]) - 1,
+                                parseInt(eParts[2])
+                            );
+                        } else {
+                            end = new Date();
+                        }
+                        const cs = start < previousYearStart ? previousYearStart : start;
+                        const ce = end > previousYearEnd ? previousYearEnd : end;
+                        return { start: cs, end: ce };
+                    }).filter(i => i.start <= i.end);
+    
+                    if (intervals.length === 0) return false;
+    
+                    // Sort and merge overlapping/contiguous intervals (gap of 1 day = contiguous)
+                    intervals.sort((a, b) => a.start - b.start);
+                    const merged = [intervals[0]];
+                    for (let i = 1; i < intervals.length; i++) {
+                        const last = merged[merged.length - 1];
+                        const oneDayAfter = new Date(last.end.getTime() + 24 * 60 * 60 * 1000);
+                        if (intervals[i].start <= oneDayAfter) {
+                            if (intervals[i].end > last.end) last.end = intervals[i].end;
+                        } else {
+                            merged.push(intervals[i]);
+                        }
+                    }
+    
+                    // Sum total covered days across merged intervals (inclusive)
+                    const MS_PER_DAY = 24 * 60 * 60 * 1000;
+                    const totalCoveredDays = merged.reduce((sum, iv) => {
+                        return sum + Math.floor((iv.end - iv.start) / MS_PER_DAY) + 1;
+                    }, 0);
+    
+                    // Convert to months (avg ~30.4375 days/month) and check > 11 months
+                    const totalCoveredMonths = totalCoveredDays / 30.4375;
+                    console.log(`TANF coverage in previous year: ${totalCoveredDays} days (~${totalCoveredMonths.toFixed(2)} months)`);
+    
+                    return totalCoveredMonths > 11;
+                })()
+            ) {
+                eligibility.push("Not Likely Eligible for PTRR (TANF Recipient for Entirety of Application Year)");
             } else if (applicationStatus.toLowerCase().trim() === "no" && totalGrossIncome > Utils.PTRR_THRESHOLDS.incomeLimit) {
                 eligibility.push("Not Likely Eligible for PTRR (Income)");
             } else {
@@ -2943,6 +3008,7 @@ function mapHardDeterminationReason(benefit, ineligibilityReason) {
             }
             break;
         case 'PTRR':
+            if (upper.includes('TANF')) return 'Ineligible - TANF All Year';
             if (upper.includes('AGE') || upper.includes('DISABILITY') || upper.includes('WIDOW')) return 'Age/Disability/Widow Criteria Not Met';
             if (upper.includes('NO FORMAL LEASE')) return 'No Formal Lease';
             if (upper.includes('NO RELEVANT EXPENSES')) return 'No Relevant Expenses';
