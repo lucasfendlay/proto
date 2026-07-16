@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="incomeedit.css">
     <link rel="stylesheet" href="notes.css">
     <script src="userInfo.js"></script>
+    <script src="banner.js"></script>
     <style>
     details > summary {
         cursor: pointer;
@@ -214,10 +215,210 @@
         transform: translate(-50%, -50%);
         text-align: left;
     }
+
+            /* ===== Profile Banner ===== */
+            .profile-banner {
+            position: fixed;
+            top: 0;
+            z-index: 50;
+            max-width: none;
+            width: 1460px;
+            margin-left: calc(50% - 50vw);
+            margin-right: calc(50% - 50vw);
+            margin-top: 80px;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+            border: 1px solid #e2e8f0;
+            border-top: none;
+            border-radius: 14px 14px 14px 14px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+            padding: 16px 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .profile-banner-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #edf2f7;
+        }
+        .profile-banner-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #1a202c;
+            margin: 0;
+        }
+        .profile-banner-title::before {
+            content: '';
+            width: 6px;
+            height: 22px;
+            background: #007bff;
+            border-radius: 3px;
+        }
+        #profileId {
+            margin: 0 !important;
+            font-size: 1.5rem !important;
+            font-weight: 600;
+            color: #1a202c;
+            padding: 0 !important;
+            background: none;
+        }
+        .profile-banner-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px 14px;
+            align-items: end;
+        }
+        .profile-banner-grid .form-field {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .profile-banner-grid .form-field.wide { grid-column: span 2; }
+        .profile-banner-grid label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            text-align: left;
+            margin: 0;
+        }
+        .profile-banner-grid .read-only-field {
+            width: 100%;
+            margin: 0;
+            padding: 8px 10px;
+            font-size: 0.88rem;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            background-color: #f1f5f9;
+            color: #334155;
+            box-sizing: border-box;
+            min-height: 34px;
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+        }
+        .profile-banner-toggle {
+            background: none;
+            border: none;
+            color: #007bff;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: background-color 0.15s ease;
+        }
+        .profile-banner-toggle:hover { background-color: #e6f0ff; }
+        #household-members-panel {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 4px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 0 0 14px 14px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+            padding: 14px 32px;
+            max-height: 70vh;
+            overflow-y: auto;
+            z-index: 49;
+        }
+        .household-members-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+        .household-member-card {
+            flex: 0 0 calc((100% - 40px) / 5);
+            max-width: calc((100% - 40px) / 5);
+            box-sizing: border-box;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            padding: 10px 14px;
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+
+        .sidebar-action-btn {
+            background-color: #fff;
+            color: #000;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        .sidebar-action-btn:hover {
+            background-color: #003f7f;
+            color: #fff;
+        }
     </style>
     <script src="viewnavigation.js"></script>
 </head>
 <body class="narrow-body" style="display: flex; flex-direction: column; align-items: center;">
+
+    <form id="clientForm" class="profile-banner" autocomplete="off">
+        <div class="profile-banner-header">
+            <h2 class="profile-banner-title">
+                <span id="profileId">Loading...</span>
+                <p id="terminationStatus" style="color: red; display: none;"><strong>PROFILE TERMINATED</strong></p>
+            </h2>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <button type="button" class="profile-banner-toggle" onclick="toggleHouseholdMembers()">
+                    <span id="household-toggle-label">Show Household Members</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="profile-banner-grid">
+            <div class="form-field">
+                <label>Experiencing Homelessness</label>
+                <span id="banner-homelessness" class="read-only-field">Loading...</span>
+            </div>
+            <div class="form-field wide">
+                <label id="banner-address-label">Street Address</label>
+                <span id="banner-streetAddress" class="read-only-field">Loading...</span>
+            </div>
+            <div class="form-field">
+                <label>Address Line 2</label>
+                <span id="banner-streetAddress2" class="read-only-field">Loading...</span>
+            </div>
+            <div class="form-field">
+                <label>City</label>
+                <span id="banner-city" class="read-only-field">Loading...</span>
+            </div>
+            <div class="form-field">
+                <label>State</label>
+                <span id="banner-state" class="read-only-field">Loading...</span>
+            </div>
+            <div class="form-field">
+                <label>Zip Code</label>
+                <span id="banner-zipCode" class="read-only-field">Loading...</span>
+            </div>
+            <div class="form-field">
+                <label>County</label>
+                <span id="banner-county" class="read-only-field">Loading...</span>
+            </div>
+            <div class="form-field">
+                <label>Preferred Language</label>
+                <span id="banner-speakingLanguage" class="read-only-field">Loading...</span>
+            </div>
+            <div class="form-field">
+                <label>Interpreter Used</label>
+                <span id="banner-interpreter" class="read-only-field">Loading...</span>
+            </div>
+        </div>
+
+        <div id="household-members-panel" style="display:none; border-top:1px solid #edf2f7; padding-top:12px;"></div>
+    </form>
 
     <h1>Current Enrollments</h1>
 
@@ -232,10 +433,9 @@
         <div class="sidebar-header">
             <div class="centered-container">
                 <div class="button-container" style="flex-direction: row; gap: 6px; margin-bottom: 10px;">
-                    <button id="checkout-button-top" class="interactive" style="width: 50%; border: 1px solid #000000; border-radius: 5px; font-size: 0.75rem; font-weight: normal; padding: 6px 8px !important; display: none;" onclick="if(confirm('Are you sure you want to check out this profile?')) { GoToProfileEditChecked(); }">Check Out Profile</button>
-                    <button id="log-call-button-top" class="interactive" style="width: 50%; font-size: 0.75rem; font-weight: normal; padding: 6px 8px !important; display: none;" onclick="confirmAndLogCall()">Log New Call</button>
-                    <div class="button-container">
-                        <button id="release-profile-button" class="interactive" style="display: none;" onclick="releaseProfile()">Release Profile</button>
+                    <button id="checkout-button-top" class="interactive sidebar-action-btn" style="width: 50%; border: 1px solid #000000; border-radius: 5px; font-size: 0.75rem; font-weight: normal; padding: 6px 8px !important; display: none;" onclick="if(confirm('Are you sure you want to check out this profile?')) { GoToProfileEditChecked(); }">Check Out Profile</button>
+                    <button id="log-call-button-top" class="interactive sidebar-action-btn" style="width: 50%; border: 1px solid #000000; border-radius: 5px; font-size: 0.75rem; font-weight: normal; padding: 6px 8px !important; display: none;" onclick="confirmAndLogCall()">Log New Call</button>                    <div class="button-container">
+                        <button id="release-profile-button" class="interactive sidebar-action-btn" style="width: 50%; border: 1px solid #000000; border-radius: 5px; font-size: 1.1rem; font-weight: normal; padding: 6px 8px !important; display: none;" onclick="releaseProfile()">Release Profile</button>
                     </div><br>
                 </div>
                 <h2>Contacts</h2>
@@ -289,6 +489,110 @@
             return `(${digits.substring(0, 3)})-${digits.substring(3, 6)}-${digits.substring(6)}`;
         }
         return String(phone).trim();
+    }
+
+    function capitalizeFirstLetter(str) { return str ? String(str).toUpperCase() : ''; }
+
+
+        // ===== BANNER POPULATION =====
+        function populateBanner(data) {
+        const setText = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = val || 'N/A';
+        };
+        document.getElementById('profileId').textContent = data.id || 'N/A';
+        setText('banner-streetAddress', (data.streetAddress || '').toUpperCase());
+        setText('banner-streetAddress2', (data.streetAddress2 || '').toUpperCase());
+        setText('banner-city', (data.city || '').toUpperCase());
+        setText('banner-state', (data.state || '').toUpperCase());
+        setText('banner-zipCode', data.zipCode || '');
+        setText('banner-county', (data.county || '').toUpperCase());
+        setText('banner-speakingLanguage', (data.speakingLanguage || '').toUpperCase());
+        const yn = { yes: 'Yes', no: 'No' };
+        setText('banner-interpreter', yn[data.interpreter] || 'N/A');
+        setText('banner-homelessness', yn[data.homelessness] || 'No');
+        document.getElementById('banner-address-label').textContent =
+            data.homelessness === 'yes' ? 'Mailing Address' : 'Street Address';
+    }
+
+    // ===== HOUSEHOLD MEMBERS PANEL =====
+    function buildProfileMemberHTML(member) {
+        const deceased = member.deceased === 'yes';
+        const isNA = (v) => !v || String(v).trim().toLowerCase() === 'n/a';
+        const prefix = isNA(member.prefix) ? '' : member.prefix;
+        const middle = isNA(member.middleInitial) ? '' : capitalizeFirstLetter(member.middleInitial);
+        const suffix = isNA(member.suffix) ? '' : member.suffix;
+        const name = [
+            prefix,
+            capitalizeFirstLetter(member.firstName),
+            middle,
+            capitalizeFirstLetter(member.lastName),
+            suffix
+        ].filter(Boolean).join(' ');
+        const info = (label, value) =>
+            `<p style="margin:2px 0; font-size:0.8rem; color:#334155;"><strong style="color:#1a202c;">${label}:</strong> ${value}</p>`;
+        const conditionalInfo = (show, label, value) => show ? info(label, value) : '';
+        const showPrevMarital = member.previousMaritalStatus
+            && typeof member.previousMaritalStatus === 'string'
+            && member.previousMaritalStatus.toLowerCase() !== 'n/a';
+        const showNonCitizen = !deceased && member.nonCitizenStatus
+            && member.nonCitizenStatus.toLowerCase() !== 'citizen';
+        const showStudentStatus = !deceased && member.studentStatus
+            && member.studentStatus.toLowerCase() !== 'notstudent';
+        return `
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #edf2f7;">
+                <div style="font-weight:600; color:#1a202c; font-size:0.9rem;">${name || 'Unnamed Member'}</div>
+                ${member.headOfHousehold ? '<span style="font-size:0.7rem; color:#fff; background:#007bff; padding:2px 8px; border-radius:10px; font-weight:600;">HoH</span>' : ''}
+            </div>
+            ${info('DOB', member.dob || 'N/A')}
+            ${deceased ? `<p style="margin:2px 0; font-size:0.8rem; color:#c53030;"><strong>Deceased: YES</strong></p>` : ''}
+            ${deceased ? info('Date of Death', member.dateOfDeath || 'N/A') : ''}
+            ${info('Age', member.age || 'N/A')}
+            ${info('Legal Sex', capitalizeFirstLetter(member.legalSex) || 'N/A')}
+            ${conditionalInfo(!deceased, 'Marital Status', capitalizeFirstLetter(member.maritalStatus) || 'N/A')}
+            ${conditionalInfo(showPrevMarital, 'Previous Marital Status', capitalizeFirstLetter(member.previousMaritalStatus))}
+            ${info('SSN', member.socialSecurityNumber || 'N/A')}
+            ${conditionalInfo(!deceased, 'Disability', capitalizeFirstLetter(member.disability) || 'N/A')}
+            ${conditionalInfo(!deceased, 'Medicare', capitalizeFirstLetter(member.medicare) || 'N/A')}
+            ${conditionalInfo(!deceased, 'Medicaid', capitalizeFirstLetter(member.medicaid) || 'N/A')}
+            ${conditionalInfo(!deceased, 'US Citizen', capitalizeFirstLetter(member.citizen) || 'N/A')}
+            ${conditionalInfo(showNonCitizen, 'Non-Citizen Status', capitalizeFirstLetter(member.nonCitizenStatus))}
+            ${conditionalInfo(!deceased, 'Student', capitalizeFirstLetter(member.student) || 'N/A')}
+            ${conditionalInfo(showStudentStatus, 'Student Status', capitalizeFirstLetter(member.studentStatus))}
+            ${conditionalInfo(!deceased, 'Included in SNAP Household', capitalizeFirstLetter(member.meals) || 'N/A')}
+        `;
+    }
+
+    function renderHouseholdMembersPanel() {
+        const panel = document.getElementById('household-members-panel');
+        if (!panel) return;
+        const members = (sidebarClient?.householdMembers) || [];
+        if (members.length === 0) {
+            panel.innerHTML = '<p style="margin:0; font-size:0.85rem; color:#64748b;">No household members.</p>';
+            return;
+        }
+        const sorted = [...members].sort((a, b) => (b.headOfHousehold ? 1 : 0) - (a.headOfHousehold ? 1 : 0));
+        panel.innerHTML = `
+            <div class="household-members-grid">
+                ${sorted.map(m => `<div class="household-member-card">${buildProfileMemberHTML(m)}</div>`).join('')}
+            </div>
+        `;
+    }
+
+    function toggleHouseholdMembers() {
+        const panel = document.getElementById('household-members-panel');
+        const label = document.getElementById('household-toggle-label');
+        if (!panel) return;
+        const isHidden = panel.style.display === 'none' || !panel.style.display;
+        if (isHidden) {
+            renderHouseholdMembersPanel();
+            panel.style.display = 'block';
+            label.textContent = 'Hide Household Members';
+        } else {
+            panel.style.display = 'none';
+            label.textContent = 'Show Household Members';
+        }
+        if (typeof window.syncBannerHeight === 'function') window.syncBannerHeight();
     }
 
     function renderContacts() {
@@ -545,9 +849,11 @@
             if (!response.ok) throw new Error(`Failed to fetch client: ${response.statusText}`);
 
             sidebarClient = await response.json();
+            populateBanner(sidebarClient);
             renderContacts();
             updateSidebarButtons();
             await checkAdminReleaseButton();
+            if (typeof window.syncBannerHeight === 'function') window.syncBannerHeight();
             document.body.classList.add('loaded');
         } catch (error) {
             console.error('Error loading sidebar client data:', error);
@@ -555,7 +861,9 @@
         }
     }
 
-    document.addEventListener('DOMContentLoaded', initSidebar);
-    </script>
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof setupBannerHeightSync === 'function') setupBannerHeightSync();
+        initSidebar();
+    });    </script>
 </body>
 </html>

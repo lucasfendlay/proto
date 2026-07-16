@@ -163,80 +163,6 @@ async function createNavigationButtons() {
     const navigationContainer = document.createElement('div');
     navigationContainer.classList.add('navigation-buttons-container');
 
-    // Profile ID pill (top-left of nav banner) - click to copy URL
-    const clientId = getQueryParameter('id');
-    const profileIdPill = document.createElement('span');
-    profileIdPill.id = 'profileId';
-    profileIdPill.textContent = clientId || 'Loading...';
-    profileIdPill.title = 'Click to copy page URL';
-    profileIdPill.setAttribute('role', 'button');
-    profileIdPill.setAttribute('tabindex', '0');
-    profileIdPill.style.cssText = [
-        'position: fixed',
-        'top: 10px',
-        'left: 65px',
-        'margin: 5px',
-        'z-index: 10001',
-        'display: inline-block',
-        'font-size: 1.8rem',
-        'font-weight: 600',
-        'color: #fff',
-        'background-color: #007bff',
-        'padding: 4px 14px',
-        'border-radius: 999px',
-        'letter-spacing: 0.03em',
-        'box-shadow: 0 1px 3px rgba(0, 123, 255, 0.3)',
-        'cursor: pointer',
-        'user-select: none',
-        'transition: background-color 0.2s ease, transform 0.15s ease'
-    ].join(';');
-
-    profileIdPill.addEventListener('mouseover', () => {
-        profileIdPill.style.backgroundColor = '#0056b3';
-    });
-    profileIdPill.addEventListener('mouseout', () => {
-        profileIdPill.style.backgroundColor = '#007bff';
-    });
-
-    const copyPageUrl = async () => {
-        const url = window.location.href;
-        try {
-            if (navigator.clipboard && window.isSecureContext) {
-                await navigator.clipboard.writeText(url);
-            } else {
-                const ta = document.createElement('textarea');
-                ta.value = url;
-                ta.style.position = 'fixed';
-                ta.style.opacity = '0';
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
-            }
-
-            // Visual feedback: temporarily show "Copied!" then restore
-            const originalText = profileIdPill.textContent;
-            profileIdPill.textContent = 'Link Copied!';
-            profileIdPill.style.backgroundColor = '#28a745';
-            setTimeout(() => {
-                profileIdPill.textContent = originalText;
-                profileIdPill.style.backgroundColor = '#007bff';
-            }, 1200);
-        } catch (err) {
-            console.error('Failed to copy URL:', err);
-        }
-    };
-
-    profileIdPill.addEventListener('click', copyPageUrl);
-    profileIdPill.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            copyPageUrl();
-        }
-    });
-
-    document.body.appendChild(profileIdPill);
-
     // Get the current page's filename
     const currentPage = window.location.pathname.split('/').pop();
 
@@ -287,10 +213,10 @@ if (showApplicationEdit) {
 
     // Insert the navigation container at the very top of the body
     document.body.insertBefore(navigationContainer, document.body.firstChild);
-    // Add a border line below the navigation container
     navigationContainer.style.borderBottom = '2px solid #ccc';
     navigationContainer.style.paddingBottom = '10px';
     navigationContainer.style.marginBottom = '10px';
+
 }
 
 // Call this function on DOMContentLoaded to ensure the buttons are added to the page

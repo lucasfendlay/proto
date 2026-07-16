@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="incomeedit.css">
     <link rel="stylesheet" href="notes.css">
     <script src="userInfo.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
     .hidden { visibility: hidden; }
 
@@ -134,9 +135,405 @@
         max-width: 600px;
         margin: 100px auto;
     }
+
+                        /* ===== Profile Banner ===== */
+                        .profile-banner {
+            position: fixed;
+            top: 0;
+            z-index: 50;
+            max-width: none;
+            width: 1460px;
+            margin-left: calc(50% - 50vw);
+            margin-right: calc(50% - 50vw);
+            margin-top: 80px;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+            border: 1px solid #e2e8f0;
+            border-top: none;
+            border-radius: 14px 14px 14px 14px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+            padding: 16px 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .profile-banner-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #edf2f7;
+        }
+
+        .profile-banner-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #1a202c;
+            margin: 0;
+        }
+
+        .profile-banner-title::before {
+            content: '';
+            width: 6px;
+            height: 22px;
+            background: #007bff;
+            border-radius: 3px;
+        }
+
+        #profileId {
+            margin: 0 !important;
+            font-size: 1.5rem !important;
+            font-weight: 600;
+            color: #1a202c;
+            padding: 0 !important;
+            background: none;
+        }
+
+        .profile-banner-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px 14px;
+            align-items: end;
+        }
+
+        .profile-banner-grid .form-field {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .profile-banner-grid .form-field.wide {
+            grid-column: span 2;
+        }
+
+        .profile-banner-grid label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            text-align: left;
+            margin: 0;
+        }
+
+        .profile-banner-grid input[type="text"],
+        .profile-banner-grid select {
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 8px 10px !important;
+            font-size: 0.88rem;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            background-color: #fff;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+            box-sizing: border-box;
+        }
+
+        .profile-banner-grid input[type="text"]:focus,
+        .profile-banner-grid select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+        }
+
+        /* Compact pill-style selection boxes in banner */
+        .profile-banner-grid .selection-box {
+            display: flex;
+            gap: 6px;
+            margin: 0;
+        }
+
+        .profile-banner-grid .selection-box div {
+            flex: 1;
+            height: 34px;
+            margin: 0;
+            font-size: 0.82rem;
+            font-weight: 500;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            background-color: #fff;
+            transition: all 0.15s ease;
+        }
+
+        .profile-banner-grid .selection-box div:hover:not(.selected) {
+            background-color: #f1f5f9;
+            border-color: #94a3b8;
+        }
+
+        .profile-banner-grid .selection-box div.selected {
+            background-color: #007bff;
+            color: #fff;
+            border-color: #0056b3;
+            box-shadow: 0 2px 6px rgba(0, 123, 255, 0.25);
+        }
+
+        /* Collapsible details toggle */
+        .profile-banner-toggle {
+            background: none;
+            border: none;
+            color: #007bff;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: background-color 0.15s ease;
+        }
+
+        .profile-banner-toggle:hover {
+            background-color: #e6f0ff;
+        }
+
+        .profile-banner.collapsed .profile-banner-grid {
+            display: none;
+        }
+
+        @media (max-width: 700px) {
+            .profile-banner-grid .form-field.wide {
+                grid-column: span 1;
+            }
+        }
+
+        /* Read-only profile styling */
+        .profile-banner.readonly input[type="text"],
+        .profile-banner.readonly select {
+            background-color: #f1f5f9 !important;
+            color: #334155;
+            pointer-events: none;
+        }
+        .profile-banner.readonly .selection-box {
+            opacity: 0.75;
+            pointer-events: none;
+        }
+        #edit-profile-btn.active {
+            background-color: #007bff;
+            color: #fff;
+        }
+
+
+        /* Household members panel opens downward without resizing the banner */
+        #household-members-panel {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 4px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 0 0 14px 14px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+            padding: 14px 32px;
+            max-height: 70vh;
+            overflow-y: auto;
+            z-index: 49;
+        }
+
+        /* 5-per-row layout: fixed card width, centered, wraps as needed */
+        .household-members-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .household-member-card {
+            /* 5 cards per row: (100% - 4 gaps of 10px) / 5 */
+            flex: 0 0 calc((100% - 40px) / 5);
+            max-width: calc((100% - 40px) / 5);
+            box-sizing: border-box;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            padding: 10px 14px;
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+
+        #terminate-button {
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+
+        #terminate-button:hover { background-color: #cc0000; }
+        #terminate-button:disabled { background-color: #f5f5f5; color: #ccc; }
     </style>
 </head>
-<body class="narrow-body hidden"><br><br>
+<body class="narrow-body hidden">
+
+                <!-- ===== Profile Banner ===== -->
+                <form id="clientForm" class="profile-banner" autocomplete="off">
+                    <div class="profile-banner-header">
+                        <h2 class="profile-banner-title">
+                            <span id="profileId">Loading...</span>
+                            <p id="terminationStatus" style="color: red; display: none;"><strong>PROFILE TERMINATED</strong></p>
+                            <button type="button" id="terminate-button" class="interactive" onclick="confirmAndTerminate()">Terminate Profile</button>
+            
+            
+                        </h2>
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <button type="button" id="edit-profile-btn" class="profile-banner-toggle" onclick="toggleProfileEdit()">Edit Profile</button>
+                            <button type="button" class="profile-banner-toggle" onclick="toggleHouseholdMembers()">
+                                <span id="household-toggle-label">Show Household Members</span>
+                            </button>
+                        </div>
+                    </div>
+            
+                    <div class="profile-banner-grid">
+                        <!-- Hidden legacy fields kept for JS compatibility -->
+                        <div class="form-field" style="display:none;">
+                            <label for="banner-firstName">First Name</label>
+                            <input type="text" id="banner-firstName" name="firstName">
+                        </div>
+                        <div class="form-field" style="display:none;">
+                            <label for="banner-lastName">Last Name</label>
+                            <input type="text" id="banner-lastName" name="lastName">
+                        </div>
+                        <div class="form-field" style="display:none;">
+                            <label for="banner-phoneNumber">Phone Number</label>
+                            <input type="text" id="banner-phoneNumber" name="phoneNumber">
+                        </div>
+            
+                        <div class="form-field">
+                            <div style="display:flex; align-items:center; height:34px; gap:8px;">
+                                <input type="checkbox" id="homelessnessCheckbox" onchange="updateHomelessness(this.checked ? 'yes' : 'no')" style="width:18px; height:18px; cursor:pointer;">
+                                <label for="homelessnessCheckbox" style="font-size:0.72rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.04em; cursor:pointer; margin:0;">Experiencing Homelessness</label>
+                            </div>
+                        </div>
+            <br><br>
+            
+                        <div class="form-field wide">
+                            <label for="streetAddress">Street Address</label>
+                            <input type="text" id="streetAddress" name="streetAddress">
+                        </div>
+                        <div class="form-field">
+                            <label for="streetAddress2">Address Line 2</label>
+                            <input type="text" id="streetAddress2" name="streetAddress2">
+                        </div>
+                        <div class="form-field">
+                            <label for="city">City</label>
+                            <input type="text" id="city" name="city">
+                        </div>
+                        <div class="form-field">
+                            <label for="banner-state">State</label>
+                            <select id="banner-state" name="state">
+                                <option value="PA" selected>PA</option>
+                                <option value="AL">AL</option><option value="AK">AK</option><option value="AZ">AZ</option>
+                                <option value="AR">AR</option><option value="CA">CA</option><option value="CO">CO</option>
+                                <option value="CT">CT</option><option value="DE">DE</option><option value="FL">FL</option>
+                                <option value="GA">GA</option><option value="HI">HI</option><option value="ID">ID</option>
+                                <option value="IL">IL</option><option value="IN">IN</option><option value="IA">IA</option>
+                                <option value="KS">KS</option><option value="KY">KY</option><option value="LA">LA</option>
+                                <option value="ME">ME</option><option value="MD">MD</option><option value="MA">MA</option>
+                                <option value="MI">MI</option><option value="MN">MN</option><option value="MS">MS</option>
+                                <option value="MO">MO</option><option value="MT">MT</option><option value="NE">NE</option>
+                                <option value="NV">NV</option><option value="NH">NH</option><option value="NJ">NJ</option>
+                                <option value="NM">NM</option><option value="NY">NY</option><option value="NC">NC</option>
+                                <option value="ND">ND</option><option value="OH">OH</option><option value="OK">OK</option>
+                                <option value="OR">OR</option><option value="RI">RI</option><option value="SC">SC</option>
+                                <option value="SD">SD</option><option value="TN">TN</option><option value="TX">TX</option>
+                                <option value="UT">UT</option><option value="VT">VT</option><option value="VA">VA</option>
+                                <option value="WA">WA</option><option value="WV">WV</option><option value="WI">WI</option>
+                                <option value="WY">WY</option><option value="DC">DC</option>
+                                <option value="PR">Puerto Rico</option><option value="GU">Guam</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label for="zipCode">Zip Code</label>
+                            <input type="text" id="zipCode" name="zipCode">
+                        </div>
+                        <div class="form-field">
+                            <label for="county">County</label>
+                            <select id="county" name="county">
+                                <option value="" disabled selected>Select County</option>
+                                <option value="Adams">Adams</option><option value="Allegheny">Allegheny</option>
+                                <option value="Armstrong">Armstrong</option><option value="Beaver">Beaver</option>
+                                <option value="Bedford">Bedford</option><option value="Berks">Berks</option>
+                                <option value="Blair">Blair</option><option value="Bradford">Bradford</option>
+                                <option value="Bucks">Bucks</option><option value="Butler">Butler</option>
+                                <option value="Cambria">Cambria</option><option value="Cameron">Cameron</option>
+                                <option value="Carbon">Carbon</option><option value="Centre">Centre</option>
+                                <option value="Chester">Chester</option><option value="Clarion">Clarion</option>
+                                <option value="Clearfield">Clearfield</option><option value="Clinton">Clinton</option>
+                                <option value="Columbia">Columbia</option><option value="Crawford">Crawford</option>
+                                <option value="Cumberland">Cumberland</option><option value="Dauphin">Dauphin</option>
+                                <option value="Delaware">Delaware</option><option value="Elk">Elk</option>
+                                <option value="Erie">Erie</option><option value="Fayette">Fayette</option>
+                                <option value="Forest">Forest</option><option value="Franklin">Franklin</option>
+                                <option value="Fulton">Fulton</option><option value="Greene">Greene</option>
+                                <option value="Huntingdon">Huntingdon</option><option value="Indiana">Indiana</option>
+                                <option value="Jefferson">Jefferson</option><option value="Juniata">Juniata</option>
+                                <option value="Lackawanna">Lackawanna</option><option value="Lancaster">Lancaster</option>
+                                <option value="Lawrence">Lawrence</option><option value="Lebanon">Lebanon</option>
+                                <option value="Lehigh">Lehigh</option><option value="Luzerne">Luzerne</option>
+                                <option value="Lycoming">Lycoming</option><option value="McKean">McKean</option>
+                                <option value="Monroe">Monroe</option><option value="Montgomery">Montgomery</option>
+                                <option value="Montour">Montour</option><option value="Northampton">Northampton</option>
+                                <option value="Northumberland">Northumberland</option><option value="Perry">Perry</option>
+                                <option value="Philadelphia">Philadelphia</option><option value="Pike">Pike</option>
+                                <option value="Potter">Potter</option><option value="Schuylkill">Schuylkill</option>
+                                <option value="Snyder">Snyder</option><option value="Somerset">Somerset</option>
+                                <option value="Sullivan">Sullivan</option><option value="Susquehanna">Susquehanna</option>
+                                <option value="Tioga">Tioga</option><option value="Union">Union</option>
+                                <option value="Venango">Venango</option><option value="Warren">Warren</option>
+                                <option value="Washington">Washington</option><option value="Wayne">Wayne</option>
+                                <option value="Westmoreland">Westmoreland</option><option value="Wyoming">Wyoming</option>
+                                <option value="York">York</option>
+                            </select>
+                        </div>
+            
+                        <div class="form-field">
+                            <label for="speakingLanguage">Preferred Language</label>
+                            <select id="speakingLanguage" name="speakingLanguage">
+                                <option value="" disabled selected>Select Language</option>
+                                <option value="English">English</option><option value="Arabic">Arabic</option>
+                                <option value="Bengali">Bengali</option><option value="Bulgarian">Bulgarian</option>
+                                <option value="Croatian">Croatian</option><option value="Czech">Czech</option>
+                                <option value="Danish">Danish</option><option value="Dutch">Dutch</option>
+                                <option value="Estonian">Estonian</option><option value="Finnish">Finnish</option>
+                                <option value="French">French</option><option value="German">German</option>
+                                <option value="Greek">Greek</option><option value="Hebrew">Hebrew</option>
+                                <option value="Hindi">Hindi</option><option value="Hungarian">Hungarian</option>
+                                <option value="Icelandic">Icelandic</option><option value="Irish">Irish</option>
+                                <option value="Italian">Italian</option><option value="Japanese">Japanese</option>
+                                <option value="Korean">Korean</option><option value="Latvian">Latvian</option>
+                                <option value="Lithuanian">Lithuanian</option><option value="Maltese">Maltese</option>
+                                <option value="Mandarin">Mandarin</option><option value="Norwegian">Norwegian</option>
+                                <option value="Persian">Persian</option><option value="Portuguese">Portuguese</option>
+                                <option value="Punjabi">Punjabi</option><option value="Romanian">Romanian</option>
+                                <option value="Russian">Russian</option><option value="Serbian">Serbian</option>
+                                <option value="Slovak">Slovak</option><option value="Slovenian">Slovenian</option>
+                                <option value="Spanish">Spanish</option><option value="Swahili">Swahili</option>
+                                <option value="Swedish">Swedish</option><option value="Tagalog">Tagalog</option>
+                                <option value="Thai">Thai</option><option value="Turkish">Turkish</option>
+                                <option value="Urdu">Urdu</option><option value="Vietnamese">Vietnamese</option>
+                                <option value="Welsh">Welsh</option>
+                            </select>
+                        </div>
+            
+                        <div class="form-field">
+                            <label>Interpreter Used</label>
+                            <div class="selection-box interpreter-container">
+                                <div data-value="yes" onclick="updateInterpreter('yes')">Yes</div>
+                                <div data-value="no" onclick="updateInterpreter('no')">No</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="household-members-panel" style="display:none; border-top:1px solid #edf2f7; padding-top:12px;"></div>
+            
+                </form>
+
     <h1>Income</h1>
 
     <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
@@ -285,6 +682,8 @@
     <script src="notes.js"></script>
     <script src="income.js"></script>
     <script src="editnavigation.js"></script>
+    <script src="banner.js"></script>
+
 
     <script>
     // ── Initialization ──

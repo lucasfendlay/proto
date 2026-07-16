@@ -6,8 +6,9 @@
     <title>Referrals</title>
     <link rel="stylesheet" href="styles.css"> <!-- Assuming a shared stylesheet -->
     <link rel="stylesheet" href="notes.css"> <!-- Assuming a shared stylesheet for notes -->
-<!-- ...existing code... -->
 <script src="userInfo.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+
 
 <style>
     body {
@@ -53,6 +54,375 @@ cursor: pointer; /* Change cursor to hand */
             padding: 10px;
             font-size: 16px;
         }
+
+        /* ===== Profile Banner ===== */
+                            .profile-banner {
+            position: fixed;
+            top: 0;
+            z-index: 50;
+            max-width: none;
+            width: 1460px;
+            margin-left: calc(50% - 50vw);
+            margin-right: calc(50% - 50vw);
+            margin-top: 80px;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+            border: 1px solid #e2e8f0;
+            border-top: none;
+            border-radius: 14px 14px 14px 14px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+            padding: 16px 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .profile-banner {
+    left: 50%;
+    right: auto;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    transform: translateX(-50%);
+}
+
+        .profile-banner-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #edf2f7;
+        }
+
+        .profile-banner-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #1a202c;
+            margin: 0;
+        }
+
+        .profile-banner-title::before {
+            content: '';
+            width: 6px;
+            height: 22px;
+            background: #007bff;
+            border-radius: 3px;
+        }
+
+        #profileId {
+            margin: 0 !important;
+            font-size: 1.5rem !important;
+            font-weight: 600;
+            color: #1a202c;
+            padding: 0 !important;
+            background: none;
+        }
+
+        .profile-banner-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px 14px;
+            align-items: end;
+        }
+
+        .profile-banner-grid .form-field {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .profile-banner-grid .form-field.wide {
+            grid-column: span 2;
+        }
+
+        .profile-banner-grid label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            text-align: left;
+            margin: 0;
+        }
+
+        .profile-banner-grid input[type="text"],
+        .profile-banner-grid select {
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 8px 10px !important;
+            font-size: 0.88rem;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            background-color: #fff;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+            box-sizing: border-box;
+        }
+
+        .profile-banner-grid input[type="text"]:focus,
+        .profile-banner-grid select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+        }
+
+        /* Compact pill-style selection boxes in banner */
+        .profile-banner-grid .selection-box {
+            display: flex;
+            gap: 6px;
+            margin: 0;
+        }
+
+        .profile-banner-grid .selection-box div {
+            flex: 1;
+            height: 34px;
+            margin: 0;
+            font-size: 0.82rem;
+            font-weight: 500;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            background-color: #fff;
+            transition: all 0.15s ease;
+        }
+
+        .profile-banner-grid .selection-box div:hover:not(.selected) {
+            background-color: #f1f5f9;
+            border-color: #94a3b8;
+        }
+
+        .profile-banner-grid .selection-box div.selected {
+            background-color: #007bff;
+            color: #fff;
+            border-color: #0056b3;
+            box-shadow: 0 2px 6px rgba(0, 123, 255, 0.25);
+        }
+
+        /* Collapsible details toggle */
+        .profile-banner-toggle {
+            background: none;
+            border: none;
+            color: #007bff;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: background-color 0.15s ease;
+        }
+
+        .profile-banner-toggle:hover {
+            background-color: #e6f0ff;
+        }
+
+        .profile-banner.collapsed .profile-banner-grid {
+            display: none;
+        }
+
+        @media (max-width: 700px) {
+            .profile-banner-grid .form-field.wide {
+                grid-column: span 1;
+            }
+        }
+
+        /* Read-only profile styling */
+        .profile-banner.readonly input[type="text"],
+        .profile-banner.readonly select {
+            background-color: #f1f5f9 !important;
+            color: #334155;
+            pointer-events: none;
+        }
+        .profile-banner.readonly .selection-box {
+            opacity: 0.75;
+            pointer-events: none;
+        }
+        #edit-profile-btn.active {
+            background-color: #007bff;
+            color: #fff;
+        }
+
+
+        /* Household members panel opens downward without resizing the banner */
+        #household-members-panel {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 4px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 0 0 14px 14px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+            padding: 14px 32px;
+            max-height: 70vh;
+            overflow-y: auto;
+            z-index: 49;
+        }
+
+        /* 5-per-row layout: fixed card width, centered, wraps as needed */
+        .household-members-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .household-member-card {
+            /* 5 cards per row: (100% - 4 gaps of 10px) / 5 */
+            flex: 0 0 calc((100% - 40px) / 5);
+            max-width: calc((100% - 40px) / 5);
+            box-sizing: border-box;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            padding: 10px 14px;
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+
+        #terminate-button {
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
+        }
+
+        #terminate-button:hover { background-color: #cc0000; }
+        #terminate-button:disabled { background-color: #f5f5f5; color: #ccc; }
+
+/* ===== CONTACTS SIDEBAR STYLES ===== */
+.sidebar-header {
+    display: fixed;
+    justify-items: center;
+    text-align: center;
+    margin-bottom: 20px;
+    width: 300px;
+    margin: 0 auto;
+}
+
+.sidebar-header .button-container {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}
+
+#contacts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 300px;
+    margin: 0 auto;
+    max-height: 1000px;
+    overflow-y: auto;
+    background-color: #f4f4f4;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.left-sidebar {
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    padding: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin: 0 auto;
+    width: 280px;
+    transform: translateX(-8px);
+}
+
+.left-sidebar strong { font-weight: bold; }
+
+.contactmodal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.contact-modal-content {
+    background-color: transparent;
+    width: 90%;
+    max-width: 500px;
+    padding: 30px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: left;
+    animation: contactFadeIn 0.3s ease-in-out;
+}
+
+.contact-modal-content label {
+    display: block;
+    margin: 15px 0 5px;
+    font-weight: bold;
+    font-size: 14px;
+    color: #333;
+}
+
+.contact-modal-content input,
+.contact-modal-content select {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 16px;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease;
+}
+
+.contact-modal-content input:focus,
+.contact-modal-content select:focus {
+    border-color: #4CAF50;
+    outline: none;
+}
+
+.contact-modal-content .button-container button {
+    padding: 10px 20px;
+    border: 1px solid #000;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: #007bff;
+    color: white;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+}
+
+.contact-modal-content .button-container button:hover {
+    background-color: #0056b3;
+}
+
+@keyframes contactFadeIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+.error {
+    border: 2px solid red;
+    background-color: #ffe6e6;
+}
     </style>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="notes.css">
@@ -63,21 +433,220 @@ cursor: pointer; /* Change cursor to hand */
 <body>
     <div class="container">
 
-        <h1>Referrals</h1>
+                    <!-- ===== Profile Banner ===== -->
+                    <form id="clientForm" class="profile-banner" autocomplete="off">
+                        <div class="profile-banner-header">
+                            <h2 class="profile-banner-title">
+                                <span id="profileId">Loading...</span>
+                                <p id="terminationStatus" style="color: red; display: none;"><strong>PROFILE TERMINATED</strong></p>
+                                <button type="button" id="terminate-button" class="interactive" onclick="confirmAndTerminate()">Terminate Profile</button>
+                
+                
+                            </h2>
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                <button type="button" id="edit-profile-btn" class="profile-banner-toggle" onclick="toggleProfileEdit()">Edit Profile</button>
+                                <button type="button" class="profile-banner-toggle" onclick="toggleHouseholdMembers()">
+                                    <span id="household-toggle-label">Show Household Members</span>
+                                </button>
+                            </div>
+                        </div>
+                
+                        <div class="profile-banner-grid">
+                            <!-- Hidden legacy fields kept for JS compatibility -->
+                            <div class="form-field" style="display:none;">
+                                <label for="banner-firstName">First Name</label>
+                                <input type="text" id="banner-firstName" name="firstName">
+                            </div>
+                            <div class="form-field" style="display:none;">
+                                <label for="banner-lastName">Last Name</label>
+                                <input type="text" id="banner-lastName" name="lastName">
+                            </div>
+                            <div class="form-field" style="display:none;">
+                                <label for="banner-phoneNumber">Phone Number</label>
+                                <input type="text" id="banner-phoneNumber" name="phoneNumber">
+                            </div>
+                
+                            <div class="form-field">
+                                <div style="display:flex; align-items:center; height:34px; gap:8px;">
+                                    <input type="checkbox" id="homelessnessCheckbox" onchange="updateHomelessness(this.checked ? 'yes' : 'no')" style="width:18px; height:18px; cursor:pointer;">
+                                    <label for="homelessnessCheckbox" style="font-size:0.72rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.04em; cursor:pointer; margin:0;">Experiencing Homelessness</label>
+                                </div>
+                            </div>
+                <br><br>
+                
+                            <div class="form-field wide">
+                                <label for="streetAddress">Street Address</label>
+                                <input type="text" id="streetAddress" name="streetAddress">
+                            </div>
+                            <div class="form-field">
+                                <label for="streetAddress2">Address Line 2</label>
+                                <input type="text" id="streetAddress2" name="streetAddress2">
+                            </div>
+                            <div class="form-field">
+                                <label for="city">City</label>
+                                <input type="text" id="city" name="city">
+                            </div>
+                            <div class="form-field">
+                                <label for="banner-state">State</label>
+                                <select id="banner-state" name="state">
+                                    <option value="PA" selected>PA</option>
+                                    <option value="AL">AL</option><option value="AK">AK</option><option value="AZ">AZ</option>
+                                    <option value="AR">AR</option><option value="CA">CA</option><option value="CO">CO</option>
+                                    <option value="CT">CT</option><option value="DE">DE</option><option value="FL">FL</option>
+                                    <option value="GA">GA</option><option value="HI">HI</option><option value="ID">ID</option>
+                                    <option value="IL">IL</option><option value="IN">IN</option><option value="IA">IA</option>
+                                    <option value="KS">KS</option><option value="KY">KY</option><option value="LA">LA</option>
+                                    <option value="ME">ME</option><option value="MD">MD</option><option value="MA">MA</option>
+                                    <option value="MI">MI</option><option value="MN">MN</option><option value="MS">MS</option>
+                                    <option value="MO">MO</option><option value="MT">MT</option><option value="NE">NE</option>
+                                    <option value="NV">NV</option><option value="NH">NH</option><option value="NJ">NJ</option>
+                                    <option value="NM">NM</option><option value="NY">NY</option><option value="NC">NC</option>
+                                    <option value="ND">ND</option><option value="OH">OH</option><option value="OK">OK</option>
+                                    <option value="OR">OR</option><option value="RI">RI</option><option value="SC">SC</option>
+                                    <option value="SD">SD</option><option value="TN">TN</option><option value="TX">TX</option>
+                                    <option value="UT">UT</option><option value="VT">VT</option><option value="VA">VA</option>
+                                    <option value="WA">WA</option><option value="WV">WV</option><option value="WI">WI</option>
+                                    <option value="WY">WY</option><option value="DC">DC</option>
+                                    <option value="PR">Puerto Rico</option><option value="GU">Guam</option>
+                                </select>
+                            </div>
+                            <div class="form-field">
+                                <label for="zipCode">Zip Code</label>
+                                <input type="text" id="zipCode" name="zipCode">
+                            </div>
+                            <div class="form-field">
+                                <label for="county">County</label>
+                                <select id="county" name="county">
+                                    <option value="" disabled selected>Select County</option>
+                                    <option value="Adams">Adams</option><option value="Allegheny">Allegheny</option>
+                                    <option value="Armstrong">Armstrong</option><option value="Beaver">Beaver</option>
+                                    <option value="Bedford">Bedford</option><option value="Berks">Berks</option>
+                                    <option value="Blair">Blair</option><option value="Bradford">Bradford</option>
+                                    <option value="Bucks">Bucks</option><option value="Butler">Butler</option>
+                                    <option value="Cambria">Cambria</option><option value="Cameron">Cameron</option>
+                                    <option value="Carbon">Carbon</option><option value="Centre">Centre</option>
+                                    <option value="Chester">Chester</option><option value="Clarion">Clarion</option>
+                                    <option value="Clearfield">Clearfield</option><option value="Clinton">Clinton</option>
+                                    <option value="Columbia">Columbia</option><option value="Crawford">Crawford</option>
+                                    <option value="Cumberland">Cumberland</option><option value="Dauphin">Dauphin</option>
+                                    <option value="Delaware">Delaware</option><option value="Elk">Elk</option>
+                                    <option value="Erie">Erie</option><option value="Fayette">Fayette</option>
+                                    <option value="Forest">Forest</option><option value="Franklin">Franklin</option>
+                                    <option value="Fulton">Fulton</option><option value="Greene">Greene</option>
+                                    <option value="Huntingdon">Huntingdon</option><option value="Indiana">Indiana</option>
+                                    <option value="Jefferson">Jefferson</option><option value="Juniata">Juniata</option>
+                                    <option value="Lackawanna">Lackawanna</option><option value="Lancaster">Lancaster</option>
+                                    <option value="Lawrence">Lawrence</option><option value="Lebanon">Lebanon</option>
+                                    <option value="Lehigh">Lehigh</option><option value="Luzerne">Luzerne</option>
+                                    <option value="Lycoming">Lycoming</option><option value="McKean">McKean</option>
+                                    <option value="Monroe">Monroe</option><option value="Montgomery">Montgomery</option>
+                                    <option value="Montour">Montour</option><option value="Northampton">Northampton</option>
+                                    <option value="Northumberland">Northumberland</option><option value="Perry">Perry</option>
+                                    <option value="Philadelphia">Philadelphia</option><option value="Pike">Pike</option>
+                                    <option value="Potter">Potter</option><option value="Schuylkill">Schuylkill</option>
+                                    <option value="Snyder">Snyder</option><option value="Somerset">Somerset</option>
+                                    <option value="Sullivan">Sullivan</option><option value="Susquehanna">Susquehanna</option>
+                                    <option value="Tioga">Tioga</option><option value="Union">Union</option>
+                                    <option value="Venango">Venango</option><option value="Warren">Warren</option>
+                                    <option value="Washington">Washington</option><option value="Wayne">Wayne</option>
+                                    <option value="Westmoreland">Westmoreland</option><option value="Wyoming">Wyoming</option>
+                                    <option value="York">York</option>
+                                </select>
+                            </div>
+                
+                            <div class="form-field">
+                                <label for="speakingLanguage">Preferred Language</label>
+                                <select id="speakingLanguage" name="speakingLanguage">
+                                    <option value="" disabled selected>Select Language</option>
+                                    <option value="English">English</option><option value="Arabic">Arabic</option>
+                                    <option value="Bengali">Bengali</option><option value="Bulgarian">Bulgarian</option>
+                                    <option value="Croatian">Croatian</option><option value="Czech">Czech</option>
+                                    <option value="Danish">Danish</option><option value="Dutch">Dutch</option>
+                                    <option value="Estonian">Estonian</option><option value="Finnish">Finnish</option>
+                                    <option value="French">French</option><option value="German">German</option>
+                                    <option value="Greek">Greek</option><option value="Hebrew">Hebrew</option>
+                                    <option value="Hindi">Hindi</option><option value="Hungarian">Hungarian</option>
+                                    <option value="Icelandic">Icelandic</option><option value="Irish">Irish</option>
+                                    <option value="Italian">Italian</option><option value="Japanese">Japanese</option>
+                                    <option value="Korean">Korean</option><option value="Latvian">Latvian</option>
+                                    <option value="Lithuanian">Lithuanian</option><option value="Maltese">Maltese</option>
+                                    <option value="Mandarin">Mandarin</option><option value="Norwegian">Norwegian</option>
+                                    <option value="Persian">Persian</option><option value="Portuguese">Portuguese</option>
+                                    <option value="Punjabi">Punjabi</option><option value="Romanian">Romanian</option>
+                                    <option value="Russian">Russian</option><option value="Serbian">Serbian</option>
+                                    <option value="Slovak">Slovak</option><option value="Slovenian">Slovenian</option>
+                                    <option value="Spanish">Spanish</option><option value="Swahili">Swahili</option>
+                                    <option value="Swedish">Swedish</option><option value="Tagalog">Tagalog</option>
+                                    <option value="Thai">Thai</option><option value="Turkish">Turkish</option>
+                                    <option value="Urdu">Urdu</option><option value="Vietnamese">Vietnamese</option>
+                                    <option value="Welsh">Welsh</option>
+                                </select>
+                            </div>
+                
+                            <div class="form-field">
+                                <label>Interpreter Used</label>
+                                <div class="selection-box interpreter-container">
+                                    <div data-value="yes" onclick="updateInterpreter('yes')">Yes</div>
+                                    <div data-value="no" onclick="updateInterpreter('no')">No</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="household-members-panel" style="display:none; border-top:1px solid #edf2f7; padding-top:12px;"></div>
+                
+                    </form>
 
-        <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
-            <div id="snap-household-container" class="left-sidebar"></div>
-            <div id="liheap-household-container" class="left-sidebar"></div>
-        
-            <div id="household-members-container" class="left-sidebar"></div>
+                    <h1>Referrals</h1>
+
+<!-- CONTACTS SIDEBAR -->
+<div class="left-sidebar-container" id="contactsSidebarContainer">
+    <div class="sidebar-header">
+        <div class="button-container" style="flex-direction: column; gap: 8px; margin-bottom: 10px;">
+            <button class="interactive" style="transition: background-color 0.3s ease, color 0.3s ease;" onmouseover="this.style.backgroundColor='#0056b3'; this.style.color='white';" onmouseout="this.style.backgroundColor=''; this.style.color='';" onclick="redirectToEstimationsView()">Save and Release Profile</button>
         </div>
+        <h2>Contacts</h2>
+        <div id="contacts-list" class="left-sidebar"></div>
+        <div class="button-container" style="justify-content: center; margin-top: 10px;">
+            <button id="add-contact-button" onclick="openContactModal()" style="transition: background-color 0.3s ease, color 0.3s ease;" onmouseover="this.style.backgroundColor='#0056b3'; this.style.color='white';" onmouseout="this.style.backgroundColor=''; this.style.color='';">Add New Contact</button>
+        </div>
+    </div>
+</div>
 
+<!-- CONTACT MODAL -->
+<div id="contactModal" class="contactmodal" style="display: none;">
+    <div class="contact-modal-content">
+        <form id="contactForm">
+            <h2 id="modal-title">Add Contact</h2>
+            <label for="contactFirstName">First Name:</label>
+            <input type="text" id="contactFirstName" required>
+            <label for="contactLastName">Last Name:</label>
+            <input type="text" id="contactLastName" required>
+            <label for="contactPhoneNumber">Phone Number:</label>
+            <input type="text" id="contactPhoneNumber" required>
+            <label for="authorizedRepresentative">Authorized Representative:</label>
+            <select id="authorizedRepresentative">
+                <option value="N/A" selected>N/A</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+            </select>
+            <div class="button-container" style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
+                <button type="button" onclick="saveContact()">Save</button>
+                <button type="button" onclick="closeContactModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- NOTES SIDEBAR -->
+<div class="right-sidebar-container" id="notesSidebarContainer">
+    <div class="sidebar-header">
+        <h2>Notes</h2>
         <div id="notes-container">
-            <textarea id="note-input" placeholder="Write your note here..."></textarea>
+            <textarea id="note-input" placeholder="Add Note..."></textarea>
             <button id="save-note">Save Note</button>
-            <div id="notes-list">
-                </div>
-                </div>
+            <div id="notes-list"></div>
+        </div>
+    </div>
+</div>
 
         <script>
             document.addEventListener('DOMContentLoaded', () => {
@@ -402,89 +971,416 @@ function getQueryParam(name) {
 
 async function toggleSidebarVisibility() {
     const clientId = getQueryParam('id');
-    if (!clientId) {
-        console.error('Client ID is missing in the URL.');
-        return;
-    }
+    if (!clientId) return;
+
+    // Always show sidebar so Contacts tab is available
+    document.getElementById('leftSidebarContainer').style.display = 'block';
 
     try {
-        // Fetch client data from the backend
         const response = await fetch(`/get-client/${clientId}`);
-        if (!response.ok) {
-        }
+        if (!response.ok) return;
+        const c = await response.json();
 
-        const client = await response.json();
-        if (client && client.screeningInProgress) {
-            document.getElementById('leftSidebarContainer').style.display = 'block';
-        } else {
-            document.getElementById('leftSidebarContainer').style.display = 'none';
-        }
+        // Default view: contacts (screening containers only relevant during screening)
+        showSidebarView('contacts');
     } catch (error) {
         console.error('Error toggling sidebar visibility:', error);
+        showSidebarView('contacts');
     }
 }
-
-async function renderNotes(clientId) {
-    const notesList = document.getElementById('notes-list');
-    notesList.innerHTML = ''; // Clear the existing notes
-    const notes = await fetchClientNotes(clientId); // Fetch notes from the backend
-    console.log('Rendering notes:', notes); // Debugging line
-
-    // Retrieve and clean the active user from sessionStorage
-    const activeUser = sessionStorage.getItem('loggedInUser') || 'Unknown Agent';
-    const cleanedActiveUser = activeUser.trim();
-
-    notes.slice().reverse().forEach((note, index) => {
-        const noteDiv = document.createElement('div');
-        noteDiv.className = 'note';
-
-        // Use activeUser for comparison
-        const cleanedUsername = note.username || 'Automated Import';
-
-        // Dynamically render the note content and buttons
-        noteDiv.innerHTML = `
-            <p>${note.text}</p>
-            <small>${note.timestamp} by ${cleanedUsername}</small>
-            ${
-                note.text !== 'New screening initiated.' &&
-                note.text !== 'Inbound call logged.' &&
-                note.text !== 'Outbound call logged.' &&
-                note.text !== 'Profile checked out.' &&
-                note.text !== 'Profile released.' &&
-                note.text !== 'Profile terminated.' &&
-                cleanedUsername === cleanedActiveUser
-                    ? `<br>
-                <button class="interactive" onclick="editNote('${clientId}', ${notes.length - 1 - index})">Edit</button>
-                <button class="interactive" onclick="deleteNote('${clientId}', ${notes.length - 1 - index})">Delete</button>
-            `
-                    : ''
-            }
-        `;
-        notesList.appendChild(noteDiv);
-    });
-}
-
-// Attach editNote and deleteNote functions to the window object
-window.editNote = async function (clientId, index) {
-    console.log('Edit button clicked for note index:', index);
-    // Add your edit logic here
-};
-
-window.deleteNote = async function (clientId, index) {
-    console.log('Delete button clicked for note index:', index);
-    // Add your delete logic here
-};
-
-// Attach renderNotes to the window object
-window.renderNotes = renderNotes;
 
 window.onload = function () {
     toggleSidebarVisibility();
 };
+
+
 </script>
+
+<script></script>
 <script src="eligibility-utils.js"></script>
 <script src="estimations.js"></script>
 <script src="editnavigation.js"></script>
+<script src="banner.js"></script>
 
-</body>
+<script>
+    // ===== CONTACTS GLOBALS =====
+    let clientData_contacts = {};
+    let editingContactIndex = null;
+    
+    // ===== UTILITY FUNCTIONS =====
+    function getClientIdFromUrl() {
+        return new URLSearchParams(window.location.search).get('id');
+    }
+    
+    function getActiveUser() {
+        return sessionStorage.getItem('loggedInUser')?.trim() || 'Unknown User';
+    }
+    
+    function formatPhoneNumber(phone) {
+        if (!phone) return '';
+        const cleaned = String(phone).trim().replace(/\D/g, '');
+        const digits = cleaned.length === 11 && cleaned.startsWith('1') ? cleaned.substring(1) : cleaned;
+        if (digits.length === 10) {
+            return `(${digits.substring(0, 3)})-${digits.substring(3, 6)}-${digits.substring(6)}`;
+        }
+        return String(phone).trim();
+    }
+    
+    function fieldsMatchCount(a, b) {
+        let matches = 0;
+        if ((a.firstName || '').toUpperCase() === (b.firstName || '').toUpperCase()) matches++;
+        if ((a.lastName || '').toUpperCase() === (b.lastName || '').toUpperCase()) matches++;
+        const pA = String(a.phoneNumber || '').replace(/\D/g, '');
+        const pB = String(b.phoneNumber || '').replace(/\D/g, '');
+        if (pA && pB && pA === pB) matches++;
+        return matches;
+    }
+    
+    async function fetchClient(clientId) {
+        const response = await fetch(`/get-client/${clientId}`);
+        if (!response.ok) throw new Error(`Failed to fetch client: ${response.statusText}`);
+        return response.json();
+    }
+    
+    // ===== CONTACTS FUNCTIONS =====
+    async function loadContacts() {
+        const clientId = getClientIdFromUrl();
+        if (!clientId) return;
+        try {
+            clientData_contacts = await fetchClient(clientId);
+            renderContacts();
+        } catch (error) {
+            console.error('Error loading contacts:', error);
+        }
+    }
+    
+    function renderContacts() {
+        const container = document.getElementById('contacts-list');
+        container.innerHTML = '';
+    
+        if (!clientData_contacts.Contacts || clientData_contacts.Contacts.length === 0) {
+            container.innerHTML = '<p>No contacts available.</p>';
+            return;
+        }
+    
+        const fragment = document.createDocumentFragment();
+        clientData_contacts.Contacts.forEach((contact, index) => {
+            const div = document.createElement('div');
+            div.classList.add('left-sidebar');
+            div.innerHTML = `
+                <p><strong>Name:</strong><br> ${(contact.firstName || 'N/A').toUpperCase()} ${(contact.lastName || 'N/A').toUpperCase()}</p>
+                <p><strong>Phone:</strong><br> ${formatPhoneNumber(contact.phoneNumber) || 'N/A'}</p>
+                <p><strong>Authorized Representative:</strong><br> ${(contact.authorizedRepresentative || 'N/A').toUpperCase()}</p>
+                <button onclick="openContactModalByIndex(${index})">Edit Contact</button>
+            `;
+            fragment.appendChild(div);
+        });
+        container.appendChild(fragment);
+    }
+    
+    function openContactModal(contact = null, index = null) {
+        const modal = document.getElementById('contactModal');
+        const buttonContainer = modal.querySelector('.button-container');
+        const form = document.getElementById('contactForm');
+    
+        const existingAddBtn = document.getElementById('addContactToHouseholdBtn');
+        if (existingAddBtn) existingAddBtn.remove();
+    
+        buttonContainer.innerHTML = `
+            <button type="button" onclick="saveContact()">Save</button>
+            <button type="button" onclick="closeContactModal()">Cancel</button>
+        `;
+    
+        if (contact) {
+            document.getElementById('modal-title').textContent = 'Edit Contact';
+            document.getElementById('contactFirstName').value = contact.firstName || '';
+            document.getElementById('contactLastName').value = contact.lastName || '';
+            document.getElementById('contactPhoneNumber').value = formatPhoneNumber(contact.phoneNumber) || '';
+            document.getElementById('authorizedRepresentative').value = contact.authorizedRepresentative || 'N/A';
+            editingContactIndex = index;
+    
+            const members = clientData_contacts.householdMembers || [];
+            const alreadyMember = members.some(m => m && (m.householdMemberId === contact.contactId));
+    
+            if (!alreadyMember && contact.contactId) {
+                const addToHouseholdBtn = document.createElement('button');
+                addToHouseholdBtn.id = 'addContactToHouseholdBtn';
+                addToHouseholdBtn.type = 'button';
+                addToHouseholdBtn.textContent = 'Add to Household';
+                addToHouseholdBtn.style.cssText =
+                    'display:block;width:100%;margin-bottom:12px;padding:10px;' +
+                    'background-color:#007bff;color:#fff;border:1px solid #003f7f;' +
+                    'border-radius:5px;cursor:pointer;font-weight:600;';
+                addToHouseholdBtn.onmouseover = () => addToHouseholdBtn.style.backgroundColor = '#0056b3';
+                addToHouseholdBtn.onmouseout = () => addToHouseholdBtn.style.backgroundColor = '#007bff';
+                addToHouseholdBtn.onclick = () => addContactToHousehold(index);
+    
+                const firstNameLabel = form.querySelector('label[for="contactFirstName"]');
+                if (firstNameLabel) form.insertBefore(addToHouseholdBtn, firstNameLabel);
+            }
+    
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Delete';
+            deleteButton.type = 'button';
+            deleteButton.style.cssText = 'background-color:red;color:white;';
+            deleteButton.onmouseover = () => deleteButton.style.backgroundColor = 'darkred';
+            deleteButton.onmouseout = () => deleteButton.style.backgroundColor = 'red';
+            deleteButton.onclick = () => deleteContact(index);
+            buttonContainer.appendChild(deleteButton);
+        } else {
+            document.getElementById('modal-title').textContent = 'Add Contact';
+            document.getElementById('contactFirstName').value = '';
+            document.getElementById('contactLastName').value = '';
+            document.getElementById('contactPhoneNumber').value = '';
+            document.getElementById('authorizedRepresentative').value = 'N/A';
+            editingContactIndex = null;
+        }
+    
+        modal.style.display = 'flex';
+    }
+    
+    async function addContactToHousehold(index) {
+        const clientId = getClientIdFromUrl();
+        if (!clientId) return;
+    
+        try {
+            const client = await fetchClient(clientId);
+            clientData_contacts = client;
+            const contact = (client.Contacts || [])[index];
+            if (!contact) { alert('Contact not found.'); return; }
+    
+            if (!client.householdMembers) client.householdMembers = [];
+    
+            const alreadyMember = client.householdMembers.some(m => m && m.householdMemberId === contact.contactId);
+            if (alreadyMember) { alert('This contact is already a household member.'); return; }
+    
+            if (!confirm(`Add ${(contact.firstName || '').toUpperCase()} ${(contact.lastName || '').toUpperCase()} to the household?`)) return;
+    
+            const newMember = {
+                householdMemberId: contact.contactId,
+                prefix: 'N/A',
+                firstName: contact.firstName || 'N/A',
+                middleInitial: 'N/A',
+                lastName: contact.lastName || 'N/A',
+                suffix: 'N/A',
+                dob: 'N/A',
+                legalSex: 'N/A',
+                deceased: 'N/A',
+                dateOfDeath: 'N/A',
+                maritalStatus: 'N/A',
+                previousMaritalStatus: 'N/A',
+                socialSecurityNumber: 'N/A',
+                disability: 'N/A',
+                medicare: 'N/A',
+                medicaid: 'N/A',
+                citizen: 'N/A',
+                nonCitizenStatus: 'N/A',
+                student: 'N/A',
+                studentStatus: 'N/A',
+                meals: 'N/A'
+            };
+    
+            client.householdMembers.push(newMember);
+    
+            const response = await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, clientData: { householdMembers: client.householdMembers } })
+            });
+    
+            const result = await response.json().catch(() => ({}));
+            if (!response.ok || result.success === false) {
+                alert(`Error: ${result.message || 'Could not add contact to household.'}`);
+                return;
+            }
+    
+            clientData_contacts = client;
+            alert('Contact added to household.');
+            closeContactModal();
+    
+            if (typeof window.eligibilityChecks?.displayHouseholdMembers === 'function') {
+                try { await window.eligibilityChecks.displayHouseholdMembers(); } catch (e) { }
+            }
+            renderContacts();
+        } catch (error) {
+            console.error('Error adding contact to household:', error);
+            alert('An error occurred while adding the contact to the household.');
+        }
+    }
+    
+    function openContactModalByIndex(index) {
+        openContactModal(clientData_contacts.Contacts[index], index);
+    }
+    
+    function closeContactModal() {
+        document.getElementById('contactModal').style.display = 'none';
+        editingContactIndex = null;
+    }
+    
+    window.addEventListener('click', (event) => {
+        const modal = document.getElementById('contactModal');
+        if (event.target === modal) closeContactModal();
+    });
+    
+    async function saveContact() {
+        const clientId = getClientIdFromUrl();
+        const firstName = document.getElementById('contactFirstName').value.trim();
+        const lastName = document.getElementById('contactLastName').value.trim();
+        const phoneNumber = document.getElementById('contactPhoneNumber').value.trim();
+        const authorizedRepresentative = document.getElementById('authorizedRepresentative').value;
+        const phoneNumberInput = document.getElementById('contactPhoneNumber');
+        phoneNumberInput.classList.remove('error');
+    
+        if (!firstName || !lastName || !phoneNumber) {
+            alert('Please fill in all required fields.');
+            return;
+        }
+    
+        const cleanedPhone = phoneNumber.replace(/[\(\)\-\s]/g, '');
+        if (!/^\d{10}$/.test(cleanedPhone)) {
+            alert('Please enter a valid phone number (10 digits or (xxx)-xxx-xxxx format).');
+            phoneNumberInput.classList.add('error');
+            return;
+        }
+    
+        const newContact = {
+            firstName,
+            lastName,
+            phoneNumber: cleanedPhone,
+            authorizedRepresentative,
+            contactId: editingContactIndex !== null
+                ? clientData_contacts.Contacts[editingContactIndex].contactId
+                : `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        };
+    
+        if (!clientData_contacts.Contacts) clientData_contacts.Contacts = [];
+    
+        const isDuplicate = clientData_contacts.Contacts.some((c, i) =>
+            i !== editingContactIndex &&
+            c.firstName === newContact.firstName &&
+            c.lastName === newContact.lastName &&
+            c.phoneNumber === newContact.phoneNumber
+        );
+        if (isDuplicate) { alert('This contact already exists.'); return; }
+    
+        try {
+            let oldContactData = null;
+            const requestBody = { clientId, contact: newContact };
+    
+            if (editingContactIndex !== null) {
+                oldContactData = { ...clientData_contacts.Contacts[editingContactIndex] };
+                requestBody.index = editingContactIndex;
+                clientData_contacts.Contacts[editingContactIndex] = newContact;
+            } else {
+                clientData_contacts.Contacts.push(newContact);
+            }
+    
+            const response = await fetch('/add-to-contacts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody),
+            });
+    
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                alert(`Error: ${result.message}`);
+                return;
+            }
+    
+            const currentClientData = {
+                firstName: clientData_contacts.firstName || '',
+                lastName: clientData_contacts.lastName || '',
+                phoneNumber: clientData_contacts.phoneNumber || '',
+            };
+            const shouldSync = oldContactData
+                ? fieldsMatchCount(currentClientData, oldContactData) >= 3
+                : fieldsMatchCount(currentClientData, newContact) >= 3;
+    
+            if (shouldSync) {
+                const syncData = {
+                    firstName: newContact.firstName,
+                    lastName: newContact.lastName,
+                    phoneNumber: cleanedPhone,
+                };
+                await fetch('/update-client', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ clientId, clientData: syncData }),
+                });
+                clientData_contacts.firstName = newContact.firstName;
+                clientData_contacts.lastName = newContact.lastName;
+                clientData_contacts.phoneNumber = cleanedPhone;
+            }
+    
+            closeContactModal();
+            renderContacts();
+        } catch (error) {
+            console.error('Error saving contact:', error);
+            alert('An error occurred while saving the contact.');
+        }
+    }
+    
+    async function deleteContact(index) {
+        if (!confirm('Are you sure you want to delete this contact?')) return;
+    
+        const clientId = getClientIdFromUrl();
+        const deletedContact = clientData_contacts.Contacts.splice(index, 1)[0];
+        try {
+            await fetch('/add-to-contacts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ clientId, contact: deletedContact, index, delete: true }),
+            });
+        } catch (error) {
+            console.error('Error deleting contact:', error);
+        }
+        renderContacts();
+        closeContactModal();
+    }
+    
+    // ===== SAVE AND RELEASE =====
+    async function redirectToEstimationsView() {
+        const CLIENT_ID = new URLSearchParams(window.location.search).get('id');
+        if (!confirm("Are you sure you want to save and release this profile?")) return;
+    
+        const activeUser = sessionStorage.getItem('loggedInUser');
+        if (!activeUser) {
+            console.error("No active user found in sessionStorage.");
+            return;
+        }
+    
+        try {
+            await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId: CLIENT_ID,
+                    clientData: {
+                        checkedOut: [{ status: false, timestamp: null, user: null }],
+                    },
+                }),
+            });
+    
+            await fetch('/add-note-to-client', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId: CLIENT_ID,
+                    note: {
+                        text: "Profile released.",
+                        timestamp: new Date().toLocaleString(),
+                        username: activeUser,
+                    },
+                }),
+            });
+    
+            window.location.href = `profileview.html?id=${CLIENT_ID}`;
+        } catch (error) {
+            console.error("Error during save and release:", error);
+        }
+    }
+    
+    window.addEventListener('DOMContentLoaded', loadContacts);
+    </script>
+    </body>
 </html>

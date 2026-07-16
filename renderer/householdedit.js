@@ -484,10 +484,17 @@ function renderHouseholdMembers(clientData) {
 
 function buildMemberHTML(member) {
     const deceased = member.deceased === 'yes';
+    const isNA = (v) => !v || String(v).trim().toLowerCase() === 'n/a';
+    const prefix = isNA(member.prefix) ? '' : member.prefix;
+    const middle = isNA(member.middleInitial) ? '' : capitalizeFirstLetter(member.middleInitial);
+    const suffix = isNA(member.suffix) ? '' : member.suffix;
+
     const name = [
-        member.prefix, capitalizeFirstLetter(member.firstName),
-        member.middleInitial ? capitalizeFirstLetter(member.middleInitial) : '',
-        capitalizeFirstLetter(member.lastName), member.suffix
+        prefix,
+        capitalizeFirstLetter(member.firstName),
+        middle,
+        capitalizeFirstLetter(member.lastName),
+        suffix
     ].filter(Boolean).join(' ');
 
     const info = (label, value) => `<p class="household-member-info"><strong>${label}:</strong> ${value}</p>`;
@@ -505,22 +512,22 @@ function buildMemberHTML(member) {
 
     return `
         ${info('Name', name)}
-        ${info('DOB', member.dob)}
+        ${info('DOB', member.dob|| 'N/A')}
         ${deceased ? `<p class="household-member-info"><strong>Deceased: YES</strong></p>` : ''}
         ${deceased ? info('Date of Death', member.dateOfDeath || 'N/A') : ''}
-        ${info('Age', member.age)}
-        ${info('Legal Sex', capitalizeFirstLetter(member.legalSex))}
-        ${conditionalInfo(!deceased, 'Marital Status', capitalizeFirstLetter(member.maritalStatus))}
-        ${conditionalInfo(showPrevMarital, 'Previous Marital Status', capitalizeFirstLetter(member.previousMaritalStatus))}
+        ${info('Age', member.age|| 'N/A')}
+        ${info('Legal Sex', capitalizeFirstLetter(member.legalSex)|| 'N/A')}
+        ${conditionalInfo(!deceased, 'Marital Status', capitalizeFirstLetter(member.maritalStatus)|| 'N/A')}
+        ${conditionalInfo(showPrevMarital, 'Previous Marital Status', capitalizeFirstLetter(member.previousMaritalStatus)|| 'N/A')}
         ${info('SSN', member.socialSecurityNumber || 'N/A')}
-        ${conditionalInfo(!deceased, 'Disability', capitalizeFirstLetter(member.disability))}
-        ${conditionalInfo(!deceased, 'Medicare', capitalizeFirstLetter(member.medicare))}
-        ${conditionalInfo(!deceased, 'Medicaid', capitalizeFirstLetter(member.medicaid))}
-        ${conditionalInfo(!deceased, 'US Citizen', capitalizeFirstLetter(member.citizen))}
-        ${conditionalInfo(showNonCitizen, 'Non-Citizen Status', capitalizeFirstLetter(member.nonCitizenStatus))}
-        ${conditionalInfo(!deceased, 'Student', capitalizeFirstLetter(member.student))}
-        ${conditionalInfo(showStudentStatus, 'Student Status', capitalizeFirstLetter(member.studentStatus))}
-        ${conditionalInfo(!deceased, 'Included in SNAP Household', capitalizeFirstLetter(member.meals))}
+        ${conditionalInfo(!deceased, 'Disability', capitalizeFirstLetter(member.disability)|| 'N/A')}
+        ${conditionalInfo(!deceased, 'Medicare', capitalizeFirstLetter(member.medicare)|| 'N/A')}
+        ${conditionalInfo(!deceased, 'Medicaid', capitalizeFirstLetter(member.medicaid)|| 'N/A')}
+        ${conditionalInfo(!deceased, 'US Citizen', capitalizeFirstLetter(member.citizen)|| 'N/A')}
+        ${conditionalInfo(showNonCitizen, 'Non-Citizen Status', capitalizeFirstLetter(member.nonCitizenStatus)|| 'N/A')}
+        ${conditionalInfo(!deceased, 'Student', capitalizeFirstLetter(member.student)|| 'N/A')}
+        ${conditionalInfo(showStudentStatus, 'Student Status', capitalizeFirstLetter(member.studentStatus)|| 'N/A')}
+        ${conditionalInfo(!deceased, 'Included in SNAP Household', capitalizeFirstLetter(member.meals)|| 'N/A')}
         <div class="button-container">
             <button class="edit-member-button" data-member-id="${member.householdMemberId}">Edit</button>
             <button class="delete-member-button" data-member-id="${member.householdMemberId}"
