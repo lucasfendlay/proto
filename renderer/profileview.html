@@ -340,8 +340,41 @@
             </div>
             <div class="form-field">
                 <label>County</label>
-                <span id="county" class="read-only-field">Loading...</span>
+                <span id="countyDisplay" class="read-only-field">Loading...</span>
             </div>
+
+                        <!-- Best mailing address (hidden when homelessness = yes) -->
+                        <div class="form-field" id="bestMailingWrapper" style="display:none;">
+                            <label>Is this also the best mailing address?</label>
+                            <span id="bestMailingAddress" class="read-only-field">Loading...</span>
+                        </div>
+            
+                        <!-- Mailing address block (shown only when bestMailingAddress = no) -->
+                        <div class="form-field wide" id="mailingAddressWrapper" style="display:none; grid-column: 1 / -1;">
+                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 14px;">
+                                <div class="form-field wide" style="grid-column: span 2;">
+                                    <label>Mailing Street Address</label>
+                                    <span id="mailingStreetAddress" class="read-only-field">Loading...</span>
+                                </div>
+                                <div class="form-field">
+                                    <label>Mailing Address Line 2</label>
+                                    <span id="mailingStreetAddress2" class="read-only-field">Loading...</span>
+                                </div>
+                                <div class="form-field">
+                                    <label>Mailing City</label>
+                                    <span id="mailingCity" class="read-only-field">Loading...</span>
+                                </div>
+                                <div class="form-field">
+                                    <label>Mailing State</label>
+                                    <span id="mailingState" class="read-only-field">Loading...</span>
+                                </div>
+                                <div class="form-field">
+                                    <label>Mailing ZIP</label>
+                                    <span id="mailingZipCode" class="read-only-field">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+
             <div class="form-field">
                 <label>Preferred Language</label>
                 <span id="speakingLanguage" class="read-only-field">Loading...</span>
@@ -493,7 +526,7 @@
         setText('city', (data.city || '').toUpperCase());
         setText('state', (data.state || '').toUpperCase());
         setText('zipCode', data.zipCode || '');
-        setText('county', (data.county || '').toUpperCase());
+        setText('countyDisplay', (data.county || '').toUpperCase());
         setText('speakingLanguage', (data.speakingLanguage || '').toUpperCase());
 
         const interpreterMap = { yes: 'Yes', no: 'No' };
@@ -502,6 +535,33 @@
         const homelessMap = { yes: 'Yes', no: 'No' };
         setText('homelessness', homelessMap[data.homelessness] || 'No');
 
+        document.querySelector('label[for="streetAddress"]').textContent =
+            data.homelessness === 'yes' ? 'Mailing Address' : 'Street Address';
+
+        // ── Mailing address visibility (mirrors editor rules) ──
+        const isHomeless = data.homelessness === 'yes';
+        const bestMailing = (data.bestMailingAddress || '').toLowerCase(); // 'yes' | 'no' | ''
+        const bestMailingWrapper = document.getElementById('bestMailingWrapper');
+        const mailingWrapper = document.getElementById('mailingAddressWrapper');
+
+        if (isHomeless) {
+            bestMailingWrapper.style.display = 'none';
+            mailingWrapper.style.display = 'none';
+        } else {
+            bestMailingWrapper.style.display = '';
+            setText('bestMailingAddress', bestMailing === 'yes' ? 'Yes' : bestMailing === 'no' ? 'No' : 'N/A');
+
+            if (bestMailing === 'no') {
+                mailingWrapper.style.display = '';
+                setText('mailingStreetAddress',  (data.mailingStreetAddress  || '').toUpperCase());
+                setText('mailingStreetAddress2', (data.mailingStreetAddress2 || '').toUpperCase());
+                setText('mailingCity',           (data.mailingCity           || '').toUpperCase());
+                setText('mailingState',          (data.mailingState          || '').toUpperCase());
+                setText('mailingZipCode',         data.mailingZipCode        || '');
+            } else {
+                mailingWrapper.style.display = 'none';
+            }
+        }
         document.querySelector('label[for="streetAddress"]').textContent =
             data.homelessness === 'yes' ? 'Mailing Address' : 'Street Address';
 

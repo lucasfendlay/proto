@@ -18,6 +18,11 @@ function parseAge(ageString) {
 
 let cachedClientData = null;
 
+// Allow other scripts (e.g. relationshipsedit.html) to invalidate the cache
+// after they write client data directly via /update-client.
+window.invalidateClientCache = function () {
+    cachedClientData = null;
+};
 async function fetchClient(clientId, forceRefresh = false) {
     if (cachedClientData && !forceRefresh) {
         return cachedClientData;

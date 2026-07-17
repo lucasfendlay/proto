@@ -78,8 +78,14 @@
     <script>
 function formatMetricName(metric) {
     const metricMapping = {
+        callsLogged: 'Calls Logged',
         screeningsStarted: 'Screenings Initiated',
+        paceApplicationsCompleted: 'PACE Applications Completed',
+        lisApplicationsCompleted: 'LIS Applications Completed',
+        mspApplicationsCompleted: 'MSP Applications Completed',
         ptrrApplicationsCompleted: 'PTRR Applications Completed',
+        snapApplicationsCompleted: 'SNAP Applications Completed',
+        liheapApplicationsCompleted: 'LIHEAP Applications Completed',
         // Add more mappings as needed
     };
     return metricMapping[metric] || metric; // Default to the original name if no mapping exists
@@ -95,34 +101,63 @@ async function populateProfiles() {
     const params = new URLSearchParams(window.location.search);
     const metric = params.get('metric');
     const user = params.get('user');
-    const startDate = formatDate(params.get('startDate'));
-    const endDate = formatDate(params.get('endDate'));
+    const startDateRaw = params.get('startDate');
+    const endDateRaw = params.get('endDate');
+    const startDate = formatDate(startDateRaw);
+    const endDate = formatDate(endDateRaw);
 
-    // Format the metric name
+    const start = startDateRaw ? new Date(startDateRaw + 'T00:00:00') : null;
+    const end = endDateRaw ? new Date(endDateRaw + 'T23:59:59') : null;
+
     const formattedMetric = formatMetricName(metric);
-
-    // Set the dynamic header
     const dynamicHeader = document.getElementById('dynamicHeader');
-    dynamicHeader.textContent = `All ${formattedMetric || 'Metrics'} for ${user || 'Users'} between ${startDate || 'Start Date'} and ${endDate || 'End Date'}`;
-
-    console.log('Metric:', metric);
-    console.log('User:', user);
-    console.log('Start Date:', startDate);
-    console.log('End Date:', endDate);
+    dynamicHeader.innerHTML = `All ${formattedMetric || 'Metrics'} by <u>${user || 'Users'}</u> between ${startDate || 'Start Date'} and ${endDate || 'End Date'}`;
 
     try {
-        const response = await fetch(`/get-user-profiles?metric=${metric}&user=${user}`);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const profiles = await response.json();
-        console.log('Fetched Profiles:', profiles);
+        const response = await fetch('/get-all-clients');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const { clients } = await response.json();
+        const profiles = clients;
 
-        // Filter profiles to remove duplicates
+        // Metric-to-note-text mapping (matches admindashboard.html)
+        const metricNoteText = {
+            screeningsStarted: 'New screening initiated.',
+            paceApplicationsCompleted: 'PACE Application completed.',
+            ptrrApplicationsCompleted: 'PTRR Application completed.',
+            lisApplicationsCompleted: 'LIS Application completed.',
+            mspApplicationsCompleted: 'MSP Application completed.',
+            snapApplicationsCompleted: 'SNAP Application completed.',
+            liheapApplicationsCompleted: 'LIHEAP Application completed.',
+        };
+        // Filter profiles to only those with matching activity in the date range
+        const filtered = profiles.filter(profile => {
+            if (metric === 'callsLogged') {
+                return (profile.callLogs || []).some(log => {
+                    const d = new Date(log.timestamp);
+                    const okUser = !user || log.agent === user;
+                    const okStart = !start || d >= start;
+                    const okEnd = !end || d <= end;
+                    return okUser && okStart && okEnd;
+                });
+            }
+            const noteText = metricNoteText[metric];
+            if (noteText) {
+                return (profile.notes || []).some(note => {
+                    const d = new Date(note.timestamp);
+                    const noteUser = note.username || note.user || note.agent;
+                    const okUser = !user || noteUser === user;
+                    const okStart = !start || d >= start;
+                    const okEnd = !end || d <= end;
+                    return okUser && okStart && okEnd && note.text?.includes(noteText);
+                });
+            }
+            return true;
+        });
+
+        // Dedupe
         const uniqueProfiles = [];
         const seenIds = new Set();
-
-        profiles.forEach(profile => {
+        filtered.forEach(profile => {
             if (!seenIds.has(profile.id)) {
                 uniqueProfiles.push(profile);
                 seenIds.add(profile.id);
@@ -138,8 +173,7 @@ async function populateProfiles() {
         profileLinksDiv.innerHTML = ``;
         uniqueProfiles.forEach(profile => {
             const mostRecentNote = profile.notes?.[profile.notes.length - 1];
-            const mostRecentActivity = mostRecentNote ? (mostRecentNote.timestamp) : 'No recent activity';
-
+            const mostRecentActivity = mostRecentNote ? mostRecentNote.timestamp : 'No recent activity';
             const li = document.createElement('li');
             li.innerHTML = `
                 <a href="profileview.html?id=${profile.id}">
@@ -147,10 +181,7 @@ async function populateProfiles() {
                     ${profile.name || ''} | 
                     ${profile.phoneNumber ? `Phone: ${profile.phoneNumber} | ` : ''}
                     ${profile.streetAddress || profile.city || profile.state || profile.zipCode ? `Address: ${[
-                        profile.streetAddress,
-                        profile.city,
-                        profile.state,
-                        profile.zipCode,
+                        profile.streetAddress, profile.city, profile.state, profile.zipCode,
                         profile.county ? `${profile.county} County` : ''
                     ].filter(Boolean).join(', ')} | ` : ''}
                     <strong>Most Recent Activity:</strong> ${mostRecentActivity}
@@ -161,6 +192,7 @@ async function populateProfiles() {
         console.error('Error fetching profiles:', error);
     }
 }
+
 document.addEventListener('DOMContentLoaded', populateProfiles);
 
     </script>

@@ -572,6 +572,61 @@
                             <option value="York">York</option>
                         </select>
                     </div>
+
+                                <!-- Best mailing address toggle (hidden when homelessness = yes) -->
+<div class="form-field" id="bestMailingWrapper">
+    <label>Is this also your best mailing address?</label>
+    <div class="selection-box best-mailing-container">
+        <div data-value="yes" onclick="updateBestMailingAddress('yes')">Yes</div>
+        <div data-value="no"  onclick="updateBestMailingAddress('no')">No</div>
+    </div>
+</div>
+
+<!-- Mailing address fields (shown only when bestMailingAddress = no) -->
+<div class="form-field wide" id="mailingAddressWrapper" style="display:none; grid-column: 1 / -1;">
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 14px;">
+        <div class="form-field wide" style="grid-column: span 2;">
+            <label for="mailingStreetAddress">Mailing Street Address</label>
+            <input type="text" id="mailingStreetAddress" name="mailingStreetAddress">
+        </div>
+        <div class="form-field">
+            <label for="mailingStreetAddress2">Mailing Address Line 2</label>
+            <input type="text" id="mailingStreetAddress2" name="mailingStreetAddress2">
+        </div>
+        <div class="form-field">
+            <label for="mailingCity">Mailing City</label>
+            <input type="text" id="mailingCity" name="mailingCity">
+        </div>
+        <div class="form-field">
+            <label for="mailingState">Mailing State</label>
+            <select id="mailingState" name="mailingState">
+                <option value="" disabled selected>Select State</option>
+                <option value="PA">PA</option><option value="AL">AL</option><option value="AK">AK</option>
+                <option value="AZ">AZ</option><option value="AR">AR</option><option value="CA">CA</option>
+                <option value="CO">CO</option><option value="CT">CT</option><option value="DE">DE</option>
+                <option value="FL">FL</option><option value="GA">GA</option><option value="HI">HI</option>
+                <option value="ID">ID</option><option value="IL">IL</option><option value="IN">IN</option>
+                <option value="IA">IA</option><option value="KS">KS</option><option value="KY">KY</option>
+                <option value="LA">LA</option><option value="ME">ME</option><option value="MD">MD</option>
+                <option value="MA">MA</option><option value="MI">MI</option><option value="MN">MN</option>
+                <option value="MS">MS</option><option value="MO">MO</option><option value="MT">MT</option>
+                <option value="NE">NE</option><option value="NV">NV</option><option value="NH">NH</option>
+                <option value="NJ">NJ</option><option value="NM">NM</option><option value="NY">NY</option>
+                <option value="NC">NC</option><option value="ND">ND</option><option value="OH">OH</option>
+                <option value="OK">OK</option><option value="OR">OR</option><option value="RI">RI</option>
+                <option value="SC">SC</option><option value="SD">SD</option><option value="TN">TN</option>
+                <option value="TX">TX</option><option value="UT">UT</option><option value="VT">VT</option>
+                <option value="VA">VA</option><option value="WA">WA</option><option value="WV">WV</option>
+                <option value="WI">WI</option><option value="WY">WY</option><option value="DC">DC</option>
+                <option value="PR">Puerto Rico</option><option value="GU">Guam</option>
+            </select>
+        </div>
+        <div class="form-field">
+            <label for="mailingZipCode">Mailing ZIP</label>
+            <input type="text" id="mailingZipCode" name="mailingZipCode" maxlength="10">
+        </div>
+    </div>
+</div>
         
                     <div class="form-field">
                         <label for="speakingLanguage">Preferred Language</label>
@@ -1134,6 +1189,203 @@
             closeContactModal();
         }
     });
+
+        // ── Previous Year Spouse dropdown for HoH ──
+        const PREV_SPOUSE_TRIGGER = 'Married (Living Together)';
+
+        function getHoH(members) {
+            if (!Array.isArray(members)) return null;
+            return members.find(m => m && m.headOfHousehold === true) || null;
+        }
+
+        async function savePreviousSpouseId(spouseId) {
+            const clientId = getQueryParam('id');
+            if (!clientId) return;
+
+            try {
+                const client = await fetchClientData();
+                const members = client.householdMembers || [];
+                const hoh = getHoH(members);
+                if (!hoh) return;
+
+                hoh.previousSpouseId = spouseId || null;
+
+                const res = await fetch('/update-client', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        clientId,
+                        clientData: { householdMembers: members }
+                    })
+                });
+                const result = await res.json().catch(() => ({}));
+                if (!res.ok || result.success === false) {
+                    console.error('Failed to save previousSpouseId:', result.message);
+                    alert('Could not save previous year spouse.');
+                    return;
+                }
+
+                // Invalidate caches
+                cachedClient = client;
+                if (typeof window.invalidateClientCache === 'function') {
+                    window.invalidateClientCache();
+                }
+
+                // 🔑 Force PTRR to re-run RIGHT NOW on the freshly-saved data
+                const checks = window.eligibilityChecks || window;
+                if (typeof checks.PTRREligibilityCheck === 'function') {
+                    await checks.PTRREligibilityCheck(members);
+                }
+
+                // Re-render the sidebar so the new PTRR result shows
+                if (typeof checks.refreshAllDisplays === 'function') {
+                    await checks.refreshAllDisplays(members);
+                } else if (typeof checks.displayHouseholdMembers === 'function') {
+                    const container = document.getElementById('household-members-container');
+                    if (container) container.innerHTML = '';
+                    await checks.displayHouseholdMembers(members);
+                }
+            } catch (e) {
+                console.error('Error saving previousSpouseId:', e);
+            }
+        }
+
+        function findHoHCard(scope, hoh, hohIndex) {
+            // Try to match by data attribute or id first
+            if (hoh && hoh.householdMemberId) {
+                const byId = scope.querySelector(
+                    `[data-household-member-id="${hoh.householdMemberId}"],` +
+                    `[data-member-id="${hoh.householdMemberId}"],` +
+                    `#member-${hoh.householdMemberId}`
+                );
+                if (byId) {
+                    return byId.closest('.household-member-card, .household-member') || byId;
+                }
+            }
+            const cards = scope.querySelectorAll('.household-member-card, .household-member');
+            return cards[hohIndex] || cards[0] || null;
+        }
+
+        function renderPreviousSpouseDropdown() {
+            const client = cachedClient;
+            if (!client) return;
+            const members = client.householdMembers || [];
+            if (members.length === 0) return;
+
+            const hoh = getHoH(members);
+            if (!hoh) return;
+            const hohIndex = members.indexOf(hoh);
+
+            const scopes = [
+                document.getElementById('household-members-panel'),
+                document.getElementById('householdMemberContainer'),
+                document.getElementById('household-members-container')
+            ].filter(Boolean);
+
+            for (const scope of scopes) {
+                const hohCard = findHoHCard(scope, hoh, hohIndex);
+                if (!hohCard) continue;
+
+                const existing = hohCard.querySelector('.previous-spouse-wrapper');
+
+                if (hoh.previousMaritalStatus !== PREV_SPOUSE_TRIGGER) {
+                    if (existing) existing.remove();
+                    continue;
+                }
+
+                const others = members
+                    .filter(m => m && m !== hoh && m.householdMemberId);
+
+                // Build a signature so we can skip re-render if nothing changed
+                const signature = JSON.stringify({
+                    spouse: hoh.previousSpouseId || '',
+                    opts: others.map(m => [
+                        m.householdMemberId,
+                        (m.firstName || '') + ' ' + (m.lastName || '')
+                    ])
+                });
+
+                if (existing && existing.dataset.signature === signature) {
+                    continue; // already up to date — don't touch (would close dropdown)
+                }
+
+                const optionsHtml = others.map(m => {
+                    const name = `${(m.firstName || '').toUpperCase()} ${(m.lastName || '').toUpperCase()}`.trim() || 'Unnamed';
+                    const selected = hoh.previousSpouseId === m.householdMemberId ? 'selected' : '';
+                    return `<option value="${m.householdMemberId}" ${selected}>${name}</option>`;
+                }).join('');
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'previous-spouse-wrapper form-field';
+                wrapper.dataset.signature = signature;
+                wrapper.style.cssText = 'margin-top:10px; width:100%; text-align:left;';
+                wrapper.innerHTML = `
+                    <label style="font-size:0.75rem; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:0.04em;">
+                        Previous Year Spouse
+                    </label>
+                    <select class="previous-spouse-select" style="width:100%; padding:8px 10px; border:1px solid #cbd5e0; border-radius:8px; margin-top:4px;">
+                        <option value="">-- Select previous year spouse --</option>
+                        ${optionsHtml}
+                    </select>
+                `;
+
+                if (existing) {
+                    existing.replaceWith(wrapper);
+                } else {
+                    hohCard.appendChild(wrapper);
+                }
+
+                const select = wrapper.querySelector('.previous-spouse-select');
+                if (select) {
+                    select.addEventListener('change', (e) => {
+                        savePreviousSpouseId(e.target.value || null);
+                    });
+                }
+            }
+        }
+
+        // Watch for household member re-renders and (re)inject dropdown
+        function initPreviousSpouseObserver() {
+            const targets = [
+                document.getElementById('household-members-panel'),
+                document.getElementById('householdMemberContainer'),
+                document.getElementById('household-members-container')
+            ].filter(Boolean);
+
+            const debounced = (() => {
+                let t;
+                return () => {
+                    clearTimeout(t);
+                    t = setTimeout(async () => {
+                        if (!cachedClient) {
+                            try { await fetchClientData(); } catch (e) { return; }
+                        }
+                        renderPreviousSpouseDropdown();
+                    }, 50);
+                };
+            })();
+
+            const observer = new MutationObserver((mutations) => {
+                // Ignore mutations that occur inside our own dropdown wrapper
+                // (prevents closing the <select> when user clicks it)
+                const relevant = mutations.some(m => {
+                    const target = m.target;
+                    if (!target) return false;
+                    if (target.closest && target.closest('.previous-spouse-wrapper')) return false;
+                    return true;
+                });
+                if (relevant) debounced();
+            });
+
+            targets.forEach(el => observer.observe(el, { childList: true, subtree: true }));
+
+            // Initial run
+            debounced();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(initPreviousSpouseObserver, 200);
+        });
     </script>
 </body>
 </html>

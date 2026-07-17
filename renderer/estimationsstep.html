@@ -695,6 +695,61 @@
                                 <option value="York">York</option>
                             </select>
                         </div>
+
+                        <!-- Best mailing address toggle (hidden when homelessness = yes) -->
+<div class="form-field" id="bestMailingWrapper">
+    <label>Is this also your best mailing address?</label>
+    <div class="selection-box best-mailing-container">
+        <div data-value="yes" onclick="updateBestMailingAddress('yes')">Yes</div>
+        <div data-value="no"  onclick="updateBestMailingAddress('no')">No</div>
+    </div>
+</div>
+
+<!-- Mailing address fields (shown only when bestMailingAddress = no) -->
+<div class="form-field wide" id="mailingAddressWrapper" style="display:none; grid-column: 1 / -1;">
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 14px;">
+        <div class="form-field wide" style="grid-column: span 2;">
+            <label for="mailingStreetAddress">Mailing Street Address</label>
+            <input type="text" id="mailingStreetAddress" name="mailingStreetAddress">
+        </div>
+        <div class="form-field">
+            <label for="mailingStreetAddress2">Mailing Address Line 2</label>
+            <input type="text" id="mailingStreetAddress2" name="mailingStreetAddress2">
+        </div>
+        <div class="form-field">
+            <label for="mailingCity">Mailing City</label>
+            <input type="text" id="mailingCity" name="mailingCity">
+        </div>
+        <div class="form-field">
+            <label for="mailingState">Mailing State</label>
+            <select id="mailingState" name="mailingState">
+                <option value="" disabled selected>Select State</option>
+                <option value="PA">PA</option><option value="AL">AL</option><option value="AK">AK</option>
+                <option value="AZ">AZ</option><option value="AR">AR</option><option value="CA">CA</option>
+                <option value="CO">CO</option><option value="CT">CT</option><option value="DE">DE</option>
+                <option value="FL">FL</option><option value="GA">GA</option><option value="HI">HI</option>
+                <option value="ID">ID</option><option value="IL">IL</option><option value="IN">IN</option>
+                <option value="IA">IA</option><option value="KS">KS</option><option value="KY">KY</option>
+                <option value="LA">LA</option><option value="ME">ME</option><option value="MD">MD</option>
+                <option value="MA">MA</option><option value="MI">MI</option><option value="MN">MN</option>
+                <option value="MS">MS</option><option value="MO">MO</option><option value="MT">MT</option>
+                <option value="NE">NE</option><option value="NV">NV</option><option value="NH">NH</option>
+                <option value="NJ">NJ</option><option value="NM">NM</option><option value="NY">NY</option>
+                <option value="NC">NC</option><option value="ND">ND</option><option value="OH">OH</option>
+                <option value="OK">OK</option><option value="OR">OR</option><option value="RI">RI</option>
+                <option value="SC">SC</option><option value="SD">SD</option><option value="TN">TN</option>
+                <option value="TX">TX</option><option value="UT">UT</option><option value="VT">VT</option>
+                <option value="VA">VA</option><option value="WA">WA</option><option value="WV">WV</option>
+                <option value="WI">WI</option><option value="WY">WY</option><option value="DC">DC</option>
+                <option value="PR">Puerto Rico</option><option value="GU">Guam</option>
+            </select>
+        </div>
+        <div class="form-field">
+            <label for="mailingZipCode">Mailing ZIP</label>
+            <input type="text" id="mailingZipCode" name="mailingZipCode" maxlength="10">
+        </div>
+    </div>
+</div>
             
                         <div class="form-field">
                             <label for="speakingLanguage">Preferred Language</label>
@@ -1460,6 +1515,7 @@
 
             members.forEach(member => {
                 const memberBenefits = [];
+                let ptrrSpouseName = null;
 
                 allBenefits.forEach(benefit => {
                     const isHouseholdBenefit = householdBenefitsList.includes(benefit);
@@ -1480,14 +1536,25 @@
                         if (isHouseholdBenefit) {
                             householdBenefits.add(benefit);
                         } else {
+                            if (benefit === 'PTRR' && member.previousSpouseId) {
+                                const prevSpouse = members.find(
+                                    m => m.householdMemberId === member.previousSpouseId
+                                );
+                                if (prevSpouse) {
+                                    ptrrSpouseName = `${(prevSpouse.firstName || '').toUpperCase()} ${(prevSpouse.lastName || '').toUpperCase()}`.trim();
+                                }
+                            }
                             memberBenefits.push(benefit);
                         }
                     }
                 });
 
                 if (memberBenefits.length > 0) {
-                    const name = `<br>${member.firstName.toUpperCase()} ${member.lastName.toUpperCase()}`;
-                    individualBenefitsDetails.push(`<strong>${name}</strong><br>${memberBenefits.join('<br>')}`);
+                    const memberName = `${(member.firstName || '').toUpperCase()} ${(member.lastName || '').toUpperCase()}`.trim();
+                    const nameLine = ptrrSpouseName
+                        ? `${memberName}, ${ptrrSpouseName}`
+                        : memberName;
+                    individualBenefitsDetails.push(`<br><strong>${nameLine}</strong><br>${memberBenefits.join('<br>')}`);
                 }
             });
 

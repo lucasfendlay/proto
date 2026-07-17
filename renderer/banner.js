@@ -91,6 +91,7 @@
         const cb = document.getElementById('homelessnessCheckbox');
         if (cb) cb.checked = (value === 'yes');
         bannerQueue('homelessness', value);
+        if (bannerClient) bannerClient.homelessness = value;
 
         const lbl = document.querySelector('#clientForm label[for="streetAddress"]');
         if (lbl) lbl.textContent = value === 'yes' ? 'Mailing Address' : 'Street Address';
@@ -110,6 +111,55 @@
         if (st) st.value = 'PA';
         bannerQueue('state', 'PA');
 
+        // If homeless, hide the best-mailing question entirely and clear any mailing fields.
+        if (value === 'yes') {
+            bannerSetSelectionBox('.best-mailing-container', null);
+            bannerQueue('bestMailingAddress', null);
+            if (bannerClient) bannerClient.bestMailingAddress = null;
+            clearMailingFields();
+        }
+        applyMailingVisibility();
+
+        bannerFlushNow();
+    }
+
+    // NEW: mailing-address visibility + toggle
+    function applyMailingVisibility() {
+        const homeless = (bannerClient?.homelessness === 'yes');
+        const best = bannerClient?.bestMailingAddress; // 'yes' | 'no' | null
+        const wrap = document.getElementById('bestMailingWrapper');
+        const mail = document.getElementById('mailingAddressWrapper');
+        if (wrap) wrap.style.display = homeless ? 'none' : '';
+        const showMailing = (!homeless && best === 'no');
+        if (mail) mail.style.display = showMailing ? '' : 'none';
+
+        // Default mailing state to PA when the mailing block becomes visible
+        if (showMailing) {
+            const ms = document.getElementById('mailingState');
+            if (ms && !ms.value) {
+                ms.value = 'PA';
+                if (bannerClient) bannerClient.mailingState = 'PA';
+                bannerQueue('mailingState', 'PA');
+            }
+        }
+    }
+
+    function clearMailingFields() {
+        ['mailingStreetAddress','mailingStreetAddress2','mailingCity','mailingState','mailingZipCode']
+            .forEach(f => {
+                const el = document.getElementById(f);
+                if (el) el.value = '';
+                bannerQueue(f, '');
+                if (bannerClient) bannerClient[f] = '';
+            });
+    }
+
+    function updateBestMailingAddress(value) {
+        bannerSetSelectionBox('.best-mailing-container', value);
+        bannerQueue('bestMailingAddress', value);
+        if (bannerClient) bannerClient.bestMailingAddress = value;
+        if (value === 'yes') clearMailingFields();
+        applyMailingVisibility();
         bannerFlushNow();
     }
 
@@ -276,6 +326,12 @@
         setVal('#zipCode',            data.zipCode || '');
         setVal('#speakingLanguage',   data.speakingLanguage || '');
         setVal('#county',              data.county || '');
+        setVal('#mailingStreetAddress',  bannerCap(data.mailingStreetAddress || ''));
+        setVal('#mailingStreetAddress2', bannerCap(data.mailingStreetAddress2 || ''));
+        setVal('#mailingCity',           bannerCap(data.mailingCity || ''));
+        setVal('#mailingState',          bannerCap(data.mailingState || ''));
+        setVal('#mailingZipCode',        data.mailingZipCode || '');
+        bannerSetSelectionBox('.best-mailing-container', data.bestMailingAddress || null);
 
         const zip = data.zipCode || '';
         // Always reset the county dropdown; only repopulate if the ZIP is known.
@@ -292,6 +348,8 @@
         bannerSetSelectionBox('.interpreter-container', data.interpreter);
         const lbl = q('label[for="streetAddress"]');
         if (lbl) lbl.textContent = h === 'yes' ? 'Mailing Address' : 'Street Address';
+
+        applyMailingVisibility();
 
         form.classList.add('readonly');
         form.querySelectorAll('input[type="text"]').forEach(el => el.readOnly = true);
@@ -487,6 +545,8 @@
     window.updateCountyDropdown = updateCountyDropdown;
     window.updateInterpreter = updateInterpreter;
     window.updateHomelessness = updateHomelessness;
+    window.updateBestMailingAddress = updateBestMailingAddress;
+    window.applyMailingVisibility = applyMailingVisibility;
     window.toggleProfileEdit = toggleProfileEdit;
     window.toggleHouseholdMembers = toggleHouseholdMembers;
     window.renderHouseholdMembersPanel = renderHouseholdMembersPanel;

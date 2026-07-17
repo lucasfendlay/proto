@@ -1747,7 +1747,31 @@ document.addEventListener('DOMContentLoaded', async function () {
         `;
     }
 
-    function generateBenefitFlipCard(benefit, member, isScreeningInProgress) {
+    function getBenefitSpouseInfoHTML(benefit, member, allMembers) {
+        if (benefit === 'PTRR') {
+            const prev = member.previousSpouseId
+                ? allMembers.find(m => m.householdMemberId === member.previousSpouseId)
+                : null;
+            if (!prev) return '';
+            return `<p><strong>Previous Year Spouse:</strong> ${capitalizeFirstLetter(prev.firstName || 'N/A')} ${capitalizeFirstLetter(prev.lastName || '')}</p>`;
+        }
+
+        const spouseRel = member.relationships?.find(r => r.relationship === 'spouse');
+        if (!spouseRel) return '';
+        const spouse = allMembers.find(m => m.householdMemberId === spouseRel.relatedMemberId);
+        if (!spouse) return '';
+        return `<p><strong>Spouse:</strong> ${capitalizeFirstLetter(spouse.firstName || 'N/A')} ${capitalizeFirstLetter(spouse.lastName || '')}</p>`;
+    }
+
+    function getBenefitMaritalStatusHTML(benefit, member) {
+        const label = benefit === 'PTRR' ? 'Previous Year Marital Status' : 'Marital Status';
+        const value = benefit === 'PTRR'
+            ? (member.previousMaritalStatus || 'N/A')
+            : (member.maritalStatus || 'N/A');
+        return `<p><strong>${label}:</strong> ${capitalizeFirstLetter(value)}</p>`;
+    }
+
+    function generateBenefitFlipCard(benefit, member, isScreeningInProgress, allMembers = []) {
         const bObj = member[benefit];
         if (!bObj || bObj.eligibility?.includes('Not Checked')) return '';
 
@@ -1760,8 +1784,10 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         const incomeLabel = benefit === 'PACE' ? 'Gross Adjusted Income' : 
                            benefit === 'PTRR' ? 'Gross Income' : 'Gross Income';
-        const showAssets = ['LIS', 'MSP'].includes(benefit);
+                           const showAssets = ['LIS', 'MSP'].includes(benefit);
 
+                           const maritalHTML = getBenefitMaritalStatusHTML(benefit, member);
+                           const spouseHTML  = getBenefitSpouseInfoHTML(benefit, member, allMembers);
         return `
             <div class="benefit-flip-card" data-benefit="${benefit}" data-member-id="${member.householdMemberId}" style="
                 perspective: 1000px;
@@ -1794,6 +1820,8 @@ document.addEventListener('DOMContentLoaded', async function () {
                             <p><strong></strong> ${eligArray.join(', ') || 'Not Available'}<br></p>
                             </summary>
                             <hr class="separator-bar">
+                            ${maritalHTML}
+                            ${spouseHTML}
                             <p><strong>${incomeLabel}:</strong> $${bObj.combinedIncome?.toFixed(2) || 'N/A'}</p>
                             ${showAssets ? `<p><strong>Combined Assets:</strong> $${bObj.combinedAssets?.toFixed(2) || 'N/A'}</p>` : ''}
                         </details>
@@ -1871,13 +1899,38 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // ===== UPDATE MEMBER BENEFITS =====
     async function updateMemberBenefits(members, benefit, newApplyingState, memberId = null) {
+        // For PTRR, expand memberId to include previous spouse if applicable
+        let targetMemberIds = null;
+        if (memberId && benefit === 'PTRR') {
+            targetMemberIds = new Set([String(memberId)]);
+            const primary = members.find(m => String(m.householdMemberId) === String(memberId));
+            if (primary?.previousSpouseId) {
+                targetMemberIds.add(String(primary.previousSpouseId));
+            }
+            // Also include any member who lists this member as their previousSpouseId
+            members.forEach(m => {
+                if (m.previousSpouseId && String(m.previousSpouseId) === String(memberId)) {
+                    targetMemberIds.add(String(m.householdMemberId));
+                }
+            });
+        }
+
         for (const member of members) {
-            // For individual benefits, only update the matching member
-            if (memberId && String(member.householdMemberId) !== String(memberId)) continue;
+            // For individual benefits, only update the matching member (or PTRR spouse pair)
+            if (targetMemberIds) {
+                if (!targetMemberIds.has(String(member.householdMemberId))) continue;
+            } else if (memberId && String(member.householdMemberId) !== String(memberId)) {
+                continue;
+            }
 
             // For household benefits (SNAP/LIHEAP), update all relevant members
             if (benefit === 'SNAP' && member.meals?.toLowerCase() !== 'yes') continue;
             if (benefit === 'LIHEAP' && (member.deceased ?? '').toLowerCase() === 'yes') continue;
+
+            // For PTRR spouse pairing, ensure benefit object exists on the spouse
+            if (targetMemberIds && !member[benefit]) {
+                member[benefit] = { eligibility: [], application: [] };
+            }
 
             const benefitObj = member[benefit];
             if (!benefitObj) continue;
@@ -2010,7 +2063,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                         html: generateScreeningClosedBox(benefit, bObj, memberId, memberFullName)
                     });
                 } else if (!bObj.eligibility?.includes('Not Checked')) {
-                    const html = generateBenefitFlipCard(benefit, member, isScreeningInProgress);
+                    const html = generateBenefitFlipCard(benefit, member, isScreeningInProgress, members);
                     if (html) benefitSections.push({ closed: false, html });
                 }
             });

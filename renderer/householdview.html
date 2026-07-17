@@ -314,6 +314,38 @@
                 <label>County</label>
                 <span id="banner-county" class="read-only-field">Loading...</span>
             </div>
+            <!-- Best mailing address (hidden when homelessness = yes) -->
+            <div class="form-field" id="bestMailingWrapper" style="display:none;">
+                <label>Is this also the best mailing address?</label>
+                <span id="banner-bestMailingAddress" class="read-only-field">Loading...</span>
+            </div>
+
+            <!-- Mailing address block (shown only when bestMailingAddress = no) -->
+            <div class="form-field wide" id="mailingAddressWrapper" style="display:none; grid-column: 1 / -1;">
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 14px;">
+                    <div class="form-field wide" style="grid-column: span 2;">
+                        <label>Mailing Street Address</label>
+                        <span id="banner-mailingStreetAddress" class="read-only-field">Loading...</span>
+                    </div>
+                    <div class="form-field">
+                        <label>Mailing Address Line 2</label>
+                        <span id="banner-mailingStreetAddress2" class="read-only-field">Loading...</span>
+                    </div>
+                    <div class="form-field">
+                        <label>Mailing City</label>
+                        <span id="banner-mailingCity" class="read-only-field">Loading...</span>
+                    </div>
+                    <div class="form-field">
+                        <label>Mailing State</label>
+                        <span id="banner-mailingState" class="read-only-field">Loading...</span>
+                    </div>
+                    <div class="form-field">
+                        <label>Mailing ZIP</label>
+                        <span id="banner-mailingZipCode" class="read-only-field">Loading...</span>
+                    </div>
+                </div>
+            </div>
+
             <div class="form-field">
                 <label>Preferred Language</label>
                 <span id="banner-speakingLanguage" class="read-only-field">Loading...</span>
@@ -518,6 +550,34 @@ function populateBanner(data) {
     setText('banner-homelessness', yn[data.homelessness] || 'No');
     document.getElementById('banner-address-label').textContent =
         data.homelessness === 'yes' ? 'Mailing Address' : 'Street Address';
+
+    // ── Mailing address visibility (mirrors editor rules) ──
+    const isHomeless = data.homelessness === 'yes';
+    const bestMailing = (data.bestMailingAddress || '').toLowerCase();
+    const bestMailingWrapper = document.getElementById('bestMailingWrapper');
+    const mailingWrapper = document.getElementById('mailingAddressWrapper');
+
+    if (isHomeless) {
+        bestMailingWrapper.style.display = 'none';
+        mailingWrapper.style.display = 'none';
+    } else {
+        bestMailingWrapper.style.display = '';
+        setText('banner-bestMailingAddress',
+            bestMailing === 'yes' ? 'Yes' : bestMailing === 'no' ? 'No' : 'N/A');
+
+        if (bestMailing === 'no') {
+            mailingWrapper.style.display = '';
+            setText('banner-mailingStreetAddress',  (data.mailingStreetAddress  || '').toUpperCase());
+            setText('banner-mailingStreetAddress2', (data.mailingStreetAddress2 || '').toUpperCase());
+            setText('banner-mailingCity',           (data.mailingCity           || '').toUpperCase());
+            setText('banner-mailingState',          (data.mailingState          || '').toUpperCase());
+            setText('banner-mailingZipCode',         data.mailingZipCode        || '');
+        } else {
+            mailingWrapper.style.display = 'none';
+        }
+    }
+
+    if (typeof window.syncBannerHeight === 'function') window.syncBannerHeight();
 }
 
 // ===== HOUSEHOLD MEMBERS PANEL =====

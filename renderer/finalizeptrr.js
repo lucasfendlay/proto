@@ -19,6 +19,9 @@ async function mergePDFs(pdfByteArrays) {
     const mergedPdf = await PDFDocument.create();
     for (const pdfBytes of pdfByteArrays) {
         const pdf = await PDFDocument.load(pdfBytes);
+        // Flatten this source doc so its form fields become baked-in page content
+        // before we copy its pages into the merged output.
+        try { pdf.getForm().flatten(); } catch (e) { /* no form / nothing to flatten */ }
         const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
         copiedPages.forEach((page) => mergedPdf.addPage(page));
     }
@@ -391,7 +394,28 @@ hhMembersAll.forEach(m => {
     });
 });
 
-const others = rawOthers.filter(e => !(e?.householdMemberId && excludedIds.has(e.householdMemberId)));
+const CHILD_REL_LABELS = new Set(['child','son','daughter','stepchild']);
+
+const others = rawOthers.filter(e => {
+    // Exclude linked household members flagged as spouse/minor child
+    if (e?.householdMemberId && excludedIds.has(e.householdMemberId)) return false;
+
+    // Only exclude MANUAL minors whose relationship is explicitly "child"
+    const relRaw = String(e?.relationship || '').toLowerCase().trim();
+    const isChildRel = CHILD_REL_LABELS.has(relRaw);
+    if (isChildRel) {
+        const fromDob = ageAtYearEndFromDob(e?.dob);
+        const manualAge = fromDob != null
+            ? fromDob
+            : (() => {
+                const m = String(e?.age ?? '').match(/(\d+)/);
+                return m ? parseInt(m[1], 10) : NaN;
+            })();
+        if (Number.isFinite(manualAge) && manualAge < 18) return false;
+    }
+
+    return true;
+});
 
 if (rawOthers.length !== others.length) {
     console.log(`Schedule F: filtered out ${rawOthers.length - others.length} spouse/minor-child entr${rawOthers.length - others.length === 1 ? 'y' : 'ies'}.`);
@@ -1871,7 +1895,8 @@ async function generatePDF(data) {
         });
     }
 
-    // Save filled main PA-1000
+    // Flatten the main filled PA-1000 up front so it's baked in regardless of merge path.
+    try { pdfDoc.getForm().flatten(); } catch (e) { console.warn('Flatten (main) failed:', e.message); }
     const filledPdfBytes = await pdfDoc.save();
     const pdfsToMerge = [filledPdfBytes];
 
@@ -1960,14 +1985,18 @@ async function generatePDF(data) {
             console.log(`Schedule F: ${scheduleF.totalPeople} other person(s) across ${scheduleF.copies} copy(ies).`);
         }
 
-    // Merge
-    let finalPdfBytes;
-    if (pdfsToMerge.length > 1) {
-        const mergedDoc = await mergePDFs(pdfsToMerge);
-        finalPdfBytes = await mergedDoc.save();
-    } else {
-        finalPdfBytes = filledPdfBytes;
-    }
+        let finalPdfBytes;
+        if (pdfsToMerge.length > 1) {
+            const mergedDoc = await mergePDFs(pdfsToMerge);
+            // Flatten all form fields so the output is read-only
+            try { mergedDoc.getForm().flatten(); } catch (e) { console.warn('Flatten (merged) failed:', e.message); }
+            finalPdfBytes = await mergedDoc.save();
+        } else {
+            // Re-load the single doc so we can flatten before saving
+            const singleDoc = await PDFDocument.load(filledPdfBytes);
+            try { singleDoc.getForm().flatten(); } catch (e) { console.warn('Flatten (single) failed:', e.message); }
+            finalPdfBytes = await singleDoc.save();
+        }
 
     // Upload + note
     const blob = new Blob([finalPdfBytes], { type: 'application/pdf' });
