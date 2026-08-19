@@ -35,6 +35,59 @@ function formatAge(age) {
     return `${age.years} Years, ${age.months} Months, ${age.days} Days`;
 }
 
+function notifyHouseholdChanged() {
+    window.dispatchEvent(new CustomEvent('household:changed'));
+}
+
+const UPPERCASE_FIELDS = ['prefix', 'firstName', 'middleInitial', 'lastName', 'suffix'];
+
+function bindUppercaseInputs(modal) {
+    if (!modal) return;
+    UPPERCASE_FIELDS.forEach(id => {
+        const el = modal.querySelector('#' + id);
+        if (!el || el._uppercaseBound) return;
+
+        // Uppercase current value
+        if (el.value) el.value = el.value.toUpperCase();
+
+        el.addEventListener('input', () => {
+            const start = el.selectionStart, end = el.selectionEnd;
+            el.value = el.value.toUpperCase();
+            try { el.setSelectionRange(start, end); } catch {}
+        });
+
+        // Selects: uppercase the selected option text as it changes
+        if (el.tagName === 'SELECT') {
+            el.addEventListener('change', () => {
+                if (el.value) el.value = el.value.toUpperCase();
+            });
+        }
+
+        el._uppercaseBound = true;
+    });
+}
+
+// Reset the SSN input + confirm field to a clean, editable state.
+// Safe to call on any page (all lookups are null-guarded).
+function resetSSNFields() {
+    const ssn = document.getElementById('socialSecurityNumber');
+    if (ssn) {
+        ssn.value = '';
+        ssn.readOnly = false;
+        ssn.classList.remove('error');
+    }
+    const confirmSSN = document.getElementById('confirmSSN');
+    if (confirmSSN) {
+        confirmSSN.value = '';
+        confirmSSN.classList.remove('error');
+    }
+    const confirmContainer = document.getElementById('confirmSSNContainer');
+    if (confirmContainer) confirmContainer.style.display = '';
+    const nextBtn = document.getElementById('nextSSNButton');
+    if (nextBtn) nextBtn.style.display = 'none';
+    document.getElementById('editSSNButton')?.remove();
+}
+
 // ══════════════════════════════════════════════════════════════
 // SELECTION HELPERS
 // ══════════════════════════════════════════════════════════════
@@ -68,41 +121,53 @@ function highlightByValue(elements, value) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// ELIGIBILITY CHECKS
+// ELIGIBILITY CHECKS (registry-driven)
 // ══════════════════════════════════════════════════════════════
 
-async function runAllEligibilityChecks(members) {
-    if (!window.eligibilityChecks) return;
-
-    const checks = [
-        'PACEEligibilityCheck', 'LISEligibilityCheck', 'MSPEligibilityCheck',
-        'PTRREligibilityCheck', 'SNAPEligibilityCheck', 'LIHEAPEligibilityCheck'
-    ];
-
-    for (const check of checks) {
-        if (window.eligibilityChecks[check]) {
-            await window.eligibilityChecks[check](members);
+/**
+ * Build a standardized context object for BenefitRegistry calls.
+ */
+async function buildBenefitContext(clientId, preloadedClient = null) {
+    const client = preloadedClient || await fetchClient(clientId);
+    return {
+        clientId,
+        client,
+        Utils: window.EligibilityUtils,
+        extras: {
+            isFarmworker: client?.isFarmworker === true || client?.farmworker === 'yes'
         }
-    }
+    };
+}
 
-    if (window.eligibilityChecks.refreshAllDisplays) {
-        await window.eligibilityChecks.refreshAllDisplays();
+async function runAllEligibilityChecks(members, preloadedClient = null) {
+    if (!window.BenefitRegistry) {
+        console.warn('BenefitRegistry not available; skipping eligibility checks.');
+        return;
+    }
+    const clientId = getQueryParam('id');
+    if (!clientId) return;
+
+    const context = await buildBenefitContext(clientId, preloadedClient);
+    await window.BenefitRegistry.runAll(members, context);
+
+    if (window.BenefitRegistry.refreshAllDisplays) {
+        await window.BenefitRegistry.refreshAllDisplays();
     }
 }
 
 async function runLIHEAPCheckAndDisplay() {
     const clientId = getQueryParam('id');
-    if (!clientId) return;
+    if (!clientId || !window.BenefitRegistry) return;
 
-    const response = await fetch(`/get-client/${clientId}`);
-    if (!response.ok) return;
-    const updatedClient = await response.json();
+    const updatedClient = await fetchClient(clientId);
+    const context = await buildBenefitContext(clientId, updatedClient);
 
-    if (window.eligibilityChecks?.LIHEAPEligibilityCheck) {
-        await window.eligibilityChecks.LIHEAPEligibilityCheck(updatedClient);
-    }
-    if (window.eligibilityChecks?.displayLIHEAPHouseholds) {
-        await window.eligibilityChecks.displayLIHEAPHouseholds();
+    await window.BenefitRegistry.run('LIHEAP', updatedClient.householdMembers || [], context);
+
+    if (window.BenefitRegistry.refreshDisplay) {
+        await window.BenefitRegistry.refreshDisplay('LIHEAP');
+    } else if (window.BenefitRegistry.refreshAllDisplays) {
+        await window.BenefitRegistry.refreshAllDisplays();
     }
 }
 
@@ -150,6 +215,7 @@ async function saveSelectionToClient(questionId, value) {
         if (!response.ok) throw new Error(`Failed to save ${questionId}: ${response.statusText}`);
         console.log(`Saved ${questionId}: ${value} for client ${clientId}`);
         await loadSavedData();
+        notifyHouseholdChanged();
     } catch (error) {
         console.error(`Error saving ${questionId}: ${value}`, error);
     }
@@ -355,6 +421,8 @@ function clearSelectionsForPrefix(...prefixes) {
 
 async function applyLiheapVisibility(clientData) {
     const c = getContainerRefs();
+    const setDisplay = (el, val) => { if (el) el.style.display = val; };
+
     const liheap = clientData.liheapEnrollment;
     const crisis = clientData.heatingCrisis;
     const residence = clientData.residenceStatusCurrent;
@@ -366,22 +434,22 @@ async function applyLiheapVisibility(clientData) {
     }
 
     if (liheap === 'yes' && crisis === 'no') {
-        c.residenceStatus.style.display = 'none';
-        c.subsidizedHousing.style.display = 'none';
-        c.heatingCost.style.display = 'none';
-        c.heatingCrisis.style.display = 'block';
+        setDisplay(c.residenceStatus, 'none');
+        setDisplay(c.subsidizedHousing, 'none');
+        setDisplay(c.heatingCost, 'none');
+        setDisplay(c.heatingCrisis, 'block');
         return;
     }
 
-    c.residenceStatus.style.display = 'block';
-    c.heatingCrisis.style.display = 'block';
+    setDisplay(c.residenceStatus, 'block');
+    setDisplay(c.heatingCrisis, 'block');
 
     if (residence === 'owned') {
-        c.subsidizedHousing.style.display = 'none';
-        c.heatingCost.style.display = 'none';
+        setDisplay(c.subsidizedHousing, 'none');
+        setDisplay(c.heatingCost, 'none');
     } else {
-        c.subsidizedHousing.style.display = 'block';
-        c.heatingCost.style.display = subsidized === 'yes' ? 'block' : 'none';
+        setDisplay(c.subsidizedHousing, 'block');
+        setDisplay(c.heatingCost, subsidized === 'yes' ? 'block' : 'none');
     }
 }
 
@@ -424,7 +492,7 @@ async function loadSavedData() {
 
         // Run eligibility checks
         const members = clientData.householdMembers || [];
-        await runAllEligibilityChecks(members);
+        await runAllEligibilityChecks(members, clientData);
 
     } catch (error) {
         console.error('Error loading saved data:', error);
@@ -578,6 +646,7 @@ async function makeHeadOfHousehold(memberId) {
         if (response.ok) {
             console.log(`Head of household updated to: ${memberId}`);
             await loadSavedData();
+            notifyHouseholdChanged();
         } else {
             console.error('Failed to update head of household:', response.statusText);
         }
@@ -638,8 +707,10 @@ async function prepareHouseholdMemberModal() {
     document.getElementById('modal-deceased-no')?.classList.add('selected');
 
     // Hide conditional containers
-    document.getElementById('nonCitizenStatusContainer').style.display = 'none';
-    document.getElementById('studentStatusContainer').style.display = 'none';
+    const ncCont = document.getElementById('nonCitizenStatusContainer');
+    if (ncCont) ncCont.style.display = 'none';
+    const ssCont = document.getElementById('studentStatusContainer');
+    if (ssCont) ssCont.style.display = 'none';
 
     // Fetch client data to conditionally show/hide questions
     try {
@@ -673,6 +744,10 @@ async function prepareHouseholdMemberModal() {
 
         // Set up modal question click listeners
         setupModalQuestionListeners();
+
+        // Bind uppercase behavior to name fields for both add & edit flows
+        const modal = document.getElementById('householdMemberModal');
+        bindUppercaseInputs(modal);
 
     } catch (error) {
         console.error('Error preparing modal:', error);
@@ -734,17 +809,19 @@ function setupModalQuestionListeners() {
 // ══════════════════════════════════════════════════════════════
 
 function gatherModalData() {
-    const dob = document.getElementById('dob').value;
-    const dateOfDeath = document.getElementById('dateOfDeath')?.value || '';
+    const modal = document.getElementById('householdMemberModal');
+    const $ = (id) => modal.querySelector('#' + id);
+    const dob = $('dob').value;
+    const dateOfDeath = $('dateOfDeath')?.value || '';
 
-    // Gather yes/no answers
+    // Gather yes/no answers (scope to modal)
     const answers = {};
     MODAL_QUESTIONS.forEach(q => {
-        const container = document.getElementById(`${q.id}Question`);
+        const container = modal.querySelector('#' + q.id + 'Question');
         const visible = !container || container.style.display !== 'none';
         if (visible) {
             q.elements.forEach(id => {
-                const el = document.getElementById(id);
+                const el = $(id);
                 if (el?.classList.contains('selected')) {
                     answers[q.id] = el.getAttribute('data-value');
                 }
@@ -755,7 +832,7 @@ function gatherModalData() {
     });
 
     // Citizen question hidden means all citizens
-    const citizenQ = document.getElementById('citizenQuestion');
+    const citizenQ = $('citizenQuestion');
     if (citizenQ?.style.display === 'none') {
         answers.citizen = 'yes';
     }
@@ -764,21 +841,21 @@ function gatherModalData() {
     if (answers.citizen === 'yes') answers.nonCitizenStatus = 'citizen';
     if (answers.student === 'no') answers.studentStatus = 'notstudent';
 
-    const nonCitizenStatus = document.getElementById('nonCitizenStatus').value;
-    const studentStatus = document.getElementById('studentStatus').value;
+    const nonCitizenStatus = $('nonCitizenStatus').value;
+    const studentStatus = $('studentStatus').value;
     const age = calculateAge(dob, answers.deceased === 'yes' ? dateOfDeath : '');
 
     const data = {
-        prefix: document.getElementById('prefix').value.trim(),
-        firstName: document.getElementById('firstName').value.trim(),
-        middleInitial: document.getElementById('middleInitial').value.trim(),
-        lastName: document.getElementById('lastName').value.trim(),
-        suffix: document.getElementById('suffix').value.trim(),
+        prefix: $('prefix').value.trim(),
+        firstName: $('firstName').value.trim(),
+        middleInitial: $('middleInitial').value.trim(),
+        lastName: $('lastName').value.trim(),
+        suffix: $('suffix').value.trim(),
         dob,
-        socialSecurityNumber: document.getElementById('socialSecurityNumber').value.trim(),
-        legalSex: document.getElementById('legalSex').value,
-        maritalStatus: document.getElementById('maritalStatus').value,
-        previousMaritalStatus: document.getElementById('previousMaritalStatus').value,
+        socialSecurityNumber: $('socialSecurityNumber').value.trim(),
+        legalSex: $('legalSex').value,
+        maritalStatus: $('maritalStatus').value,
+        previousMaritalStatus: $('previousMaritalStatus').value,
         age: formatAge(age),
         nonCitizenStatus,
         studentStatus,
@@ -786,7 +863,6 @@ function gatherModalData() {
         dateOfDeath: answers.deceased === 'yes' ? dateOfDeath : '',
     };
 
-    // Ineligible non-citizen / student → meals = no
     if (nonCitizenStatus.toLowerCase() === 'ineligible non-citizen') data.meals = 'no';
     if (studentStatus.toLowerCase() === 'ineligible student') data.meals = 'no';
 
@@ -836,6 +912,7 @@ async function addHouseholdMember() {
             console.log('Household member added:', memberData);
             await loadSavedData();
             closeModal();
+            notifyHouseholdChanged();
         } else {
             console.error('Failed to save household member.');
         }
@@ -849,60 +926,95 @@ async function updateHouseholdMember(memberId) {
     if (!clientId) return;
 
     try {
-        const updatedData = {
-            householdMemberId: memberId,
-            ...gatherModalData(),
-        };
-
-        const { previousMaritalStatus, maritalStatus } = updatedData;
-
-        // Clear previousSpouseId if previous marital status changed
-        if (previousMaritalStatus !== 'Married (Living Together)') {
-            updatedData.previousSpouseId = null;
-        }
-
-        // Fetch current client data to check head of household status
+        // 1) ALWAYS fetch fresh before writing so we don't clobber
+        //    changes made elsewhere (banner edits, contact-adds, etc.)
         const clientData = await fetchClient(clientId);
-        const currentMember = clientData.householdMembers?.find(m => m.householdMemberId === memberId);
+        const members = Array.isArray(clientData.householdMembers)
+            ? [...clientData.householdMembers]
+            : [];
 
-        // PTRR should only be open for head of household
-        const isHeadOfHousehold = currentMember?.headOfHousehold === true;
-        if (!isHeadOfHousehold) {
-            updatedData.PTRR = { screeningInProgress: false };
+        const idx = members.findIndex(m => m && m.householdMemberId === memberId);
+        if (idx === -1) {
+            console.warn(`updateHouseholdMember: member ${memberId} not found on server; aborting to avoid data loss.`);
+            return;
+        }
+        const currentMember = members[idx];
+
+        // 2) Collect ONLY the fields the modal actually edited.
+        const modalDelta = gatherModalData();
+
+        // gatherModalData() fills missing yes/no answers with 'no' when the
+        // question container is hidden. On pages that don't render those
+        // containers at all (e.g. profileedit.html injecting the modal via
+        // banner.js), that would wipe legitimate values. Drop any key whose
+        // container isn't actually visible in the current modal.
+        const modal = document.getElementById('householdMemberModal');
+        const isVisible = (el) => !!(el && el.offsetParent !== null);
+        MODAL_QUESTIONS.forEach(q => {
+            const container = modal?.querySelector('#' + q.id + 'Question');
+            if (!isVisible(container)) {
+                delete modalDelta[q.id];
+            }
+        });
+        // Same guard for the conditional sub-fields
+        if (!isVisible(modal?.querySelector('#nonCitizenStatusContainer'))) {
+            delete modalDelta.nonCitizenStatus;
+        }
+        if (!isVisible(modal?.querySelector('#studentStatusContainer'))) {
+            delete modalDelta.studentStatus;
         }
 
-        // Clear spouse relationships if no longer married
-        if (maritalStatus !== 'Married (Living Together)') {
-            if (currentMember) {
-                updatedData.relationships = null;
-                const spouseId = currentMember.relationships?.spouse;
-                if (spouseId) {
-                    const spouse = clientData.householdMembers.find(m => m.householdMemberId === spouseId);
-                    if (spouse) {
-                        spouse.relationships = null;
-                        await fetch('/update-household-member', {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ clientId, member: spouse }),
-                        });
-                    }
+        // 3) Merge deltas on top of the fresh member — never replace wholesale.
+        const merged = { ...currentMember, ...modalDelta, householdMemberId: memberId };
+
+        // 4) Preserve program flags explicitly (belt & suspenders).
+        ['SNAP', 'LIHEAP', 'PACE', 'LIS', 'MSP', 'PTRR'].forEach(k => {
+            merged[k] = currentMember[k] ?? merged[k];
+        });
+        merged.headOfHousehold = currentMember.headOfHousehold === true;
+
+        // 5) PTRR is only open for head of household.
+        if (!merged.headOfHousehold) {
+            merged.PTRR = { ...(merged.PTRR || {}), screeningInProgress: false };
+        }
+
+        // 6) Clear previousSpouseId if previous marital status changed
+        if (merged.previousMaritalStatus !== 'Married (Living Together)') {
+            merged.previousSpouseId = null;
+        }
+
+        // 7) Spouse-relationship maintenance — mutate spouse IN the same array
+        //    so we PUT one consistent list.
+        if (merged.maritalStatus !== 'Married (Living Together)') {
+            const spouseId = currentMember.relationships?.spouse;
+            merged.relationships = null;
+            if (spouseId) {
+                const spouseIdx = members.findIndex(m => m.householdMemberId === spouseId);
+                if (spouseIdx !== -1) {
+                    members[spouseIdx] = { ...members[spouseIdx], relationships: null };
                 }
             }
         }
 
-        const response = await fetch('/update-household-member', {
+        // 8) Write the merged member back into the array.
+        members[idx] = merged;
+
+        // 9) Single bulk write — the same endpoint makeHeadOfHousehold uses.
+        const response = await fetch('/update-household-members', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clientId, member: updatedData }),
+            body: JSON.stringify({ clientId, members }),
         });
 
-        if (response.ok) {
-            console.log('Household member updated:', updatedData);
-            await loadSavedData();
-            closeModal();
-        } else {
-            console.error('Failed to update household member.');
+        if (!response.ok) {
+            console.error('Failed to update household member.', response.statusText);
+            return;
         }
+
+        console.log('Household member updated:', merged);
+        await loadSavedData();
+        closeModal();
+        notifyHouseholdChanged();
     } catch (error) {
         console.error('Error updating household member:', error);
     }
@@ -923,6 +1035,7 @@ async function deleteHouseholdMember(memberId) {
         if (response.ok) {
             console.log(`Household member ${memberId} deleted.`);
             await loadSavedData();
+            notifyHouseholdChanged();
         } else {
             console.error('Failed to delete household member.');
         }
@@ -962,6 +1075,15 @@ async function openEditModal(member) {
     setModalHeader('edit');
     await prepareHouseholdMemberModal();
 
+    // Scope every lookup to the modal so IDs shared with the banner/main form
+    // don't get written to instead of the modal's inputs.
+    const modal = document.getElementById('householdMemberModal');
+    if (!modal) {
+        console.error('openEditModal: #householdMemberModal not found');
+        return;
+    }
+    const $ = (id) => modal.querySelector('#' + id);
+
     // Default deceased if missing
     if (member.deceased == null) member.deceased = 'no';
 
@@ -976,19 +1098,25 @@ async function openEditModal(member) {
         studentStatus: member.studentStatus, nonCitizenStatus: member.nonCitizenStatus,
     };
 
+    const UPPERCASE_SET = new Set(UPPERCASE_FIELDS);
     Object.entries(fieldMap).forEach(([id, value]) => {
-        const el = document.getElementById(id);
-        if (el) el.value = value || '';
+        const el = $(id);
+        if (!el) return;
+        const v = value || '';
+        el.value = UPPERCASE_SET.has(id) ? v.toUpperCase() : v;
     });
 
-    // SSN read-only + Edit button for existing valid SSNs
-    const ssnInput = document.getElementById('socialSecurityNumber');
-    if (ssnInput.value && /^\d{3}-\d{2}-\d{4}$/.test(ssnInput.value)) {
-        ssnInput.readOnly = true;
-        document.getElementById('confirmSSNContainer').style.display = 'none';
+    bindUppercaseInputs(modal);
 
-        // Remove existing edit button if any
-        document.getElementById('editSSNButton')?.remove();
+    // SSN read-only + Edit button for existing valid SSNs
+    const ssnInput = $('socialSecurityNumber');
+    if (ssnInput && ssnInput.value && /^\d{3}-\d{2}-\d{4}$/.test(ssnInput.value)) {
+        ssnInput.readOnly = true;
+        const confirmCont = $('confirmSSNContainer');
+        if (confirmCont) confirmCont.style.display = 'none';
+
+        // Remove existing edit button if any (scoped)
+        modal.querySelector('#editSSNButton')?.remove();
 
         const editBtn = document.createElement('button');
         editBtn.id = 'editSSNButton';
@@ -1008,8 +1136,8 @@ async function openEditModal(member) {
     }
 
     // Date of Death
-    const dodContainer = document.getElementById('dateOfDeathContainer');
-    const dodInput = document.getElementById('dateOfDeath');
+    const dodContainer = $('dateOfDeathContainer');
+    const dodInput = $('dateOfDeath');
     if (member.deceased === 'yes') {
         if (dodContainer) dodContainer.style.display = 'block';
         if (dodInput) dodInput.value = member.dateOfDeath || '';
@@ -1018,10 +1146,10 @@ async function openEditModal(member) {
         if (dodInput) dodInput.value = '';
     }
 
-    // Highlight saved modal selections
+    // Highlight saved modal selections (modal-scoped IDs, but scope anyway for safety)
     MODAL_QUESTIONS.forEach(q => {
         q.elements.forEach(id => {
-            const el = document.getElementById(id);
+            const el = $(id) || document.getElementById(id);
             if (el) el.classList.toggle('selected', el.getAttribute('data-value') === member[q.id]);
         });
     });
@@ -1030,8 +1158,7 @@ async function openEditModal(member) {
     const isDeceased = member.deceased === 'yes';
     applyDeceasedVisibilityInModal(isDeceased);
 
-    // Re-apply client-level question visibility AFTER deceased visibility,
-    // so that questions hidden based on client data stay hidden
+    // Re-apply client-level question visibility AFTER deceased visibility
     if (!isDeceased) {
         const clientId = getQueryParam('id');
         if (clientId) {
@@ -1040,15 +1167,14 @@ async function openEditModal(member) {
                 if (clientData) {
                     const questionVisibility = {
                         disabilityQuestion: clientData.disability === 'yes',
-                        medicareQuestion: clientData.medicare === 'yes',
-                        medicaidQuestion: clientData.medicaid === 'yes',
-                        citizenQuestion: clientData.citizen === 'no',
-                        studentQuestion: clientData.student === 'yes',
-                        mealsQuestion: !(clientData.snap === 'yes' || clientData.snap === 'notinterested'),
+                        medicareQuestion:   clientData.medicare === 'yes',
+                        medicaidQuestion:   clientData.medicaid === 'yes',
+                        citizenQuestion:    clientData.citizen === 'no',
+                        studentQuestion:    clientData.student === 'yes',
+                        mealsQuestion:      !(clientData.snap === 'yes' || clientData.snap === 'notinterested'),
                     };
-
                     Object.entries(questionVisibility).forEach(([id, visible]) => {
-                        const el = document.getElementById(id);
+                        const el = $(id);
                         if (el && !visible) el.style.display = 'none';
                     });
                 }
@@ -1060,26 +1186,27 @@ async function openEditModal(member) {
 
     // Conditional field visibility (only when not deceased)
     if (!isDeceased) {
-        const ncContainer = document.getElementById('nonCitizenStatusContainer');
-        const ssContainer = document.getElementById('studentStatusContainer');
-        const mealsQ = document.getElementById('mealsQuestion');
+        const ncContainer = $('nonCitizenStatusContainer');
+        const ssContainer = $('studentStatusContainer');
+        const mealsQ      = $('mealsQuestion');
+        const setDisplay = (el, val) => { if (el) el.style.display = val; };
 
         if (member.citizen === 'no') {
-            ncContainer.style.display = 'block';
+            setDisplay(ncContainer, 'block');
             if (member.nonCitizenStatus?.toLowerCase() === 'ineligible non-citizen') {
-                mealsQ.style.display = 'none';
+                setDisplay(mealsQ, 'none');
             }
         } else {
-            ncContainer.style.display = 'none';
+            setDisplay(ncContainer, 'none');
         }
 
         if (member.student === 'yes') {
-            ssContainer.style.display = 'block';
+            setDisplay(ssContainer, 'block');
             if (member.studentStatus?.toLowerCase() === 'ineligible student') {
-                mealsQ.style.display = 'none';
+                setDisplay(mealsQ, 'none');
             }
         } else {
-            ssContainer.style.display = 'none';
+            setDisplay(ssContainer, 'none');
         }
     }
 
@@ -1087,7 +1214,7 @@ async function openEditModal(member) {
     await applyPreviousMaritalVisibility(member);
 
     setupAddOrUpdateButton(true, member);
-    document.getElementById('householdMemberModal').style.display = 'block';
+    modal.style.display = 'block';
 }
 
 async function applyDeceasedVisibilityInModal(isDeceased) {
@@ -1210,6 +1337,7 @@ async function updateAllMembers(questionId, value) {
 
         if (response.ok) {
             console.log(`Updated all members: ${questionId} = ${value}`);
+            notifyHouseholdChanged();
         } else {
             console.error(`Failed to update all members for ${questionId}:`, response.statusText);
         }
@@ -1257,6 +1385,7 @@ async function saveLiheapSelection(selection) {
 
         // Single reload at the end
         await loadSavedData();
+        notifyHouseholdChanged();
 
     } catch (error) {
         console.error('Error saving LIHEAP selection:', error);
@@ -1287,6 +1416,7 @@ async function saveLiheapSelection(selection) {
 
         // Single reload at the end
         await loadSavedData();
+        notifyHouseholdChanged();
 
     } catch (error) {
         console.error('Error saving heating crisis:', error);
@@ -1316,6 +1446,7 @@ async function handleResidenceStatusClick(selectedValue) {
 
         // Single reload at the end
         await loadSavedData();
+        notifyHouseholdChanged();
 
     } catch (error) {
         console.error('Error saving residenceStatusCurrent:', error);
@@ -1341,6 +1472,7 @@ async function handleSubsidizedHousingClick(selectedValue) {
 
         // Single reload at the end
         await loadSavedData();
+        notifyHouseholdChanged();
 
     } catch (error) {
         console.error('Error saving subsidizedHousing:', error);
@@ -1362,6 +1494,7 @@ async function handleHeatingCostClick(selectedValue) {
 
         // Single reload at the end
         await loadSavedData();
+        notifyHouseholdChanged();
 
     } catch (error) {
         console.error('Error saving heatingCost:', error);
@@ -1437,8 +1570,7 @@ async function handleMainQuestionClick(question, element) {
     } else if (question.id === 'residenceStatus') {
         await updateAllMembers('residenceStatus', value);    
     }
-    await loadSavedData();
-}
+    await loadSavedData();}
 
 // ══════════════════════════════════════════════════════════════
 // NON-CITIZEN / STUDENT STATUS DROPDOWN HANDLERS

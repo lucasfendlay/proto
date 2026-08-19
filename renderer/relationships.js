@@ -41,7 +41,7 @@ function getHouseholdMembers() {
     return cachedClientData?.householdMembers || [];
 }
 
-async function updateHouseholdMember(clientId, memberId, updatedData) {
+async function updateHouseholdMemberField(clientId, memberId, updatedData) {
     const response = await fetch(`/update-household-member`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -50,11 +50,11 @@ async function updateHouseholdMember(clientId, memberId, updatedData) {
             member: { householdMemberId: memberId, ...updatedData }
         }),
     });
-    
+
     if (!response.ok) {
         throw new Error(`Failed to update household member: ${response.statusText}`);
     }
-    
+
     return response.json();
 }
 
@@ -257,7 +257,7 @@ async function handleRelationshipChange(clientId, memberId, relatedMemberId, rel
 
             // Auto-set meals if applicable
             if (shouldAutoSetMeals(member, relatedMember, relationship)) {
-                await updateHouseholdMember(clientId, relatedMemberId, { meals: 'yes' });
+                await updateHouseholdMemberField(clientId, relatedMemberId, { meals: 'yes' });
                 relatedMember.meals = 'yes';
                 console.log(`Updated meals for ${relatedMemberId} via ${relationship}`);
             }

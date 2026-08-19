@@ -79,11 +79,15 @@
         if (backendCounty && counties.includes(backendCounty)) dd.value = backendCounty;
         else if (counties.length === 1) dd.value = counties[0];
         else dd.value = '';
+
+        // If we auto-selected a value, clear any invalid highlight
+        if (dd.value) dd.classList.remove('banner-invalid');
     }
 
     // ── Field-level updaters used by inline onclick/onchange ──
     function updateInterpreter(value) {
         bannerSetSelectionBox('.interpreter-container', value);
+        document.querySelector('.interpreter-container')?.classList.remove('banner-invalid');
         bannerQueue('interpreter', value);
     }
 
@@ -156,6 +160,7 @@
 
     function updateBestMailingAddress(value) {
         bannerSetSelectionBox('.best-mailing-container', value);
+        document.querySelector('.best-mailing-container')?.classList.remove('banner-invalid');
         bannerQueue('bestMailingAddress', value);
         if (bannerClient) bannerClient.bestMailingAddress = value;
         if (value === 'yes') clearMailingFields();
@@ -177,6 +182,9 @@
             btn.textContent = 'Save Changes';
             btn.classList.add('active');
         } else {
+            // Validate visible fields before saving
+            if (!validateBannerFields(form)) return;
+
             bannerFlushNow();
             form.classList.add('readonly');
             form.querySelectorAll('input[type="text"]').forEach(el => el.readOnly = true);
@@ -185,6 +193,66 @@
             btn.textContent = 'Edit Profile';
             btn.classList.remove('active');
         }
+    }
+
+    // Check that every visible text input / select in the banner has a value.
+    // Also validates the interpreter and (when shown) best-mailing selection boxes.
+    function validateBannerFields(form) {
+        ensureBannerInvalidStyles();
+
+        const isVisible = (el) => !!(el && el.offsetParent !== null);
+        const missing = [];
+
+        // Clear prior invalid marks
+        form.querySelectorAll('.banner-invalid').forEach(el => el.classList.remove('banner-invalid'));
+
+        // Text inputs + selects
+        form.querySelectorAll('input[type="text"], select').forEach(el => {
+            if (!isVisible(el)) return;
+            if (el.id === 'streetAddress2' || el.id === 'mailingStreetAddress2') return;
+            const val = (el.value || '').trim();
+            if (!val) {
+                el.classList.add('banner-invalid');
+                missing.push(el);
+            }
+        });
+
+        // Selection boxes (interpreter, best-mailing when visible)
+        const checkBox = (containerSel) => {
+            const c = form.querySelector(containerSel) || document.querySelector(containerSel);
+            if (!c || !isVisible(c)) return;
+            if (!c.querySelector('div[data-value].selected')) {
+                c.classList.add('banner-invalid');
+                missing.push(c);
+            }
+        };
+        checkBox('.interpreter-container');
+        checkBox('.best-mailing-container');
+
+        if (missing.length) {
+            alert('Please fill in all highlighted fields before saving.');
+            const first = missing[0];
+            if (typeof first.focus === 'function') first.focus();
+            else first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return false;
+        }
+        return true;
+    }
+
+    function ensureBannerInvalidStyles() {
+        if (document.getElementById('banner-invalid-style')) return;
+        const style = document.createElement('style');
+        style.id = 'banner-invalid-style';
+        style.textContent = `
+            #clientForm .banner-invalid,
+            #clientForm .banner-invalid > select,
+            #clientForm .banner-invalid > input {
+                border: 2px solid #e53e3e !important;
+                background-color: #fff5f5 !important;
+                border-radius: 4px;
+            }
+        `;
+        document.head.appendChild(style);
     }
 
     // ── Household member card rendering ──
@@ -200,6 +268,7 @@
         const showPrev = m.previousMaritalStatus && String(m.previousMaritalStatus).toLowerCase() !== 'n/a';
         const showNC = !deceased && m.nonCitizenStatus && m.nonCitizenStatus.toLowerCase() !== 'citizen';
         const showSS = !deceased && m.studentStatus && m.studentStatus.toLowerCase() !== 'notstudent';
+        const memberId = m.householdMemberId || '';
         return `
             <div style="position:relative; display:flex; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid #edf2f7;">
                 <div style="font-weight:600; color:#1a202c; font-size:0.9rem; text-align:center;">${name || 'Unnamed Member'}</div>
@@ -221,8 +290,135 @@
             ${cond(!deceased, 'Student', bannerCap(m.student) || 'N/A')}
             ${cond(showSS, 'Student Status', bannerCap(m.studentStatus))}
             ${cond(!deceased, 'Included in SNAP Household', bannerCap(m.meals) || 'N/A')}
+            <div style="margin-top:8px; text-align:center;">
+                <button type="button"
+                    class="banner-edit-member-btn"
+                    data-member-id="${memberId}"
+                    style="background:#007bff; color:#fff; border:1px solid #0056b3; border-radius:6px; padding:6px 14px; font-size:0.8rem; font-weight:600; cursor:pointer; margin-right:6px; transition:background-color 0.15s ease;"
+                    onmouseover="this.style.background='#0056b3'"
+                    onmouseout="this.style.background='#007bff'">
+                    Edit
+                </button>
+                <button type="button"
+                    class="banner-delete-member-btn"
+                    data-member-id="${memberId}"
+                    style="background:#ff1f1f; color:#fff; border:1px solid #c81212; border-radius:6px; padding:6px 14px; font-size:0.8rem; font-weight:600; cursor:pointer; transition:background-color 0.15s ease;"
+                    onmouseover="this.style.background='#c81212'"
+                    onmouseout="this.style.background='#ff1f1f'">
+                    Delete
+                </button>
+            </div>
         `;
     }
+
+    let _bannerModalInjectPromise = null;
+    async function ensureHouseholdModalInjected() {
+        // A "real" modal must have the form fields inside it, not just the shell.
+        const existing = document.getElementById('householdMemberModal');
+        const isRealModal = !!(existing
+            && existing.querySelector('#firstName')
+            && existing.querySelector('#modal-header'));
+
+        if (isRealModal) return true;
+
+        // Stub present but incomplete → nuke it so we can inject the real one
+        if (existing) existing.remove();
+
+        if (_bannerModalInjectPromise) return _bannerModalInjectPromise;
+
+        _bannerModalInjectPromise = (async () => {
+            try {
+                const res = await fetch('householdedit.html', { cache: 'no-cache' });
+                if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+                const html = await res.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+
+                // 1. Copy stylesheets
+                const existingHrefs = new Set(
+                    [...document.querySelectorAll('link[rel="stylesheet"]')]
+                        .map(l => new URL(l.getAttribute('href'), location.href).href)
+                );
+                doc.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
+                    const href = link.getAttribute('href');
+                    if (!href) return;
+                    const abs = new URL(href, location.href).href;
+                    if (existingHrefs.has(abs)) return;
+                    const clone = document.createElement('link');
+                    clone.rel = 'stylesheet';
+                    clone.href = href;
+                    document.head.appendChild(clone);
+                    existingHrefs.add(abs);
+                });
+
+                // 2. Copy inline <style> blocks
+                const existingStyles = new Set(
+                    [...document.querySelectorAll('style')].map(s => s.textContent.trim())
+                );
+                doc.querySelectorAll('style').forEach(style => {
+                    const txt = style.textContent.trim();
+                    if (!txt || existingStyles.has(txt)) return;
+                    const clone = document.createElement('style');
+                    clone.textContent = txt;
+                    document.head.appendChild(clone);
+                    existingStyles.add(txt);
+                });
+
+                // 3. Inject the modal
+                const modal = doc.getElementById('householdMemberModal');
+                if (!modal) throw new Error('#householdMemberModal not found in householdedit.html');
+
+                // Remove any late-arriving duplicate before appending
+                document.getElementById('householdMemberModal')?.remove();
+                document.body.appendChild(document.importNode(modal, true));
+
+                const injected = document.getElementById('householdMemberModal');
+                if (injected) {
+                    injected.style.display = 'none';
+                    ensureInjectedModalScrollStyles();
+                }
+
+                return true;
+            } catch (e) {
+                console.error('Failed to inject household modal:', e);
+                _bannerModalInjectPromise = null;
+                return false;
+            }
+        })();
+
+        return _bannerModalInjectPromise;
+    }
+
+    // Open the household member modal from householdedit.js
+    async function openBannerMemberEdit(memberId) {
+        if (!memberId) return;
+        if (typeof window.openEditModal !== 'function') {
+            alert('Household editor script is not loaded on this page.');
+            return;
+        }
+        const ok = await ensureHouseholdModalInjected();
+        if (!ok) { alert('Could not load the household member editor.'); return; }
+        try {
+            let member = null;
+            if (BANNER_CLIENT_ID) {
+                const res = await fetch(`/get-client/${BANNER_CLIENT_ID}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    bannerClient = data;
+                    window.bannerClient = data;           // ✅ keep panel in sync
+                    if (window.cachedClient !== undefined) window.cachedClient = data;
+                    member = (data.householdMembers || []).find(m => m.householdMemberId === memberId);
+                }
+            }
+            if (!member) {
+                member = (bannerClient?.householdMembers || []).find(m => m.householdMemberId === memberId);
+            }
+            if (!member) { alert('Could not find that household member.'); return; }
+            await window.openEditModal(member);
+        } catch (e) {
+            console.error('Failed to open member edit modal:', e);
+        }
+    }
+    window.openBannerMemberEdit = openBannerMemberEdit;
 
     function renderHouseholdMembersPanel() {
         const panel = document.getElementById('household-members-panel');
@@ -234,6 +430,57 @@
         }
         const sorted = [...members].sort((a, b) => (b.headOfHousehold ? 1 : 0) - (a.headOfHousehold ? 1 : 0));
         panel.innerHTML = `<div class="household-members-grid">${sorted.map(m => `<div class="household-member-card">${buildBannerMemberHTML(m)}</div>`).join('')}</div>`;
+
+        // Wire up Edit buttons
+        panel.querySelectorAll('.banner-edit-member-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openBannerMemberEdit(btn.getAttribute('data-member-id'));
+            });
+        });
+
+        // Wire up Delete buttons
+        panel.querySelectorAll('.banner-delete-member-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const memberId = btn.getAttribute('data-member-id');
+                if (!memberId) return;
+
+                if (typeof window.deleteHouseholdMember === 'function') {
+                    // Use householdedit.js's version (has its own confirm + reload)
+                    await window.deleteHouseholdMember(memberId);
+                } else {
+                    // Fallback: delete directly if householdedit.js isn't loaded
+                    if (!confirm('Are you sure you want to delete this household member? This action cannot be undone.')) return;
+                    try {
+                        const res = await fetch('/delete-household-member', {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ clientId: BANNER_CLIENT_ID, memberId }),
+                        });
+                        if (!res.ok) throw new Error(res.statusText);
+                    } catch (err) {
+                        console.error('Failed to delete household member:', err);
+                        alert('Failed to delete household member.');
+                        return;
+                    }
+                }
+
+                // Refresh banner panel from server
+                try {
+                    if (BANNER_CLIENT_ID) {
+                        const r = await fetch(`/get-client/${BANNER_CLIENT_ID}`);
+                        if (r.ok) {
+                            bannerClient = await r.json();
+                            window.bannerClient = bannerClient;
+                            renderHouseholdMembersPanel();
+                        }
+                    }
+                } catch (err) {
+                    console.error('Failed to refresh banner after delete:', err);
+                }
+            });
+        });
     }
 
     function toggleHouseholdMembers() {
@@ -368,6 +615,9 @@
         if (!form) return;
 
         form.querySelectorAll('input[type="text"]').forEach(input => {
+            input.addEventListener('input', (ev) => {
+                if (ev.target.value.trim()) ev.target.classList.remove('banner-invalid');
+            });
             input.addEventListener('blur', (ev) => {
                 const field = bannerFieldName(ev.target.id);
                 let value = ev.target.value;
@@ -375,8 +625,19 @@
                 bannerQueue(field, value);
                 if (field === 'zipCode') {
                     const dd = document.getElementById('county');
-                    if (value.length === 5 && zipToCountyMap[value]) updateCountyDropdown(zipToCountyMap[value]);
-                    else if (dd) { dd.innerHTML = '<option value="" disabled selected>Select County</option>'; bannerQueue('county', null); }
+                    if (value.length === 5 && zipToCountyMap[value]) {
+                        updateCountyDropdown(zipToCountyMap[value], bannerClient?.county || null);
+                        // Persist auto-selected county (e.g., single-match ZIPs like 19150 → Philadelphia)
+                        const selectedCounty = dd?.value || null;
+                        if (selectedCounty) {
+                            bannerQueue('county', selectedCounty);
+                            if (bannerClient) bannerClient.county = selectedCounty;
+                        }
+                    } else if (dd) {
+                        dd.innerHTML = '<option value="" disabled selected>Select County</option>';
+                        bannerQueue('county', null);
+                        if (bannerClient) bannerClient.county = null;
+                    }
                 }
                 if (bannerClient) bannerClient[field] = value;
                 if (field === 'phoneNumber') ev.target.value = formatBannerPhone(value);
@@ -399,6 +660,7 @@
 
         form.querySelectorAll('select').forEach(sel => {
             sel.addEventListener('change', (ev) => {
+                if (ev.target.value) ev.target.classList.remove('banner-invalid');
                 const field = bannerFieldName(ev.target.id);
                 bannerQueue(field, ev.target.value || null);
                 if (field === 'county') bannerFlushNow();
@@ -493,6 +755,7 @@
     async function initBanner() {
         if (!BANNER_CLIENT_ID) return;
         try {
+            ensureBannerReadonlyStyles();
             await loadZipCountyDataBanner();
             const res = await fetch(`/get-client/${BANNER_CLIENT_ID}`);
             if (!res.ok) throw new Error(res.statusText);
@@ -501,6 +764,62 @@
             setupBannerListeners();
             setupBannerHeightSync();
         } catch (e) { console.error('Banner init failed:', e); }
+    }
+
+    function ensureInjectedModalScrollStyles() {
+        if (document.getElementById('injected-modal-scroll-style')) return;
+        const style = document.createElement('style');
+        style.id = 'injected-modal-scroll-style';
+        style.textContent = `
+            /* Force the injected household modal to always scroll on any page,
+               regardless of body padding/margins added by the banner. */
+            #householdMemberModal {
+                position: fixed !important;
+                inset: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                max-height: 100vh !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch;
+                z-index: 10000 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            /* Give the inner content some breathing room and let it grow */
+            #householdMemberModal .modal-content,
+            #householdMemberModal > div {
+                margin: 40px auto !important;
+                max-height: none !important;
+            }
+            /* Prevent background scroll while modal is open (optional) */
+            body.household-modal-open { overflow: hidden; }
+        `;
+        document.head.appendChild(style);
+    }
+
+    function ensureBannerReadonlyStyles() {
+        if (document.getElementById('banner-readonly-style')) return;
+        const style = document.createElement('style');
+        style.id = 'banner-readonly-style';
+        style.textContent = `
+            #clientForm.readonly .interpreter-container,
+            #clientForm.readonly .interpreter-container div[data-value],
+            #clientForm.readonly .best-mailing-container,
+            #clientForm.readonly .best-mailing-container div[data-value],
+            #clientForm.readonly .homelessness-container,
+            #clientForm.readonly .homelessness-container div[data-value],
+            #clientForm.readonly label[for="homelessnessCheckbox"],
+            #clientForm.readonly #homelessnessCheckbox {
+                cursor: default !important;
+            }
+            #clientForm.readonly .interpreter-container div[data-value],
+            #clientForm.readonly .best-mailing-container div[data-value],
+            #clientForm.readonly .homelessness-container div[data-value],
+            #clientForm.readonly #homelessnessCheckbox {
+                pointer-events: none;
+            }
+        `;
+        document.head.appendChild(style);
     }
 
     // ── Wrap loadSavedData (if present) so the panel stays in sync ──

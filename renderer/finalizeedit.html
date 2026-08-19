@@ -53,25 +53,114 @@ body {
     <style>
         .button-container {
                 display: flex;
-                gap: 10px; /* Adds spacing between buttons */
-                flex-wrap: wrap; /* Ensures buttons wrap to the next line if needed */
+                gap: 10px;
+                flex-wrap: wrap;
             }
         
             .button-container button {
-                flex: 1; /* Ensures buttons are evenly spaced */
+                flex: 1;
                 padding: 10px 15px;
             }
 
-            /* Modal content styling */
-.modal-content {
-    background-color: #ffffff;
-    border-radius: 10px;
-    width: 100%;
-    max-width: 500px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    position: relative;
-    text-align: center;
-}
+            /* Modal styles copied from applicationedit.html so the household member modal looks identical */
+            .modal {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: 9999;
+                justify-content: center;
+                align-items: center;
+                overflow: hidden;
+            }
+
+            .modal.show {
+                display: flex;
+            }
+
+            .modal .modal-content {
+                background-color: transparent;
+                border-radius: 10px;
+                width: 100%;
+                max-width: 650px;
+                max-height: 85vh;
+                overflow-y: auto;
+                padding: 20px;
+                position: relative;
+                text-align: left;
+            }
+
+            .modal .modal-content label {
+                display: block;
+                margin-top: 10px;
+                font-weight: 600;
+            }
+
+            .modal .modal-content input[type="text"],
+            .modal .modal-content input[type="date"],
+            .modal .modal-content select {
+                width: 100%;
+                padding: 10px;
+                margin-top: 5px;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                font-size: 1rem;
+                box-sizing: border-box;
+            }
+
+            .modal .modal-content .submit-button {
+                display: block;
+                width: 100%;
+                padding: 12px;
+                margin-top: 20px;
+                background-color: #28a745;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                font-size: 1rem;
+                cursor: pointer;
+                transition: background-color 0.3s ease;
+            }
+
+            .modal .modal-content .submit-button:hover {
+                background-color: #218838;
+            }
+
+            .modal .modal-content .selection-box {
+                margin-top: 10px;
+                margin-bottom: 10px;
+            }
+
+            .modal .modal-content .selection-box div {
+                display: inline-block;
+                padding: 8px 16px;
+                margin: 4px;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                cursor: pointer;
+                transition: background-color 0.2s ease;
+            }
+
+            .modal .modal-content .selection-box div:hover {
+                background-color: #e6f0ff;
+            }
+
+            .modal .selection-box div.selected,
+            #householdMemberModal .selection-box div.selected {
+                background-color: #007bff;
+                color: white;
+                border: 1px solid #0056b3;
+                border-radius: 5px;
+                padding: 8px 16px;
+            }
+
+            .modal .modal-content .selection-box div.selected:hover {
+                background-color: #007bff;
+                color: white;
+            }
 
 .narrow-body {
         margin-left: 385px; /* Space for the left sidebar */
@@ -574,6 +663,38 @@ body {
     <div class="modal-content">
         <form id="householdMemberForm">
 
+            <!-- Hidden stubs so shared applicant.js doesn't crash on missing fields -->
+            <div style="display:none;" aria-hidden="true">
+                <input type="text" id="prefix" name="prefix">
+                <input type="text" id="suffix" name="suffix">
+                <input type="text" id="hispanicOrigin" name="hispanicOrigin">
+                <div id="selected-race-list"></div>
+
+                <!-- Email stubs (recallEmailAddressFromDatabase expects these) -->
+                <input type="email" id="emailAddress" name="emailAddress">
+                <input type="email" id="email" name="email">
+                <input type="email" id="confirmEmailAddress" name="confirmEmailAddress">
+
+                <div id="dateOfSpousePassingContainer">
+                    <input type="date" id="dateOfSpousePassing" name="dateOfSpousePassing">
+                </div>
+
+                <div id="homeboundQuestion">
+                    <div id="modal-homebound-yes" data-value="yes"></div>
+                    <div id="modal-homebound-no" data-value="no"></div>
+                </div>
+                <div id="militaryQuestion">
+                    <div id="modal-military-yes" data-value="yes"></div>
+                    <div id="modal-military-no" data-value="no"></div>
+                </div>
+                <div id="religiousQuestion">
+                    <div id="modal-religious-yes" data-value="yes"></div>
+                    <div id="modal-religious-no" data-value="no"></div>
+                </div>
+
+                <button type="button" id="confirmSSNButton"></button>
+            </div>
+
             <h2 id="modal-header">Add Household Member</h2>
 
             <input type="hidden" id="householdMemberId">
@@ -604,6 +725,10 @@ body {
     maxlength="11" 
     oninput="formatSSN(this)" 
     >
+
+    <label for="driversLicenseNumber">Driver's License Number:</label>
+    <input type="text" id="driversLicenseNumber" name="driversLicenseNumber"><br><br>
+
 <button type="button" id="nextSSNButton" onclick="showConfirmSSN()" style="display: none;">Next</button><br><br>
 
 <div id="confirmSSNContainer" style="display: none;">
@@ -972,7 +1097,14 @@ window.onload = function () {
 <script src="editnavigation.js"></script>
 <script src="notes.js"></script>
 <script src="finalizeptrr.js"></script>
-<script src="applying.js"></script>
+
+<!-- Stub for functions defined in scripts not loaded on this page -->
+<script>
+    if (typeof window.togglePACEFields !== 'function') {
+        window.togglePACEFields = function () { /* no-op on finalizeedit */ };
+    }
+</script>
+
 <script src="applicant.js"></script>
 <script src="banner.js"></script>
 

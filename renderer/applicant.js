@@ -2,6 +2,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadSavedData(); // Load and display saved data
 });
 
+// Auto-uppercase text inputs as the user types (household member modal)
+document.addEventListener('DOMContentLoaded', () => {
+    const UPPERCASE_FIELD_IDS = [
+        'prefix',
+        'firstName',
+        'middleInitial',
+        'lastName',
+        'suffix',
+        'driversLicenseNumber',
+    ];
+
+    UPPERCASE_FIELD_IDS.forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el || el.dataset.uppercaseBound) return;
+        el.dataset.uppercaseBound = 'true';
+
+        el.addEventListener('input', (e) => {
+            const input = e.target;
+            const start = input.selectionStart;
+            const end = input.selectionEnd;
+            const upper = input.value.toUpperCase();
+            if (input.value !== upper) {
+                input.value = upper;
+                try { input.setSelectionRange(start, end); } catch (_) {}
+            }
+        });
+    });
+});
+
 function getMembersApplyingForBenefits(members) {
     return members.filter(member => {
         console.log('Inspecting member:', member); // Debugging log

@@ -783,6 +783,88 @@ function populateBanner(data) {
         // ===== STUBS for external scripts that may reference these =====
         function loadScreeningButtons() {}
         async function reopenSingleBenefitScreening() {}
+
+            // ===== HEIGHT EQUALIZATION =====
+    const HeightEqualizer = {
+        debounceTimer: null,
+
+        equalizeMemberBoxes() {
+            const container = document.getElementById('household-members-container');
+            if (!container) return;
+
+            const boxes = container.querySelectorAll(':scope > .household-member-box');
+            if (boxes.length === 0) return;
+
+            boxes.forEach(box => box.style.minHeight = '');
+
+            const maxHeight = Array.from(boxes).reduce((max, box) => 
+                Math.max(max, box.getBoundingClientRect().height), 0);
+
+            boxes.forEach(box => box.style.minHeight = `${maxHeight}px`);
+        },
+
+        equalizeSnapLiheap() {
+            const snapBox = document.getElementById('snap-household-container');
+            const liheapBox = document.getElementById('liheap-household-container');
+            if (!snapBox || !liheapBox) return;
+
+            snapBox.style.minHeight = '';
+            liheapBox.style.minHeight = '';
+
+            const maxHeight = Math.max(
+                snapBox.getBoundingClientRect().height,
+                liheapBox.getBoundingClientRect().height
+            );
+
+            snapBox.style.minHeight = `${maxHeight}px`;
+            liheapBox.style.minHeight = `${maxHeight}px`;
+        },
+
+        debounced(fn) {
+            if (this.debounceTimer) cancelAnimationFrame(this.debounceTimer);
+            this.debounceTimer = requestAnimationFrame(() => fn.call(this));
+        },
+
+        init() {
+            const memberContainer = document.getElementById('household-members-container');
+            const snapBox = document.getElementById('snap-household-container');
+            const liheapBox = document.getElementById('liheap-household-container');
+
+            const memberObserver = new MutationObserver(() => this.debounced(this.equalizeMemberBoxes));
+            const snapLiheapObserver = new MutationObserver(() => this.debounced(this.equalizeSnapLiheap));
+
+            if (memberContainer) {
+                memberObserver.observe(memberContainer, { childList: true, subtree: true, characterData: true });
+            }
+
+            if (snapBox) {
+                snapLiheapObserver.observe(snapBox, { childList: true, subtree: true });
+                this.attachDetailsListeners(snapBox);
+            }
+
+            if (liheapBox) {
+                snapLiheapObserver.observe(liheapBox, { childList: true, subtree: true });
+                this.attachDetailsListeners(liheapBox);
+            }
+
+            setTimeout(() => {
+                this.equalizeMemberBoxes();
+                this.equalizeSnapLiheap();
+            }, 500);
+
+            window.addEventListener('resize', () => {
+                this.equalizeMemberBoxes();
+                this.equalizeSnapLiheap();
+            });
+        },
+
+        attachDetailsListeners(container) {
+            if (!container) return;
+            container.querySelectorAll('details').forEach(details => {
+                details.addEventListener('toggle', () => this.debounced(this.equalizeSnapLiheap));
+            });
+        }
+    };
     
         // ===== INITIALIZATION =====
         window.addEventListener('DOMContentLoaded', () => {
@@ -795,8 +877,20 @@ function populateBanner(data) {
         window.reopenSingleBenefitScreening = reopenSingleBenefitScreening;
         </script>
 
-    <script src="eligibility-utils.js"></script>
-    <script src="estimationsview.js" defer></script>
+<script src="eligibility-utils.js"></script>
+
+<!-- Registry + benefit plug-ins (must load before estimationsview.js) -->
+<script src="benefits/_registry.js"></script>
+<script src="renderutils.js"></script>
+<script src="benefits/pace.js"></script>
+<script src="benefits/lis.js"></script>
+<script src="benefits/msp.js"></script>
+<script src="benefits/ptrr.js"></script>
+<script src="benefits/snap.js"></script>
+<script src="benefits/liheap.js"></script>
+
+<!-- Read-only view controller -->
+<script src="estimationsview.js"></script>
     <script src="notes.js"></script>
     <script src="viewnavigation.js"></script>
 </body>

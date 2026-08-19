@@ -86,6 +86,10 @@ function formatAmount(amount) {
     return Number.isInteger(amount) ? amount : amount.toFixed(2);
 }
 
+function notifyHouseholdChanged() {
+    window.dispatchEvent(new CustomEvent('household:changed'));
+}
+
 // ══════════════════════════════════════════════════════════════
 // HOUSEHOLD MEMBERS CACHE
 // ══════════════════════════════════════════════════════════════
@@ -782,6 +786,7 @@ const newExpense = {
 
             invalidateHouseholdCache();
             await displayHouseholdMembers();
+            notifyHouseholdChanged();
         } else {
             alert('Failed to save the expense. Please try again.');
         }
@@ -890,6 +895,7 @@ if (shouldShowSubsidyFields(expenseType, expenseKind)) {
 
             invalidateHouseholdCache();
             await displayHouseholdMembers();
+            notifyHouseholdChanged();
         } else {
             alert(result.message || 'Failed to overwrite the expense. Please try again.');
         }
@@ -941,6 +947,7 @@ async function deleteExpense(expenseId) {
 
             invalidateHouseholdCache();
             await displayHouseholdMembers();
+            notifyHouseholdChanged();
         } else {
             alert('Failed to delete the expense. Please try again.');
         }
@@ -1020,6 +1027,7 @@ async function saveUtilityExpenses() {
 
         invalidateHouseholdCache();
         await displayHouseholdMembers();
+        notifyHouseholdChanged();
         modal.classList.add('hidden');
     } catch (error) {
         console.error('Error saving utility expenses:', error);
@@ -1049,6 +1057,7 @@ async function deleteUtilityExpenses(memberId) {
         if (result.success) {
             invalidateHouseholdCache();
             await displayHouseholdMembers();
+            notifyHouseholdChanged();
         } else {
             alert('Failed to delete the utility expenses. Please try again.');
         }

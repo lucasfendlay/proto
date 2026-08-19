@@ -755,6 +755,14 @@ app.post('/save-household-member', async (req, res) => {
 app.put('/update-household-member', async (req, res) => {
     const { clientId, member } = req.body;
 
+    // 1. Basic payload validation
+    if (!clientId || !member || typeof member !== 'object') {
+        return res.status(400).json({ success: false, error: 'Missing clientId or member payload.' });
+    }
+    if (!member.householdMemberId || typeof member.householdMemberId !== 'string') {
+        return res.status(400).json({ success: false, error: 'member.householdMemberId is required.' });
+    }
+
     try {
         const collection = db.collection('clients');
         const client = await collection.findOne({ id: clientId });
@@ -763,28 +771,75 @@ app.put('/update-household-member', async (req, res) => {
             return res.status(404).json({ success: false, error: 'Client not found' });
         }
 
-        const memberIndex = client.householdMembers.findIndex(
-            (m) => m.householdMemberId === member.householdMemberId
-        );
+        // 2. Never accept an update if there is no existing household array
+        if (!Array.isArray(client.householdMembers) || client.householdMembers.length === 0) {
+            return res.status(404).json({ success: false, error: 'Client has no household members to update.' });
+        }
 
+        // 3. Must match an existing member — do NOT create/append via this route
+        const memberIndex = client.householdMembers.findIndex(
+            (m) => m && m.householdMemberId === member.householdMemberId
+        );
         if (memberIndex === -1) {
             return res.status(404).json({ success: false, error: 'Household member not found' });
         }
 
-        client.householdMembers[memberIndex] = {
-            ...client.householdMembers[memberIndex],
-            ...member,
-        };
+        // 4. Sanitize incoming patch:
+        //    - drop protected keys
+        //    - drop undefined values
+        //    - drop empty strings for fields that already have a non-empty value
+        //      (prevents a blank modal read from wiping saved data)
+        const PROTECTED_KEYS = new Set(['householdMemberId', '_id']);
+        const existing = client.householdMembers[memberIndex];
+
+        const sanitizedPatch = {};
+        for (const [key, value] of Object.entries(member)) {
+            if (PROTECTED_KEYS.has(key)) continue;
+            if (value === undefined) continue;
+            if (value === '' && existing[key] != null && existing[key] !== '') continue;
+            sanitizedPatch[key] = value;
+        }
+
+        // 5. Extra safety net: reject an obviously-empty edit
+        //    (no meaningful identity fields sent at all)
+        const identityKeys = ['firstName', 'lastName', 'dob'];
+        const patchTouchesIdentity = identityKeys.some(k => k in member);
+        const identityWouldBecomeBlank = identityKeys.every(k => {
+            const next = k in sanitizedPatch ? sanitizedPatch[k] : existing[k];
+            return !next || String(next).trim() === '';
+        });
+        if (patchTouchesIdentity && identityWouldBecomeBlank) {
+            return res.status(400).json({
+                success: false,
+                error: 'Refusing to save: firstName/lastName/dob would all be blank.',
+            });
+        }
+
+        // 6. Targeted positional update — only touches this one member.
+        //    We can't accidentally overwrite the whole householdMembers array.
+        const setOps = {};
+        for (const [key, value] of Object.entries(sanitizedPatch)) {
+            setOps[`householdMembers.$.${key}`] = value;
+        }
+
+        if (Object.keys(setOps).length === 0) {
+            // Nothing meaningful to change
+            return res.json({ success: true, message: 'No changes to apply.' });
+        }
 
         const result = await collection.updateOne(
-            { id: clientId },
-            { $set: { householdMembers: client.householdMembers } }
+            { id: clientId, 'householdMembers.householdMemberId': member.householdMemberId },
+            { $set: setOps }
         );
 
-        res.json({ success: result.modifiedCount > 0 });
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ success: false, error: 'Household member not found (race).' });
+        }
+
+        return res.json({ success: true });
     } catch (error) {
         console.error('Error updating household member:', error);
-        res.status(500).json({ success: false, error: error.message });
+        return res.status(500).json({ success: false, error: error.message });
     }
 });
 
@@ -857,22 +912,43 @@ app.get('/get-member-relationships/:clientId/:memberId', async (req, res) => {
 app.put('/update-household-members', async (req, res) => {
     const { clientId, members } = req.body;
 
+    if (!clientId || !Array.isArray(members)) {
+        return res.status(400).json({ success: false, message: 'clientId and members[] required.' });
+    }
+
     try {
-        const result = await db.collection('clients').updateOne(
+        const collection = db.collection('clients');
+        const existing = await collection.findOne({ id: clientId }, { projection: { householdMembers: 1 } });
+        if (!existing) {
+            return res.status(404).json({ success: false, message: 'Client not found' });
+        }
+
+        const existingCount = Array.isArray(existing.householdMembers) ? existing.householdMembers.length : 0;
+
+        // Refuse to wipe or shrink the household via this bulk route.
+        if (existingCount > 0 && members.length < existingCount) {
+            return res.status(400).json({
+                success: false,
+                message: `Refusing bulk update: would reduce members from ${existingCount} to ${members.length}. Use /delete-household-member.`,
+            });
+        }
+        // Every incoming member must carry an id
+        if (members.some(m => !m || !m.householdMemberId)) {
+            return res.status(400).json({ success: false, message: 'Every member must include householdMemberId.' });
+        }
+
+        const result = await collection.updateOne(
             { id: clientId },
             { $set: { householdMembers: members } }
         );
 
-        if (result.modifiedCount > 0) {
-            res.json({ success: true });
-        } else if (result.matchedCount === 0) {
-            res.status(404).json({ success: false, message: 'Client not found' });
-        } else {
-            res.status(400).json({ success: false, message: 'No changes were made to the household members.' });
+        if (result.matchedCount === 0) {
+            return res.status(404).json({ success: false, message: 'Client not found' });
         }
+        return res.json({ success: true });
     } catch (error) {
         console.error('Error updating household members:', error);
-        res.status(500).json({ success: false, message: error.message });
+        return res.status(500).json({ success: false, message: error.message });
     }
 });
 

@@ -1348,14 +1348,11 @@
         confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
 
         newConfirmBtn.addEventListener('click', async () => {
-            const reason = select.value;
-            if (!reason) {
-                alert('Please select a reason.');
-                return;
-            }
+        const reason = select.value;
+        if (!reason) { alert('Please select a reason.'); return; }
 
-            const clientId = getClientId();
-            const allBenefits = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
+        const clientId = getClientId();
+        const allBenefits = (window.BenefitRegistry?.getAll() || []).map(c => c.key);
 
             try {
                 const clientData = await fetchClient(clientId);
@@ -1510,7 +1507,7 @@
             const members = clientData.householdMembers || [];
             const householdBenefits = new Set();
             const individualBenefitsDetails = [];
-            const allBenefits = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
+            const allBenefits = (window.BenefitRegistry?.getAll() || []).map(c => c.key);
             const householdBenefitsList = ['SNAP', 'LIHEAP'];
 
             members.forEach(member => {
@@ -1670,11 +1667,28 @@
     window.reopenSingleBenefitScreening = reopenSingleBenefitScreening;
     </script>
 
-    <script src="eligibility-utils.js"></script>
-    <script src="estimationsstep.js" defer></script>
+<script src="eligibility-utils.js"></script>
+
+<script src="banner.js"></script>
+
+<!--Household Member Editor Access-->
+<script src="householdedit.js"></script>
+
+<!-- Registry + benefit plug-ins (order matters: registry must load before benefits/*) -->
+<script src="benefits/_registry.js"></script>
+<script src="renderutils.js"></script>
+<script src="benefits/pace.js"></script>
+<script src="benefits/lis.js"></script>
+<script src="benefits/msp.js"></script>
+<script src="benefits/ptrr.js"></script>
+<script src="benefits/snap.js"></script>
+<script src="benefits/liheap.js"></script>
+
+<!-- Page controller (no `defer` — must run after registry + benefits are registered) -->
+<script src="estimationsstep.js"></script>
+
     <script src="notes.js"></script>
     <script src="editnavigation.js"></script>
-    <script src="banner.js"></script>
 
 </body>
 </html>
