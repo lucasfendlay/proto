@@ -329,14 +329,12 @@
             },
     
             closeReasons: [
-                { value: "Already Enrolled",                label: "Already Enrolled" },
-                { value: "Ineligible - Income",             label: "Ineligible - Income" },
-                { value: "Ineligible - Income and Assets",  label: "Ineligible - Income and Assets" },
-                { value: "Low EBA",                         label: "Low EBA" },
                 { value: "Hard Determination",              label: "Use Hard Determination Closeout Reason(s)" },
+                { value: "Low EBA",                         label: "Low EBA" },
                 { value: "Not Interested",                  label: "Not Interested" },
                 { value: "Too Confusing",                   label: "Too Confusing" },
-                { value: "Will Call Back",                  label: "Will Call Back" }
+                { value: "Will Call Back",                  label: "Will Call Back" },
+                { value: "Disconnected",             label: "Disconnected" }
             ],
     
             mapHardDetermination(ineligibilityReason) {

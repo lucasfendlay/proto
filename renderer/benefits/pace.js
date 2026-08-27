@@ -221,15 +221,11 @@
         },
 
         closeReasons: [
-            { value: "Already Enrolled",     label: "Already Enrolled" },
-            { value: "Ineligible - Income",  label: "Ineligible - Income" },
-            { value: "Age Criteria Not Met", label: "Age Criteria Not Met" },
-            { value: "Enrolled in Medicaid", label: "Enrolled in Medicaid" },
-            { value: "Residency Not Met",    label: "PA Residency Not Met" },
             { value: "Hard Determination",   label: "Use Hard Determination Closeout Reason(s)" },
             { value: "Not Interested",       label: "Not Interested" },
             { value: "Too Confusing",        label: "Too Confusing" },
-            { value: "Will Call Back",       label: "Will Call Back" }
+            { value: "Will Call Back",       label: "Will Call Back" },
+            { value: "Disconnected",             label: "Disconnected" }
         ],
 
         mapHardDetermination(ineligibilityReason) {

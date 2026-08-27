@@ -296,135 +296,188 @@ cursor: pointer; /* Change cursor to hand */
         #terminate-button:hover { background-color: #cc0000; }
         #terminate-button:disabled { background-color: #f5f5f5; color: #ccc; }
 
-/* ===== CONTACTS SIDEBAR STYLES ===== */
-.sidebar-header {
-    display: fixed;
-    justify-items: center;
-    text-align: center;
-    margin-bottom: 20px;
-    width: 300px;
-    margin: 0 auto;
-}
+        /* ===== CONTACTS SIDEBAR STYLES ===== */
+        .sidebar-header {
+            display: fixed;
+            justify-items: center;
+            text-align: center;
+            margin-bottom: 20px;
+            width: 300px;
+            margin: 0 auto;
+        }
 
-.sidebar-header .button-container {
-    display: flex;
-    justify-content: center;
-    width: 100%;
-}
+        .sidebar-header .button-container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
 
-#contacts-list {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    width: 300px;
-    margin: 0 auto;
-    max-height: 1000px;
-    overflow-y: auto;
-    background-color: #f4f4f4;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 15px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
+        /* Sidebar toggle buttons - matching profileedit.html */
+        .sidebar-toggle {
+            display: flex;
+            gap: 0;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #007bff;
+            width: 100%;
+        }
 
-.left-sidebar {
-    background-color: #fff;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    padding: 10px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    margin: 0 auto;
-    width: 280px;
-    transform: translateX(-8px);
-}
+        .toggle-btn {
+            flex: 1;
+            padding: 8px 16px;
+            border: none;
+            background-color: #fff;
+            color: #007bff;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
 
-.left-sidebar strong { font-weight: bold; }
+        .toggle-btn.active {
+            background-color: #007bff;
+            color: #fff;
+        }
 
-.contactmodal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 1000;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
-}
+        .toggle-btn:hover:not(.active) {
+            background-color: #e6f0ff;
+        }
 
-.contact-modal-content {
-    background-color: transparent;
-    width: 90%;
-    max-width: 500px;
-    padding: 30px;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    text-align: left;
-    animation: contactFadeIn 0.3s ease-in-out;
-}
+        #contacts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 300px;
+            margin: 0 auto;
+            max-height: 1000px;
+            overflow-y: auto;
+            background-color: #f4f4f4;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
 
-.contact-modal-content label {
-    display: block;
-    margin: 15px 0 5px;
-    font-weight: bold;
-    font-size: 14px;
-    color: #333;
-}
+        .contact-card {
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            box-sizing: border-box;
+        }
 
-.contact-modal-content input,
-.contact-modal-content select {
-    width: 100%;
-    padding: 12px;
-    margin-bottom: 20px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    font-size: 16px;
-    box-sizing: border-box;
-    transition: border-color 0.3s ease;
-}
+        .contact-card p {
+            margin: 4px 0;
+            text-align: center;
+        }
 
-.contact-modal-content input:focus,
-.contact-modal-content select:focus {
-    border-color: #4CAF50;
-    outline: none;
-}
+        .contact-card strong {
+            font-weight: bold;
+        }
 
-.contact-modal-content .button-container button {
-    padding: 10px 20px;
-    border: 1px solid #000;
-    border-radius: 5px;
-    cursor: pointer;
-    background-color: #007bff;
-    color: white;
-    font-size: 14px;
-    transition: background-color 0.3s ease;
-}
+        .left-sidebar {
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin: 0 auto;
+            width: 280px;
+        }
 
-.contact-modal-content .button-container button:hover {
-    background-color: #0056b3;
-}
+        .left-sidebar strong { font-weight: bold; }
 
-@keyframes contactFadeIn {
-    from {
-        opacity: 0;
-        transform: translate(-50%, -50%) scale(0.9);
-    }
-    to {
-        opacity: 1;
-        transform: translate(-50%, -50%) scale(1);
-    }
-}
+        .contactmodal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
 
-.error {
-    border: 2px solid red;
-    background-color: #ffe6e6;
-}
+        .contactmodal.show {
+            display: flex;
+        }
+
+        /* Centering owned by this rule only — nothing else may offset it */
+        #contactModal .modal-content {
+            background-color: transparent;
+            width: 90%;
+            max-width: 500px;
+            padding: 30px;
+            position: relative;
+            top: auto !important;
+            margin: 0 auto !important;
+            right: 120px;
+            text-align: left;
+            box-sizing: border-box;
+            animation: contactFadeIn 0.3s ease-in-out;
+            box-shadow: none !important;
+
+        }
+
+        .contactmodal .modal-content label {
+            display: block;
+            margin: 15px 0 5px;
+            font-weight: bold;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .contactmodal .modal-content input,
+        .contactmodal .modal-content select {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease;
+        }
+
+        .contactmodal .modal-content input:focus,
+        .contactmodal .modal-content select:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+
+        .contactmodal .button-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
+        .contactmodal .button-container button {
+            padding: 10px 20px !important;
+            border: 1px solid #000;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            font-size: 14px;
+            margin: 0;
+            transition: background-color 0.3s ease;
+        }
+
+        .contactmodal .button-container button:hover {
+            background-color: #0056b3;
+        }
+
+        @keyframes contactFadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+
+        .error {
+            border: 2px solid red;
+            background-color: #ffe6e6;
+        }
     </style>
-    <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="notes.css">
     <link rel="stylesheet" href="householdedit.css">
     <link rel="stylesheet" href="incomeedit.css">
@@ -652,38 +705,59 @@ cursor: pointer; /* Change cursor to hand */
 
                     <h1>Referrals</h1>
 
-<!-- CONTACTS SIDEBAR -->
-<div class="left-sidebar-container" id="contactsSidebarContainer">
+<!-- SIDEBAR (Screening / Contacts toggle) -->
+<div class="left-sidebar-container" id="leftSidebarContainer">
     <div class="sidebar-header">
         <div class="button-container" style="flex-direction: column; gap: 8px; margin-bottom: 10px;">
-            <button class="interactive" style="transition: background-color 0.3s ease, color 0.3s ease;" onmouseover="this.style.backgroundColor='#0056b3'; this.style.color='white';" onmouseout="this.style.backgroundColor=''; this.style.color='';" onclick="redirectToEstimationsView()">Save and Release Profile</button>
+            <button class="interactive"
+                style="width: 100%; font-size: 0.85rem; font-weight: normal; padding: 8px !important;"
+                onclick="redirectToEstimationsView()"
+                onmouseover="this.style.backgroundColor='#0056b3'"
+                onmouseout="this.style.backgroundColor='#007bff'">
+                Save and Release Profile
+            </button>
         </div>
-        <h2>Contacts</h2>
-        <div id="contacts-list" class="left-sidebar"></div>
-        <div class="button-container" style="justify-content: center; margin-top: 10px;">
-            <button id="add-contact-button" onclick="openContactModal()" style="transition: background-color 0.3s ease, color 0.3s ease;" onmouseover="this.style.backgroundColor='#0056b3'; this.style.color='white';" onmouseout="this.style.backgroundColor=''; this.style.color='';">Add New Contact</button>
+        <div class="sidebar-toggle">
+            <button id="toggle-screening-btn" class="toggle-btn" onclick="showSidebarView('screening')">Screening</button>
+            <button id="toggle-contacts-btn" class="toggle-btn active" onclick="showSidebarView('contacts')">Contacts</button>
         </div>
+        <div id="screening-header-actions" class="button-container" style="display:none;"></div>
+        <div id="contacts-header-actions" class="button-container"></div>
     </div>
+
+    <!-- Screening containers (empty on this page; kept for parity) -->
+    <div id="household-members-container" class="left-sidebar" style="display:none;"></div>
+    <div id="snap-household-container" class="left-sidebar" style="display:none;"></div>
+    <div id="liheap-household-container" class="left-sidebar" style="display:none;"></div>
+    <div id="stop-screening-container" style="display:none;"></div>
+
+    <!-- Contacts panel -->
+    <div id="contacts-list"></div>
+    <button id="add-contact-button" onclick="openContactModal()">Add New Contact</button>
 </div>
 
 <!-- CONTACT MODAL -->
-<div id="contactModal" class="contactmodal" style="display: none;">
-    <div class="contact-modal-content">
+<div id="contactModal" class="contactmodal">
+    <div class="modal-content">
         <form id="contactForm">
-            <h2 id="modal-title">Add Contact</h2>
+            <h2 id="contact-modal-title">Add Contact</h2>
             <label for="contactFirstName">First Name:</label>
             <input type="text" id="contactFirstName" required>
+
             <label for="contactLastName">Last Name:</label>
             <input type="text" id="contactLastName" required>
+
             <label for="contactPhoneNumber">Phone Number:</label>
             <input type="text" id="contactPhoneNumber" required>
+
             <label for="authorizedRepresentative">Authorized Representative:</label>
             <select id="authorizedRepresentative">
                 <option value="N/A" selected>N/A</option>
                 <option value="yes">Yes</option>
                 <option value="no">No</option>
             </select>
-            <div class="button-container" style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
+
+            <div class="button-container">
                 <button type="button" onclick="saveContact()">Save</button>
                 <button type="button" onclick="closeContactModal()">Cancel</button>
             </div>
@@ -704,24 +778,15 @@ cursor: pointer; /* Change cursor to hand */
 </div>
 
         <script>
-            document.addEventListener('DOMContentLoaded', () => {
-        // Retrieve and clean the active user from sessionStorage
-        let activeUser = sessionStorage.getItem('loggedInUser') || ''; // Use the same key as in notes.js
-        activeUser = activeUser.trim().toLowerCase(); // Clean the username (trim whitespace and convert to lowercase)
+        document.addEventListener('DOMContentLoaded', () => {
+            let activeUser = sessionStorage.getItem('loggedInUser') || '';
+            activeUser = activeUser.trim().toLowerCase();
+            console.log('Active User:', activeUser);
 
-        // Debugging: Log the active user to verify
-        console.log('Active User:', activeUser);
-
-        // Target the "Add Referrals" button
-        const addReferralBtn = document.getElementById('addReferralBtn');
-
-        // Show the button only if the cleaned active user is "admin"
-        if (activeUser === 'admin') {
-            addReferralBtn.style.display = 'inline-block'; // Ensure the button is visible
-        } else {
-            addReferralBtn.style.display = 'none'; // Hide the button for non-admin users
-        }
-    });
+            const addReferralBtn = document.getElementById('addReferralBtn');
+            if (!addReferralBtn) return; // Button not present on this page
+            addReferralBtn.style.display = activeUser === 'admin' ? 'inline-block' : 'none';
+        });
         </script>
 
         <input type="text" id="searchInput" placeholder="Search by name, phone, or needs..." class="search-bar">
@@ -918,13 +983,25 @@ function populateReferralsTable() {
 
 // Call the function to fetch client data and populate the table when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    fetchClientData().then(() => {
+    fetchClientData().then(async () => {
         populateReferralsTable();
-        document.body.classList.add('loaded');
-    }).catch(() => {
-        // If fetching client data fails, still populate the table with all referrals
+        try {
+            if (typeof runAllEligibilityChecks === 'function') {
+                await runAllEligibilityChecks(client.householdMembers || [], client);
+            }
+        } catch (e) { console.error('Eligibility render error:', e); }
+        try { if (typeof loadContacts === 'function') await loadContacts(); } catch (e) {}
+        if (typeof showSidebarView === 'function') {
+            try { await showSidebarView('contacts'); } catch (e) {}
+        }
+        requestAnimationFrame(() => document.body.classList.add('loaded'));
+    }).catch(async () => {
         populateReferralsTable();
-        document.body.classList.add('loaded');
+        try { if (typeof loadContacts === 'function') await loadContacts(); } catch (e) {}
+        if (typeof showSidebarView === 'function') {
+            try { await showSidebarView('contacts'); } catch (e) {}
+        }
+        requestAnimationFrame(() => document.body.classList.add('loaded'));
     });
 });
 
@@ -1045,7 +1122,10 @@ async function toggleSidebarVisibility() {
 }
 
 window.onload = function () {
-    toggleSidebarVisibility();
+    const clientId = getQueryParam('id');
+    if (clientId) {
+        document.getElementById('leftSidebarContainer').style.display = 'block';
+    }
 };
 
 
@@ -1055,12 +1135,18 @@ window.onload = function () {
 <script src="eligibility-utils.js"></script>
 <script src="editnavigation.js"></script>
 <script src="banner.js"></script>
+<script src="renderutils.js"></script>
+<script src="benefits/_registry.js"></script>
+<script src="benefits/pace.js"></script>
+<script src="benefits/lis.js"></script>
+<script src="benefits/msp.js"></script>
+<script src="benefits/ptrr.js"></script>
+<script src="benefits/snap.js"></script>
+<script src="benefits/liheap.js"></script>
+<script src="estimations.js"></script>
+<script src="householdedit.js"></script>
 
-<script>
-    // ===== CONTACTS GLOBALS =====
-    let clientData_contacts = {};
-    let editingContactIndex = null;
-    
+<script>    
     // ===== UTILITY FUNCTIONS =====
     function getClientIdFromUrl() {
         return new URLSearchParams(window.location.search).get('id');
@@ -1120,7 +1206,7 @@ window.onload = function () {
         const fragment = document.createDocumentFragment();
         clientData_contacts.Contacts.forEach((contact, index) => {
             const div = document.createElement('div');
-            div.classList.add('left-sidebar');
+            div.classList.add('contact-card');
             div.innerHTML = `
                 <p><strong>Name:</strong><br> ${(contact.firstName || 'N/A').toUpperCase()} ${(contact.lastName || 'N/A').toUpperCase()}</p>
                 <p><strong>Phone:</strong><br> ${formatPhoneNumber(contact.phoneNumber) || 'N/A'}</p>
@@ -1136,17 +1222,19 @@ window.onload = function () {
         const modal = document.getElementById('contactModal');
         const buttonContainer = modal.querySelector('.button-container');
         const form = document.getElementById('contactForm');
-    
+
         const existingAddBtn = document.getElementById('addContactToHouseholdBtn');
         if (existingAddBtn) existingAddBtn.remove();
-    
+
         buttonContainer.innerHTML = `
             <button type="button" onclick="saveContact()">Save</button>
             <button type="button" onclick="closeContactModal()">Cancel</button>
         `;
-    
+
+        const titleEl = document.getElementById('contact-modal-title');
+
         if (contact) {
-            document.getElementById('modal-title').textContent = 'Edit Contact';
+            titleEl.textContent = 'Edit Contact';
             document.getElementById('contactFirstName').value = contact.firstName || '';
             document.getElementById('contactLastName').value = contact.lastName || '';
             document.getElementById('contactPhoneNumber').value = formatPhoneNumber(contact.phoneNumber) || '';
@@ -1182,7 +1270,7 @@ window.onload = function () {
             deleteButton.onclick = () => deleteContact(index);
             buttonContainer.appendChild(deleteButton);
         } else {
-            document.getElementById('modal-title').textContent = 'Add Contact';
+            titleEl.textContent = 'Add Contact';
             document.getElementById('contactFirstName').value = '';
             document.getElementById('contactLastName').value = '';
             document.getElementById('contactPhoneNumber').value = '';
@@ -1193,6 +1281,74 @@ window.onload = function () {
         modal.style.display = 'flex';
     }
     
+        function closeContactModal() {
+        document.getElementById('contactModal').classList.remove('show');
+        editingContactIndex = null;
+    }
+
+    let clientData_contacts = {};
+    let editingContactIndex = null;
+
+    // ===== SIDEBAR TOGGLE =====
+    async function showSidebarView(view) {
+        const screeningList = document.getElementById('household-members-container');
+        const contactsList  = document.getElementById('contacts-list');
+        const screeningBtn  = document.getElementById('toggle-screening-btn');
+        const contactsBtn   = document.getElementById('toggle-contacts-btn');
+        const screeningHeaderActions = document.getElementById('screening-header-actions');
+        const contactsHeaderActions  = document.getElementById('contacts-header-actions');
+        const addContactBtn = document.getElementById('add-contact-button');
+        const snapContainer = document.getElementById('snap-household-container');
+        const liheapContainer = document.getElementById('liheap-household-container');
+        const stopScreeningContainer = document.getElementById('stop-screening-container');
+
+        // Hide everything first
+        screeningList.style.display = 'none';
+        contactsList.style.display  = 'none';
+        screeningHeaderActions.style.display = 'none';
+        contactsHeaderActions.style.display  = 'none';
+        addContactBtn.style.display = 'none';
+        if (snapContainer) snapContainer.style.display = 'none';
+        if (liheapContainer) liheapContainer.style.display = 'none';
+        if (stopScreeningContainer) stopScreeningContainer.style.display = 'none';
+
+        if (view === 'screening') {
+            screeningBtn.classList.add('active');
+            contactsBtn.classList.remove('active');
+
+            // Check screening status
+            const clientId = getQueryParam('id');
+            let screeningActive = false;
+            try {
+                const res = await fetch(`/get-client/${clientId}`);
+                if (res.ok) {
+                    const c = await res.json();
+                    screeningActive = c?.screeningInProgress === true;
+                }
+            } catch (e) { console.error(e); }
+
+            requestAnimationFrame(() => {
+                screeningList.style.display = screeningActive ? '' : 'none';
+                screeningHeaderActions.style.display = 'flex';
+                if (snapContainer) snapContainer.style.display = screeningActive ? '' : 'none';
+                if (liheapContainer) liheapContainer.style.display = screeningActive ? '' : 'none';
+                if (stopScreeningContainer) stopScreeningContainer.style.display = '';
+            });
+        } else {
+            contactsBtn.classList.add('active');
+            screeningBtn.classList.remove('active');
+            contactsList.style.display = 'flex';
+            contactsHeaderActions.style.display = 'flex';
+            addContactBtn.style.display = '';
+            // Force-hide any screening artifacts that async renders may have shown
+            if (stopScreeningContainer) stopScreeningContainer.style.display = 'none';
+            if (snapContainer) snapContainer.style.display = 'none';
+            if (liheapContainer) liheapContainer.style.display = 'none';
+            screeningList.style.display = 'none';
+        }
+    }
+    window.showSidebarView = showSidebarView;
+
     async function addContactToHousehold(index) {
         const clientId = getClientIdFromUrl();
         if (!clientId) return;

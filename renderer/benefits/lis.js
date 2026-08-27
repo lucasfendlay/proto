@@ -134,15 +134,11 @@
         },
     
         closeReasons: [
-            { value: "Already Enrolled",         label: "Already Enrolled" },
-            { value: "Ineligible - Income",      label: "Ineligible - Income" },
-            { value: "Ineligible - Assets",      label: "Ineligible - Assets" },
-            { value: "Not Enrolled in Medicare", label: "Not Enrolled in Medicare" },
-            { value: "Enrolled in Medicaid",     label: "Enrolled in Medicaid" },
             { value: "Hard Determination",       label: "Use Hard Determination Closeout Reason(s)" },
             { value: "Not Interested",           label: "Not Interested" },
             { value: "Too Confusing",            label: "Too Confusing" },
-            { value: "Will Call Back",           label: "Will Call Back" }
+            { value: "Will Call Back",           label: "Will Call Back" },
+            { value: "Disconnected",             label: "Disconnected" }
         ],
     
         mapHardDetermination(ineligibilityReason) {

@@ -31,7 +31,6 @@
     }
 
     /* Shared container width */
-    /* Shared container width */
     .container {
         width: 100%;
         max-width: 1600px;
@@ -404,12 +403,7 @@ async function loadClients() {
     const clientList = document.getElementById('clientList');
     clientList.innerHTML = '';
 
-    const validClients = clients.filter(c => {
-    const household = c.householdMembers || c.HouseholdMembers || [];
-    return Array.isArray(household) && household.length > 0;
-});
-
-    if (validClients.length === 0) {
+    if (clients.length === 0) {
         const li = document.createElement('li');
         li.textContent = 'No clients found.';
         clientList.appendChild(li);
@@ -417,7 +411,7 @@ async function loadClients() {
         return;
     }
 
-    validClients.forEach(client => {
+    clients.forEach(client => {
         clientList.appendChild(renderProfileCard(client, activeUser));
     });
 

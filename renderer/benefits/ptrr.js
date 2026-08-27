@@ -214,15 +214,11 @@
         },
     
         closeReasons: [
-            { value: "Already Applied",                        label: "Already Applied This Year" },
-            { value: "Ineligible - Income",                    label: "Ineligible - Income" },
-            { value: "Age/Disability/Widow Criteria Not Met",  label: "Age/Disability/Widow Criteria Not Met" },
-            { value: "No Formal Lease",                        label: "No Formal Lease" },
-            { value: "No Relevant Expenses",                   label: "No Relevant Expenses" },
             { value: "Hard Determination",                     label: "Use Hard Determination Closeout Reason(s)" },
             { value: "Not Interested",                         label: "Not Interested" },
             { value: "Too Confusing",                          label: "Too Confusing" },
-            { value: "Will Call Back",                         label: "Will Call Back" }
+            { value: "Will Call Back",                         label: "Will Call Back" },
+            { value: "Disconnected",             label: "Disconnected" }
         ],
     
         mapHardDetermination(ineligibilityReason) {
@@ -238,5 +234,5 @@
             return ineligibilityReason || 'Ineligible - Hard Determination';
         }
     });
-    
+
     })();

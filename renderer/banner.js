@@ -536,16 +536,23 @@
         if (!el || el.dataset.copyBound) return;
         el.dataset.copyBound = 'true';
         el.title = 'Click to copy page URL';
-        el.style.cursor = 'pointer';
+        el.style.cursor = 'copy';
         el.style.userSelect = 'none';
         el.addEventListener('click', async () => {
             const url = window.location.href.replace(/\/[^\/]*\.html/, '/profileview.html');
             try {
                 await navigator.clipboard.writeText(url);
                 const orig = el.textContent;
+                const origFontSize = el.style.fontSize;
                 el.textContent = 'Link Copied!';
                 el.style.color = '#28a745';
-                setTimeout(() => { el.textContent = orig; el.style.color = ''; }, 1200);
+                // Shrink so "Link Copied!" visually matches the profile ID width
+                el.style.fontSize = '0.65em';
+                setTimeout(() => {
+                    el.textContent = orig;
+                    el.style.color = '';
+                    el.style.fontSize = origFontSize;
+                }, 1200);
             } catch (e) { console.error(e); }
         });
     }

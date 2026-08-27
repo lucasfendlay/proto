@@ -6,7 +6,7 @@
     box-shadow: 5px 0 5px rgba(0, 0, 0, 0.1); /* Optional: Subtle shadow */
     padding: 10px;
     position: fixed; /* Position the container absolutely */
-    z-index: 1000; /* Ensure it appears above other content */
+    z-index: 100000 !important; /* Ensure it appears above other content */
     right: 0; /* Align it to the left side of the screen */
     top: 80px; /* Adjusted to make space for the input box and save button */
     width: 300px; /* Fixed width for the sidebar */

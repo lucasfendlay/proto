@@ -192,15 +192,13 @@
             font-weight: bold;
         }
 
+        /* ===== CONTACT MODAL (matched to estimationsstep.html) ===== */
         .contactmodal {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
+            inset: 0;
             background-color: rgba(0, 0, 0, 0.5);
-            z-index: 9999;
+            z-index: 1000;
             justify-content: center;
             align-items: center;
             overflow: hidden;
@@ -210,53 +208,80 @@
             display: flex;
         }
 
-        .contactmodal .modal-content {
-    background-color: transparent;          /* match asset modal */
-    width: 90%;
-    max-width: 500px;
-    text-align: left;
-    position: relative;
-    z-index: 10000;
-    animation: fadeIn 0.3s ease-in-out;  /* ← THE missing fade */
-}
-
-        .contactmodal .modal-content label {
-            display: block;
-            margin-top: 10px;
-            font-weight: 600;
-        }
-
-        .contactmodal .modal-content input,
-        .contactmodal .modal-content select {
-            width: 100%;
-            padding: 8px;
-            margin-top: 4px;
+        /* Centering owned by this rule only — nothing else may offset it */
+        #contactModal .contact-modal-content {
+            background-color: transparent;
+            width: 90%;
+            max-width: 500px;
+            padding: 30px;
+            position: relative;
+            top: auto !important;
+            margin: 0 auto !important;
+            right: 120px;
+            text-align: left;
             box-sizing: border-box;
-            border: 1px solid #ccc;
-            border-radius: 5px;
+            animation: contactFadeIn 0.3s ease-in-out;
         }
 
-        .contactmodal .button-container {
-            margin-top: 15px;
+        .contact-modal-content label {
+            display: block;
+            margin: 15px 0 5px;
+            font-weight: bold;
+            font-size: 14px;
+            color: #333;
         }
 
-        .contactmodal .button-container button {
-            flex: 1;
-            padding: 10px 15px !important;
-            font-size: 1rem;
-            cursor: pointer;
+        .contact-modal-content input,
+        .contact-modal-content select {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease;
+        }
+
+        .contact-modal-content input:focus,
+        .contact-modal-content select:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+
+        .contact-modal-content .button-container button {
+            padding: 10px 20px;
             border: 1px solid #000;
             border-radius: 5px;
-            margin: 0;
+            cursor: pointer;
             background-color: #007bff;
             color: white;
-            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+            font-size: 14px;
+            transition: background-color 0.3s ease;
         }
 
-        .contactmodal .button-container button:hover {
+        .contact-modal-content .button-container button:hover {
             background-color: #0056b3;
-            color: #fff;
-            border-color: #003f7f;
+        }
+
+        @keyframes contactFadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+
+        #add-contact-button {
+            display: block;
+            width: 280px;
+            margin: 10px auto 0;
+            padding: 8px !important;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        /* Keep the notes panel interactive above the contact modal overlay */
+        #notes-container {
+            position: fixed;
+            z-index: 1100;
         }
 
         .error {
@@ -763,7 +788,7 @@
     </div>
 
     <div id="contactModal" class="contactmodal">
-        <div class="modal-content">
+        <div class="contact-modal-content">
             <form id="contactForm">
                 <h2 id="contact-modal-title">Add Contact</h2>
                 <label for="contactFirstName">First Name:</label>
@@ -775,14 +800,7 @@
                 <label for="contactPhoneNumber">Phone Number:</label>
                 <input type="text" id="contactPhoneNumber" required>
 
-                <label for="authorizedRepresentative">Authorized Representative:</label>
-                <select id="authorizedRepresentative">
-                    <option value="N/A" selected>N/A</option>
-                    <option value="yes">Yes</option>
-                    <option value="no">No</option>
-                </select>
-
-                <div class="button-container">
+                <div class="button-container" style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
                     <button type="button" onclick="saveContact()">Save</button>
                     <button type="button" onclick="closeContactModal()">Cancel</button>
                 </div>
@@ -1200,7 +1218,6 @@
                 document.getElementById('contactFirstName').value = contact.firstName || '';
                 document.getElementById('contactLastName').value = contact.lastName || '';
                 document.getElementById('contactPhoneNumber').value = formatPhoneNumber(contact.phoneNumber) || '';
-                document.getElementById('authorizedRepresentative').value = contact.authorizedRepresentative || 'N/A';
 
                 // Show "Add to Household" button only if this contact is not already a household member
                 const members = cachedClient.householdMembers || [];
@@ -1357,7 +1374,6 @@
         const firstName = document.getElementById('contactFirstName').value.trim();
         const lastName = document.getElementById('contactLastName').value.trim();
         const phoneNumber = document.getElementById('contactPhoneNumber').value.trim();
-        const authorizedRepresentative = document.getElementById('authorizedRepresentative').value;
         const phoneNumberInput = document.getElementById('contactPhoneNumber');
         phoneNumberInput.classList.remove('error');
 
@@ -1381,7 +1397,6 @@
                 firstName,
                 lastName,
                 phoneNumber: cleanedPhone,
-                authorizedRepresentative,
                 contactId: editingContactIndex !== null
                     ? clientData.Contacts[editingContactIndex]?.contactId
                     : `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,

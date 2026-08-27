@@ -253,15 +253,18 @@
             transform: translateX(-8px);
         }
 
-        .left-sidebar strong { font-weight: bold; }
+        .left-sidebar strong {
+    font-weight: bold; /* Bold labels */
+}
 
-        .contactmodal {
+.left-sidebar p {
+    margin: 0;
+    line-height: 1.4;
+}
+.contactmodal {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            inset: 0;
             background-color: rgba(0, 0, 0, 0.5);
             z-index: 1000;
             justify-content: center;
@@ -269,16 +272,18 @@
             overflow: hidden;
         }
 
-        .contact-modal-content {
+        /* Centering owned by this rule only — nothing else may offset it */
+        #contactModal .contact-modal-content {
             background-color: transparent;
             width: 90%;
             max-width: 500px;
             padding: 30px;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            position: relative;
+            top: auto !important;
+            margin: 0 auto !important;
+            right: 120px;
             text-align: left;
+            box-sizing: border-box;
             animation: contactFadeIn 0.3s ease-in-out;
         }
 
@@ -326,12 +331,17 @@
         @keyframes contactFadeIn {
             from {
                 opacity: 0;
-                transform: translate(-50%, -50%) scale(0.9);
+                transform: scale(0.9);
             }
             to {
                 opacity: 1;
-                transform: translate(-50%, -50%) scale(1);
+                transform: scale(1);
             }
+        }
+
+        #notes-container {
+            position: fixed;
+            z-index: 1100;
         }
 
         .error {
@@ -827,12 +837,6 @@
                 <input type="text" id="contactLastName" required>
                 <label for="contactPhoneNumber">Phone Number:</label>
                 <input type="text" id="contactPhoneNumber" required>
-                <label for="authorizedRepresentative">Authorized Representative:</label>
-                <select id="authorizedRepresentative">
-                    <option value="N/A" selected>N/A</option>
-                    <option value="yes">Yes</option>
-                    <option value="no">No</option>
-                </select>
                 <div class="button-container" style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
                     <button type="button" onclick="saveContact()">Save</button>
                     <button type="button" onclick="closeContactModal()">Cancel</button>
@@ -986,7 +990,6 @@
             document.getElementById('contactFirstName').value = contact.firstName || '';
             document.getElementById('contactLastName').value = contact.lastName || '';
             document.getElementById('contactPhoneNumber').value = formatPhoneNumber(contact.phoneNumber) || '';
-            document.getElementById('authorizedRepresentative').value = contact.authorizedRepresentative || 'N/A';
             editingContactIndex = index;
 
             // Show "Add to Household" button only if this contact is not already a household member
@@ -1028,7 +1031,6 @@
             document.getElementById('contactFirstName').value = '';
             document.getElementById('contactLastName').value = '';
             document.getElementById('contactPhoneNumber').value = '';
-            document.getElementById('authorizedRepresentative').value = 'N/A';
             editingContactIndex = null;
         }
 
@@ -1141,7 +1143,6 @@
         const firstName = document.getElementById('contactFirstName').value.trim();
         const lastName = document.getElementById('contactLastName').value.trim();
         const phoneNumber = document.getElementById('contactPhoneNumber').value.trim();
-        const authorizedRepresentative = document.getElementById('authorizedRepresentative').value;
         const phoneNumberInput = document.getElementById('contactPhoneNumber');
         phoneNumberInput.classList.remove('error');
 
@@ -1161,7 +1162,6 @@
             firstName,
             lastName,
             phoneNumber: cleanedPhone,
-            authorizedRepresentative,
             contactId: editingContactIndex !== null
                 ? clientData_contacts.Contacts[editingContactIndex].contactId
                 : `contact-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,

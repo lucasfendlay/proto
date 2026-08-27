@@ -127,16 +127,17 @@ margin: 0; /* Remove global margin */
     font-weight: bold; /* Bold labels */
 }
 
-        /* Modal styling */
-        .contactmodal {
+.left-sidebar p {
+    margin: 0;
+    line-height: 1.4;
+}
+
+.contactmodal {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
+            inset: 0;
             background-color: rgba(0, 0, 0, 0.5);
-            z-index: 9999;
+            z-index: 1000;
             justify-content: center;
             align-items: center;
             overflow: hidden;
@@ -328,15 +329,81 @@ body {
             }
 
             /* Modal content styling */
-            .contactmodal .modal-content {
-    background-color: #ffffff;
-    border-radius: 10px;
-    width: 90%;
-    max-width: 500px;
-    padding: 20px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    position: relative;
-    text-align: left;
+            #contactModal .modal-content {
+            background-color: transparent;
+            width: 90%;
+            max-width: 500px;
+            padding: 30px;
+            position: relative;
+            top: auto !important;
+            margin: 0 auto !important;
+            right: 120px;
+            text-align: left;
+            box-sizing: border-box;
+            animation: contactFadeIn 0.3s ease-in-out;
+        }
+
+        .contactmodal .modal-content label {
+            display: block;
+            margin: 15px 0 5px;
+            font-weight: bold;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .contactmodal .modal-content input,
+        .contactmodal .modal-content select {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease;
+        }
+
+        .contactmodal .modal-content input:focus,
+        .contactmodal .modal-content select:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+
+        .contactmodal .button-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
+        .contactmodal .button-container button {
+            padding: 10px 20px !important;
+            border: 1px solid #000;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            font-size: 14px;
+            margin: 0;
+            transition: background-color 0.3s ease;
+        }
+
+        .contactmodal .button-container button:hover {
+            background-color: #0056b3;
+        }
+
+        @keyframes contactFadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+
+#add-contact-button {
+    display: block;
+    width: 280px;
+    margin: 10px auto 0;
+    padding: 8px !important;
+    font-size: 0.85rem;
+    cursor: pointer;
 }
 
 .narrow-body {
@@ -1018,7 +1085,6 @@ body {
                 <button id="toggle-contacts-btn" class="toggle-btn" onclick="showSidebarView('contacts')">Contacts</button>
             </div>
             <div id="contacts-header-actions" class="button-container" style="display: none;">
-                <button id="add-contact-button" onclick="openContactModal()">Add New Contact</button>
             </div>
             <div id="applications-header-actions" class="button-container">
                 <button id="stop-all-applications-btn" class="stop-applying-btn" style="width: 100%; padding: 8px !important; font-size: 0.85rem; background-color: #dc3545; color: white; border: 1px solid #dc3545; border-radius: 5px; cursor: pointer; transition: background-color 0.3s ease;" onclick="openStopAllApplicationsModal()" onmouseover="this.style.backgroundColor='#a71d2a'; this.style.borderColor='#a71d2a'" onmouseout="this.style.backgroundColor='#dc3545'; this.style.borderColor='#dc3545'">Close All Applications</button>
@@ -1026,6 +1092,7 @@ body {
         </div>
         <div id="contacts-list" class="left-sidebar" style="display: none;"></div>
         <div id="applications-list" style="display: flex;"></div>
+        <button id="add-contact-button" onclick="openContactModal()" style="display: none;">Add New Contact</button>
     </div>
 
 <!-- Modal for Adding/Editing Contacts -->
@@ -1087,7 +1154,7 @@ body {
             <option value="Not Interested">Not Interested</option>
             <option value="Too Confusing">Too Confusing</option>
             <option value="Will Call Back">Will Call Back</option>
-            <option value="Client Disconnected">Client Unresponsive</option>
+            <option value="Disconnected">Disconnected</option>
         </select>
 
         <div class="button-container">
@@ -1133,34 +1200,32 @@ body {
         </div>
         
         <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            const clientId = getQueryParam('id'); // Get the client ID from the URL
-        
-            try {
-                const response = await fetch(`/get-client/${clientId}`);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch client data: ${response.statusText}`);
-                }
-        
-                const client = await response.json();
-                const homelessnessStatus = client.homelessness; // Fetch the saved value
-        
-                // Highlight the saved value
-                if (homelessnessStatus === 'yes') {
-                    document.getElementById('homelessness-yes').classList.add('selected');
-                } else if (homelessnessStatus === 'no') {
-                    document.getElementById('homelessness-no').classList.add('selected');
-                }
-        
-                // Make the options read-only
-                document.querySelectorAll('.homelessness-container .option').forEach(option => {
-                    option.style.pointerEvents = 'none'; // Disable click events
-                    option.style.opacity = '0.6'; // Optional: Dim the options to indicate they are read-only
-                });
-            } catch (error) {
-                console.error('Error loading homelessness status:', error);
-            }
+document.addEventListener('DOMContentLoaded', async () => {
+    const clientId = getQueryParam('id');
+    try {
+        const response = await fetch(`/get-client/${clientId}`);
+        if (!response.ok) throw new Error(`Failed to fetch client data: ${response.statusText}`);
+        const client = await response.json();
+        const homelessnessStatus = client.homelessness;
+
+        // New banner uses a checkbox instead of yes/no divs
+        const cb = document.getElementById('homelessnessCheckbox');
+        if (cb) cb.checked = (homelessnessStatus === 'yes');
+
+        // Legacy yes/no elements (guarded in case they get re-added)
+        const yesEl = document.getElementById('homelessness-yes');
+        const noEl  = document.getElementById('homelessness-no');
+        if (yesEl && homelessnessStatus === 'yes') yesEl.classList.add('selected');
+        if (noEl  && homelessnessStatus === 'no')  noEl.classList.add('selected');
+
+        document.querySelectorAll('.homelessness-container .option').forEach(option => {
+            option.style.pointerEvents = 'none';
+            option.style.opacity = '0.6';
         });
+    } catch (error) {
+        console.error('Error loading homelessness status:', error);
+    }
+});
         
         // Utility function to get query parameters
         function getQueryParam(name) {
@@ -1408,51 +1473,46 @@ body {
 <script>
 
     // Add event listeners to highlight the selected option for the "homebound" question
-document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', () => {
     const homeboundYes = document.getElementById('modal-homebound-yes');
-    const homeboundNo = document.getElementById('modal-homebound-no');
+    const homeboundNo  = document.getElementById('modal-homebound-no');
+    if (!homeboundYes || !homeboundNo) return; // guard
 
-    // Function to handle highlighting
     function highlightHomeboundSelection(selectedElement) {
-        // Remove the "selected" class from both options
         homeboundYes.classList.remove('selected');
         homeboundNo.classList.remove('selected');
-
-        // Add the "selected" class to the clicked option
         selectedElement.classList.add('selected');
     }
 
-    // Add click event listeners to both options
     homeboundYes.addEventListener('click', () => highlightHomeboundSelection(homeboundYes));
     homeboundNo.addEventListener('click', () => highlightHomeboundSelection(homeboundNo));
 });
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Military Service Question
-    const militaryYes = document.getElementById('modal-military-yes');
-    const militaryNo = document.getElementById('modal-military-no');
-
-    function highlightMilitarySelection(selectedElement) {
-        militaryYes.classList.remove('selected');
-        militaryNo.classList.remove('selected');
-        selectedElement.classList.add('selected');
-    }
-
-    militaryYes.addEventListener('click', () => highlightMilitarySelection(militaryYes));
-    militaryNo.addEventListener('click', () => highlightMilitarySelection(militaryNo));
-
-    // Religious Order Question
+    const militaryYes  = document.getElementById('modal-military-yes');
+    const militaryNo   = document.getElementById('modal-military-no');
     const religiousYes = document.getElementById('modal-religious-yes');
-    const religiousNo = document.getElementById('modal-religious-no');
+    const religiousNo  = document.getElementById('modal-religious-no');
 
-    function highlightReligiousSelection(selectedElement) {
-        religiousYes.classList.remove('selected');
-        religiousNo.classList.remove('selected');
-        selectedElement.classList.add('selected');
+    if (militaryYes && militaryNo) {
+        const highlightMilitarySelection = el => {
+            militaryYes.classList.remove('selected');
+            militaryNo.classList.remove('selected');
+            el.classList.add('selected');
+        };
+        militaryYes.addEventListener('click', () => highlightMilitarySelection(militaryYes));
+        militaryNo.addEventListener('click',  () => highlightMilitarySelection(militaryNo));
     }
 
-    religiousYes.addEventListener('click', () => highlightReligiousSelection(religiousYes));
-    religiousNo.addEventListener('click', () => highlightReligiousSelection(religiousNo));
+    if (religiousYes && religiousNo) {
+        const highlightReligiousSelection = el => {
+            religiousYes.classList.remove('selected');
+            religiousNo.classList.remove('selected');
+            el.classList.add('selected');
+        };
+        religiousYes.addEventListener('click', () => highlightReligiousSelection(religiousYes));
+        religiousNo.addEventListener('click',  () => highlightReligiousSelection(religiousNo));
+    }
 });
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -2241,9 +2301,12 @@ function getQueryParam(name) {
 }
 
 // Add an event listener to the confirm SSN field
-document.getElementById('confirmSocialSecurityNumber').addEventListener('input', function () {
-    validateConfirmSSN();
-});
+const _confirmSSN = document.getElementById('confirmSocialSecurityNumber');
+if (_confirmSSN) {
+    _confirmSSN.addEventListener('input', function () {
+        validateConfirmSSN();
+    });
+}
 
 // Utility function to get query parameters
 function getQueryParam(name) {
@@ -2926,6 +2989,7 @@ function showSidebarView(view) {
     const applicationsBtn = document.getElementById('toggle-applications-btn');
     const contactsHeaderActions = document.getElementById('contacts-header-actions');
     const applicationsHeaderActions = document.getElementById('applications-header-actions');
+    const addContactBtn = document.getElementById('add-contact-button');
 
     if (view === 'contacts') {
         contactsList.style.display = 'flex';
@@ -2934,6 +2998,7 @@ function showSidebarView(view) {
         applicationsBtn.classList.remove('active');
         contactsHeaderActions.style.display = 'flex';
         applicationsHeaderActions.style.display = 'none';
+        if (addContactBtn) addContactBtn.style.display = 'block';
     } else if (view === 'applications') {
         contactsList.style.display = 'none';
         applicationsList.style.display = 'flex';
@@ -2941,6 +3006,7 @@ function showSidebarView(view) {
         applicationsBtn.classList.add('active');
         contactsHeaderActions.style.display = 'none';
         applicationsHeaderActions.style.display = 'flex';
+        if (addContactBtn) addContactBtn.style.display = 'none';
         renderApplications();
     }
 }
@@ -3094,7 +3160,7 @@ function getCloseoutReasonsForProgram(programKey) {
         { value: "Not Interested", label: "Not Interested" },
         { value: "Too Confusing", label: "Too Confusing" },
         { value: "Will Call Back", label: "Will Call Back" },
-        { value: "Client Disconnected", label: "Client Unresponsive" },
+        { value: "Disconnected", label: "Disconnected" },
     ];
 
     const benefitReasons = {
@@ -3477,7 +3543,6 @@ async function confirmStopAllApplications() {
 <script src="householdedit.js"></script>
 
 <script src="editnavigation.js"></script>
-<script src="applying.js"></script>
     <script src="applicant.js"></script>
     <script src="notes.js"></script>
 
@@ -3587,15 +3652,16 @@ function updateCountyDropdown(counties, backendCounty = null) {
         });
     }
 
-    // Add event listener for the county dropdown
-    document.getElementById("county").addEventListener("change", function () {
+// Add event listener for the county dropdown
+const _countyEl = document.getElementById("county");
+if (_countyEl) {
+    _countyEl.addEventListener("change", function () {
         const selectedValue = this.value;
-
         if (selectedValue === "") {
-            // If "Select County" is selected, set county to null in the database
             updateClientData('county', null);
         }
     });
+}
 
     // Function to update client data in the backend
     async function updateClientData(field, value) {
