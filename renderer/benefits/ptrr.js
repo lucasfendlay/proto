@@ -76,15 +76,42 @@
 
                 const eligibility = [];
                 const applicationStatus = member.selections?.["Has this person already applied for PTRR this year?"]?.toLowerCase();
-                const dob = new Date(member.dob);
+
+                const rawDob = (member.dob ?? '').toString().trim();
+                const dob = new Date(rawDob);
+                const hasValidDob =
+                    rawDob !== '' &&
+                    rawDob.toLowerCase() !== 'n/a' &&
+                    !isNaN(dob.getTime());
+
                 const today = new Date();
                 let age = today.getFullYear() - dob.getFullYear();
                 if (today.getMonth() < dob.getMonth() ||
                     (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate())) age--;
-                const isDisabled = member.disability?.toLowerCase() === "yes";
-                const isWidowed = member.previousMaritalStatus?.toLowerCase() === "widowed";
+                    const isDisabled = member.disability?.toLowerCase() === "yes";
 
-                if (!(age >= 18 && isDisabled) && !(age >= 50 && isWidowed) && !(age >= 65)) {
+                    const rawDisability = (member.disability ?? '').toString().trim();
+                    const hasValidDisability =
+                        rawDisability !== '' && rawDisability.toLowerCase() !== 'n/a';
+    
+                    const rawMarital = (member.previousMaritalStatus ?? '').toString().trim();
+                    const hasValidMarital =
+                        rawMarital !== '' && rawMarital.toLowerCase() !== 'n/a';
+                    const isWidowed = rawMarital.toLowerCase() === "widowed";
+    
+                    if (!hasValidDob) {
+                        eligibility.push("Needs Date of Birth");
+                        member.selections = member.selections || {};
+                        member.selections["Has this person already applied for PTRR this year?"] = null;
+                    } else if (!hasValidDisability) {
+                        eligibility.push("Needs Disability Status");
+                        member.selections = member.selections || {};
+                        member.selections["Has this person already applied for PTRR this year?"] = null;
+                    } else if (!hasValidMarital) {
+                        eligibility.push("Needs Previous Year Marital Status");
+                    member.selections = member.selections || {};
+                    member.selections["Has this person already applied for PTRR this year?"] = null;
+                } else if (!(age >= 18 && isDisabled) && !(age >= 50 && isWidowed) && !(age >= 65)) {
                     eligibility.push("Age, Disability, or Widow Status Criteria Not Met");
                 } else if (!member.residenceStatus || member.residenceStatus.toLowerCase() === "n/a") {
                     eligibility.push("Needs Previous Year Residence Status");

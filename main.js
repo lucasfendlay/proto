@@ -20,30 +20,51 @@ async function connectToMongoDB() {
     console.log('Connected to MongoDB');
 }
 connectToMongoDB();
+const fs = require('fs');
+
+const ZOOM_SNIPPET = `
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style id="global-zoom-lock">
+  html { zoom: 0.75; }
+</style>
+<script>
+  (function () {
+    function lockZoom() {
+      document.documentElement.style.zoom = '0.75';
+    }
+    lockZoom();
+    document.addEventListener('DOMContentLoaded', lockZoom);
+    // Block Ctrl/Cmd +, -, 0 and ctrl+wheel zoom
+    window.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && ['+', '=', '-', '_', '0'].includes(e.key)) {
+        e.preventDefault();
+        lockZoom();
+      }
+    }, { passive: false });
+    window.addEventListener('wheel', function (e) {
+      if (e.ctrlKey) { e.preventDefault(); }
+    }, { passive: false });
+  })();
+</script>
+`;
+
+// Inject the zoom lock into every .html response BEFORE static serving
+app.use((req, res, next) => {
+    const urlPath = req.path === '/' ? '/index.html' : req.path;
+    if (!urlPath.endsWith('.html')) return next();
+
+    const filePath = path.join(__dirname, 'renderer', urlPath);
+    fs.readFile(filePath, 'utf8', (err, html) => {
+        if (err) return next();
+        const injected = html.includes('<head>')
+            ? html.replace('<head>', `<head>${ZOOM_SNIPPET}`)
+            : ZOOM_SNIPPET + html;
+        res.type('html').send(injected);
+    });
+});
 
 // Serve static files from the "src/renderer" directory
 app.use(express.static(path.join(__dirname, 'renderer')));
-// Redirect to splash.html
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'renderer', 'splash.html'));
-});
-
-app.use((req, res, next) => {
-    const originalSend = res.send;
-
-    res.send = function (body) {
-        if (typeof body === 'string' && body.includes('<head>')) {
-            // Inject the meta tag and zoom style into the <head> section
-            body = body.replace(
-                '<head>',
-                `<head><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body { zoom: 0.9; }</style>`
-            );
-        }
-        originalSend.call(this, body);
-    };
-
-    next();
-});
 
 // Start the server
 const PORT = process.env.PORT || 3000; // Use the PORT environment variable or default to 3000

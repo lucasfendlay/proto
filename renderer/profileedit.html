@@ -11,21 +11,19 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
 
     <style>
-        body {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 320px 20px 20px;
-            visibility: hidden;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
+        .hidden { visibility: hidden; }
 
-        body.loaded {
-            visibility: visible;
-            opacity: 1;
-        }
+html {
+    background: #f9f9f9;
+}
 
-        details > summary { cursor: pointer; }
+body {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 320px 20px 20px;
+}
+
+details > summary { cursor: pointer; }
 
         #interactionList {
             list-style-type: none;
@@ -539,7 +537,7 @@
     <script src="editnavigation.js"></script>
     <script src="userInfo.js"></script>
 </head>
-<body>
+<body class="hidden">
 
     <form id="clientForm" class="profile-banner" autocomplete="off">
         <div class="profile-banner-header">
@@ -1911,24 +1909,22 @@
             const data = await fetchClient();
             populateForm(data);
             setupScreeningObserver();
-            await runAllEligibilityChecks(data.householdMembers || [], data);  // ← correct signature
-            document.body.classList.add('loaded');
+            await runAllEligibilityChecks(data.householdMembers || [], data);
         } catch (error) {
             console.error('Error loading client data:', error);
             alert('Client not found.');
-            document.body.classList.add('loaded');
+        } finally {
+            document.body.classList.remove('hidden');
         }
     }
 
     document.addEventListener('DOMContentLoaded', async function () {
         setupFieldListeners();
-        // Use the shared ZIP loader from banner.js and populate the shared map
         if (typeof window.loadZipCountyDataBanner === 'function') {
             await window.loadZipCountyDataBanner();
             zipToCountyMap = window.zipToCountyMap || {};
         }
-        setupBannerHeightSync();  // from banner.js
-        initPage();
+        await initPage();
     });
     </script>
 

@@ -129,13 +129,24 @@
 
                 const eligibility = [];
                 const age = member.age || '';
+                const hasValidAge =
+                    typeof age === 'string' &&
+                    age.trim() !== '' &&
+                    age.trim().toLowerCase() !== 'n/a' &&
+                    /\d/.test(age);
+
                 const [years, months, days] = age
                     .replace(/Years,|Months,|Days/g, '')
                     .trim()
                     .split(/\s+/)
                     .map(v => parseInt(v.trim()) || 0);
 
-                if (years < 64 || (years === 64 && months < 11)) {
+                if (!hasValidAge) {
+                    eligibility.push("Needs Date of Birth");
+                    member.selections = member.selections || {};
+                    member.selections["Is this person currently enrolled in PACE?"] = null;
+                    member.selections["Has this person lived in Pennsylvania for at least the last 90 consecutive days?"] = null;
+                } else if (years < 64 || (years === 64 && months < 11)) {
                     eligibility.push("Age Criteria Not Met");
                     member.selections = member.selections || {};
                     member.selections["Is this person currently enrolled in PACE?"] = null;

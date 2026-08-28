@@ -25,6 +25,9 @@
 <body>
     <h1>Log New Call</h1>
     <form id="callLogForm">
+
+        <button type="button" onclick="goBackToProfile()">Back to Profile</button>
+
         <label for="Agent">Contact Center Specialist:</label>
         <input type="text" id="Agent" name="Agent" readonly><br><br>
 
@@ -90,7 +93,6 @@
             <input type="text" id="specificReferral" name="specificReferral" placeholder="Enter details">
         </div>
 
-        <button type="button" onclick="goBackToProfile()">Back to Profile</button>
         <button type="button" onclick="logNewCall()">Log New Call</button>
     </form>
 

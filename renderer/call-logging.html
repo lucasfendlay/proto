@@ -26,7 +26,11 @@
 </head>
 <body>
     <h1>Add New Contact</h1>
+    
     <form id="callLogForm">
+
+        <button type="button" onclick="window.location.href='home.html'">Home</button>
+
         <label for="Agent">Contact Center Specialist:</label>
         <input type="text" id="Agent" name="Agent" readonly><br><br>
 
@@ -87,7 +91,6 @@
             <input type="text" id="specificReferral" name="specificReferral" placeholder="Enter details">
         </div>
 
-        <button type="button" onclick="window.location.href='home.html'">Home</button>
         <button type="button" onclick="logNewCall()">Log New Call</button>
     </form>
 
