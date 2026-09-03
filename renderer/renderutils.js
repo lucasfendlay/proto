@@ -17,6 +17,9 @@
         "NOT ENROLLED IN MEDICARE", "NO FORMAL LEASE"
     ];
 
+    // Benefits whose household-level cache must be dropped when reopened
+    const HOUSEHOLD_CACHE_BENEFITS = ['PACE', 'PTRR', 'SFBP'];
+
     // ------------------------------------------------------------------
     // Small helpers
     // ------------------------------------------------------------------
@@ -98,7 +101,7 @@
                 if (onBeforeRefresh) await onBeforeRefresh();
                 await ctx.addNoteToClient(ctx.clientId, `<strong>${label} screening reopened.</strong>`);
                 await ctx.renderNotesContainer();
-                if ((key === 'PACE' || key === 'PTRR') && window.invalidateHouseholdCache) {
+                if (HOUSEHOLD_CACHE_BENEFITS.includes(key) && window.invalidateHouseholdCache) {
                     window.invalidateHouseholdCache();
                 }
                 if (key === 'SNAP' && window.refreshFarmworkerVisibility) {
@@ -140,6 +143,7 @@
     // }
     // ------------------------------------------------------------------
     function getSpouseInfo(member, allMembers, config) {
+        if (config.showSpouse === false) return '';
         const spouse = config.getSpouse
             ? config.getSpouse(member, allMembers)
             : (() => {
@@ -173,11 +177,15 @@
         const elig = benefitObj.eligibility?.map(upper) || [];
         const color = colorFromEligibility(elig, { includeNeeds: true });
         const spouseInfo = getSpouseInfo(member, allMembers, config);
-        const maritalLabel = config.maritalLabel || 'Marital Status';
-        const maritalValue = config.getMaritalValue
-            ? config.getMaritalValue(member)
-            : (member.maritalStatus || 'N/A');
         const ageDisplay = member.age?.split('Y')[0] || 'N/A';
+
+        const maritalInfo = config.showMaritalStatus === false ? '' : (() => {
+            const maritalLabel = config.maritalLabel || 'Marital Status';
+            const maritalValue = config.getMaritalValue
+                ? config.getMaritalValue(member)
+                : (member.maritalStatus || 'N/A');
+            return `<strong>${maritalLabel}:</strong> <br>${upper(maritalValue)}<br>`;
+        })();
 
         return `
             <details class="custom-details member-details" style="background-color: ${color.bg}; border: 1px solid #000; border-radius: 4px; padding: 8px; margin: 8px 0; width: 100%; box-sizing: border-box;">
@@ -188,7 +196,7 @@
                 <hr class="separator-bar">
                 ${member.headOfHousehold ? ' <span style="font-size: 11px; border: 1px solid black; padding: 2px 5px; margin-left: 6px;">Head of Household</span>' : ''}
                 <p><strong>Age:</strong> ${ageDisplay} <br>
-                <strong>${maritalLabel}:</strong> <br>${upper(maritalValue)}<br>
+                ${maritalInfo}
                 ${spouseInfo}</p>
                 ${config.getDetails(member)}
             </details>`;
@@ -211,7 +219,7 @@
                     const name = `${upper(target.firstName)} ${upper(target.lastName)}`;
                     await ctx.addNoteToClient(ctx.clientId, `<strong>${benefit} screening reopened for ${name}.</strong>`);
                     await ctx.renderNotesContainer();
-                    if ((benefit === 'PACE' || benefit === 'PTRR') && window.invalidateHouseholdCache) {
+                    if (HOUSEHOLD_CACHE_BENEFITS.includes(benefit) && window.invalidateHouseholdCache) {
                         window.invalidateHouseholdCache();
                     }
                     await ctx.refreshAllDisplays();

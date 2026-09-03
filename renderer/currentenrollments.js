@@ -37,7 +37,8 @@ async function runAllEligibilityChecks(members) {
         'MSPEligibilityCheck',
         'PTRREligibilityCheck',
         'SNAPEligibilityCheck',
-        'LIHEAPEligibilityCheck'
+        'LIHEAPEligibilityCheck',
+        'SFBPEligibilityCheck'
     ];
 
     for (const check of checks) {
@@ -292,6 +293,17 @@ async function checkPTRREligibility(member, client, members) {
            (years >= 65);
 }
 
+async function checkSFBPEligibility(member) {
+    if (!member.headOfHousehold) return false;
+
+    const sfbpIsClosed = member.SFBP?.screeningInProgress === false;
+    if (sfbpIsClosed) return false;
+
+    const { years } = parseAge(member.age);
+    return years >= 60;
+}
+
+
 // ══════════════════════════════════════════════════════════════
 // QUESTION HTML GENERATION
 // ══════════════════════════════════════════════════════════════
@@ -335,6 +347,16 @@ function generatePTRRQuestionHTML() {
     return `
         <div class="selection-box">
             <label>Has this person already applied for PTRR this year?</label>
+            <div data-value="yes" class="selection-option">Yes</div>
+            <div data-value="no" class="selection-option">No</div>
+        </div>
+    `;
+}
+
+function generateSFBPQuestionHTML() {
+    return `
+        <div class="selection-box">
+            <label>Is this person currently enrolled in the Senior Food Box Program?</label>
             <div data-value="yes" class="selection-option">Yes</div>
             <div data-value="no" class="selection-option">No</div>
         </div>
@@ -452,6 +474,15 @@ async function addHouseholdMemberToUI(member, client, members) {
         memberDiv.innerHTML += generatePTRRQuestionHTML();
     } else if (member.headOfHousehold) {
         await saveDefaultSelection(clientId, member.householdMemberId, "Has this person already applied for PTRR this year?", "Not Interested");
+    }
+
+    // SFBP eligibility
+    const showSFBP = await checkSFBPEligibility(member);
+    if (showSFBP) {
+        hasQuestions = true;
+        memberDiv.innerHTML += generateSFBPQuestionHTML();
+    } else if (member.headOfHousehold) {
+        await saveDefaultSelection(clientId, member.householdMemberId, "Is this person currently enrolled in the Senior Food Box Program?", "Not Interested");
     }
 
     if (!hasQuestions) {

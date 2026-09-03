@@ -68,7 +68,8 @@ async function runAllEligibilityChecks(members) {
         'MSPEligibilityCheck',
         'PTRREligibilityCheck',
         'SNAPEligibilityCheck',
-        'LIHEAPEligibilityCheck'
+        'LIHEAPEligibilityCheck',
+        'SFBPEligibilityCheck'
     ];
 
     for (const check of checks) {

@@ -269,6 +269,34 @@
         color: #991b1b;
         border: 1px solid #fca5a5;
     }
+
+        /* Empty state */
+        #clientList li.empty {
+        text-align: center;
+        color: #6b7280;
+        padding: 24px;
+        font-style: italic;
+    }
+
+    /* Clear Search button - hidden until a search parameter is entered */
+    #clearSearchBtn {
+        display: none;
+        align-self: flex-start;
+        background-color: #6b7280;
+        color: #fff;
+        border: none;
+        padding: 10px 18px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        margin: 4px 0;
+        transition: background-color 0.15s;
+    }
+
+    #clearSearchBtn:hover {
+        background-color: #4b5563;
+    }
 </style>
 
 <body>
@@ -285,6 +313,8 @@
         <input type="text" id="searchStreetAddress" oninput="searchClients()" placeholder="Search by Street Address...">
         <input type="text" id="searchCity" oninput="searchClients()" placeholder="Search by City...">
         <input type="text" id="searchCounty" oninput="searchClients()" placeholder="Search by County...">
+        <button id="clearSearchBtn" onclick="clearSearch()">Clear Search</button>
+
         <ul id="clientList"></ul>
     </div>
 
@@ -306,7 +336,47 @@
         }
     }
 
+    const SEARCH_FIELD_IDS = [
+        'searchId',
+        'searchFirstName',
+        'searchLastName',
+        'searchPhoneNumber',
+        'searchStreetAddress',
+        'searchCity',
+        'searchCounty',
+    ];
+
+    function updateClearButtonVisibility() {
+        const hasValue = SEARCH_FIELD_IDS.some(id => {
+            const input = document.getElementById(id);
+            return input && input.value.trim() !== '';
+        });
+        const btn = document.getElementById('clearSearchBtn');
+        if (btn) btn.style.display = hasValue ? 'inline-block' : 'none';
+    }
+
+    function showSearchPrompt() {
+        const clientList = document.getElementById('clientList');
+        clientList.innerHTML = '';
+        const li = document.createElement('li');
+        li.className = 'empty';
+        li.textContent = 'Please enter a valid search parameter';
+        clientList.appendChild(li);
+        document.body.classList.add('loaded');
+        updateClearButtonVisibility();
+    }
+
+    function clearSearch() {
+        SEARCH_FIELD_IDS.forEach(id => {
+            const input = document.getElementById(id);
+            if (input) input.value = '';
+        });
+        showSearchPrompt();
+        document.getElementById('searchId')?.focus();
+    }
+
     async function searchClients() {
+        updateClearButtonVisibility();
     const searchInputs = {
         id: document.getElementById('searchId').value.trim(),
         firstName: document.getElementById('searchFirstName').value.trim(),
@@ -319,7 +389,7 @@
 
     const allFieldsEmpty = Object.values(searchInputs).every(value => value === '');
     if (allFieldsEmpty) {
-        await loadClients();
+        showSearchPrompt();
         return;
     }
 
@@ -328,8 +398,16 @@
     const clientsById = {};
     clients.forEach(c => { clientsById[c.id] = c; });
 
-    const fuseOptions = { includeScore: true, threshold: 0.4 };
-
+    const fuseOptions = {
+        includeScore: true,
+        threshold: 0.6,          // 0 = exact, 1 = match anything
+        ignoreLocation: true,    // match anywhere in the string, not just the start
+        distance: 1000,          // how far a match may drift from the expected location
+        minMatchCharLength: 1,   // allow very short queries
+        findAllMatches: true,
+        isCaseSensitive: false,
+        useExtendedSearch: false,
+    };
     const extendedClients = clients.flatMap(client => {
         const rawHousehold = client.householdMembers || client.HouseholdMembers || [];
         const rawContacts  = client.contacts || client.Contacts || [];
@@ -345,8 +423,21 @@
     const fieldResults = {};
     for (const [field, query] of Object.entries(searchInputs)) {
         if (query) {
-            const fuse = new Fuse(extendedClients, { ...fuseOptions, keys: [field] });
-            fieldResults[field] = fuse.search(query);
+            // Phone numbers: compare digits only so "(555) 123" matches "5551234567"
+            const normalized = field === 'phoneNumber'
+                ? query.replace(/\D/g, '') || query
+                : query;
+
+            const fuse = new Fuse(extendedClients, {
+                ...fuseOptions,
+                keys: [field],
+                // Profile IDs are short + structured; keep them a bit tighter
+                threshold: field === 'id' ? 0.4 : fuseOptions.threshold,
+                getFn: field === 'phoneNumber'
+                    ? (obj) => String(obj.phoneNumber || '').replace(/\D/g, '')
+                    : undefined,
+            });
+            fieldResults[field] = fuse.search(normalized);
         }
     }
 
@@ -360,7 +451,8 @@
     for (const results of Object.values(fieldResults)) {
         results.forEach(({ item, score }) => {
             const parentId = item.isHouseholdMember || item.isContact ? item.parentClientId : item.id;
-            ensureGroup(parentId).totalScore += (1 - score);
+            const s = typeof score === 'number' ? score : 0;
+            ensureGroup(parentId).totalScore += (1 - s);
         });
     }
 
@@ -388,34 +480,6 @@
         if (!primary) return;
         clientList.appendChild(renderProfileCard(primary));
     });
-}
-
-async function loadClients() {
-    const clients = await fetchClients();
-    const activeUser = sessionStorage.getItem('loggedInUser')?.trim();
-
-    clients.sort((a, b) => {
-        const aLast = a.notes?.[a.notes.length - 1]?.timestamp || 0;
-        const bLast = b.notes?.[b.notes.length - 1]?.timestamp || 0;
-        return new Date(bLast) - new Date(aLast);
-    });
-
-    const clientList = document.getElementById('clientList');
-    clientList.innerHTML = '';
-
-    if (clients.length === 0) {
-        const li = document.createElement('li');
-        li.textContent = 'No clients found.';
-        clientList.appendChild(li);
-        document.body.classList.add('loaded');
-        return;
-    }
-
-    clients.forEach(client => {
-        clientList.appendChild(renderProfileCard(client, activeUser));
-    });
-
-    document.body.classList.add('loaded');
 }
 
 // ---- Shared rendering helpers ----
@@ -615,8 +679,8 @@ function renderProfileCard(client, activeUser) {
     return `CP${randomSevenDigits}`;
 }
 
-        // Load all clients on page load
-        window.onload = loadClients;
+        // Show prompt instead of loading all clients on page load
+        window.onload = showSearchPrompt;
     </script>
 
 <script>

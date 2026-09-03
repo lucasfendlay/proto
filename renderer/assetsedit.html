@@ -284,15 +284,38 @@
             background-color: #ffe6e6;
         }
 
-        /* Scope the asset modal to a reasonable width */
-        #asset-modal.modal .modal-content {
-            background-color: #f9f9f9;
-            border-radius: 10px;
-            padding: 30px;
-            width: 90%;
-            max-width: 600px;
-            margin: 100px auto;
-        }
+            /* Full-screen overlay, independent of the scaled body */
+    #asset-modal.modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1001;
+        justify-content: center;
+        align-items: center;
+        overflow-y: auto;
+    }
+
+    #asset-modal.modal.show {
+        display: flex;
+    }
+
+    /* Hidden must win over .show */
+    #asset-modal.modal.hidden {
+        display: none;
+    }
+
+    #asset-modal.modal .modal-content {
+        background-color: #f9f9f9;
+        border-radius: 10px;
+        padding: 30px;
+        width: 90%;
+        max-width: 600px;
+        margin: 0;              /* Flex handles centering now */
+        max-height: 90%;        /* Percent, not vh — vh ignores the scale */
+        overflow-y: auto;
+        box-sizing: border-box;
+    }
 
                             /* ===== Profile Banner ===== */
                             .profile-banner {
@@ -828,6 +851,7 @@
                     <option value="Money Market Account">Money Market Account</option>
                     <option value="Cryptocurrency">Cryptocurrency</option>
                     <option value="Non-Residential Property">Non-Residential Property</option>
+                    <option value="Vehicle">Vehicle</option>
                     <option value="Cash On Hand">Cash On Hand</option>
                 </select>
 
@@ -861,6 +885,7 @@
     <script src="benefits/lis.js"></script>
     <script src="benefits/msp.js"></script>
     <script src="benefits/ptrr.js"></script>
+    <scropt src="benefits/sfbp.js"></script>
     <script src="benefits/snap.js"></script>
     <script src="benefits/liheap.js"></script>
     <script src="estimations.js"></script>

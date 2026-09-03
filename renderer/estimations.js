@@ -435,7 +435,8 @@ document.addEventListener('DOMContentLoaded', async function () {
                 await renderNotesContainer();
 
                 const closed = selectedTiles.map(t => t.dataset.benefit);
-                if ((closed.includes('PACE') || closed.includes('PTRR')) && window.invalidateHouseholdCache) {
+                if ((closed.includes('PACE') || closed.includes('PTRR') || closed.includes('SFBP'))
+                    && window.invalidateHouseholdCache) {
                     window.invalidateHouseholdCache();
                 }
                 await refreshAllDisplays();
@@ -663,6 +664,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         async LISEligibilityCheck(m)    { return runOne('LIS',    m); },
         async MSPEligibilityCheck(m)    { return runOne('MSP',    m); },
         async PTRREligibilityCheck(m)   { return runOne('PTRR',   m); },
+        async SFBPEligibilityCheck(m)   { return runOne('SFBP',   m); },
         async SNAPEligibilityCheck(m)   { return runOne('SNAP',   m); },
         async LIHEAPEligibilityCheck(m) { return runOne('LIHEAP', m); }
     };

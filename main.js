@@ -24,28 +24,9 @@ const fs = require('fs');
 
 const ZOOM_SNIPPET = `
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style id="global-zoom-lock">
+<style id="global-zoom-default">
   html { zoom: 0.75; }
 </style>
-<script>
-  (function () {
-    function lockZoom() {
-      document.documentElement.style.zoom = '0.75';
-    }
-    lockZoom();
-    document.addEventListener('DOMContentLoaded', lockZoom);
-    // Block Ctrl/Cmd +, -, 0 and ctrl+wheel zoom
-    window.addEventListener('keydown', function (e) {
-      if ((e.ctrlKey || e.metaKey) && ['+', '=', '-', '_', '0'].includes(e.key)) {
-        e.preventDefault();
-        lockZoom();
-      }
-    }, { passive: false });
-    window.addEventListener('wheel', function (e) {
-      if (e.ctrlKey) { e.preventDefault(); }
-    }, { passive: false });
-  })();
-</script>
 `;
 
 // Inject the zoom lock into every .html response BEFORE static serving

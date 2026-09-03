@@ -133,10 +133,10 @@ ul li a:hover {
     position: fixed; /* Position the container absolutely */
     z-index: 1000; /* Ensure it appears above other content */
     left: 0; /* Align it to the left side of the screen */
-    top: 80px; /* Adjusted to make space for the input box and save button */
-    width: 300px; /* Fixed width for the sidebar */
+    top: 80px;
+    bottom: 0; /* Stretches to the bottom; height is derived */
+    overflow-y: auto;    width: 300px; /* Fixed width for the sidebar */
     min-width: 300px; /* Ensure the sidebar has a minimum width */
-    height: calc(100vh - 70px); /* Dynamically adjust height based on the viewport */
     overflow-y: auto; /* Enable vertical scrolling for overflow content */
     padding: 10px;
     pointer-events: auto; /* Ensure the container captures scroll events */
@@ -200,6 +200,9 @@ ul li a:hover {
     .left-sidebar-container {
         width: 200px; /* Reduce sidebar width */
         min-width: 200px;
+        top: 80px;
+        bottom: 0; /* Stretches to the bottom; height is derived */
+        overflow-y: auto;
     }
 
     .navigation-buttons-container {
@@ -227,7 +230,6 @@ ul li a:hover {
     .left-sidebar-container {
         position: static; /* Remove fixed positioning */
         width: 100%; /* Use full width */
-        height: auto; /* Adjust height dynamically */
         box-shadow: none; /* Remove shadow for simplicity */
     }
 

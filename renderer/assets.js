@@ -448,12 +448,14 @@ function resetModal() {
         editingAssetId: null
     };
     addAssetBtn.textContent = 'Add Asset';
+    modal.classList.remove('show');
     modal.classList.add('hidden');
 }
 
 function showModal() {
     const { modal } = getModalElements();
     modal.classList.remove('hidden');
+    modal.classList.add('show');
 }
 
 function openAddAssetModal(memberId) {

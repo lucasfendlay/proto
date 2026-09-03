@@ -45,6 +45,9 @@ document.addEventListener('DOMContentLoaded', function () {
             border: 1px solid #007bff;
             width: 100%;
             flex-shrink: 0;
+            position: relative;
+            z-index: 0;
+            background-color: #fff;
         }
 
         .notes-toggle-btn {

@@ -216,7 +216,9 @@ if (showApplicationEdit) {
     navigationContainer.style.borderBottom = '2px solid #ccc';
     navigationContainer.style.paddingBottom = '10px';
     navigationContainer.style.marginBottom = '10px';
-
+    navigationContainer.style.top = '0';
+    navigationContainer.style.zIndex = '1000';
+    navigationContainer.style.backgroundColor = '#fff';
 }
 
 // Call this function on DOMContentLoaded to ensure the buttons are added to the page

@@ -1,13 +1,13 @@
 window.EligibilityUtils = (function() {
     
 // ===== CONSTANTS =====
-const BENEFIT_KEYS = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP'];
-const INDIVIDUAL_BENEFITS = ['PACE', 'LIS', 'MSP', 'PTRR'];
+const BENEFIT_KEYS = ['PACE', 'LIS', 'MSP', 'PTRR', 'SNAP', 'LIHEAP', 'SFBP'];
+const INDIVIDUAL_BENEFITS = ['PACE', 'LIS', 'MSP', 'PTRR', 'SFBP'];
 
-// 2025 Federal Poverty Level (annual)
+// 2026 Federal Poverty Level (annual)
 const FPL = {
-    base: 15650,           // 1 person
-    perAdditional: 5500,   // each additional person
+    base: 15960,           // 1 person
+    perAdditional: 5680,   // each additional person
     get: function(householdSize) {
         if (householdSize <= 0) return 0;
         if (householdSize === 1) return this.base;
@@ -32,7 +32,8 @@ const FPL_PERCENTAGES = {
     SNAP_NET: 1.00,         // 100% FPL (net income test)
     MSP_QMB: 1.00,          // 100% FPL
     MSP_SLMB: 1.20,         // 120% FPL
-    MSP_QI: 1.35            // 135% FPL
+    MSP_QI: 1.35,            // 135% FPL
+    SFBP: 1.30              // 130% FPL
 };
 
 const UTILITY_ALLOWANCES = {
@@ -123,6 +124,17 @@ const SNAP_NET_INCOME_LIMITS = Array.from({ length: 17 }, (_, i) =>
 const LIHEAP_INCOME_LIMITS = Array.from({ length: 16 }, (_, i) => 
     i === 0 ? 0 : Math.round(FPL.getMonthlyAtPercent(i, FPL_PERCENTAGES.LIHEAP))
 );
+
+// SFBP income limits (130% FPL, monthly)
+const SFBP_INCOME_LIMITS = Array.from({ length: 16 }, (_, i) =>
+    i === 0 ? 0 : Math.round(FPL.getMonthlyAtPercent(i, FPL_PERCENTAGES.SFBP))
+);
+
+const SFBP_THRESHOLDS = {
+    minAgeYears: 60,
+    incomePercent: FPL_PERCENTAGES.SFBP,
+    getIncomeLimit: (householdSize) => FPL.getMonthlyAtPercent(householdSize, FPL_PERCENTAGES.SFBP)
+};
 
 const SNAP_SHELTER_COST_CAP = 744;
 const SNAP_MEDICAL_EXPENSE_THRESHOLD = 35;
@@ -372,6 +384,8 @@ const SNAP_EXPEDITED_ASSET_LIMIT = 100;
         SNAP_EXPEDITED_INCOME_LIMIT,
         SNAP_EXPEDITED_ASSET_LIMIT,
         LIHEAP_INCOME_LIMITS,
+        SFBP_THRESHOLDS,
+        SFBP_INCOME_LIMITS,
         
         // Utility functions
         getQueryParameter,
