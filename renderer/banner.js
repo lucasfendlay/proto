@@ -423,6 +423,12 @@
     function renderHouseholdMembersPanel() {
         const panel = document.getElementById('household-members-panel');
         if (!panel) return;
+
+        // Always pull the freshest client data. Other pages (e.g. profileedit.html)
+        // write to window.bannerClient directly without going through banner.js's
+        // own functions, so the module-scoped `bannerClient` var can go stale.
+        if (window.bannerClient) bannerClient = window.bannerClient;
+
         const members = (bannerClient?.householdMembers) || [];
         if (!members.length) {
             panel.innerHTML = '<p style="margin:0; font-size:0.85rem; color:#64748b;">No household members.</p>';
@@ -430,6 +436,7 @@
         }
         const sorted = [...members].sort((a, b) => (b.headOfHousehold ? 1 : 0) - (a.headOfHousehold ? 1 : 0));
         panel.innerHTML = `<div class="household-members-grid">${sorted.map(m => `<div class="household-member-card">${buildBannerMemberHTML(m)}</div>`).join('')}</div>`;
+
 
         // Wire up Edit buttons
         panel.querySelectorAll('.banner-edit-member-btn').forEach(btn => {
@@ -781,24 +788,28 @@
             /* Force the injected household modal to always scroll on any page,
                regardless of body padding/margins added by the banner. */
             #householdMemberModal {
-                position: fixed !important;
-                inset: 0 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                max-height: 100vh !important;
-                overflow-y: auto !important;
-                -webkit-overflow-scrolling: touch;
-                z-index: 10000 !important;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
+        display: none;
+        position: fixed;
+        inset: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1001;
+        justify-content: center;
+        align-items: center;
+        overflow-y: auto;
+    }
             /* Give the inner content some breathing room and let it grow */
             #householdMemberModal .modal-content,
             #householdMemberModal > div {
-                margin: 40px auto !important;
-                max-height: none !important;
-            }
-            /* Prevent background scroll while modal is open (optional) */
+        background-color: #f9f9f9;
+        border-radius: 10px;
+        padding: 30px;
+        width: 90%;
+        max-width: 600px;
+        margin: 0;              /* Flex handles centering now */
+        max-height: 90%;        /* Percent, not vh — vh ignores the scale */
+        overflow-y: auto;
+        box-sizing: border-box;
+    }            /* Prevent background scroll while modal is open (optional) */
             body.household-modal-open { overflow: hidden; }
         `;
         document.head.appendChild(style);

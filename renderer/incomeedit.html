@@ -1040,6 +1040,12 @@
                 return;
             }
 
+            // ── Head of household rule ──
+            // ONLY the very first member added to an empty household becomes head.
+            // Any subsequent member is never auto-promoted, even if no head exists.
+            const isFirstMember = client.householdMembers.length === 0;
+            const isHeadOfHousehold = isFirstMember;
+
             // Build new household member with N/A for fields not captured by the contact modal.
             // householdMemberId is intentionally set to the contactId so name edits stay in sync.
             const newMember = {
@@ -1063,7 +1069,9 @@
                 nonCitizenStatus: '',
                 student: '',
                 studentStatus: '',
-                meals: ''
+                meals: '',
+                headOfHousehold: isHeadOfHousehold,
+                relationshipToHead: isHeadOfHousehold ? 'Self' : ''
             };
 
             client.householdMembers.push(newMember);
@@ -1085,11 +1093,41 @@
             }
 
             cachedClient = client;
+            window.bannerClient = client;
+
+            // Capture which sidebar tab was active BEFORE loadSavedData() potentially resets it
+            const activeView = document.getElementById('toggle-screening-btn')?.classList.contains('active')
+                ? 'screening'
+                : 'contacts';
+
             closeContactModal();
 
-            // Refresh sidebar/household UI if available
+            // Refresh form/banner state
             if (typeof loadSavedData === 'function') {
                 try { await loadSavedData(); } catch (e) { /* ignore */ }
+            }
+
+            // banner.js's household members panel is a separate render pass —
+            // re-render it explicitly so it reflects the new member.
+            if (typeof window.renderHouseholdMembersPanel === 'function') {
+                window.renderHouseholdMembersPanel();
+            }
+
+            // Recompute eligibility using the properly-wired API from estimations.js,
+            // so the sidebar benefit cards actually rerun their checks.
+            if (typeof window.refreshEligibility === 'function') {
+                await window.refreshEligibility();
+            }
+
+            // Re-render contacts list in case it's the active sidebar view
+            if (typeof renderContacts === 'function') {
+                try { await renderContacts(); } catch (e) { /* ignore */ }
+            }
+
+            // Re-apply whichever sidebar tab was active, now that containers
+            // have been correctly (re)rendered.
+            if (typeof showSidebarView === 'function') {
+                await showSidebarView(activeView);
             }
         } catch (error) {
             console.error('Error adding contact to household:', error);

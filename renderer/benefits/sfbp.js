@@ -11,22 +11,28 @@
             }, 0);
     }
 
-    async function run(members, context) {
-        const { clientId, Utils } = context;
-        if (!Utils) { console.error('SFBP: EligibilityUtils not available'); return members; }
+async function run(members, context) {
+    const { clientId, Utils } = context;
+    if (!Utils) { console.error('SFBP: EligibilityUtils not available'); return members; }
 
-        const heads = members.filter(m => m.headOfHousehold === true);
-        members.forEach(m => {
-            if (!m.headOfHousehold) {
-                m.SFBP = {
-                    combinedIncome: 0,
-                    householdSize: 0,
-                    eligibility: ["Not Checked"],
-                    screeningInProgress: m.SFBP?.screeningInProgress ?? false,
-                    screeningCloseReason: m.SFBP?.screeningCloseReason ?? "Not Applicable"
-                };
-            }
-        });
+    const heads = members.filter(m => m.headOfHousehold === true);
+    const hasHead = heads.length > 0;
+
+    members.forEach(m => {
+        if (m.headOfHousehold) return;
+
+        const prev = m.SFBP || {};
+        m.SFBP = {
+            combinedIncome: 0,
+            householdSize: 0,
+            // Only "Not Applicable" once a head actually exists; otherwise the
+            // household just isn't configured yet.
+            eligibility: [hasHead ? "Not Checked" : "Needs Head of Household"],
+            // Preserve prior state exactly — never invent a close reason here.
+            screeningInProgress: 'screeningInProgress' in prev ? prev.screeningInProgress : false,
+            screeningCloseReason: 'screeningCloseReason' in prev ? prev.screeningCloseReason : null
+        };
+    });
 
         const active = members.filter(m => (m.deceased ?? '').toLowerCase() !== 'yes');
         const householdSize = active.length;
@@ -96,7 +102,7 @@
 
     window.BenefitRegistry.register({
         key: 'SFBP',
-        label: 'SFBP',
+        label: 'Senior Food Box Program',
         run,
         renderConfig: {
             key: 'SFBP',

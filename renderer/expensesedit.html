@@ -1018,6 +1018,16 @@
 
     <h1>Expenses</h1>
 
+    <div id="food-in-rent-question" class="form-field hidden" style="max-width: 800px; margin: 15px 0; padding: 15px; border: 1px solid #ccc; border-radius: 8px; background-color: #f9f9f9;">
+        <label for="foodInRent" style="display:block; margin-bottom:8px; font-weight:600;">
+            Is at least 50% of your food included in the cost of your rent?
+        </label>
+        <div class="selection-box" id="food-in-rent-box">
+            <div data-value="yes" onclick="updateFoodInRent('yes')">Yes</div>
+            <div data-value="no" onclick="updateFoodInRent('no')">No</div>
+        </div>
+    </div>
+
     <div class="left-sidebar-container" id="leftSidebarContainer" style="display: none;">
         <div class="sidebar-header">
             <div class="button-container" style="flex-direction: column; gap: 8px; margin-bottom: 10px;">
@@ -1179,7 +1189,7 @@
     <script src="benefits/lis.js"></script>
     <script src="benefits/msp.js"></script>
     <script src="benefits/ptrr.js"></script>
-    <scropt src="benefits/sfbp.js"></script>
+    <script src="benefits/sfbp.js"></script>
     <script src="benefits/snap.js"></script>
     <script src="benefits/liheap.js"></script>
     <script src="estimations.js"></script>
@@ -1199,7 +1209,84 @@
         if (notes && notes.parentElement !== document.body) {
             document.body.appendChild(notes);
         }
+
+        checkFoodInRentVisibility();
     });
+
+    // ── Food included in rent question visibility/logic ──
+    async function checkFoodInRentVisibility() {
+        const container = document.getElementById('food-in-rent-question');
+        if (!container) return;
+
+        try {
+            const clientId = getQueryParam('id');
+            const res = await fetch(`/get-client/${clientId}`);
+            if (!res.ok) return;
+            const client = await res.json();
+
+            const members = client.householdMembers || [];
+            const snapScreeningActive = members.some(m => m?.SNAP?.screeningInProgress === true);
+
+            const residenceStatusCurrent = client.residenceStatusCurrent;
+            const notOwned = residenceStatusCurrent && residenceStatusCurrent !== 'owned';
+
+            if (snapScreeningActive && notOwned) {
+                container.classList.remove('hidden');
+
+                // Restore saved selection if present (check all household members)
+                const saved = members.map(m => m?.SNAP?.foodInRent).find(v => v);
+                if (saved) {
+                    const box = document.getElementById('food-in-rent-box');
+                    box.querySelectorAll('div').forEach(div => {
+                        div.classList.toggle('selected', div.dataset.value === saved);
+                    });
+                }
+            } else {
+                container.classList.add('hidden');
+            }
+        } catch (error) {
+            console.error('Error checking food-in-rent visibility:', error);
+        }
+    }
+
+    async function updateFoodInRent(value) {
+        const box = document.getElementById('food-in-rent-box');
+        box.querySelectorAll('div').forEach(div => {
+            div.classList.toggle('selected', div.dataset.value === value);
+        });
+
+        const clientId = getQueryParam('id');
+        if (!clientId) return;
+
+        try {
+            const client = await fetchClientData();
+            const members = client.householdMembers || [];
+
+            // Save foodInRent onto every household member's SNAP object
+            const updatedMembers = members.map(m => ({
+                ...m,
+                SNAP: { ...(m.SNAP || {}), foodInRent: value }
+            }));
+
+            await fetch('/update-client', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    clientId,
+                    clientData: {
+                        householdMembers: updatedMembers
+                    }
+                })
+            });
+
+            // Recompute eligibility so the SNAP card reflects the new answer
+            if (typeof window.refreshEligibility === 'function') {
+                await window.refreshEligibility();
+            }
+        } catch (error) {
+            console.error('Error saving food-in-rent answer:', error);
+        }
+    }
 
     // ── Utility ──
     function getQueryParam(name) {
@@ -1437,6 +1524,12 @@
                 return;
             }
 
+            // ── Head of household rule ──
+            // ONLY the very first member added to an empty household becomes head.
+            // Any subsequent member is never auto-promoted, even if no head exists.
+            const isFirstMember = client.householdMembers.length === 0;
+            const isHeadOfHousehold = isFirstMember;
+
             // Build new household member with N/A for fields not captured by the contact modal.
             // householdMemberId is intentionally set to the contactId so name edits stay in sync.
             const newMember = {
@@ -1460,7 +1553,9 @@
                 nonCitizenStatus: '',
                 student: '',
                 studentStatus: '',
-                meals: ''
+                meals: '',
+                headOfHousehold: isHeadOfHousehold,
+                relationshipToHead: isHeadOfHousehold ? 'Self' : ''
             };
 
             client.householdMembers.push(newMember);
@@ -1482,11 +1577,41 @@
             }
 
             cachedClient = client;
+            window.bannerClient = client;
+
+            // Capture which sidebar tab was active BEFORE loadSavedData() potentially resets it
+            const activeView = document.getElementById('toggle-screening-btn')?.classList.contains('active')
+                ? 'screening'
+                : 'contacts';
+
             closeContactModal();
 
-            // Refresh sidebar/household UI if available
+            // Refresh form/banner state
             if (typeof loadSavedData === 'function') {
                 try { await loadSavedData(); } catch (e) { /* ignore */ }
+            }
+
+            // banner.js's household members panel is a separate render pass —
+            // re-render it explicitly so it reflects the new member.
+            if (typeof window.renderHouseholdMembersPanel === 'function') {
+                window.renderHouseholdMembersPanel();
+            }
+
+            // Recompute eligibility using the properly-wired API from estimations.js,
+            // so the sidebar benefit cards actually rerun their checks.
+            if (typeof window.refreshEligibility === 'function') {
+                await window.refreshEligibility();
+            }
+
+            // Re-render contacts list in case it's the active sidebar view
+            if (typeof renderContacts === 'function') {
+                try { await renderContacts(); } catch (e) { /* ignore */ }
+            }
+
+            // Re-apply whichever sidebar tab was active, now that containers
+            // have been correctly (re)rendered.
+            if (typeof showSidebarView === 'function') {
+                await showSidebarView(activeView);
             }
         } catch (error) {
             console.error('Error adding contact to household:', error);

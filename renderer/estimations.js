@@ -632,7 +632,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                     background-color: #007bff; color: white; border: none; border-radius: 4px;
                     padding: 10px 20px; font-size: 14px; font-weight: bold; cursor: pointer;
                     transition: background-color 0.3s;" onmouseover="this.style.backgroundColor='#0056b3'"
-                    onmouseout="this.style.backgroundColor='#007bff'">Start New Screening</button>
+                    onmouseout="this.style.backgroundColor='#007bff'">Start Screening</button>
             </div>`;
         container.parentNode.insertBefore(stopped, container);
         document.getElementById('reopen-all-screening-btn').addEventListener('click', async () => {

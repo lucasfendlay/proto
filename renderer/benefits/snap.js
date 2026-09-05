@@ -166,10 +166,17 @@
                         return s <= today && (!e || e >= today);
                     }));
 
+                // Preserve any existing foodInRent answer and re-check eligibility override
+                const foodInRent = household.map(m => m.SNAP?.foodInRent).find(v => v);
+                let finalEligibility = snapEligibility;
+                if (foodInRent === 'yes') {
+                    finalEligibility = ["Ineligible (Food Included in the Cost of Rent)"];
+                }
+
                 household.forEach(member => {
                     member.SNAP = {
                         combinedMonthlyIncome, combinedAssets,
-                        eligibility: snapEligibility,
+                        eligibility: finalEligibility,
                         householdSize: mealsYesCount,
                         totalNetIncome, totalUtilityAllowance, totalShelterExpenses,
                         totalMedicalExpenses, totalOtherExpenses, standardDeduction, excessShelterCost,
@@ -179,7 +186,8 @@
                             totalUtilityAllowance, totalShelterExpenses, isFarmworker, hasActiveIncome
                         ),
                         screeningInProgress: member.SNAP?.screeningInProgress ?? true,
-                        screeningCloseReason: member.SNAP?.screeningCloseReason ?? null
+                        screeningCloseReason: member.SNAP?.screeningCloseReason ?? null,
+                        foodInRent: member.SNAP?.foodInRent ?? null
                     };
                 });
             } catch (err) { console.error('SNAP household error:', err); }
@@ -204,8 +212,9 @@
             const R = U();
             const s = household[0]?.SNAP || {};
             const eligibility = (s.eligibility || ['Not Available']).map(R.capitalizeFirstLetter);
-            const color = R.colorFromEligibility(eligibility, { includeNeeds: true });
-            const isLikelyEligible = R.classifyEligibility(eligibility, { includeNeeds: true }) === 'green';
+            const isFoodInRent = (s.eligibility || []).some(e => (e || '').toUpperCase().includes('FOOD INCLUDED'));
+            const color = isFoodInRent ? R.CARD_COLORS.red : R.colorFromEligibility(eligibility, { includeNeeds: true });
+            const isLikelyEligible = !isFoodInRent && R.classifyEligibility(eligibility, { includeNeeds: true }) === 'green';
             const benefitAmount = s.benefitAmount || 0;
     
             const div = R.makeCardDiv(color);
@@ -341,6 +350,7 @@
                 const u = (ineligibilityReason || '').toUpperCase();
                 if (u.includes('ALREADY ENROLLED')) return 'Already Enrolled';
                 if (u.includes('NOT INTERESTED'))   return 'Not Interested';
+                if (u.includes('FOOD INCLUDED')) return 'Ineligible - Food Included in the Cost of Rent';
                 if (u.includes('INCOME AND ASSETS') || (u.includes('INCOME') && u.includes('ASSETS')))
                     return 'Ineligible - Income and Assets';
                 if (u.includes('ASSETS') && u.includes('NOT LIKELY')) return 'Ineligible - Income and Assets';
@@ -358,6 +368,7 @@
             const eligStr = (snapMember.SNAP.eligibility || []).join(' ').toUpperCase();
             if (eligStr.includes('ALREADY ENROLLED')) return { isNotEligible: true, reason: 'Already Enrolled' };
             if (eligStr.includes('NOT INTERESTED'))   return { isNotEligible: true, reason: 'Not Interested' };
+            if (eligStr.includes('FOOD INCLUDED')) return { isNotEligible: true, reason: 'Ineligible - Food Included in the Cost of Rent' };
             if (eligStr.includes('INCOME AND ASSETS') || (eligStr.includes('INCOME') && eligStr.includes('ASSETS'))) {
                 return { isNotEligible: true, reason: 'Ineligible - Income and Assets' };
             }

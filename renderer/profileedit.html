@@ -532,6 +532,31 @@ details > summary { cursor: pointer; }
             box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         }
 
+        /* Keep Start Screening in the page flow, not docked to the sidebar */
+        #call-logging-button {
+            position: static !important;
+            top: auto !important;
+            left: auto !important;
+            right: auto !important;
+            bottom: auto !important;
+            transform: none !important;
+            display: none;               /* toggled by JS */
+            margin: 24px auto 8px;
+            padding: 12px 24px !important;
+            font-size: 1rem;
+            font-weight: 600;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0, 123, 255, 0.25);
+        }
+
+        #call-logging-button:hover {
+            background-color: #0056b3;
+        }
+
     </style>
 
     <script src="editnavigation.js"></script>
@@ -806,8 +831,11 @@ details > summary { cursor: pointer; }
         </div>
     </div>
 
-    <button id="call-logging-button" class="interactive" onclick="confirmAndRedirect()">Start Screening</button>
+    <br><br><br><br>
 
+    <div style="text-align:center;">
+        <button id="call-logging-button" class="interactive" onclick="confirmAndRedirect()">Start Screening</button>
+    </div>
     <h2>Interaction History</h2>
     <ul id="interactionList">
         <li>Loading...</li>
@@ -1079,7 +1107,7 @@ details > summary { cursor: pointer; }
         terminateButton.style.display = 'inline-block';
 
         // Screening button
-        document.getElementById('call-logging-button').style.display = data.screeningInProgress ? 'none' : 'block';
+        document.getElementById('call-logging-button').style.display = data.screeningInProgress ? 'none' : 'inline-block';
 
         // Show sidebar
         document.getElementById('leftSidebarContainer').style.display = 'block';
@@ -1267,17 +1295,17 @@ details > summary { cursor: pointer; }
         if (!clientId) return;
 
         try {
-            const client = await fetchClientData();
-            const contact = (client.Contacts || [])[index];
+            const freshClient = await fetchClientData();
+            const contact = (freshClient.Contacts || [])[index];
             if (!contact) {
                 alert('Contact not found.');
                 return;
             }
 
-            if (!client.householdMembers) client.householdMembers = [];
+            if (!freshClient.householdMembers) freshClient.householdMembers = [];
 
             // Guard against duplicates
-            const alreadyMember = client.householdMembers.some(m =>
+            const alreadyMember = freshClient.householdMembers.some(m =>
                 m && m.householdMemberId === contact.contactId
             );
             if (alreadyMember) {
@@ -1289,16 +1317,18 @@ details > summary { cursor: pointer; }
                 return;
             }
 
-            // Determine first-member status & program statuses (mirrors householdedit.js)
-            const isFirstMember = !client.householdMembers.length;
-            const programStatus = client.programStatus || {};
-            // PTRR is only open for the head of household (i.e., the first member)
-            const ptrrOpen = isFirstMember
+            // ── Head of household rule ──
+            // ONLY the very first member added to an empty household becomes head.
+            // Any subsequent member is never auto-promoted, even if no head exists.
+            const isFirstMember = freshClient.householdMembers.length === 0;
+            const isHeadOfHousehold = isFirstMember;
+
+            const programStatus = freshClient.programStatus || {};
+            // PTRR is only open for the head of household
+            const ptrrOpen = isHeadOfHousehold
                 ? (programStatus.PTRR?.screeningInProgress ?? true)
                 : false;
 
-            // Build new household member with N/A for fields not captured by the contact modal.
-            // householdMemberId is intentionally set to the contactId so name edits stay in sync.
             const newMember = {
                 householdMemberId: contact.contactId,
                 prefix: '',
@@ -1321,17 +1351,18 @@ details > summary { cursor: pointer; }
                 student: '',
                 studentStatus: '',
                 meals: '',
-                headOfHousehold: isFirstMember,
+                headOfHousehold: isHeadOfHousehold,
+                relationshipToHead: isHeadOfHousehold ? 'Self' : '',
             };
 
-            client.householdMembers.push(newMember);
+            freshClient.householdMembers.push(newMember);
 
             const response = await fetch('/update-client', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     clientId,
-                    clientData: { householdMembers: client.householdMembers }
+                    clientData: { householdMembers: freshClient.householdMembers }
                 })
             });
 
@@ -1342,19 +1373,47 @@ details > summary { cursor: pointer; }
                 return;
             }
 
-            cachedClient = client;
+            // Keep the outer/global client state in sync
+            cachedClient = freshClient;
+            client.householdMembers = freshClient.householdMembers;
+            client.programStatus = freshClient.programStatus;
+            window.bannerClient = client;
+
+            // Capture which sidebar tab was active BEFORE populateForm() resets it to 'contacts'
+            const activeBtn = document.getElementById('toggle-screening-btn')?.classList.contains('active')
+                ? 'screening'
+                : 'contacts';
+
             closeContactModal();
 
-            // Refresh sidebar/household UI if available
-            if (typeof loadSavedData === 'function') {
-                try { await loadSavedData(); } catch (e) { /* ignore */ }
+            // Re-fetch and repopulate the form/banner (cheap, local state only)
+            const refreshedData = await fetchClient();
+            populateForm(refreshedData);
+
+            // banner.js's household members panel is a separate render pass —
+            // populateForm() only updates window.bannerClient's data, it doesn't
+            // touch the #household-members-panel DOM. Re-render it explicitly.
+            if (typeof window.renderHouseholdMembersPanel === 'function') {
+                window.renderHouseholdMembersPanel();
             }
+
+            // Use the properly-wired recompute+render API from estimations.js.
+            // This keeps its internal `client` closure variable in sync, unlike
+            // calling runAllEligibilityChecks/refreshAllDisplays directly.
+            if (typeof window.refreshEligibility === 'function') {
+                await window.refreshEligibility();
+            }
+
+            // Re-apply whichever sidebar tab was active (captured above),
+            // now that containers have been correctly (re)rendered by
+            // refreshEligibility() and populateForm() no longer wins the race.
+            await showSidebarView(activeBtn);
         } catch (error) {
             console.error('Error adding contact to household:', error);
             alert('An error occurred while adding the contact to the household.');
         }
     }
-
+    
     function closeContactModal() {
         const modal = document.getElementById('contactModal');
         modal.classList.remove('show');
@@ -1859,7 +1918,7 @@ details > summary { cursor: pointer; }
 
             // Update start screening button
             const callLoggingButton = document.getElementById('call-logging-button');
-            callLoggingButton.style.display = data.screeningInProgress ? 'none' : 'block';
+            callLoggingButton.style.display = data.screeningInProgress ? 'none' : 'inline-block';
 
             // Update local client state
             client.screeningInProgress = data.screeningInProgress;

@@ -802,8 +802,6 @@
             
                 </form>
 
-    <h1>Estimated Eligibilities</h1>
-
     <div class="screening-controls" id="screening-controls"></div>
 
     <div id="notes-container">
@@ -992,32 +990,6 @@
             document.getElementById('contactPhoneNumber').value = formatPhoneNumber(contact.phoneNumber) || '';
             editingContactIndex = index;
 
-            // Show "Add to Household" button only if this contact is not already a household member
-            const members = clientData_contacts.householdMembers || [];
-            const alreadyMember = members.some(m =>
-                m && (m.householdMemberId === contact.contactId)
-            );
-
-            if (!alreadyMember && contact.contactId) {
-                const addToHouseholdBtn = document.createElement('button');
-                addToHouseholdBtn.id = 'addContactToHouseholdBtn';
-                addToHouseholdBtn.type = 'button';
-                addToHouseholdBtn.textContent = 'Add to Household';
-                addToHouseholdBtn.style.cssText =
-                    'display:block;width:100%;margin-bottom:12px;padding:10px;' +
-                    'background-color:#007bff;color:#fff;border:1px solid #003f7f;' +
-                    'border-radius:5px;cursor:pointer;font-weight:600;';
-                addToHouseholdBtn.onmouseover = () => addToHouseholdBtn.style.backgroundColor = '#0056b3';
-                addToHouseholdBtn.onmouseout = () => addToHouseholdBtn.style.backgroundColor = '#007bff';
-                addToHouseholdBtn.onclick = () => addContactToHousehold(index);
-
-                // Insert above the First Name label
-                const firstNameLabel = form.querySelector('label[for="contactFirstName"]');
-                if (firstNameLabel) {
-                    form.insertBefore(addToHouseholdBtn, firstNameLabel);
-                }
-            }
-
             const deleteButton = document.createElement('button');
             deleteButton.textContent = 'Delete';
             deleteButton.type = 'button';
@@ -1035,94 +1007,6 @@
         }
 
         modal.style.display = 'flex';
-    }
-
-    // ── Add a contact as a household member (sharing IDs so name edits stay in sync) ──
-    async function addContactToHousehold(index) {
-        const clientId = getClientId();
-        if (!clientId) return;
-
-        try {
-            const client = await fetchClient(clientId);
-            clientData_contacts = client;
-            const contact = (client.Contacts || [])[index];
-            if (!contact) {
-                alert('Contact not found.');
-                return;
-            }
-
-            if (!client.householdMembers) client.householdMembers = [];
-
-            // Guard against duplicates
-            const alreadyMember = client.householdMembers.some(m =>
-                m && m.householdMemberId === contact.contactId
-            );
-            if (alreadyMember) {
-                alert('This contact is already a household member.');
-                return;
-            }
-
-            if (!confirm(`Add ${(contact.firstName || '').toUpperCase()} ${(contact.lastName || '').toUpperCase()} to the household?`)) {
-                return;
-            }
-
-            // Build new household member with N/A for fields not captured by the contact modal.
-            // householdMemberId is intentionally set to the contactId so name edits stay in sync.
-            const newMember = {
-                householdMemberId: contact.contactId,
-                prefix: 'N/A',
-                firstName: contact.firstName || 'N/A',
-                middleInitial: 'N/A',
-                lastName: contact.lastName || 'N/A',
-                suffix: 'N/A',
-                dob: 'N/A',
-                legalSex: 'N/A',
-                deceased: 'N/A',
-                dateOfDeath: 'N/A',
-                maritalStatus: 'N/A',
-                previousMaritalStatus: 'N/A',
-                socialSecurityNumber: 'N/A',
-                disability: 'N/A',
-                medicare: 'N/A',
-                medicaid: 'N/A',
-                citizen: 'N/A',
-                nonCitizenStatus: 'N/A',
-                student: 'N/A',
-                studentStatus: 'N/A',
-                meals: 'N/A'
-            };
-
-            client.householdMembers.push(newMember);
-
-            const response = await fetch('/update-client', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    clientId,
-                    clientData: { householdMembers: client.householdMembers }
-                })
-            });
-
-            const result = await response.json().catch(() => ({}));
-            if (!response.ok || result.success === false) {
-                console.error('Failed to add contact to household:', result.message);
-                alert(`Error: ${result.message || 'Could not add contact to household.'}`);
-                return;
-            }
-
-            clientData_contacts = client;
-            alert('Contact added to household.');
-            closeContactModal();
-
-            // Refresh UI
-            if (typeof window.eligibilityChecks?.displayHouseholdMembers === 'function') {
-                try { await window.eligibilityChecks.displayHouseholdMembers(); } catch (e) { /* ignore */ }
-            }
-            renderContacts();
-        } catch (error) {
-            console.error('Error adding contact to household:', error);
-            alert('An error occurred while adding the contact to the household.');
-        }
     }
 
     function openContactModalByIndex(index) {
